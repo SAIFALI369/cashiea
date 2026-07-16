@@ -117,6 +117,8 @@ const SYSTEM_PROMPTS: Record<string, string> = {
     "You are a data extraction specialist. Extract structured data from the user's text. Return ONLY valid JSON with relevant fields. Use descriptive keys. If the data represents contacts, products, transactions, etc., infer the schema automatically.",
   summary:
     "You are an expert summarizer. Summarize the provided text clearly and concisely, preserving key information. Use appropriate formatting (headings, bullet points) for readability.",
+  email:
+    "You are an expert business copywriter. Write a polished, ready-to-send email based on the user's instructions. Match the requested tone and email type. Use a clear subject line and well-structured body. Include a professional greeting and sign-off. Do NOT include placeholders like [Your Name] unless necessary — instead leave a clean blank line for the user to sign. Return the email formatted as: a first line with 'Subject: ...', a blank line, then the email body.",
 };
 
 // ─── Main handler ───────────────────────────────────────────────

@@ -1,8 +1,9 @@
 # 🤖 BizAutomate AI
 
-> **AI-powered business & startup task automation SaaS.** Generate invoices, create reports, automate data entry, and summarize documents — all in seconds. Multi-provider AI (OpenAI, Gemini, Claude) with a subscription model.
+> **AI-powered business & startup task automation SaaS.** Generate invoices, create reports, automate data entry, write emails, and summarize documents — all in seconds. Multi-provider AI (OpenAI, Gemini, Claude) with a subscription model and real Stripe payments.
 
 ![Tech Stack](https://img.shields.io/badge/Stack-React%20%2B%20Supabase%20%2B%20AI-blueviolet)
+![Payments](https://img.shields.io/badge/Payments-Stripe-635bff)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 ---
@@ -15,10 +16,12 @@
 | 📊 **AI Reports** | Paste raw data → get professional financial/sales/operations reports |
 | 🗃️ **Data Entry** | Extract structured JSON from messy text, emails, or notes |
 | 📝 **Summaries** | Condense long documents into brief, bullet, detailed, or executive summaries |
+| 📧 **Email Assistant** | Draft professional emails (cold outreach, follow-ups, proposals, support replies) with tone control |
 
 **Plus:**
 - 🔐 Email/password authentication (via Supabase Auth)
 - 💳 4-tier subscription plans (Free, Starter, Pro, Enterprise) with usage limits
+- 💰 **Real Stripe checkout** + webhooks (auto-provisions & cancels plans)
 - 🔁 **Multi-provider AI** — switch between OpenAI, Gemini & Claude anytime
 - 📊 Usage tracking & metering per user
 - 🎨 Modern, responsive dark UI with Tailwind CSS
@@ -32,13 +35,15 @@
 | **Frontend** | React 18 + TypeScript + Vite + Tailwind CSS |
 | **Backend / Auth / DB** | Supabase (PostgreSQL + Auth + Edge Functions) |
 | **AI** | Multi-provider: OpenAI GPT-4o, Google Gemini, Anthropic Claude |
+| **Payments** | Stripe (Checkout + Webhooks) |
 | **Icons** | Lucide React |
+| **Deploy** | Vercel (frontend) + Supabase (backend) |
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Clone & install
+### 1. Install
 ```bash
 cd businessautomate-ai
 npm install
@@ -54,28 +59,26 @@ npm install
    ```env
    VITE_SUPABASE_URL=https://your-project.supabase.co
    VITE_SUPABASE_ANON_KEY=your-anon-key
+   VITE_STRIPE_ENABLED=false
    ```
 
 ### 3. Create the database
 1. Open **SQL Editor** in your Supabase dashboard
-2. Paste the contents of [`supabase/schema.sql`](supabase/schema.sql) and click **Run**
+2. Paste [`supabase/schema.sql`](supabase/schema.sql) → **Run**
+3. Paste [`supabase/schema-additions.sql`](supabase/schema-additions.sql) → **Run**
 
-This creates all tables, Row Level Security policies, triggers, and functions.
+This creates all tables (invoices, reports, data_entries, summaries, emails, subscriptions), Row Level Security policies, triggers, and functions.
 
 ### 4. Deploy the AI Edge Function
 ```bash
-# Install Supabase CLI (if you don't have it)
-npm install -g supabase
-
-# Link your project
+npm install -g supabase          # if you don't have the CLI
 supabase link --project-ref your-project-ref
 
-# Set your AI API keys as secrets (set at least one)
+# Set at least ONE AI provider key
 supabase secrets set OPENAI_API_KEY=sk-...
 supabase secrets set GEMINI_API_KEY=AIza...
 supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 
-# Deploy the function
 supabase functions deploy ai-automation
 ```
 
@@ -83,28 +86,54 @@ supabase functions deploy ai-automation
 ```bash
 npm run dev
 ```
-
 Open **http://localhost:5173** and sign up! 🎉
+
+> **Note:** With `VITE_STRIPE_ENABLED=false`, plan upgrades run in **demo mode** (instant, no charge) so you can test everything immediately. See the Stripe section below to go live.
 
 ---
 
-## 💳 Adding Real Payments (Stripe)
+## 💳 Stripe Setup (Real Payments)
 
-The app includes a demo checkout that updates the plan directly. To accept real money:
+When you're ready to accept money, configure Stripe in 5 steps:
 
-1. Install Stripe: `npm install stripe @stripe/stripe-js`
-2. Create a new Edge Function `create-checkout`:
-   ```ts
-   import Stripe from "https://esm.sh/stripe";
-   const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!);
-   // Create a Checkout Session, return the URL
-   ```
-3. Replace `handleUpgrade` in `src/pages/Subscription.tsx` with:
-   ```ts
-   const { data } = await supabase.functions.invoke('create-checkout', { body: { plan } });
-   window.location.href = data.url;
-   ```
-4. Add a webhook function to update the plan on successful payment.
+### 1. Create products & prices in Stripe
+In the [Stripe Dashboard](https://dashboard.stripe.com/products), create 3 recurring (monthly) products and copy each **Price ID** (`price_...`):
+- **Starter** — $19/mo
+- **Pro** — $49/mo
+- **Enterprise** — $149/mo
+
+### 2. Set the secrets
+```bash
+supabase secrets set STRIPE_SECRET_KEY=sk_test_...
+supabase secrets set STRIPE_PRICE_STARTER=price_...
+supabase secrets set STRIPE_PRICE_PRO=price_...
+supabase secrets set STRIPE_PRICE_ENTERPRISE=price_...
+supabase secrets set APP_URL=https://yourdomain.com
+```
+
+### 3. Deploy the payment functions
+```bash
+supabase functions deploy create-checkout
+supabase functions deploy stripe-webhook
+```
+
+### 4. Register the webhook
+- In Stripe → **Developers → Webhooks → Add endpoint**
+- Endpoint URL: `https://<project>.functions.supabase.co/stripe-webhook`
+- Events to send:
+  - `checkout.session.completed`
+  - `customer.subscription.created`
+  - `customer.subscription.updated`
+  - `customer.subscription.deleted`
+- Copy the **Signing secret** (`whsec_...`) and set it:
+  ```bash
+  supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_...
+  ```
+
+### 5. Flip the flag
+Set `VITE_STRIPE_ENABLED=true` in `.env`, rebuild, and you're live! 💰
+
+> The webhook automatically upgrades/downgrades plans and resets usage limits based on Stripe events — no manual work needed.
 
 ---
 
@@ -113,26 +142,32 @@ The app includes a demo checkout that updates the plan directly. To accept real 
 ```
 businessautomate-ai/
 ├── src/
-│   ├── components/          # Layout, Sidebar, UI components
-│   ├── context/             # AuthContext (Supabase auth)
+│   ├── components/           # Layout, Sidebar, UI components
+│   ├── context/              # AuthContext (Supabase auth)
 │   ├── lib/
-│   │   ├── supabase.ts      # Supabase client
-│   │   ├── ai/index.ts      # Multi-provider AI client
-│   │   └── types.ts         # TypeScript types & plans
+│   │   ├── supabase.ts       # Supabase client
+│   │   ├── ai/index.ts       # Multi-provider AI client
+│   │   └── types.ts          # TypeScript types & plans
 │   └── pages/
-│       ├── Landing.tsx      # Marketing page with pricing
-│       ├── auth/            # Login & Signup
-│       ├── Dashboard.tsx    # Overview & stats
-│       ├── Invoices.tsx     # AI invoice generation
-│       ├── Reports.tsx      # AI business reports
-│       ├── DataEntry.tsx    # AI data extraction
-│       ├── Summaries.tsx    # AI text summarization
-│       ├── Subscription.tsx # Plan management
-│       └── Settings.tsx     # Profile & AI provider config
+│       ├── Landing.tsx       # Marketing page with pricing
+│       ├── auth/             # Login & Signup
+│       ├── Dashboard.tsx     # Overview & stats
+│       ├── Invoices.tsx      # AI invoice generation
+│       ├── Reports.tsx       # AI business reports
+│       ├── DataEntry.tsx     # AI data extraction
+│       ├── Summaries.tsx     # AI text summarization
+│       ├── EmailAssistant.tsx# AI email drafting
+│       ├── Subscription.tsx  # Plans + Stripe checkout
+│       └── Settings.tsx      # Profile & AI provider config
 ├── supabase/
-│   ├── schema.sql           # Database schema + RLS
+│   ├── schema.sql            # Core database schema + RLS
+│   ├── schema-additions.sql  # Emails table + index
+│   ├── config.toml           # Supabase project config
 │   └── functions/
-│       └── ai-automation/   # Multi-provider AI edge function
+│       ├── ai-automation/    # Multi-provider AI edge function
+│       ├── create-checkout/  # Stripe Checkout session
+│       └── stripe-webhook/   # Stripe event handler
+├── vercel.json               # SPA routing for Vercel deploy
 ├── .env.example
 └── package.json
 ```
@@ -155,11 +190,31 @@ businessautomate-ai/
 
 ---
 
+## ☁️ Deployment
+
+### Frontend → Vercel
+1. Push this repo to GitHub
+2. Import it at [vercel.com/new](https://vercel.com/new)
+3. Add environment variables (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_STRIPE_ENABLED`)
+4. Deploy — `vercel.json` handles SPA routing automatically
+
+**Or via CLI:**
+```bash
+npm i -g vercel
+vercel
+```
+
+### Backend → Supabase (already hosted)
+Your database, auth, and edge functions run on Supabase's infrastructure. Just make sure `APP_URL` secret points to your live Vercel domain.
+
+---
+
 ## 🛡️ Security
 
 - ✅ **Row Level Security** on every table — users can only access their own data
 - ✅ API keys stored as **Supabase Edge Function secrets** (never in client code)
 - ✅ Auth-gated edge function with per-user usage limits
+- ✅ Stripe webhooks verified via signature signing
 - ✅ `.env` is gitignored — never commit secrets
 
 ---
@@ -185,8 +240,9 @@ MIT — free to use for your own SaaS. Build something great! 🚀
 
 1. Check the Supabase docs: [supabase.com/docs](https://supabase.com/docs)
 2. Make sure your `.env` values are correct
-3. Confirm the edge function deployed and secrets are set
-4. Verify the SQL schema ran successfully
+3. Confirm the edge functions deployed and secrets are set
+4. Verify both SQL scripts ran successfully
+5. For Stripe, confirm the webhook signing secret matches
 
 ---
 

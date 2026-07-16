@@ -7,6 +7,7 @@ import {
   BarChart3,
   Database,
   ScrollText,
+  Mail,
   CreditCard,
   Settings,
   LogOut,
@@ -22,6 +23,7 @@ const navItems = [
   { to: '/app/reports', label: 'Reports', icon: BarChart3 },
   { to: '/app/data-entry', label: 'Data Entry', icon: Database },
   { to: '/app/summaries', label: 'Summaries', icon: ScrollText },
+  { to: '/app/email-assistant', label: 'Email Assistant', icon: Mail },
   { to: '/app/subscription', label: 'Subscription', icon: CreditCard },
   { to: '/app/settings', label: 'Settings', icon: Settings },
 ]
