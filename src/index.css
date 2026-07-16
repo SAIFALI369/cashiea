@@ -1,0 +1,69 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply box-border;
+  }
+  body {
+    @apply bg-slate-950 text-slate-100 font-sans antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-white
+           bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400
+           transition-all duration-200 shadow-lg shadow-brand-900/30 hover:shadow-brand-700/40
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold
+           bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 hover:border-slate-600
+           transition-all duration-200 disabled:opacity-50;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium
+           text-slate-400 hover:text-white hover:bg-slate-800 transition-all duration-200;
+  }
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-100
+           placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500
+           focus:border-transparent transition-all duration-200;
+  }
+  .card {
+    @apply bg-slate-900/60 backdrop-blur border border-slate-800 rounded-2xl;
+  }
+  .label {
+    @apply block text-sm font-medium text-slate-300 mb-1.5;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Markdown content rendering in reports/summaries */
+.prose-content h1 { @apply text-2xl font-bold text-white mb-3 mt-4; }
+.prose-content h2 { @apply text-xl font-bold text-white mb-2 mt-4; }
+.prose-content h3 { @apply text-lg font-semibold text-slate-100 mb-2 mt-3; }
+.prose-content p { @apply text-slate-300 mb-3 leading-relaxed; }
+.prose-content ul { @apply list-disc list-inside mb-3 text-slate-300 space-y-1; }
+.prose-content ol { @apply list-decimal list-inside mb-3 text-slate-300 space-y-1; }
+.prose-content strong { @apply font-semibold text-white; }
+.prose-content code { @apply bg-slate-800 px-1.5 py-0.5 rounded text-brand-300 text-sm; }
