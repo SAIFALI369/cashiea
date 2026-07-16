@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { PLANS, PlanKey } from '../lib/types'
@@ -6,49 +7,80 @@ import PageHeader from '../components/ui/PageHeader'
 import { CreditCard, Check, Loader2, Zap, Crown } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+// Flip to true once you've set up Stripe (see README → Stripe Setup).
+// Controls whether upgrades go through real checkout or demo mode.
+const STRIPE_ENABLED = import.meta.env.VITE_STRIPE_ENABLED === 'true'
+
 export default function Subscription() {
   const { profile, refreshProfile } = useAuth()
   const [updating, setUpdating] = useState<PlanKey | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
   const currentPlan = profile?.plan || 'free'
+
+  // Handle Stripe redirect result
+  useEffect(() => {
+    const status = searchParams.get('status')
+    if (status === 'success') {
+      toast.success('Payment successful! Your plan is now active 🎉')
+      refreshProfile()
+      searchParams.delete('status')
+      setSearchParams(searchParams, { replace: true })
+    } else if (status === 'canceled') {
+      toast('Checkout canceled — no charge was made.')
+      searchParams.delete('status')
+      setSearchParams(searchParams, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleUpgrade = async (plan: PlanKey) => {
     if (plan === currentPlan) return
-
     setUpdating(plan)
+
     try {
-      // ─── Demo: directly update plan in DB ───
-      // In production, replace this with a Stripe checkout flow:
-      //   const { data } = await supabase.functions.invoke('create-checkout', { body: { plan } })
-      //   window.location.href = data.url
+      // Downgrading to free doesn't need checkout
+      if (plan === 'free') {
+        await applyPlan(plan)
+        toast.success('Switched to Free plan')
+        return
+      }
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          plan,
-          api_usage_limit: PLANS[plan].usageLimit,
+      if (STRIPE_ENABLED) {
+        // ─── Real Stripe Checkout ───
+        const { data, error } = await supabase.functions.invoke('create-checkout', {
+          body: { plan },
         })
-        .eq('id', profile!.id)
-
-      if (error) throw error
-
-      // Also create/update subscription record
-      await supabase.from('subscriptions').upsert({
-        user_id: profile!.id,
-        plan,
-        status: 'active',
-      })
-
-      await refreshProfile()
-      toast.success(
-        plan === 'free'
-          ? 'Switched to Free plan'
-          : `Upgraded to ${PLANS[plan].name}! 🎉`
-      )
+        if (error) throw error
+        if (data?.url) {
+          window.location.href = data.url // redirect to Stripe
+          return
+        }
+        throw new Error('No checkout URL returned')
+      } else {
+        // ─── Demo mode: update plan directly ───
+        await applyPlan(plan)
+        toast.success(`Upgraded to ${PLANS[plan].name}! 🎉 (demo mode)`)
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Update failed')
     } finally {
       setUpdating(null)
     }
+  }
+
+  // Helper: write the plan + usage limit to the DB (demo / downgrade path)
+  const applyPlan = async (plan: PlanKey) => {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ plan, api_usage_limit: PLANS[plan].usageLimit })
+      .eq('id', profile!.id)
+    if (error) throw error
+
+    await supabase
+      .from('subscriptions')
+      .upsert({ user_id: profile!.id, plan, status: 'active' })
+
+    await refreshProfile()
   }
 
   return (
@@ -157,7 +189,9 @@ export default function Subscription() {
       </div>
 
       <p className="text-center text-sm text-slate-500 mt-8">
-        🔒 This is a demo checkout. To enable real payments, integrate Stripe — see the README for instructions.
+        {STRIPE_ENABLED
+          ? '🔒 Secure checkout powered by Stripe.'
+          : '🔒 Demo mode — upgrades are applied instantly without payment. Add Stripe keys + set VITE_STRIPE_ENABLED=true to go live (see README).'}
       </p>
     </div>
   )

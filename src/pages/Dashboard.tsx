@@ -7,39 +7,43 @@ import {
   BarChart3,
   Database,
   ScrollText,
+  Mail,
   Zap,
   TrendingUp,
   ArrowRight,
   Sparkles,
 } from 'lucide-react'
 import { PLANS } from '../lib/types'
-import type { Invoice, Report, DataEntry, Summary } from '../lib/types'
+import type { Invoice, Report, DataEntry, Summary, Email } from '../lib/types'
 
 const tools = [
   { to: '/app/invoices', icon: FileText, title: 'Generate Invoice', desc: 'Create invoices from text', color: 'from-blue-500/20 to-blue-600/5', iconColor: 'text-blue-400' },
   { to: '/app/reports', icon: BarChart3, title: 'Create Report', desc: 'AI business reports', color: 'from-green-500/20 to-green-600/5', iconColor: 'text-green-400' },
   { to: '/app/data-entry', icon: Database, title: 'Extract Data', desc: 'Parse text into data', color: 'from-amber-500/20 to-amber-600/5', iconColor: 'text-amber-400' },
   { to: '/app/summaries', icon: ScrollText, title: 'Summarize', desc: 'Summarize any text', color: 'from-purple-500/20 to-purple-600/5', iconColor: 'text-purple-400' },
+  { to: '/app/email-assistant', icon: Mail, title: 'Write Emails', desc: 'AI email drafts', color: 'from-cyan-500/20 to-cyan-600/5', iconColor: 'text-cyan-400' },
 ]
 
 export default function Dashboard() {
   const { profile } = useAuth()
-  const [stats, setStats] = useState({ invoices: 0, reports: 0, entries: 0, summaries: 0 })
+  const [stats, setStats] = useState({ invoices: 0, reports: 0, entries: 0, summaries: 0, emails: 0 })
 
   useEffect(() => {
     if (!profile) return
     const loadStats = async () => {
-      const [inv, rep, ent, sum] = await Promise.all([
+      const [inv, rep, ent, sum, eml] = await Promise.all([
         supabase.from('invoices').select('*', { count: 'exact', head: true }).eq('user_id', profile.id),
         supabase.from('reports').select('*', { count: 'exact', head: true }).eq('user_id', profile.id),
         supabase.from('data_entries').select('*', { count: 'exact', head: true }).eq('user_id', profile.id),
         supabase.from('summaries').select('*', { count: 'exact', head: true }).eq('user_id', profile.id),
+        supabase.from('emails').select('*', { count: 'exact', head: true }).eq('user_id', profile.id),
       ])
       setStats({
         invoices: inv.count || 0,
         reports: rep.count || 0,
         entries: ent.count || 0,
         summaries: sum.count || 0,
+        emails: eml.count || 0,
       })
     }
     loadStats()
@@ -60,7 +64,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
         <div className="card p-5">
           <div className="flex items-center justify-between mb-2">
             <FileText className="w-5 h-5 text-blue-400" />
@@ -92,6 +96,14 @@ export default function Dashboard() {
           </div>
           <p className="text-2xl font-bold text-white">{stats.summaries}</p>
           <p className="text-xs text-slate-400">Summaries</p>
+        </div>
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-2">
+            <Mail className="w-5 h-5 text-cyan-400" />
+            <Link to="/app/email-assistant" className="text-xs text-slate-500 hover:text-white">View →</Link>
+          </div>
+          <p className="text-2xl font-bold text-white">{stats.emails}</p>
+          <p className="text-xs text-slate-400">Emails</p>
         </div>
       </div>
 

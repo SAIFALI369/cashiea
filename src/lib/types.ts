@@ -70,6 +70,19 @@ export interface Summary {
   created_at: string
 }
 
+export interface Email {
+  id: string
+  user_id: string
+  subject: string
+  recipient: string | null
+  email_type: 'cold_outreach' | 'follow_up' | 'proposal' | 'newsletter' | 'support_reply' | 'custom'
+  tone: 'professional' | 'friendly' | 'persuasive' | 'formal' | 'casual'
+  key_points: string | null
+  generated_body: string | null
+  provider: string
+  created_at: string
+}
+
 // ─── Subscription plans ─────────────────────────────────────────
 export const PLANS = {
   free: {

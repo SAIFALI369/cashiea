@@ -10,6 +10,7 @@ import Invoices from './pages/Invoices'
 import Reports from './pages/Reports'
 import DataEntryPage from './pages/DataEntry'
 import Summaries from './pages/Summaries'
+import EmailAssistant from './pages/EmailAssistant'
 import Subscription from './pages/Subscription'
 import SettingsPage from './pages/Settings'
 
@@ -37,6 +38,7 @@ function App() {
         <Route path="reports" element={<Reports />} />
         <Route path="data-entry" element={<DataEntryPage />} />
         <Route path="summaries" element={<Summaries />} />
+        <Route path="email-assistant" element={<EmailAssistant />} />
         <Route path="subscription" element={<Subscription />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
