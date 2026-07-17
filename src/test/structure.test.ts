@@ -18,6 +18,9 @@ const read = (p: string) => readFileSync(join(ROOT, p), 'utf-8')
 
 const EXPECTED_PAGES = [
   'Dashboard',
+  'POS',
+  'Products',
+  'Customers',
   'Invoices',
   'Reports',
   'DataEntry',
@@ -44,7 +47,7 @@ const EXPECTED_EDGE_FUNCTIONS = [
   'stripe-webhook',
 ]
 
-const EXPECTED_SQL = ['schema.sql', 'schema-additions.sql', 'schema-v3.sql']
+const EXPECTED_SQL = ['schema.sql', 'schema-additions.sql', 'schema-v3.sql', 'schema-v4.sql']
 
 describe('page files exist', () => {
   for (const page of EXPECTED_PAGES) {
@@ -58,6 +61,9 @@ describe('App.tsx routes every page', () => {
   const app = read('src/App.tsx')
 
   it('imports Dashboard', () => expect(app).toMatch(/import Dashboard/))
+  it('imports POS', () => expect(app).toMatch(/import POS/))
+  it('imports Products', () => expect(app).toMatch(/import Products/))
+  it('imports Customers', () => expect(app).toMatch(/import Customers/))
   it('imports Invoices', () => expect(app).toMatch(/import Invoices/))
   it('imports Reports', () => expect(app).toMatch(/import Reports/))
   it('imports DataEntryPage', () => expect(app).toMatch(/import DataEntryPage/))
@@ -74,6 +80,9 @@ describe('App.tsx routes every page', () => {
   it('imports Landing', () => expect(app).toMatch(/import Landing/))
 
   it('has a route element for campaigns/new', () => expect(app).toMatch(/path="campaigns\/new"/))
+  it('has a route element for pos', () => expect(app).toMatch(/path="pos"/))
+  it('has a route element for products', () => expect(app).toMatch(/path="products"/))
+  it('has a route element for customers', () => expect(app).toMatch(/path="customers"/))
   it('has a route element for activity', () => expect(app).toMatch(/path="activity"/))
   it('has a route element for api-keys', () => expect(app).toMatch(/path="api-keys"/))
   it('has a route element for compliance', () => expect(app).toMatch(/path="compliance"/))
@@ -84,6 +93,9 @@ describe('Sidebar links to every app page', () => {
   const sidebar = read('src/components/Sidebar.tsx')
 
   const routes = [
+    '/app/pos',
+    '/app/products',
+    '/app/customers',
     '/app/invoices',
     '/app/reports',
     '/app/data-entry',

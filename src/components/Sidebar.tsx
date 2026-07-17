@@ -3,6 +3,9 @@ import { useAuth } from '../context/AuthContext'
 import { PLANS } from '../lib/types'
 import {
   LayoutDashboard,
+  ShoppingCart,
+  Package,
+  Users,
   FileText,
   BarChart3,
   Database,
@@ -26,11 +29,19 @@ const navSections = [
     label: 'Tools',
     items: [
       { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
+      { to: '/app/pos', label: 'Cashier / POS', icon: ShoppingCart },
+      { to: '/app/products', label: 'Products', icon: Package },
+      { to: '/app/customers', label: 'Customers', icon: Users },
       { to: '/app/invoices', label: 'Invoices', icon: FileText },
       { to: '/app/reports', label: 'Reports', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'AI Tools',
+    items: [
       { to: '/app/data-entry', label: 'Data Entry', icon: Database },
       { to: '/app/summaries', label: 'Summaries', icon: ScrollText },
-      { to: '/app/email-assistant', label: 'Email Assistant', icon: Mail },
+      { to: '/app/email-assistant', label: 'Retargeting Emails', icon: Mail },
       { to: '/app/campaigns', label: 'Campaigns', icon: Megaphone },
     ],
   },

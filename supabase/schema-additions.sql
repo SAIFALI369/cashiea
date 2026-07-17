@@ -9,7 +9,7 @@ create table if not exists public.emails (
   user_id uuid not null references auth.users(id) on delete cascade,
   subject text not null,
   recipient text,
-  email_type text not null check (email_type in ('cold_outreach', 'follow_up', 'proposal', 'newsletter', 'support_reply', 'custom')),
+  email_type text not null check (email_type in ('winback', 'offer', 'thankyou', 'abandoned', 'newsletter', 'custom')),
   tone text not null default 'professional' check (tone in ('professional', 'friendly', 'persuasive', 'formal', 'casual')),
   key_points text,
   generated_body text,

@@ -13,6 +13,9 @@ import Summaries from './pages/Summaries'
 import EmailAssistant from './pages/EmailAssistant'
 import Campaigns from './pages/Campaigns'
 import CampaignBuilder from './pages/CampaignBuilder'
+import POS from './pages/POS'
+import Products from './pages/Products'
+import Customers from './pages/Customers'
 import ActivityLogs from './pages/ActivityLogs'
 import ApiKeys from './pages/ApiKeys'
 import Compliance from './pages/Compliance'
@@ -41,6 +44,9 @@ function App() {
         }
       >
         <Route index element={<Dashboard />} />
+        <Route path="pos" element={<POS />} />
+        <Route path="products" element={<Products />} />
+        <Route path="customers" element={<Customers />} />
         <Route path="invoices" element={<Invoices />} />
         <Route path="reports" element={<Reports />} />
         <Route path="data-entry" element={<DataEntryPage />} />
