@@ -18,9 +18,13 @@ const read = (p: string) => readFileSync(join(ROOT, p), 'utf-8')
 
 const EXPECTED_PAGES = [
   'Dashboard',
+  'AIAssistant',
   'POS',
   'Products',
   'Customers',
+  'Quotations',
+  'Suppliers',
+  'Accounts',
   'Invoices',
   'Reports',
   'DataEntry',
@@ -47,7 +51,7 @@ const EXPECTED_EDGE_FUNCTIONS = [
   'stripe-webhook',
 ]
 
-const EXPECTED_SQL = ['schema.sql', 'schema-additions.sql', 'schema-v3.sql', 'schema-v4.sql']
+const EXPECTED_SQL = ['schema.sql', 'schema-additions.sql', 'schema-v3.sql', 'schema-v4.sql', 'schema-v5.sql']
 
 describe('page files exist', () => {
   for (const page of EXPECTED_PAGES) {
@@ -64,6 +68,10 @@ describe('App.tsx routes every page', () => {
   it('imports POS', () => expect(app).toMatch(/import POS/))
   it('imports Products', () => expect(app).toMatch(/import Products/))
   it('imports Customers', () => expect(app).toMatch(/import Customers/))
+  it('imports Suppliers', () => expect(app).toMatch(/import Suppliers/))
+  it('imports Quotations', () => expect(app).toMatch(/import Quotations/))
+  it('imports Accounts', () => expect(app).toMatch(/import Accounts/))
+  it('imports AIAssistant', () => expect(app).toMatch(/import AIAssistant/))
   it('imports Invoices', () => expect(app).toMatch(/import Invoices/))
   it('imports Reports', () => expect(app).toMatch(/import Reports/))
   it('imports DataEntryPage', () => expect(app).toMatch(/import DataEntryPage/))
@@ -83,6 +91,10 @@ describe('App.tsx routes every page', () => {
   it('has a route element for pos', () => expect(app).toMatch(/path="pos"/))
   it('has a route element for products', () => expect(app).toMatch(/path="products"/))
   it('has a route element for customers', () => expect(app).toMatch(/path="customers"/))
+  it('has a route element for suppliers', () => expect(app).toMatch(/path="suppliers"/))
+  it('has a route element for quotations', () => expect(app).toMatch(/path="quotations"/))
+  it('has a route element for accounts', () => expect(app).toMatch(/path="accounts"/))
+  it('has a route element for assistant', () => expect(app).toMatch(/path="assistant"/))
   it('has a route element for activity', () => expect(app).toMatch(/path="activity"/))
   it('has a route element for api-keys', () => expect(app).toMatch(/path="api-keys"/))
   it('has a route element for compliance', () => expect(app).toMatch(/path="compliance"/))
@@ -93,9 +105,13 @@ describe('Sidebar links to every app page', () => {
   const sidebar = read('src/components/Sidebar.tsx')
 
   const routes = [
+    '/app/assistant',
     '/app/pos',
     '/app/products',
     '/app/customers',
+    '/app/quotations',
+    '/app/suppliers',
+    '/app/accounts',
     '/app/invoices',
     '/app/reports',
     '/app/data-entry',

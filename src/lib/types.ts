@@ -10,6 +10,9 @@ export interface Profile {
   api_usage_count: number
   api_usage_limit: number
   trial_ends_at: string | null
+  gstin: string | null
+  business_address: string | null
+  business_state: string | null
   created_at: string
   updated_at: string
 }
@@ -208,6 +211,79 @@ export interface Transaction {
   status: 'completed' | 'refunded' | 'void'
   notes: string | null
   served_by: string | null
+  created_at: string
+}
+
+// ─── ERP entities (suppliers, POs, quotations, expenses) ───────
+export interface Supplier {
+  id: string
+  user_id: string
+  name: string
+  contact_person: string | null
+  email: string | null
+  phone: string | null
+  address: string | null
+  gstin: string | null
+  notes: string | null
+  outstanding: number
+  created_at: string
+}
+
+export interface POItem {
+  name: string
+  quantity: number
+  unit_price: number
+}
+
+export interface PurchaseOrder {
+  id: string
+  user_id: string
+  supplier_id: string | null
+  po_number: string
+  items: POItem[]
+  subtotal: number
+  tax_amount: number
+  total: number
+  status: 'draft' | 'ordered' | 'received' | 'cancelled'
+  expected_date: string | null
+  notes: string | null
+  created_at: string
+}
+
+export interface QuotationItem {
+  description: string
+  quantity: number
+  unit_price: number
+}
+
+export interface Quotation {
+  id: string
+  user_id: string
+  customer_id: string | null
+  quote_number: string
+  customer_name: string
+  customer_email: string | null
+  items: QuotationItem[]
+  subtotal: number
+  tax_rate: number
+  tax_amount: number
+  total: number
+  status: 'draft' | 'sent' | 'accepted' | 'converted' | 'rejected' | 'expired'
+  valid_until: string | null
+  notes: string | null
+  created_at: string
+}
+
+export interface Expense {
+  id: string
+  user_id: string
+  category: string
+  description: string
+  amount: number
+  type: 'expense' | 'income'
+  payment_method: string | null
+  date: string
+  notes: string | null
   created_at: string
 }
 
