@@ -231,9 +231,16 @@ Your database, auth, and edge functions run on Supabase's infrastructure. Just m
 | Command | Description |
 |---------|-------------|
 | `npm run dev` | Start dev server (localhost:5173) |
-| `npm run build` | Build for production |
+| `npm run build` | Type-check + build for production |
 | `npm run preview` | Preview production build |
 | `npm run lint` | Run ESLint |
+| `npm test` | Run the test suite (Vitest) |
+| `npm run test:watch` | Watch-mode tests |
+| `npm run test:coverage` | Tests + coverage report |
+
+> The suite has **107 tests** covering the JSON parser, retry logic, exports,
+> report templates, and full structural integrity (every page/route/function
+> exists). See [`TESTING.md`](TESTING.md). CI runs on every push.
 
 ---
 
