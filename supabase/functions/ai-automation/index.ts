@@ -1,62 +1,40 @@
 // ════════════════════════════════════════════════════════════════
 // BizAutomate AI — Multi-Provider AI Edge Function
-// Deploy with:  supabase functions deploy ai-automation
-// Set secrets:  supabase secrets set OPENAI_API_KEY=sk-...
-//               supabase secrets set GEMINI_API_KEY=...
-//               supabase secrets set ANTHROPIC_API_KEY=...
+// Deploy:  supabase functions deploy ai-automation
+// Secrets: supabase secrets set OPENAI_API_KEY=sk-...
+//          supabase secrets set GEMINI_API_KEY=...
+//          supabase secrets set ANTHROPIC_API_KEY=...
 // ════════════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-// ─── Provider: OpenAI ───────────────────────────────────────────
-async function callOpenAI(
-  prompt: string,
-  systemPrompt: string,
-  apiKey: string,
-  model = "gpt-4o-mini"
-): Promise<string> {
+// ─── Provider calls (each returns {ok, status, value}) ──────────
+async function callOpenAI(systemPrompt: string, prompt: string): Promise<{ ok: boolean; status: number; value: string }> {
+  const key = Deno.env.get("OPENAI_API_KEY");
+  if (!key) throw new Error("OPENAI_API_KEY not configured");
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: prompt },
-      ],
+      model: "gpt-4o-mini",
+      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: prompt }],
       temperature: 0.7,
       max_tokens: 2000,
     }),
   });
-
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`OpenAI error: ${err}`);
+    throw new Error(`OpenAI error (${res.status}): ${err.slice(0, 300)}`);
   }
-
   const data = await res.json();
-  return data.choices[0].message.content;
+  return { ok: true, status: 200, value: data.choices[0].message.content };
 }
 
-// ─── Provider: Google Gemini ────────────────────────────────────
-async function callGemini(
-  prompt: string,
-  systemPrompt: string,
-  apiKey: string,
-  model = "gemini-1.5-flash"
-): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
+async function callGemini(systemPrompt: string, prompt: string): Promise<{ ok: boolean; status: number; value: string }> {
+  const key = Deno.env.get("GEMINI_API_KEY");
+  if (!key) throw new Error("GEMINI_API_KEY not configured");
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -66,53 +44,54 @@ async function callGemini(
       generationConfig: { temperature: 0.7, maxOutputTokens: 2000 },
     }),
   });
-
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Gemini error: ${err}`);
+    throw new Error(`Gemini error (${res.status}): ${err.slice(0, 300)}`);
   }
-
   const data = await res.json();
-  return data.candidates[0].content.parts[0].text;
+  return { ok: true, status: 200, value: data.candidates[0].content.parts[0].text };
 }
 
-// ─── Provider: Anthropic Claude ─────────────────────────────────
-async function callAnthropic(
-  prompt: string,
-  systemPrompt: string,
-  apiKey: string,
-  model = "claude-3-5-sonnet-20241022"
-): Promise<string> {
+async function callAnthropic(systemPrompt: string, prompt: string): Promise<{ ok: boolean; status: number; value: string }> {
+  const key = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!key) throw new Error("ANTHROPIC_API_KEY not configured");
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
+    headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
-      model,
+      model: "claude-3-5-sonnet-20241022",
       max_tokens: 2000,
       system: systemPrompt,
       messages: [{ role: "user", content: prompt }],
     }),
   });
-
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Anthropic error: ${err}`);
+    throw new Error(`Anthropic error (${res.status}): ${err.slice(0, 300)}`);
   }
-
   const data = await res.json();
-  return data.content[0].text;
+  return { ok: true, status: 200, value: data.content[0].text };
 }
 
-// ─── System prompts per task type ───────────────────────────────
+async function callProvider(provider: string, systemPrompt: string, prompt: string): Promise<string> {
+  const callers: Record<string, (s: string, p: string) => Promise<{ ok: boolean; status: number; value: string }>> = {
+    openai: callOpenAI,
+    gemini: callGemini,
+    anthropic: callAnthropic,
+  };
+  const caller = callers[provider];
+  if (!caller) throw new Error(`Unknown provider: ${provider}`);
+  return withRetry(() => caller(systemPrompt, prompt), 2, 600);
+}
+
+// ─── Structured system prompts per task type ────────────────────
+// Report sub-types get tailored instructions so output is genuinely
+// different (not just a word-swapped prompt).
 const SYSTEM_PROMPTS: Record<string, string> = {
   invoice:
-    "You are an expert billing assistant. Parse the user's request and generate a complete invoice as valid JSON with keys: invoice_number, client_name, client_email, client_address, items (array of {description, quantity, unit_price}), tax_rate (percentage), due_date, notes. Calculate subtotal, tax_amount, and total automatically. Return ONLY valid JSON, no markdown.",
+    "You are an expert billing assistant. Parse the user's request and generate a complete invoice as valid JSON with keys: invoice_number, client_name, client_email, client_address, items (array of {description, quantity, unit_price}), tax_rate (percentage), due_date, notes. Calculate subtotal, tax_amount, and total automatically. Return ONLY valid JSON, no markdown, no preamble.",
   report:
-    "You are a senior business analyst. Generate a professional, well-structured business report based on the data provided. Use clear headings, bullet points, and actionable insights. Format with markdown headings.",
+    "You are a senior business analyst. Generate a professional report using markdown with clear headings (##), subheadings (###), and bullet points. Always include an Executive Summary, a Findings/Data section, and an Actionable Recommendations section.",
   extract:
     "You are a data extraction specialist. Extract structured data from the user's text. Return ONLY valid JSON with relevant fields. Use descriptive keys. If the data represents contacts, products, transactions, etc., infer the schema automatically.",
   summary:
@@ -123,7 +102,22 @@ const SYSTEM_PROMPTS: Record<string, string> = {
     "You analyze the sentiment of text. Classify it and return ONLY valid JSON with keys: sentiment ('positive','negative','neutral'), score (0.0 to 1.0), confidence (0.0 to 1.0), summary (one short sentence). No markdown.",
 };
 
-// ─── Time & money saved estimates per task (drives Usage Tracker) ─
+// Per-report-type prompt framing (genuine structural differences)
+function frameReportPrompt(reportType: string, title: string, data: string): string {
+  const t = title || `${reportType} Report`;
+  switch (reportType) {
+    case "financial":
+      return `Create a FINANCIAL REPORT titled "${t}". Structure it as:\n1. Executive Summary\n2. Revenue Analysis\n3. Expense Breakdown\n4. Profitability & Margins\n5. Cash Flow Highlights\n6. Recommendations\n\nFocus on numbers, ratios, and financial health. Data:\n${data}`;
+    case "sales":
+      return `Create a SALES REPORT titled "${t}". Structure it as:\n1. Executive Summary\n2. Pipeline Overview\n3. Win/Loss Analysis\n4. Top Performers & Products\n5. Conversion Funnel\n6. Forecast & Recommendations\n\nFocus on deals, conversion rates, and revenue drivers. Data:\n${data}`;
+    case "operations":
+      return `Create an OPERATIONS REPORT titled "${t}". Structure it as:\n1. Executive Summary\n2. Throughput & Efficiency\n3. Bottlenecks & Issues\n4. Resource Utilization\n5. Quality Metrics\n6. Process Improvement Recommendations\n\nFocus on efficiency, cycle times, and operational health. Data:\n${data}`;
+    default:
+      return `Create a CUSTOM business report titled "${t}" with an Executive Summary, Findings, and Recommendations sections based on this data:\n${data}`;
+  }
+}
+
+// ─── Time & money saved estimates per task (Usage Tracker) ───────
 const SAVINGS: Record<string, { time: number; money: number }> = {
   invoice: { time: 15, money: 7.5 },
   report: { time: 45, money: 22.5 },
@@ -133,104 +127,48 @@ const SAVINGS: Record<string, { time: number; money: number }> = {
   sentiment: { time: 2, money: 1 },
 };
 
-// ─── Main handler ───────────────────────────────────────────────
 Deno.serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
-        },
-      }
+      { global: { headers: { Authorization: req.headers.get("Authorization")! } } }
     );
 
-    // Verify the user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) return json({ error: "Unauthorized" }, 401);
 
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Check usage limits
+    // Usage check — honor trial boost
     const { data: profile } = await supabase
       .from("profiles")
-      .select("api_usage_count, api_usage_limit, ai_provider, plan")
+      .select("api_usage_count, api_usage_limit, ai_provider, plan, trial_ends_at")
       .eq("id", user.id)
       .single();
 
-    if (profile && profile.api_usage_count >= profile.api_usage_limit) {
-      return new Response(
-        JSON.stringify({
-          error: "Usage limit reached. Please upgrade your plan.",
-        }),
-        {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+    const onTrial = profile?.trial_ends_at && new Date(profile.trial_ends_at) > new Date();
+    const limit = onTrial ? Math.max(profile.api_usage_limit, 500) : profile?.api_usage_limit || 50;
+    if (profile && profile.api_usage_count >= limit) {
+      return json({ error: "Usage limit reached. Please upgrade your plan." }, 429);
     }
 
-    // Parse request
-    const { task_type, prompt, provider: requestedProvider } =
-      await req.json();
-
-    if (!task_type || !prompt) {
-      return new Response(
-        JSON.stringify({ error: "task_type and prompt are required" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
+    const { task_type, prompt, provider: requestedProvider, report_type, title } = await req.json();
+    if (!task_type || !prompt) return json({ error: "task_type and prompt are required" }, 400);
 
     const provider = requestedProvider || profile?.ai_provider || "openai";
-    const systemPrompt =
-      SYSTEM_PROMPTS[task_type] || "You are a helpful business assistant.";
+    const systemPrompt = SYSTEM_PROMPTS[task_type] || "You are a helpful business assistant.";
 
-    // Call the appropriate provider
-    let result: string;
-
-    switch (provider) {
-      case "openai": {
-        const key = Deno.env.get("OPENAI_API_KEY");
-        if (!key) throw new Error("OPENAI_API_KEY not configured");
-        result = await callOpenAI(prompt, systemPrompt, key);
-        break;
-      }
-      case "gemini": {
-        const key = Deno.env.get("GEMINI_API_KEY");
-        if (!key) throw new Error("GEMINI_API_KEY not configured");
-        result = await callGemini(prompt, systemPrompt, key);
-        break;
-      }
-      case "anthropic": {
-        const key = Deno.env.get("ANTHROPIC_API_KEY");
-        if (!key) throw new Error("ANTHROPIC_API_KEY not configured");
-        result = await callAnthropic(prompt, systemPrompt, key);
-        break;
-      }
-      default:
-        throw new Error(`Unknown provider: ${provider}`);
+    // Build the actual user prompt (report sub-type framing)
+    let userPrompt = prompt;
+    if (task_type === "report") {
+      userPrompt = frameReportPrompt(report_type || "custom", title || "", prompt);
     }
 
-    // Increment usage
-    await supabase.rpc("increment_api_usage", { user_uuid: user.id });
+    const result = await callProvider(provider, systemPrompt, userPrompt);
 
-    // Log activity for the Usage Tracker (hours & money saved)
+    // Increment usage + log activity
+    await supabase.rpc("increment_api_usage", { user_uuid: user.id });
     const savings = SAVINGS[task_type] || { time: 10, money: 5 };
     await supabase.from("activity_logs").insert({
       user_id: user.id,
@@ -241,19 +179,8 @@ Deno.serve(async (req) => {
       provider,
     });
 
-    return new Response(
-      JSON.stringify({ result, provider, task_type }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    return json({ result, provider, task_type });
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    return json({ error: error.message }, 500);
   }
 });

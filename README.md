@@ -237,6 +237,19 @@ Your database, auth, and edge functions run on Supabase's infrastructure. Just m
 
 ---
 
+### 5. (Optional) Email delivery for campaigns
+
+To actually send campaign emails to inboxes (otherwise they're generated as reviewable drafts), connect **Resend**:
+1. Create a free account at [resend.com](https://resend.com) and verify your sending domain
+2. Set the secrets:
+   ```bash
+   supabase secrets set RESEND_API_KEY=re_...
+   supabase secrets set MAIL_FROM=you@yourdomain.com
+   ```
+3. Redeploy `campaign-send`. Campaigns will now deliver + track opens automatically.
+
+---
+
 ## 📄 License
 
 MIT — free to use for your own SaaS. Build something great! 🚀
