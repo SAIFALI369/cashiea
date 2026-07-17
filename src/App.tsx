@@ -11,6 +11,12 @@ import Reports from './pages/Reports'
 import DataEntryPage from './pages/DataEntry'
 import Summaries from './pages/Summaries'
 import EmailAssistant from './pages/EmailAssistant'
+import Campaigns from './pages/Campaigns'
+import CampaignBuilder from './pages/CampaignBuilder'
+import ActivityLogs from './pages/ActivityLogs'
+import ApiKeys from './pages/ApiKeys'
+import Compliance from './pages/Compliance'
+import CaseStudy from './pages/CaseStudy'
 import Subscription from './pages/Subscription'
 import SettingsPage from './pages/Settings'
 
@@ -23,6 +29,7 @@ function App() {
       <Route path="/" element={user ? <Navigate to="/app" replace /> : <Landing />} />
       <Route path="/login" element={user ? <Navigate to="/app" replace /> : <Login />} />
       <Route path="/signup" element={user ? <Navigate to="/app" replace /> : <Signup />} />
+      <Route path="/case-study" element={<CaseStudy />} />
 
       {/* Protected app */}
       <Route
@@ -39,6 +46,12 @@ function App() {
         <Route path="data-entry" element={<DataEntryPage />} />
         <Route path="summaries" element={<Summaries />} />
         <Route path="email-assistant" element={<EmailAssistant />} />
+        <Route path="campaigns" element={<Campaigns />} />
+        <Route path="campaigns/new" element={<CampaignBuilder />} />
+        <Route path="campaigns/:id" element={<CampaignBuilder />} />
+        <Route path="activity" element={<ActivityLogs />} />
+        <Route path="api-keys" element={<ApiKeys />} />
+        <Route path="compliance" element={<Compliance />} />
         <Route path="subscription" element={<Subscription />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>

@@ -5,8 +5,9 @@ import { callAI, parseAIJson } from '../lib/ai'
 import type { DataEntry } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
-import { Database, Sparkles, Loader2, Trash2, Copy } from 'lucide-react'
+import { Database, Sparkles, Loader2, Trash2, Copy, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { exportToCSV, exportToJSON } from '../lib/export'
 
 export default function DataEntryPage() {
   const { profile } = useAuth()
@@ -95,6 +96,14 @@ export default function DataEntryPage() {
         title="Data Entry"
         subtitle="Extract structured data from any text automatically"
         icon={<Database className="w-5 h-5" />}
+        action={
+          entries.length > 0 ? (
+            <div className="flex gap-2">
+              <button onClick={() => exportToJSON('data-entries', entries)} className="btn-secondary text-xs"><Download className="w-3.5 h-3.5" /> JSON</button>
+              <button onClick={() => exportToCSV('data-entries', entries.map((e) => ({ ...e.extracted_data, category: e.category, created: e.created_at })))} className="btn-secondary text-xs"><Download className="w-3.5 h-3.5" /> CSV</button>
+            </div>
+          ) : undefined
+        }
       />
 
       {/* Extractor */}

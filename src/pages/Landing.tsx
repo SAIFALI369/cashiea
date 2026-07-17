@@ -5,35 +5,30 @@ import {
   BarChart3,
   Database,
   ScrollText,
+  Mail,
+  Megaphone,
   Check,
   ArrowRight,
   Zap,
   Shield,
   Clock,
+  Quote,
 } from 'lucide-react'
 import { PLANS } from '../lib/types'
 
 const features = [
-  {
-    icon: FileText,
-    title: 'AI Invoice Generation',
-    description: 'Describe what you billed in plain English. Get a complete, calculated invoice in seconds.',
-  },
-  {
-    icon: BarChart3,
-    title: 'Smart Business Reports',
-    description: 'Paste raw data and get professional financial, sales, or operations reports with insights.',
-  },
-  {
-    icon: Database,
-    title: 'Automated Data Entry',
-    description: 'Extract structured data from messy text, emails, or notes into clean JSON automatically.',
-  },
-  {
-    icon: ScrollText,
-    title: 'Instant Summaries',
-    description: 'Summarize documents, meetings, or long emails into brief, detailed, or executive formats.',
-  },
+  { icon: FileText, title: 'AI Invoice Generation', description: 'Describe what you billed in plain English. Get a complete, calculated invoice in seconds.' },
+  { icon: BarChart3, title: 'Smart Business Reports', description: 'Paste raw data and get professional financial, sales, or operations reports with insights.' },
+  { icon: Database, title: 'Automated Data Entry', description: 'Extract and organize data from 200+ emails daily. Eliminate manual data entry forever.' },
+  { icon: ScrollText, title: 'Instant Summaries', description: 'Summarize documents, meetings, or long emails into brief, detailed, or executive formats.' },
+  { icon: Mail, title: 'AI Email Assistant', description: 'Draft professional cold outreach, follow-ups, and proposals in your chosen tone instantly.' },
+  { icon: Megaphone, title: 'Email Campaign Builder', description: 'Send 50 personalized emails in 5 minutes. A/B testing, follow-ups & sentiment-tracked replies.' },
+]
+
+const heroStats = [
+  { value: '40+', label: 'hours saved / month' },
+  { value: '+38%', label: 'reply rate lift' },
+  { value: '5 min', label: 'to send 50 emails' },
 ]
 
 export default function Landing() {
@@ -49,9 +44,10 @@ export default function Landing() {
             <span className="font-bold text-white text-lg">BizAutomate AI</span>
           </div>
           <div className="flex items-center gap-3">
+            <Link to="/case-study" className="hidden sm:inline btn-ghost text-sm">Case Study</Link>
             <Link to="/login" className="btn-ghost text-sm">Sign In</Link>
             <Link to="/signup" className="btn-primary text-sm">
-              Get Started <ArrowRight className="w-4 h-4" />
+              Start Free <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
@@ -74,22 +70,45 @@ export default function Landing() {
             </span>
           </h1>
           <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto mb-10 animate-slide-up">
-            Generate invoices, create reports, automate data entry, and summarize documents —
-            all in seconds. The all-in-one AI toolkit for startups and small businesses.
+            Invoices, reports, data entry, emails & summaries — all automated in seconds.
+            The all-in-one AI toolkit for startups and small businesses.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up">
             <Link to="/signup" className="btn-primary text-base px-8 py-3.5">
-              Start Free — 50 AI Actions <ArrowRight className="w-5 h-5" />
+              Start 14-Day Free Trial <ArrowRight className="w-5 h-5" />
             </Link>
-            <Link to="/login" className="btn-secondary text-base px-8 py-3.5">
-              Sign In
+            <Link to="/case-study" className="btn-secondary text-base px-8 py-3.5">
+              See Case Study
             </Link>
           </div>
           <div className="flex items-center justify-center gap-8 mt-12 text-sm text-slate-500">
-            <span className="flex items-center gap-1.5"><Shield className="w-4 h-4 text-brand-400" /> Secure</span>
+            <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-brand-400" /> No credit card</span>
             <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-brand-400" /> No setup</span>
-            <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-brand-400" /> Cancel anytime</span>
+            <span className="flex items-center gap-1.5"><Shield className="w-4 h-4 text-brand-400" /> Cancel anytime</span>
           </div>
+
+          {/* Hero stats */}
+          <div className="grid grid-cols-3 gap-4 max-w-lg mx-auto mt-12">
+            {heroStats.map((s) => (
+              <div key={s.label} className="text-center">
+                <p className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-brand-400 to-purple-400 bg-clip-text text-transparent">{s.value}</p>
+                <p className="text-xs text-slate-500">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonial strip */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
+        <div className="card p-8 bg-gradient-to-br from-brand-900/20 to-transparent">
+          <Quote className="w-8 h-8 text-brand-500 mb-3" />
+          <p className="text-lg text-slate-200 italic mb-4">
+            "I sent 50 personalized follow-ups in five minutes. BizAutomate saved me 40 hours a month and lifted my reply rate by 38%."
+          </p>
+          <Link to="/case-study" className="text-sm font-semibold text-brand-400 hover:text-brand-300">
+            Read Rahul's full story →
+          </Link>
         </div>
       </section>
 
@@ -97,9 +116,9 @@ export default function Landing() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-20">
         <div className="text-center mb-14">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">Everything you need to automate ops</h2>
-          <p className="text-slate-400 max-w-xl mx-auto">Four powerful AI tools, one subscription. Stop doing busywork.</p>
+          <p className="text-slate-400 max-w-xl mx-auto">Six powerful AI tools, one subscription. Stop doing busywork.</p>
         </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {features.map((f) => (
             <div key={f.title} className="card p-6 hover:border-brand-700/50 transition-all hover:-translate-y-1 group">
               <div className="w-12 h-12 rounded-xl bg-brand-600/15 border border-brand-700/30 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -116,18 +135,15 @@ export default function Landing() {
       <section id="pricing" className="max-w-7xl mx-auto px-4 sm:px-6 py-20">
         <div className="text-center mb-14">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">Simple, transparent pricing</h2>
-          <p className="text-slate-400">Start free. Upgrade when you grow. Cancel anytime.</p>
+          <p className="text-slate-400">14-day free trial on every plan. No credit card required.</p>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {Object.entries(PLANS).map(([key, plan]) => {
             const popular = key === 'pro'
             return (
-              <div
-                key={key}
-                className={`card p-6 relative ${popular ? 'border-brand-600 ring-1 ring-brand-600/50' : ''}`}
-              >
+              <div key={key} className={`card p-6 relative ${popular ? 'border-brand-600 ring-1 ring-brand-600/50' : ''}`}>
                 {popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-brand-600 text-white text-xs font-bold">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-brand-600 text-white text-xs font-bold whitespace-nowrap">
                     Most Popular
                   </div>
                 )}
@@ -152,7 +168,7 @@ export default function Landing() {
                       : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
                   }`}
                 >
-                  {plan.price === 0 ? 'Start Free' : `Choose ${plan.name}`}
+                  Start Free Trial
                 </Link>
               </div>
             )
@@ -166,9 +182,9 @@ export default function Landing() {
           <div className="absolute inset-0 bg-gradient-to-br from-brand-950/30 to-transparent" />
           <div className="relative">
             <h2 className="text-3xl font-bold text-white mb-3">Ready to automate your business?</h2>
-            <p className="text-slate-400 mb-8">Join startups saving hours every week with BizAutomate AI.</p>
+            <p className="text-slate-400 mb-8">Join startups saving 40+ hours every week with BizAutomate AI.</p>
             <Link to="/signup" className="btn-primary text-base px-8 py-3.5">
-              Get Started Free <ArrowRight className="w-5 h-5" />
+              Start 14-Day Free Trial <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
         </div>
@@ -182,9 +198,10 @@ export default function Landing() {
             <span className="text-sm">© 2026 BizAutomate AI. All rights reserved.</span>
           </div>
           <div className="flex gap-6 text-sm text-slate-500">
+            <Link to="/case-study" className="hover:text-white transition-colors">Case Study</Link>
             <a href="#" className="hover:text-white transition-colors">Privacy</a>
             <a href="#" className="hover:text-white transition-colors">Terms</a>
-            <a href="#" className="hover:text-white transition-colors">Contact</a>
+            <Link to="/signup" className="hover:text-white transition-colors">Compliance</Link>
           </div>
         </div>
       </footer>
