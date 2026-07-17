@@ -119,6 +119,18 @@ const SYSTEM_PROMPTS: Record<string, string> = {
     "You are an expert summarizer. Summarize the provided text clearly and concisely, preserving key information. Use appropriate formatting (headings, bullet points) for readability.",
   email:
     "You are an expert business copywriter. Write a polished, ready-to-send email based on the user's instructions. Match the requested tone and email type. Use a clear subject line and well-structured body. Include a professional greeting and sign-off. Do NOT include placeholders like [Your Name] unless necessary — instead leave a clean blank line for the user to sign. Return the email formatted as: a first line with 'Subject: ...', a blank line, then the email body.",
+  sentiment:
+    "You analyze the sentiment of text. Classify it and return ONLY valid JSON with keys: sentiment ('positive','negative','neutral'), score (0.0 to 1.0), confidence (0.0 to 1.0), summary (one short sentence). No markdown.",
+};
+
+// ─── Time & money saved estimates per task (drives Usage Tracker) ─
+const SAVINGS: Record<string, { time: number; money: number }> = {
+  invoice: { time: 15, money: 7.5 },
+  report: { time: 45, money: 22.5 },
+  extract: { time: 20, money: 10 },
+  summary: { time: 25, money: 12.5 },
+  email: { time: 10, money: 5 },
+  sentiment: { time: 2, money: 1 },
 };
 
 // ─── Main handler ───────────────────────────────────────────────
@@ -217,6 +229,17 @@ Deno.serve(async (req) => {
 
     // Increment usage
     await supabase.rpc("increment_api_usage", { user_uuid: user.id });
+
+    // Log activity for the Usage Tracker (hours & money saved)
+    const savings = SAVINGS[task_type] || { time: 10, money: 5 };
+    await supabase.from("activity_logs").insert({
+      user_id: user.id,
+      action_type: task_type,
+      description: `${task_type} generated`,
+      time_saved_minutes: savings.time,
+      money_saved: savings.money,
+      provider,
+    });
 
     return new Response(
       JSON.stringify({ result, provider, task_type }),

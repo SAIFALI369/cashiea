@@ -9,6 +9,7 @@ export interface Profile {
   ai_provider: 'openai' | 'gemini' | 'anthropic'
   api_usage_count: number
   api_usage_limit: number
+  trial_ends_at: string | null
   created_at: string
   updated_at: string
 }
@@ -80,6 +81,69 @@ export interface Email {
   key_points: string | null
   generated_body: string | null
   provider: string
+  created_at: string
+}
+
+export interface ActivityLog {
+  id: string
+  user_id: string
+  action_type: 'invoice' | 'report' | 'extract' | 'summary' | 'email' | 'sentiment' | 'campaign'
+  description: string | null
+  time_saved_minutes: number
+  money_saved: number
+  provider: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
+export interface ApiKey {
+  id: string
+  name: string
+  key_prefix: string
+  last_used_at: string | null
+  active: boolean
+  created_at: string
+}
+
+export interface EmailCampaign {
+  id: string
+  user_id: string
+  name: string
+  status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'paused'
+  template_subject: string | null
+  template_body: string | null
+  tone: string
+  ab_enabled: boolean
+  variant_a_subject: string | null
+  variant_b_subject: string | null
+  followup_enabled: boolean
+  followup_delay_days: number
+  followup_count: number
+  scheduled_at: string | null
+  sent_count: number
+  opened_count: number
+  clicked_count: number
+  replied_count: number
+  provider: string
+  created_at: string
+}
+
+export interface CampaignRecipient {
+  id: string
+  campaign_id: string
+  email: string
+  name: string | null
+  personalization: Record<string, unknown>
+  variant: string | null
+  status: 'pending' | 'sent' | 'opened' | 'clicked' | 'replied' | 'bounced'
+  sentiment: string | null
+  sentiment_score: number | null
+  generated_subject: string | null
+  generated_body: string | null
+  sent_at: string | null
+  opened_at: string | null
+  clicked_at: string | null
+  replied_at: string | null
   created_at: string
 }
 

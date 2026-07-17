@@ -8,8 +8,12 @@ import {
   Database,
   ScrollText,
   Mail,
+  Megaphone,
   CreditCard,
   Settings,
+  Key,
+  History,
+  Shield,
   LogOut,
   Sparkles,
   Zap,
@@ -17,15 +21,29 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 
-const navItems = [
-  { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/app/invoices', label: 'Invoices', icon: FileText },
-  { to: '/app/reports', label: 'Reports', icon: BarChart3 },
-  { to: '/app/data-entry', label: 'Data Entry', icon: Database },
-  { to: '/app/summaries', label: 'Summaries', icon: ScrollText },
-  { to: '/app/email-assistant', label: 'Email Assistant', icon: Mail },
-  { to: '/app/subscription', label: 'Subscription', icon: CreditCard },
-  { to: '/app/settings', label: 'Settings', icon: Settings },
+const navSections = [
+  {
+    label: 'Tools',
+    items: [
+      { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
+      { to: '/app/invoices', label: 'Invoices', icon: FileText },
+      { to: '/app/reports', label: 'Reports', icon: BarChart3 },
+      { to: '/app/data-entry', label: 'Data Entry', icon: Database },
+      { to: '/app/summaries', label: 'Summaries', icon: ScrollText },
+      { to: '/app/email-assistant', label: 'Email Assistant', icon: Mail },
+      { to: '/app/campaigns', label: 'Campaigns', icon: Megaphone },
+    ],
+  },
+  {
+    label: 'Account',
+    items: [
+      { to: '/app/activity', label: 'Activity Logs', icon: History },
+      { to: '/app/api-keys', label: 'API Keys', icon: Key },
+      { to: '/app/compliance', label: 'Compliance', icon: Shield },
+      { to: '/app/subscription', label: 'Subscription', icon: CreditCard },
+      { to: '/app/settings', label: 'Settings', icon: Settings },
+    ],
+  },
 ]
 
 export default function Sidebar({
@@ -80,25 +98,32 @@ export default function Sidebar({
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              onClick={onClose}
-              className={({ isActive }) =>
-                clsx(
-                  'flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all',
-                  isActive
-                    ? 'bg-brand-600/20 text-brand-300 border border-brand-700/50'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
-                )
-              }
-            >
-              <item.icon className="w-5 h-5" />
-              {item.label}
-            </NavLink>
+        <nav className="flex-1 overflow-y-auto p-3 space-y-4">
+          {navSections.map((section) => (
+            <div key={section.label}>
+              <p className="px-3.5 mb-1 text-xs font-semibold text-slate-600 uppercase tracking-wider">{section.label}</p>
+              <div className="space-y-1">
+                {section.items.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.end}
+                    onClick={onClose}
+                    className={({ isActive }) =>
+                      clsx(
+                        'flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all',
+                        isActive
+                          ? 'bg-brand-600/20 text-brand-300 border border-brand-700/50'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                      )
+                    }
+                  >
+                    <item.icon className="w-5 h-5" />
+                    {item.label}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 

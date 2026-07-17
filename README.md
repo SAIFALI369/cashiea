@@ -14,16 +14,23 @@
 |------|-------------|
 | 🧾 **AI Invoices** | Describe what you billed in plain English → get a complete calculated invoice |
 | 📊 **AI Reports** | Paste raw data → get professional financial/sales/operations reports |
-| 🗃️ **Data Entry** | Extract structured JSON from messy text, emails, or notes |
+| 🗃️ **Data Entry** | Extract & organize data from 200+ emails daily → eliminate manual entry forever |
 | 📝 **Summaries** | Condense long documents into brief, bullet, detailed, or executive summaries |
-| 📧 **Email Assistant** | Draft professional emails (cold outreach, follow-ups, proposals, support replies) with tone control |
+| 📧 **Email Assistant** | Draft professional cold outreach, follow-ups & proposals with tone control |
+| 📣 **Email Campaigns** | Send 50 personalized emails in 5 min — A/B testing, follow-ups & sentiment-tracked replies |
 
-**Plus:**
-- 🔐 Email/password authentication (via Supabase Auth)
+**Plus platform features:**
+- 🔐 Email/password authentication (Supabase Auth)
 - 💳 4-tier subscription plans (Free, Starter, Pro, Enterprise) with usage limits
+- 🎁 **14-day free Pro trial** on signup (no credit card)
 - 💰 **Real Stripe checkout** + webhooks (auto-provisions & cancels plans)
+- ⏱️ **Usage Tracker** — hours & money saved, live on the dashboard
+- 📜 **Activity Logs** — full audit trail with CSV/JSON export
+- 🔌 **Public API** (`/api-generate-invoice`, `/api-draft-email`) with API key management for 3rd-party integrations
+- 📤 **Export options** — CSV & JSON from every data table
+- 🛡️ **Compliance page** — GDPR, SOC 2, CCPA, ISO 27001, HIPAA, PCI DSS
 - 🔁 **Multi-provider AI** — switch between OpenAI, Gemini & Claude anytime
-- 📊 Usage tracking & metering per user
+- 📰 **Case Study page** — convert visitors with real customer ROI stories
 - 🎨 Modern, responsive dark UI with Tailwind CSS
 
 ---

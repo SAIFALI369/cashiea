@@ -8,13 +8,17 @@ import {
   Database,
   ScrollText,
   Mail,
+  Megaphone,
   Zap,
   TrendingUp,
   ArrowRight,
   Sparkles,
+  Clock,
+  DollarSign,
+  Gift,
 } from 'lucide-react'
 import { PLANS } from '../lib/types'
-import type { Invoice, Report, DataEntry, Summary, Email } from '../lib/types'
+import type { ActivityLog } from '../lib/types'
 
 const tools = [
   { to: '/app/invoices', icon: FileText, title: 'Generate Invoice', desc: 'Create invoices from text', color: 'from-blue-500/20 to-blue-600/5', iconColor: 'text-blue-400' },
@@ -22,21 +26,25 @@ const tools = [
   { to: '/app/data-entry', icon: Database, title: 'Extract Data', desc: 'Parse text into data', color: 'from-amber-500/20 to-amber-600/5', iconColor: 'text-amber-400' },
   { to: '/app/summaries', icon: ScrollText, title: 'Summarize', desc: 'Summarize any text', color: 'from-purple-500/20 to-purple-600/5', iconColor: 'text-purple-400' },
   { to: '/app/email-assistant', icon: Mail, title: 'Write Emails', desc: 'AI email drafts', color: 'from-cyan-500/20 to-cyan-600/5', iconColor: 'text-cyan-400' },
+  { to: '/app/campaigns', icon: Megaphone, title: 'Email Campaigns', desc: 'Bulk personalized outreach', color: 'from-pink-500/20 to-pink-600/5', iconColor: 'text-pink-400' },
 ]
 
 export default function Dashboard() {
   const { profile } = useAuth()
-  const [stats, setStats] = useState({ invoices: 0, reports: 0, entries: 0, summaries: 0, emails: 0 })
+  const [stats, setStats] = useState({ invoices: 0, reports: 0, entries: 0, summaries: 0, emails: 0, campaigns: 0 })
+  const [savings, setSavings] = useState({ timeMinutes: 0, money: 0, actions: 0 })
+  const [recent, setRecent] = useState<ActivityLog[]>([])
 
   useEffect(() => {
     if (!profile) return
     const loadStats = async () => {
-      const [inv, rep, ent, sum, eml] = await Promise.all([
+      const [inv, rep, ent, sum, eml, camp] = await Promise.all([
         supabase.from('invoices').select('*', { count: 'exact', head: true }).eq('user_id', profile.id),
         supabase.from('reports').select('*', { count: 'exact', head: true }).eq('user_id', profile.id),
         supabase.from('data_entries').select('*', { count: 'exact', head: true }).eq('user_id', profile.id),
         supabase.from('summaries').select('*', { count: 'exact', head: true }).eq('user_id', profile.id),
         supabase.from('emails').select('*', { count: 'exact', head: true }).eq('user_id', profile.id),
+        supabase.from('email_campaigns').select('*', { count: 'exact', head: true }).eq('user_id', profile.id),
       ])
       setStats({
         invoices: inv.count || 0,
@@ -44,13 +52,38 @@ export default function Dashboard() {
         entries: ent.count || 0,
         summaries: sum.count || 0,
         emails: eml.count || 0,
+        campaigns: camp.count || 0,
       })
+
+      // Load savings from activity logs
+      const { data: logs } = await supabase
+        .from('activity_logs')
+        .select('time_saved_minutes, money_saved, action_type, description, created_at, id, user_id, provider, metadata')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: false })
+
+      if (logs) {
+        const full = logs as ActivityLog[]
+        const timeMinutes = full.reduce((s, l) => s + (l.time_saved_minutes || 0), 0)
+        const money = full.reduce((s, l) => s + Number(l.money_saved || 0), 0)
+        setSavings({ timeMinutes, money, actions: full.length })
+        setRecent(full.slice(0, 5))
+      }
     }
     loadStats()
   }, [profile])
 
   const usagePercent = profile
     ? Math.min(100, (profile.api_usage_count / profile.api_usage_limit) * 100)
+    : 0
+
+  const hoursSaved = (savings.timeMinutes / 60).toFixed(1)
+  const moneySaved = savings.money.toFixed(0)
+
+  // Trial info
+  const trialActive = profile?.trial_ends_at && new Date(profile.trial_ends_at) > new Date()
+  const trialDaysLeft = trialActive
+    ? Math.max(0, Math.ceil((new Date(profile!.trial_ends_at!).getTime() - Date.now()) / 86400000))
     : 0
 
   return (
@@ -63,47 +96,43 @@ export default function Dashboard() {
         <p className="text-slate-400 mt-1">What would you like to automate today?</p>
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-2">
-            <FileText className="w-5 h-5 text-blue-400" />
-            <Link to="/app/invoices" className="text-xs text-slate-500 hover:text-white">View →</Link>
-          </div>
-          <p className="text-2xl font-bold text-white">{stats.invoices}</p>
-          <p className="text-xs text-slate-400">Invoices</p>
+      {/* Trial banner */}
+      {trialActive && (
+        <div className="card p-4 mb-6 bg-gradient-to-r from-brand-600/20 to-purple-600/10 border-brand-600/40 flex items-center gap-3">
+          <Gift className="w-5 h-5 text-brand-400 flex-shrink-0" />
+          <p className="text-sm text-slate-200">
+            <span className="font-bold text-white">Free Pro Trial active</span> — {trialDaysLeft} days left.
+            Enjoy boosted AI limits & all providers.
+          </p>
+          <Link to="/app/subscription" className="ml-auto btn-secondary text-xs whitespace-nowrap">Manage</Link>
         </div>
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-2">
-            <BarChart3 className="w-5 h-5 text-green-400" />
-            <Link to="/app/reports" className="text-xs text-slate-500 hover:text-white">View →</Link>
+      )}
+
+      {/* Usage Tracker — saved hours & money */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="card p-5 bg-gradient-to-br from-green-500/10 to-transparent">
+          <div className="flex items-center gap-2 mb-2">
+            <Clock className="w-5 h-5 text-green-400" />
+            <span className="text-xs font-medium text-slate-400">Hours Saved</span>
           </div>
-          <p className="text-2xl font-bold text-white">{stats.reports}</p>
-          <p className="text-xs text-slate-400">Reports</p>
+          <p className="text-3xl font-extrabold text-white">{hoursSaved}<span className="text-base text-slate-500 font-normal"> hrs</span></p>
+          <p className="text-xs text-slate-500 mt-1">across {savings.actions} automations</p>
         </div>
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-2">
-            <Database className="w-5 h-5 text-amber-400" />
-            <Link to="/app/data-entry" className="text-xs text-slate-500 hover:text-white">View →</Link>
+        <div className="card p-5 bg-gradient-to-br from-emerald-500/10 to-transparent">
+          <div className="flex items-center gap-2 mb-2">
+            <DollarSign className="w-5 h-5 text-emerald-400" />
+            <span className="text-xs font-medium text-slate-400">Money Saved</span>
           </div>
-          <p className="text-2xl font-bold text-white">{stats.entries}</p>
-          <p className="text-xs text-slate-400">Data Entries</p>
+          <p className="text-3xl font-extrabold text-white">${moneySaved}</p>
+          <p className="text-xs text-slate-500 mt-1">estimated labor cost saved</p>
         </div>
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-2">
-            <ScrollText className="w-5 h-5 text-purple-400" />
-            <Link to="/app/summaries" className="text-xs text-slate-500 hover:text-white">View →</Link>
+        <div className="card p-5 bg-gradient-to-br from-brand-500/10 to-transparent">
+          <div className="flex items-center gap-2 mb-2">
+            <Zap className="w-5 h-5 text-amber-400" />
+            <span className="text-xs font-medium text-slate-400">Tasks Automated</span>
           </div>
-          <p className="text-2xl font-bold text-white">{stats.summaries}</p>
-          <p className="text-xs text-slate-400">Summaries</p>
-        </div>
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-2">
-            <Mail className="w-5 h-5 text-cyan-400" />
-            <Link to="/app/email-assistant" className="text-xs text-slate-500 hover:text-white">View →</Link>
-          </div>
-          <p className="text-2xl font-bold text-white">{stats.emails}</p>
-          <p className="text-xs text-slate-400">Emails</p>
+          <p className="text-3xl font-extrabold text-white">{stats.invoices + stats.reports + stats.entries + stats.summaries + stats.emails + stats.campaigns}</p>
+          <p className="text-xs text-slate-500 mt-1">documents created</p>
         </div>
       </div>
 
@@ -111,12 +140,12 @@ export default function Dashboard() {
       <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
         <Sparkles className="w-5 h-5 text-brand-400" /> AI Tools
       </h2>
-      <div className="grid sm:grid-cols-2 gap-4 mb-8">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {tools.map((tool) => (
           <Link
             key={tool.to}
             to={tool.to}
-            className={`card p-6 bg-gradient-to-br ${tool.color} hover:border-brand-700/50 transition-all hover:-translate-y-0.5 group`}
+            className={`card p-5 bg-gradient-to-br ${tool.color} hover:border-brand-700/50 transition-all hover:-translate-y-0.5 group`}
           >
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
@@ -134,8 +163,8 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Usage + plan */}
       <div className="grid lg:grid-cols-2 gap-4">
+        {/* Usage + plan */}
         <div className="card p-6">
           <div className="flex items-center gap-2 mb-4">
             <Zap className="w-5 h-5 text-amber-400" />
@@ -158,24 +187,32 @@ export default function Dashboard() {
           </p>
         </div>
 
+        {/* Recent activity */}
         <div className="card p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="w-5 h-5 text-brand-400" />
-            <h3 className="font-semibold text-white">Your Plan</h3>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-brand-400" />
+              <h3 className="font-semibold text-white">Recent Activity</h3>
+            </div>
+            <Link to="/app/activity" className="text-xs text-brand-400 hover:text-brand-300">View all →</Link>
           </div>
-          <div className="flex items-baseline gap-2 mb-3">
-            <span className="text-2xl font-bold text-white capitalize">{PLANS[profile?.plan || 'free'].name}</span>
-            <span className="text-slate-400">${PLANS[profile?.plan || 'free'].price}/mo</span>
-          </div>
-          <p className="text-sm text-slate-400 mb-4">
-            {profile?.plan === 'free'
-              ? 'Upgrade to unlock more AI actions and features.'
-              : 'Thanks for being a paid subscriber! 🎉'}
-          </p>
-          {profile?.plan === 'free' && (
-            <Link to="/app/subscription" className="btn-primary text-sm w-full">
-              Upgrade Plan <ArrowRight className="w-4 h-4" />
-            </Link>
+          {recent.length === 0 ? (
+            <p className="text-sm text-slate-500 py-4 text-center">No activity yet. Run your first AI tool!</p>
+          ) : (
+            <div className="space-y-2.5">
+              {recent.map((log) => (
+                <div key={log.id} className="flex items-center gap-3 text-sm">
+                  <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="w-3.5 h-3.5 text-brand-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-slate-200 truncate capitalize">{log.description || log.action_type}</p>
+                    <p className="text-xs text-slate-500">{new Date(log.created_at).toLocaleString()}</p>
+                  </div>
+                  <span className="text-xs text-green-400 whitespace-nowrap">+{log.time_saved_minutes}m</span>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>

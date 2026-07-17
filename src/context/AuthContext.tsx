@@ -87,6 +87,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error
     // Profile is auto-created via database trigger
     if (data.user) {
+      // Grant 14-day Pro trial (retry-safe; profile may take a moment)
+      await new Promise((r) => setTimeout(r, 400))
+      await supabase.rpc('grant_trial', { user_uuid: data.user.id })
       await fetchProfile(data.user.id)
     }
   }
