@@ -16,6 +16,10 @@ import CampaignBuilder from './pages/CampaignBuilder'
 import POS from './pages/POS'
 import Products from './pages/Products'
 import Customers from './pages/Customers'
+import Suppliers from './pages/Suppliers'
+import Quotations from './pages/Quotations'
+import Accounts from './pages/Accounts'
+import AIAssistant from './pages/AIAssistant'
 import ActivityLogs from './pages/ActivityLogs'
 import ApiKeys from './pages/ApiKeys'
 import Compliance from './pages/Compliance'
@@ -47,6 +51,10 @@ function App() {
         <Route path="pos" element={<POS />} />
         <Route path="products" element={<Products />} />
         <Route path="customers" element={<Customers />} />
+        <Route path="suppliers" element={<Suppliers />} />
+        <Route path="quotations" element={<Quotations />} />
+        <Route path="accounts" element={<Accounts />} />
+        <Route path="assistant" element={<AIAssistant />} />
         <Route path="invoices" element={<Invoices />} />
         <Route path="reports" element={<Reports />} />
         <Route path="data-entry" element={<DataEntryPage />} />

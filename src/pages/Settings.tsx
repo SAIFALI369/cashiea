@@ -16,6 +16,9 @@ export default function SettingsPage() {
   const { user, profile, refreshProfile } = useAuth()
   const [fullName, setFullName] = useState(profile?.full_name || '')
   const [companyName, setCompanyName] = useState(profile?.company_name || '')
+  const [gstin, setGstin] = useState(profile?.gstin || '')
+  const [businessAddress, setBusinessAddress] = useState(profile?.business_address || '')
+  const [businessState, setBusinessState] = useState(profile?.business_state || '')
   const [aiProvider, setAiProvider] = useState<AIProvider>(profile?.ai_provider || 'openai')
   const [saving, setSaving] = useState(false)
 
@@ -27,6 +30,9 @@ export default function SettingsPage() {
         .update({
           full_name: fullName,
           company_name: companyName,
+          gstin: gstin || null,
+          business_address: businessAddress || null,
+          business_state: businessState || null,
           ai_provider: aiProvider,
         })
         .eq('id', profile!.id)
@@ -72,6 +78,33 @@ export default function SettingsPage() {
                 onChange={(e) => setCompanyName(e.target.value)}
                 className="input-field"
                 placeholder="Acme Inc"
+              />
+            </div>
+            <div>
+              <label className="label">GSTIN (for GST invoices)</label>
+              <input
+                value={gstin}
+                onChange={(e) => setGstin(e.target.value)}
+                className="input-field font-mono"
+                placeholder="22AAAAA0000A1Z5"
+              />
+            </div>
+            <div>
+              <label className="label">Business Address</label>
+              <input
+                value={businessAddress}
+                onChange={(e) => setBusinessAddress(e.target.value)}
+                className="input-field"
+                placeholder="123 Main St, City"
+              />
+            </div>
+            <div>
+              <label className="label">State</label>
+              <input
+                value={businessState}
+                onChange={(e) => setBusinessState(e.target.value)}
+                className="input-field"
+                placeholder="Bihar"
               />
             </div>
           </div>
