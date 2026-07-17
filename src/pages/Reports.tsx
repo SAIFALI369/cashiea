@@ -9,10 +9,34 @@ import { BarChart3, Sparkles, Loader2, Trash2, Plus, ChevronDown, Copy } from 'l
 import toast from 'react-hot-toast'
 
 const reportTypes = [
-  { value: 'financial', label: '📊 Financial' },
-  { value: 'sales', label: '📈 Sales' },
-  { value: 'operations', label: '⚙️ Operations' },
-  { value: 'custom', label: '✨ Custom' },
+  {
+    value: 'financial',
+    label: '📊 Financial',
+    hint: 'Revenue, expenses, margins & cash flow',
+    sections: ['Executive Summary', 'Revenue Analysis', 'Expense Breakdown', 'Profitability & Margins', 'Cash Flow', 'Recommendations'],
+    placeholder: 'Revenue: $125,000\nExpenses: $87,000\nCOGS: $32,000\nCash balance: $48,000\nAR aging: 30 days\nBurn rate: $9K/mo',
+  },
+  {
+    value: 'sales',
+    label: '📈 Sales',
+    hint: 'Pipeline, deals, conversion & forecast',
+    sections: ['Executive Summary', 'Pipeline Overview', 'Win/Loss Analysis', 'Top Performers', 'Conversion Funnel', 'Forecast'],
+    placeholder: 'Deals in pipeline: 24 ($310K)\nWon this quarter: 8 ($96K)\nLost: 5\nAvg deal size: $12K\nWin rate: 38%\nSales cycle: 21 days',
+  },
+  {
+    value: 'operations',
+    label: '⚙️ Operations',
+    hint: 'Throughput, bottlenecks & efficiency',
+    sections: ['Executive Summary', 'Throughput & Efficiency', 'Bottlenecks', 'Resource Utilization', 'Quality Metrics', 'Improvements'],
+    placeholder: 'Tickets resolved: 412\nAvg resolution: 6.2 hrs\nBacklog: 38\nSLA breaches: 4\nTeam size: 7\nUtilization: 78%',
+  },
+  {
+    value: 'custom',
+    label: '✨ Custom',
+    hint: 'Anything else — describe your own',
+    sections: ['Executive Summary', 'Findings', 'Recommendations'],
+    placeholder: 'Paste any business data you want analyzed and turned into a structured report...',
+  },
 ]
 
 export default function Reports() {
@@ -27,16 +51,15 @@ export default function Reports() {
   const [reportType, setReportType] = useState('financial')
   const [inputData, setInputData] = useState('')
 
+  const activeType = reportTypes.find((t) => t.value === reportType)!
+
   useEffect(() => {
     loadReports()
   }, [])
 
   const loadReports = async () => {
     setLoading(true)
-    const { data } = await supabase
-      .from('reports')
-      .select('*')
-      .order('created_at', { ascending: false })
+    const { data } = await supabase.from('reports').select('*').order('created_at', { ascending: false })
     setReports((data as Report[]) || [])
     setLoading(false)
   }
@@ -48,12 +71,12 @@ export default function Reports() {
     }
     setGenerating(true)
     try {
-      const promptText = `Create a ${reportType} report titled "${title || 'Untitled Report'}" based on the following data:\n\n${inputData}`
-
+      // Pass report_type + title so the edge function frames a structured template
       const { result, provider } = await callAI({
         task_type: 'report',
-        prompt: promptText,
+        prompt: inputData, // edge function builds the structured prompt from report_type + title
         provider: profile?.ai_provider,
+        extra: { report_type: reportType, title: title || `${reportType} Report` },
       })
 
       const { data, error } = await supabase
@@ -96,7 +119,6 @@ export default function Reports() {
     toast.success('Copied to clipboard')
   }
 
-  // Simple markdown to HTML
   const renderMarkdown = (md: string) => {
     return md
       .replace(/^### (.+)$/gm, '<h3>$1</h3>')
@@ -115,7 +137,7 @@ export default function Reports() {
     <div className="animate-fade-in">
       <PageHeader
         title="Reports"
-        subtitle="Generate business reports from your data with AI"
+        subtitle="Generate structured business reports from your data with AI"
         icon={<BarChart3 className="w-5 h-5" />}
         action={
           <button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm">
@@ -126,31 +148,40 @@ export default function Reports() {
 
       {showForm && (
         <div className="card p-6 mb-6 animate-slide-up">
-          <div className="grid sm:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="label">Report Title</label>
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="input-field"
-                placeholder="Q1 2026 Financial Summary"
-              />
-            </div>
-            <div>
-              <label className="label">Report Type</label>
-              <select
-                value={reportType}
-                onChange={(e) => setReportType(e.target.value)}
-                className="input-field"
+          {/* Type selector with guidance */}
+          <label className="label">Report Type</label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+            {reportTypes.map((t) => (
+              <button
+                key={t.value}
+                onClick={() => setReportType(t.value)}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  reportType === t.value
+                    ? 'border-brand-600 bg-brand-600/15'
+                    : 'border-slate-700 bg-slate-900/50 hover:border-slate-600'
+                }`}
               >
-                {reportTypes.map((t) => (
-                  <option key={t.value} value={t.value} className="bg-slate-900">
-                    {t.label}
-                  </option>
-                ))}
-              </select>
+                <div className="font-semibold text-white text-sm">{t.label}</div>
+                <div className="text-xs text-slate-400 mt-0.5">{t.hint}</div>
+              </button>
+            ))}
+          </div>
+
+          {/* Show the sections the AI will produce, so the user knows what to expect */}
+          <div className="bg-slate-900/60 rounded-xl p-3 mb-4 border border-slate-800">
+            <p className="text-xs text-slate-500 mb-1.5">Sections the AI will generate:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {activeType.sections.map((s) => (
+                <span key={s} className="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-slate-300">{s}</span>
+              ))}
             </div>
           </div>
+
+          <div className="mb-4">
+            <label className="label">Report Title</label>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} className="input-field" placeholder="Q1 2026 Financial Summary" />
+          </div>
+
           <label className="label flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-brand-400" /> Input data / notes
           </label>
@@ -159,7 +190,7 @@ export default function Reports() {
             onChange={(e) => setInputData(e.target.value)}
             rows={6}
             className="input-field resize-none font-mono text-sm"
-            placeholder={`Paste your raw data here...\n\nExample:\nRevenue: $125,000\nExpenses: $87,000\nNew customers: 340\nChurn rate: 4.2%\nTop product: Pro Plan`}
+            placeholder={activeType.placeholder}
           />
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setShowForm(false)} className="btn-secondary text-sm">Cancel</button>
@@ -172,15 +203,9 @@ export default function Reports() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
-        </div>
+        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-brand-500" /></div>
       ) : reports.length === 0 ? (
-        <EmptyState
-          icon={BarChart3}
-          title="No reports yet"
-          description="Paste your business data and let AI generate professional reports with insights and recommendations."
-        />
+        <EmptyState icon={BarChart3} title="No reports yet" description="Pick a report type, paste your business data, and AI generates a structured report with sections, analysis, and recommendations." />
       ) : (
         <div className="space-y-4">
           {reports.map((report) => (
@@ -192,41 +217,20 @@ export default function Reports() {
                 <div>
                   <h3 className="font-semibold text-white">{report.title}</h3>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-brand-600/15 text-brand-300 capitalize">
-                      {report.report_type}
-                    </span>
-                    <span className="text-xs text-slate-500">
-                      {new Date(report.created_at).toLocaleDateString()}
-                    </span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-brand-600/15 text-brand-300 capitalize">{report.report_type}</span>
+                    <span className="text-xs text-slate-500">{new Date(report.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
-                <ChevronDown
-                  className={`w-5 h-5 text-slate-500 transition-transform ${
-                    expandedId === report.id ? 'rotate-180' : ''
-                  }`}
-                />
+                <ChevronDown className={`w-5 h-5 text-slate-500 transition-transform ${expandedId === report.id ? 'rotate-180' : ''}`} />
               </button>
 
               {expandedId === report.id && report.generated_content && (
                 <div className="border-t border-slate-800">
                   <div className="flex justify-end gap-2 p-3">
-                    <button
-                      onClick={() => handleCopy(report.generated_content!)}
-                      className="btn-ghost text-xs"
-                    >
-                      <Copy className="w-3.5 h-3.5" /> Copy
-                    </button>
-                    <button
-                      onClick={() => handleDelete(report.id)}
-                      className="btn-ghost text-xs text-red-400 hover:text-red-300"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" /> Delete
-                    </button>
+                    <button onClick={() => handleCopy(report.generated_content!)} className="btn-ghost text-xs"><Copy className="w-3.5 h-3.5" /> Copy</button>
+                    <button onClick={() => handleDelete(report.id)} className="btn-ghost text-xs text-red-400 hover:text-red-300"><Trash2 className="w-3.5 h-3.5" /> Delete</button>
                   </div>
-                  <div
-                    className="prose-content px-5 pb-5 max-h-[500px] overflow-y-auto"
-                    dangerouslySetInnerHTML={{ __html: renderMarkdown(report.generated_content) }}
-                  />
+                  <div className="prose-content px-5 pb-5 max-h-[500px] overflow-y-auto" dangerouslySetInnerHTML={{ __html: renderMarkdown(report.generated_content) }} />
                 </div>
               )}
             </div>

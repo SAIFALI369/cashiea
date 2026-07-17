@@ -1,79 +1,105 @@
 // ════════════════════════════════════════════════════════════════
-// CAMPAIGN SEND — generates personalized emails for every recipient
-// Handles A/B split, follow-up sequences, and bulk personalization.
-// NOTE: This generates the personalized drafts and marks them ready.
-// Actual SMTP delivery = wire in Resend/SendGrid in deliverRecipient().
+// CAMPAIGN SEND — generates personalized emails + DELIVERS them.
+//
+// Delivery: set RESEND_API_KEY (recommended) to actually send to inboxes.
+//   supabase secrets set RESEND_API_KEY=re_...
+//   supabase secrets set MAIL_FROM=you@yourdomain.com
+// If no key is set, emails are generated & saved as "drafts" so you can
+// review/export them — the response tells you which mode ran.
 // ════════════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
 
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Content-Type": "application/json",
-};
+const TRACK_BASE = Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", ".functions.supabase.co") + "/track" || "";
 
 async function callAI(provider: string, systemPrompt: string, prompt: string): Promise<string> {
-  if (provider === "gemini") {
-    const key = Deno.env.get("GEMINI_API_KEY");
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ system_instruction: { parts: [{ text: systemPrompt }] }, contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.8, maxOutputTokens: 800 } }),
-    });
-    return (await res.json()).candidates[0].content.parts[0].text;
-  }
-  if (provider === "anthropic") {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: "claude-3-5-sonnet-20241022", max_tokens: 800, system: systemPrompt, messages: [{ role: "user", content: prompt }] }),
-    });
-    return (await res.json()).content[0].text;
-  }
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
-    body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: systemPrompt }, { role: "user", content: prompt }], temperature: 0.8, max_tokens: 800 }),
-  });
-  return (await res.json()).choices[0].message.content;
+  const callers: Record<string, () => Promise<{ ok: boolean; status: number; value: string }>> = {
+    openai: async () => {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
+        body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: systemPrompt }, { role: "user", content: prompt }], temperature: 0.8, max_tokens: 800 }),
+      });
+      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
+      return { ok: true, status: 200, value: (await res.json()).choices[0].message.content };
+    },
+    gemini: async () => {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${Deno.env.get("GEMINI_API_KEY")}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ system_instruction: { parts: [{ text: systemPrompt }] }, contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.8, maxOutputTokens: 800 } }),
+      });
+      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
+      return { ok: true, status: 200, value: (await res.json()).candidates[0].content.parts[0].text };
+    },
+    anthropic: async () => {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST", headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({ model: "claude-3-5-sonnet-20241022", max_tokens: 800, system: systemPrompt, messages: [{ role: "user", content: prompt }] }),
+      });
+      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
+      return { ok: true, status: 200, value: (await res.json()).content[0].text };
+    },
+  };
+  const caller = callers[provider] || callers.openai;
+  return withRetry(caller, 1, 800);
 }
 
 const PERSONALIZER_SYS = `You are an expert at writing hyper-personalized cold emails at scale. Given a base email template and a recipient's details, produce a personalized version. Keep the core message and offer, but naturally weave in the recipient's name, company, and any context. First line MUST be "Subject: ..." then a blank line then the body. Return ONLY the email.`;
 
+// Real delivery via Resend (https://resend.com). Returns true on success.
+async function deliverViaResend(to: string, subject: string, htmlBody: string, recipientId: string): Promise<boolean> {
+  const key = Deno.env.get("RESEND_API_KEY");
+  const from = Deno.env.get("MAIL_FROM");
+  if (!key || !from) return false;
+
+  // Inject open-tracking pixel + wrap link clicks (best-effort)
+  const openPixel = TRACK_BASE ? `<img src="${TRACK_BASE}?e=${recipientId}&t=open" width="1" height="1" alt="" />` : "";
+  const html = htmlBody.replace(/\n/g, "<br>") + openPixel;
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+    body: JSON.stringify({ from, to: [to], subject, html }),
+  });
+  return res.ok;
+}
+
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: req.headers.get("Authorization")! } } });
     const { data: { user }, error } = await supabase.auth.getUser();
-    if (error || !user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: cors });
+    if (error || !user) return json({ error: "Unauthorized" }, 401);
 
     const { campaign_id } = await req.json();
-    if (!campaign_id) return new Response(JSON.stringify({ error: "campaign_id required" }), { status: 400, headers: cors });
+    if (!campaign_id) return json({ error: "campaign_id required" }, 400);
 
     const { data: campaign } = await supabase.from("email_campaigns").select("*").eq("id", campaign_id).eq("user_id", user.id).single();
-    if (!campaign) return new Response(JSON.stringify({ error: "Campaign not found" }), { status: 404, headers: cors });
+    if (!campaign) return json({ error: "Campaign not found" }, 404);
 
     const { data: recipients } = await supabase.from("campaign_recipients").select("*").eq("campaign_id", campaign_id).eq("status", "pending");
-    if (!recipients || recipients.length === 0) return new Response(JSON.stringify({ error: "No pending recipients" }), { status: 400, headers: cors });
+    if (!recipients || recipients.length === 0) return json({ error: "No pending recipients" }, 400);
 
-    // Usage check (campaign counts as 1 action per recipient, batched)
     const { data: profile } = await supabase.from("profiles").select("ai_provider, api_usage_count, api_usage_limit, trial_ends_at").eq("id", user.id).single();
-    const effectiveLimit = (profile?.trial_ends_at && new Date(profile.trial_ends_at) > new Date()) ? Math.max(profile.api_usage_limit, 500) : (profile?.api_usage_limit || 50);
-    const needed = recipients.length;
-    if ((profile?.api_usage_count || 0) + needed > effectiveLimit) {
-      return new Response(JSON.stringify({ error: `This campaign needs ${needed} AI actions but you have ${effectiveLimit - (profile?.api_usage_count || 0)} left. Upgrade your plan.` }), { status: 429, headers: cors });
+    const onTrial = profile?.trial_ends_at && new Date(profile.trial_ends_at) > new Date();
+    const effectiveLimit = onTrial ? Math.max(profile.api_usage_limit, 500) : (profile?.api_usage_limit || 50);
+    if ((profile?.api_usage_count || 0) + recipients.length > effectiveLimit) {
+      return json({ error: `This campaign needs ${recipients.length} AI actions but you have ${effectiveLimit - (profile?.api_usage_count || 0)} left. Upgrade your plan.` }, 429);
     }
 
     await supabase.from("email_campaigns").update({ status: "sending" }).eq("id", campaign_id);
 
     const provider = profile?.ai_provider || "openai";
     const baseTemplate = `Base subject: ${campaign.variant_a_subject || campaign.template_subject || ""}\nBase body:\n${campaign.template_body || ""}\nTone: ${campaign.tone}`;
+    const deliveryEnabled = !!(Deno.env.get("RESEND_API_KEY") && Deno.env.get("MAIL_FROM"));
+
     let processed = 0;
+    let delivered = 0;
     const errors: string[] = [];
 
     for (const r of recipients) {
       try {
-        // A/B variant assignment
         let variant: string | null = null;
         let subjectLine = campaign.variant_a_subject || campaign.template_subject || "";
         if (campaign.ab_enabled && campaign.variant_b_subject) {
@@ -91,33 +117,56 @@ Deno.serve(async (req) => {
         const m = generated.match(/^Subject:\s*(.+)$/im);
         if (m) { finalSubject = m[1].trim(); finalBody = generated.replace(/^Subject:\s*.+\n?/im, "").trim(); }
 
+        // Replace {name}/{company} merge tags in body as a safety net
+        finalBody = finalBody
+          .replace(/\{name\}/gi, r.name || "there")
+          .replace(/\{company\}/gi, String((r.personalization as Record<string, unknown>)?.company || "your company"));
+
+        // Deliver if configured; otherwise keep as draft for review
+        const sentOk = deliveryEnabled ? await deliverViaResend(r.email, finalSubject, finalBody, r.id) : false;
+
         await supabase.from("campaign_recipients").update({
-          variant, generated_subject: finalSubject, generated_body: finalBody,
-          status: "sent", sent_at: new Date().toISOString(),
+          variant,
+          generated_subject: finalSubject,
+          generated_body: finalBody,
+          status: sentOk ? "sent" : "pending",
+          sent_at: sentOk ? new Date().toISOString() : null,
         }).eq("id", r.id);
 
-        // ─── Deliver here. Wire in your email provider:
-        // await deliverRecipient({ to: r.email, subject: finalSubject, body: finalBody });
+        if (sentOk) delivered++;
         processed++;
       } catch (err) {
         errors.push(`${r.email}: ${err.message}`);
       }
     }
 
-    // Roll up stats
     await supabase.rpc("sync_campaign_stats", { campaign_uuid: campaign_id });
-    await supabase.from("email_campaigns").update({ status: "sent", sent_count: processed }).eq("id", campaign_id);
+    await supabase.from("email_campaigns").update({
+      status: deliveryEnabled ? "sent" : "draft",
+      sent_count: delivered,
+    }).eq("id", campaign_id);
 
-    // One activity-log entry summarizing the campaign
     await supabase.from("activity_logs").insert({
-      user_id: user.id, action_type: "campaign",
-      description: `Campaign "${campaign.name}" — ${processed} personalized emails sent${campaign.ab_enabled ? " (A/B test)" : ""}`,
-      time_saved_minutes: processed * 10, money_saved: processed * 5.0, provider,
-      metadata: { processed, errors: errors.slice(0, 5) },
+      user_id: user.id,
+      action_type: "campaign",
+      description: `Campaign "${campaign.name}" — ${processed} personalized${deliveryEnabled ? `, ${delivered} delivered` : " (drafts — add RESEND_API_KEY to deliver)"}`,
+      time_saved_minutes: processed * 10,
+      money_saved: processed * 5.0,
+      provider,
+      metadata: { processed, delivered, deliveryEnabled, errors: errors.slice(0, 5) },
     });
 
-    return new Response(JSON.stringify({ success: true, processed, errors: errors.slice(0, 5) }), { headers: cors });
+    return json({
+      success: true,
+      processed,
+      delivered,
+      deliveryEnabled,
+      message: deliveryEnabled
+        ? `Generated and delivered ${delivered} emails`
+        : `Generated ${processed} personalized drafts. Set RESEND_API_KEY + MAIL_FROM secrets to deliver to inboxes.`,
+      errors: errors.slice(0, 5),
+    });
   } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: cors });
+    return json({ error: e.message }, 500);
   }
 });
