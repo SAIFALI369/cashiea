@@ -110,9 +110,10 @@ export function parseAIJson<T = unknown>(text: string): T | null {
     /* try next strategy */
   }
 
-  // Strategy 2: find the outermost JSON object or array via brace matching.
-  // Scans for the first '{' or '[', then balances to its closing bracket,
-  // tolerating braces inside strings.
+  // Strategy 2: find the outermost JSON container via brace matching.
+  // Pick object ({}) vs array ([]) by whichever delimiter appears FIRST in
+  // the text — that's the outermost structure. (Otherwise a `[{"a":1}]` would
+  // wrongly match the inner `{`.) Tolerates braces inside strings.
   const extractBalanced = (open: string, close: string): string | null => {
     const start = text.indexOf(open)
     if (start === -1) return null
@@ -143,21 +144,25 @@ export function parseAIJson<T = unknown>(text: string): T | null {
     return null
   }
 
-  const objMatch = extractBalanced('{', '}')
-  if (objMatch) {
-    try {
-      return JSON.parse(objMatch) as T
-    } catch {
-      /* fall through */
-    }
+  const firstBrace = text.indexOf('{')
+  const firstBracket = text.indexOf('[')
+
+  // Determine outermost type by first appearance, then try the other as fallback
+  const ordered: ('object' | 'array')[] = []
+  if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+    ordered.push('object', 'array')
+  } else {
+    ordered.push('array', 'object')
   }
 
-  const arrMatch = extractBalanced('[', ']')
-  if (arrMatch) {
-    try {
-      return JSON.parse(arrMatch) as T
-    } catch {
-      /* fall through */
+  for (const kind of ordered) {
+    const match = kind === 'object' ? extractBalanced('{', '}') : extractBalanced('[', ']')
+    if (match) {
+      try {
+        return JSON.parse(match) as T
+      } catch {
+        /* try next */
+      }
     }
   }
 

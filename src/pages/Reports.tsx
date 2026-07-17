@@ -7,37 +7,7 @@ import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
 import { BarChart3, Sparkles, Loader2, Trash2, Plus, ChevronDown, Copy } from 'lucide-react'
 import toast from 'react-hot-toast'
-
-const reportTypes = [
-  {
-    value: 'financial',
-    label: '📊 Financial',
-    hint: 'Revenue, expenses, margins & cash flow',
-    sections: ['Executive Summary', 'Revenue Analysis', 'Expense Breakdown', 'Profitability & Margins', 'Cash Flow', 'Recommendations'],
-    placeholder: 'Revenue: $125,000\nExpenses: $87,000\nCOGS: $32,000\nCash balance: $48,000\nAR aging: 30 days\nBurn rate: $9K/mo',
-  },
-  {
-    value: 'sales',
-    label: '📈 Sales',
-    hint: 'Pipeline, deals, conversion & forecast',
-    sections: ['Executive Summary', 'Pipeline Overview', 'Win/Loss Analysis', 'Top Performers', 'Conversion Funnel', 'Forecast'],
-    placeholder: 'Deals in pipeline: 24 ($310K)\nWon this quarter: 8 ($96K)\nLost: 5\nAvg deal size: $12K\nWin rate: 38%\nSales cycle: 21 days',
-  },
-  {
-    value: 'operations',
-    label: '⚙️ Operations',
-    hint: 'Throughput, bottlenecks & efficiency',
-    sections: ['Executive Summary', 'Throughput & Efficiency', 'Bottlenecks', 'Resource Utilization', 'Quality Metrics', 'Improvements'],
-    placeholder: 'Tickets resolved: 412\nAvg resolution: 6.2 hrs\nBacklog: 38\nSLA breaches: 4\nTeam size: 7\nUtilization: 78%',
-  },
-  {
-    value: 'custom',
-    label: '✨ Custom',
-    hint: 'Anything else — describe your own',
-    sections: ['Executive Summary', 'Findings', 'Recommendations'],
-    placeholder: 'Paste any business data you want analyzed and turned into a structured report...',
-  },
-]
+import { REPORT_TEMPLATES, getReportTemplate } from '../lib/report-templates'
 
 export default function Reports() {
   const { profile } = useAuth()
@@ -51,7 +21,7 @@ export default function Reports() {
   const [reportType, setReportType] = useState('financial')
   const [inputData, setInputData] = useState('')
 
-  const activeType = reportTypes.find((t) => t.value === reportType)!
+  const activeType = getReportTemplate(reportType)
 
   useEffect(() => {
     loadReports()
@@ -151,7 +121,7 @@ export default function Reports() {
           {/* Type selector with guidance */}
           <label className="label">Report Type</label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
-            {reportTypes.map((t) => (
+            {REPORT_TEMPLATES.map((t) => (
               <button
                 key={t.value}
                 onClick={() => setReportType(t.value)}
