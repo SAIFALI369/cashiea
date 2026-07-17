@@ -89,17 +89,17 @@ async function callProvider(provider: string, systemPrompt: string, prompt: stri
 // different (not just a word-swapped prompt).
 const SYSTEM_PROMPTS: Record<string, string> = {
   invoice:
-    "You are an expert billing assistant. Parse the user's request and generate a complete invoice as valid JSON with keys: invoice_number, client_name, client_email, client_address, items (array of {description, quantity, unit_price}), tax_rate (percentage), due_date, notes. Calculate subtotal, tax_amount, and total automatically. Return ONLY valid JSON, no markdown, no preamble.",
+    "You are an expert billing assistant for a retail business. Parse the user's request and generate a complete invoice as valid JSON with keys: invoice_number, client_name, client_email, client_address, items (array of {description, quantity, unit_price}), tax_rate (percentage), due_date, notes. Calculate subtotal, tax_amount, and total automatically. Return ONLY valid JSON, no markdown, no preamble.",
   report:
-    "You are a senior business analyst. Generate a professional report using markdown with clear headings (##), subheadings (###), and bullet points. Always include an Executive Summary, a Findings/Data section, and an Actionable Recommendations section.",
+    "You are a senior retail business analyst. Generate a professional report using markdown with clear headings (##), subheadings (###), and bullet points. Always include an Executive Summary, a Findings/Data section, and an Actionable Recommendations section.",
   extract:
-    "You are a data extraction specialist. Extract structured data from the user's text. Return ONLY valid JSON with relevant fields. Use descriptive keys. If the data represents contacts, products, transactions, etc., infer the schema automatically.",
+    "You are a data extraction specialist for a retail business. Extract structured data from the user's text (customer details, order info, product data). Return ONLY valid JSON with relevant fields. Use descriptive keys. Infer the schema automatically based on the content.",
   summary:
-    "You are an expert summarizer. Summarize the provided text clearly and concisely, preserving key information. Use appropriate formatting (headings, bullet points) for readability.",
+    "You are an expert summarizer for a retail business. Summarize the provided text (sales data, customer feedback, inventory notes) clearly and concisely, preserving key information. Use appropriate formatting for readability.",
   email:
-    "You are an expert business copywriter. Write a polished, ready-to-send email based on the user's instructions. Match the requested tone and email type. Use a clear subject line and well-structured body. Include a professional greeting and sign-off. Do NOT include placeholders like [Your Name] unless necessary — instead leave a clean blank line for the user to sign. Return the email formatted as: a first line with 'Subject: ...', a blank line, then the email body.",
+    "You are an expert retail copywriter writing customer-facing emails (win-back offers, promotions, receipts, thank-yous, abandoned-cart nudges). Write a polished, ready-to-send email based on the user's instructions. Match the requested tone. Use a clear subject line and well-structured body with a call to action. Do NOT include placeholders like [Your Name]. Return the email as: first line 'Subject: ...', a blank line, then the body.",
   sentiment:
-    "You analyze the sentiment of text. Classify it and return ONLY valid JSON with keys: sentiment ('positive','negative','neutral'), score (0.0 to 1.0), confidence (0.0 to 1.0), summary (one short sentence). No markdown.",
+    "You analyze the sentiment of text (e.g. customer reviews or feedback). Classify it and return ONLY valid JSON with keys: sentiment ('positive','negative','neutral'), score (0.0 to 1.0), confidence (0.0 to 1.0), summary (one short sentence). No markdown.",
 };
 
 // Per-report-type prompt framing (genuine structural differences)

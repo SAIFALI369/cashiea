@@ -1,6 +1,6 @@
-# 🤖 BizAutomate AI
+# 🛒 BizAutomate — POS, CRM & Retargeting for Retail
 
-> **AI-powered business & startup task automation SaaS.** Generate invoices, create reports, automate data entry, write emails, and summarize documents — all in seconds. Multi-provider AI (OpenAI, Gemini, Claude) with a subscription model and real Stripe payments.
+> **The all-in-one cashier & customer-growth platform for any retail business.** Ring up sales at the counter, capture customer details, see your whole business at a glance, and win customers back with smart retargeting. Built with React + Supabase + multi-provider AI.
 
 ![Tech Stack](https://img.shields.io/badge/Stack-React%20%2B%20Supabase%20%2B%20AI-blueviolet)
 ![Payments](https://img.shields.io/badge/Payments-Stripe-635bff)
@@ -73,8 +73,10 @@ npm install
 1. Open **SQL Editor** in your Supabase dashboard
 2. Paste [`supabase/schema.sql`](supabase/schema.sql) → **Run**
 3. Paste [`supabase/schema-additions.sql`](supabase/schema-additions.sql) → **Run**
+4. Paste [`supabase/schema-v3.sql`](supabase/schema-v3.sql) → **Run**
+5. Paste [`supabase/schema-v4.sql`](supabase/schema-v4.sql) → **Run**
 
-This creates all tables (invoices, reports, data_entries, summaries, emails, subscriptions), Row Level Security policies, triggers, and functions.
+This creates all tables (products, customers, transactions, invoices, reports, data_entries, summaries, emails, campaigns, activity_logs, api_keys, subscriptions), Row Level Security policies, triggers, and functions.
 
 ### 4. Deploy the AI Edge Function
 ```bash

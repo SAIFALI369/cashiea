@@ -9,11 +9,11 @@ import { Mail, Sparkles, Loader2, Trash2, Copy } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const emailTypes = [
-  { value: 'cold_outreach', label: 'Cold Outreach', icon: '🚀', desc: 'Reach a new prospect' },
-  { value: 'follow_up', label: 'Follow Up', icon: '🔄', desc: 'Re-engage after contact' },
-  { value: 'proposal', label: 'Proposal', icon: '📋', desc: 'Pitch a product/service' },
-  { value: 'newsletter', label: 'Newsletter', icon: '📰', desc: 'Update your audience' },
-  { value: 'support_reply', label: 'Support Reply', icon: '💬', desc: 'Answer a customer' },
+  { value: 'winback', label: 'Win-Back', icon: '💤', desc: 'Re-engage dormant customer' },
+  { value: 'offer', label: 'Promo / Offer', icon: '🏷️', desc: 'Discount or sale announcement' },
+  { value: 'thankyou', label: 'Thank You', icon: '🙏', desc: 'Post-purchase appreciation' },
+  { value: 'abandoned', label: 'Abandoned Cart', icon: '🛒', desc: 'Nudge an unfinished purchase' },
+  { value: 'newsletter', label: 'Newsletter', icon: '📰', desc: 'Update your customers' },
   { value: 'custom', label: 'Custom', icon: '✨', desc: 'Anything you need' },
 ]
 

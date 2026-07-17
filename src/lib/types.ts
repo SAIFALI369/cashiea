@@ -76,7 +76,7 @@ export interface Email {
   user_id: string
   subject: string
   recipient: string | null
-  email_type: 'cold_outreach' | 'follow_up' | 'proposal' | 'newsletter' | 'support_reply' | 'custom'
+  email_type: 'winback' | 'offer' | 'thankyou' | 'abandoned' | 'newsletter' | 'custom'
   tone: 'professional' | 'friendly' | 'persuasive' | 'formal' | 'casual'
   key_points: string | null
   generated_body: string | null
@@ -144,6 +144,70 @@ export interface CampaignRecipient {
   opened_at: string | null
   clicked_at: string | null
   replied_at: string | null
+  created_at: string
+}
+
+// ─── Subscription plans ─────────────────────────────────────────
+
+// ─── Retail POS entities ────────────────────────────────────────
+export interface Product {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  sku: string | null
+  category: string
+  price: number
+  cost: number
+  stock_quantity: number
+  low_stock_threshold: number
+  active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface Customer {
+  id: string
+  user_id: string
+  name: string
+  email: string | null
+  phone: string | null
+  address: string | null
+  company: string | null
+  notes: string | null
+  tags: string[]
+  total_spent: number
+  total_orders: number
+  loyalty_points: number
+  first_purchase_at: string | null
+  last_purchase_at: string | null
+  created_at: string
+}
+
+export interface TransactionItem {
+  product_id: string
+  name: string
+  quantity: number
+  unit_price: number
+}
+
+export type PaymentMethod = 'cash' | 'card' | 'upi' | 'wallet' | 'other'
+
+export interface Transaction {
+  id: string
+  user_id: string
+  customer_id: string | null
+  receipt_number: string
+  items: TransactionItem[]
+  subtotal: number
+  tax_rate: number
+  tax_amount: number
+  discount: number
+  total: number
+  payment_method: PaymentMethod
+  status: 'completed' | 'refunded' | 'void'
+  notes: string | null
+  served_by: string | null
   created_at: string
 }
 
