@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
+import { supabaseConfigured } from './lib/supabase'
 import ProtectedRoute from './components/ProtectedRoute'
 import AppLayout from './components/AppLayout'
 import Landing from './pages/Landing'
@@ -32,9 +33,16 @@ import SettingsPage from './pages/Settings'
 import Support from './pages/Support'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
+import SetupScreen from './components/SetupScreen'
 
 function App() {
   const { user } = useAuth()
+
+  // Show a friendly setup screen instead of breaking if env vars are missing.
+  // This prevents a confusing white screen during a demo.
+  if (!supabaseConfigured) {
+    return <SetupScreen />
+  }
 
   return (
     <Routes>
