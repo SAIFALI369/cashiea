@@ -13,6 +13,7 @@ export interface Profile {
   gstin: string | null
   business_address: string | null
   business_state: string | null
+  daily_briefing: boolean
   created_at: string
   updated_at: string
 }

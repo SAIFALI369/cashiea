@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/ui/PageHeader'
-import { Settings as SettingsIcon, User, Building2, Sparkles, Loader2, Save, Check } from 'lucide-react'
+import { Settings as SettingsIcon, User, Building2, Sparkles, Loader2, Save, Check, Mail } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { AIProvider } from '../lib/ai'
 
@@ -19,6 +19,7 @@ export default function SettingsPage() {
   const [gstin, setGstin] = useState(profile?.gstin || '')
   const [businessAddress, setBusinessAddress] = useState(profile?.business_address || '')
   const [businessState, setBusinessState] = useState(profile?.business_state || '')
+  const [dailyBriefing, setDailyBriefing] = useState(profile?.daily_briefing !== false)
   const [aiProvider, setAiProvider] = useState<AIProvider>(profile?.ai_provider || 'openai')
   const [saving, setSaving] = useState(false)
 
@@ -33,6 +34,7 @@ export default function SettingsPage() {
           gstin: gstin || null,
           business_address: businessAddress || null,
           business_state: businessState || null,
+          daily_briefing: dailyBriefing,
           ai_provider: aiProvider,
         })
         .eq('id', profile!.id)
@@ -142,6 +144,21 @@ export default function SettingsPage() {
                 </div>
               </button>
             ))}
+          </div>
+
+          {/* Daily briefing opt-in */}
+          <div className="mt-6 p-4 rounded-xl border border-slate-700 bg-slate-900/50 flex items-center justify-between">
+            <div className="flex-1 pr-4">
+              <p className="font-semibold text-white flex items-center gap-2"><Mail className="w-4 h-4 text-brand-400" /> Daily AI Briefing</p>
+              <p className="text-sm text-slate-400 mt-0.5">Every morning the AI scans your business, predicts tasks, and emails you a briefing with what needs attention.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDailyBriefing(!dailyBriefing)}
+              className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${dailyBriefing ? 'bg-brand-500' : 'bg-slate-700'}`}
+            >
+              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${dailyBriefing ? 'translate-x-6' : 'translate-x-0.5'}`} />
+            </button>
           </div>
         </div>
 

@@ -48,15 +48,21 @@ const EXPECTED_PAGES = [
 
 const EXPECTED_EDGE_FUNCTIONS = [
   'ai-automation',
+  'ai-assistant',
+  'business-brain',
+  'google-oauth',
+  'google-fetch',
+  'daily-brain',
   'campaign-send',
   'track',
   'api-generate-invoice',
   'api-draft-email',
   'create-checkout',
   'stripe-webhook',
+  'support-email',
 ]
 
-const EXPECTED_SQL = ['schema.sql', 'schema-additions.sql', 'schema-v3.sql', 'schema-v4.sql', 'schema-v5.sql', 'schema-v6.sql']
+const EXPECTED_SQL = ['schema.sql', 'schema-additions.sql', 'schema-v3.sql', 'schema-v4.sql', 'schema-v5.sql', 'schema-v6.sql', 'schema-v7.sql']
 
 describe('page files exist', () => {
   for (const page of EXPECTED_PAGES) {
