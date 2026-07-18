@@ -20,6 +20,7 @@ import Suppliers from './pages/Suppliers'
 import Quotations from './pages/Quotations'
 import Accounts from './pages/Accounts'
 import AIAssistant from './pages/AIAssistant'
+import Team from './pages/Team'
 import AIBrain from './pages/AIBrain'
 import Integrations from './pages/Integrations'
 import ActivityLogs from './pages/ActivityLogs'
@@ -61,6 +62,7 @@ function App() {
         <Route path="suppliers" element={<Suppliers />} />
         <Route path="quotations" element={<Quotations />} />
         <Route path="accounts" element={<Accounts />} />
+        <Route path="team" element={<Team />} />
         <Route path="assistant" element={<AIAssistant />} />
         <Route path="brain" element={<AIBrain />} />
         <Route path="integrations" element={<Integrations />} />

@@ -43,6 +43,7 @@ const EXPECTED_PAGES = [
   'Support',
   'Privacy',
   'Terms',
+  'Team',
   'Landing',
 ]
 
@@ -60,9 +61,11 @@ const EXPECTED_EDGE_FUNCTIONS = [
   'create-checkout',
   'stripe-webhook',
   'support-email',
+  'invoice-reminders',
+  'quickbooks-oauth',
 ]
 
-const EXPECTED_SQL = ['schema.sql', 'schema-additions.sql', 'schema-v3.sql', 'schema-v4.sql', 'schema-v5.sql', 'schema-v6.sql', 'schema-v7.sql']
+const EXPECTED_SQL = ['schema.sql', 'schema-additions.sql', 'schema-v3.sql', 'schema-v4.sql', 'schema-v5.sql', 'schema-v6.sql', 'schema-v7.sql', 'schema-v8.sql']
 
 describe('page files exist', () => {
   for (const page of EXPECTED_PAGES) {
@@ -99,6 +102,7 @@ describe('App.tsx routes every page', () => {
   it('imports Subscription', () => expect(app).toMatch(/import Subscription/))
   it('imports SettingsPage', () => expect(app).toMatch(/import SettingsPage/))
   it('imports Support', () => expect(app).toMatch(/import Support/))
+  it('imports Team', () => expect(app).toMatch(/import Team/))
   it('imports Privacy', () => expect(app).toMatch(/import Privacy/))
   it('imports Terms', () => expect(app).toMatch(/import Terms/))
   it('imports Landing', () => expect(app).toMatch(/import Landing/))
@@ -118,6 +122,7 @@ describe('App.tsx routes every page', () => {
   it('has a public privacy route', () => expect(app).toMatch(/path="\/privacy"/))
   it('has a public terms route', () => expect(app).toMatch(/path="\/terms"/))
   it('has an app support route', () => expect(app).toMatch(/path="support"/))
+  it('has a team route', () => expect(app).toMatch(/path="team"/))
   it('has a brain route', () => expect(app).toMatch(/path="brain"/))
   it('has an integrations route', () => expect(app).toMatch(/path="integrations"/))
 })
@@ -147,6 +152,7 @@ describe('Sidebar links to every app page', () => {
     '/app/subscription',
     '/app/settings',
     '/app/support',
+    '/app/team',
   ]
   for (const route of routes) {
     it(`links to ${route}`, () => {

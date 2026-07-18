@@ -12,6 +12,7 @@ import {
   Bot,
   Brain,
   Plug,
+  UsersRound,
   FileText,
   BarChart3,
   Database,
@@ -61,6 +62,7 @@ const navSections = [
   {
     label: 'Account',
     items: [
+      { to: '/app/team', label: 'Team', icon: UsersRound },
       { to: '/app/support', label: 'Support', icon: LifeBuoy },
       { to: '/app/activity', label: 'Activity Logs', icon: History },
       { to: '/app/api-keys', label: 'API Keys', icon: Key },
