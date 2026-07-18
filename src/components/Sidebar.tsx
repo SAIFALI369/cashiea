@@ -10,6 +10,8 @@ import {
   FileSignature,
   Wallet,
   Bot,
+  Brain,
+  Plug,
   FileText,
   BarChart3,
   Database,
@@ -34,6 +36,8 @@ const navSections = [
     label: 'Tools',
     items: [
       { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
+      { to: '/app/brain', label: 'AI Brain', icon: Brain },
+      { to: '/app/integrations', label: 'Integrations', icon: Plug },
       { to: '/app/assistant', label: 'AI Assistant', icon: Bot },
       { to: '/app/pos', label: 'Cashier / POS', icon: ShoppingCart },
       { to: '/app/products', label: 'Products', icon: Package },

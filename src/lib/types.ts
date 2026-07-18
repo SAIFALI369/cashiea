@@ -287,6 +287,65 @@ export interface Expense {
   created_at: string
 }
 
+// ─── AI Brain entities (integrations, memory, predictions) ─────
+export type IntegrationProvider = 'gmail' | 'google_sheets' | 'manual' | 'whatsapp' | 'shopify' | 'razorpay' | 'tally' | 'excel'
+
+export interface Integration {
+  id: string
+  user_id: string
+  provider: IntegrationProvider
+  label: string | null
+  status: 'disconnected' | 'connected' | 'error'
+  metadata: Record<string, unknown>
+  last_synced_at: string | null
+  last_error: string | null
+  created_at: string
+}
+
+export interface KeyFact {
+  fact: string
+  source: string
+  confidence: 'high' | 'medium' | 'low'
+}
+
+export interface BusinessMemory {
+  id: string
+  user_id: string
+  summary: string | null
+  business_type: string | null
+  key_facts: KeyFact[]
+  preferences: Record<string, unknown>
+  last_updated_at: string | null
+  created_at: string
+}
+
+export type PredictionType = 'reorder' | 'followup' | 'invoice' | 'offer' | 'alert' | 'expense' | 'custom'
+export type PredictionStatus = 'pending' | 'approved' | 'denied' | 'executed' | 'dismissed'
+
+export interface Prediction {
+  id: string
+  user_id: string
+  prediction_type: PredictionType
+  title: string
+  description: string | null
+  rationale: string | null
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  status: PredictionStatus
+  action_payload: Record<string, unknown>
+  owner_feedback: string | null
+  created_at: string
+  decided_at: string | null
+}
+
+export interface Correction {
+  id: string
+  user_id: string
+  category: string
+  context: string | null
+  correction: string
+  created_at: string
+}
+
 // ─── Subscription plans ─────────────────────────────────────────
 export const PLANS = {
   free: {
