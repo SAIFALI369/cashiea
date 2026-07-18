@@ -26,6 +26,9 @@ import Compliance from './pages/Compliance'
 import CaseStudy from './pages/CaseStudy'
 import Subscription from './pages/Subscription'
 import SettingsPage from './pages/Settings'
+import Support from './pages/Support'
+import Privacy from './pages/Privacy'
+import Terms from './pages/Terms'
 
 function App() {
   const { user } = useAuth()
@@ -37,6 +40,8 @@ function App() {
       <Route path="/login" element={user ? <Navigate to="/app" replace /> : <Login />} />
       <Route path="/signup" element={user ? <Navigate to="/app" replace /> : <Signup />} />
       <Route path="/case-study" element={<CaseStudy />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
 
       {/* Protected app */}
       <Route
@@ -68,6 +73,7 @@ function App() {
         <Route path="compliance" element={<Compliance />} />
         <Route path="subscription" element={<Subscription />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="support" element={<Support />} />
       </Route>
 
       {/* Fallback */}

@@ -21,6 +21,7 @@ import {
   Key,
   History,
   Shield,
+  LifeBuoy,
   LogOut,
   Sparkles,
   Zap,
@@ -56,6 +57,7 @@ const navSections = [
   {
     label: 'Account',
     items: [
+      { to: '/app/support', label: 'Support', icon: LifeBuoy },
       { to: '/app/activity', label: 'Activity Logs', icon: History },
       { to: '/app/api-keys', label: 'API Keys', icon: Key },
       { to: '/app/compliance', label: 'Compliance', icon: Shield },
@@ -209,6 +211,15 @@ export default function Sidebar({
             >
               <LogOut className="w-4.5 h-4.5" />
             </button>
+          </div>
+
+          {/* Legal links */}
+          <div className="mt-3 pt-3 border-t border-slate-800 flex items-center justify-center gap-3 text-[11px] text-slate-600">
+            <a href="/privacy" target="_blank" rel="noreferrer" className="hover:text-slate-300 transition-colors">Privacy</a>
+            <span>·</span>
+            <a href="/terms" target="_blank" rel="noreferrer" className="hover:text-slate-300 transition-colors">Terms</a>
+            <span>·</span>
+            <a href="mailto:supportcashiea@gmail.com" className="hover:text-slate-300 transition-colors">Support</a>
           </div>
         </div>
       </aside>
