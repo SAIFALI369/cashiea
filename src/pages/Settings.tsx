@@ -20,6 +20,7 @@ export default function SettingsPage() {
   const [gstin, setGstin] = useState(profile?.gstin || '')
   const [businessAddress, setBusinessAddress] = useState(profile?.business_address || '')
   const [businessState, setBusinessState] = useState(profile?.business_state || '')
+  const [upiId, setUpiId] = useState(profile?.upi_id || '')
   const [dailyBriefing, setDailyBriefing] = useState(profile?.daily_briefing !== false)
   const [aiProvider, setAiProvider] = useState<AIProvider>(profile?.ai_provider || 'openai')
   const [saving, setSaving] = useState(false)
@@ -35,6 +36,7 @@ export default function SettingsPage() {
           gstin: gstin || null,
           business_address: businessAddress || null,
           business_state: businessState || null,
+          upi_id: upiId || null,
           daily_briefing: dailyBriefing,
           ai_provider: aiProvider,
         })
@@ -109,6 +111,16 @@ export default function SettingsPage() {
                 className="input-field"
                 placeholder="Bihar"
               />
+            </div>
+            <div>
+              <label className="label">UPI ID (for instant invoice payments)</label>
+              <input
+                value={upiId}
+                onChange={(e) => setUpiId(e.target.value)}
+                className="input-field font-mono"
+                placeholder="myshop@okhdfcbank"
+              />
+              <p className="text-xs text-slate-500 mt-1">Customers can pay any invoice by scanning a QR or tapping a link — works with PhonePe, GPay, Paytm, BHIM.</p>
             </div>
           </div>
         </div>

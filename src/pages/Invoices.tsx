@@ -61,8 +61,14 @@ export default function Invoices() {
 
       // Build UPI payment link if merchant has a UPI ID set
       let paymentLink: string | null = null
-      if (profile?.business_address /* reuse later for upi_id */) {
-        // Will use profile.upi_id once that column exists; for now leave null
+      if (profile?.upi_id) {
+        paymentLink = buildUpiLink({
+          payeeVpa: profile.upi_id,
+          payeeName: profile.company_name || profile.full_name || 'My Shop',
+          amount: total,
+          reference: invoiceNumber,
+          note: `Invoice ${invoiceNumber}`,
+        })
       }
 
       const { data, error } = await supabase.from('invoices').insert({
@@ -114,7 +120,7 @@ export default function Invoices() {
   }
 
   // ── UPI payment link (uses merchant UPI ID) ────────────────────
-  const merchantUpi = (profile as any)?.upi_id || ''
+  const merchantUpi = profile?.upi_id || ''
   const merchantName = profile?.company_name || profile?.full_name || 'My Shop'
   const upiParams = (inv: Invoice): UPIParams | null => merchantUpi ? {
     payeeVpa: merchantUpi, payeeName: merchantName,

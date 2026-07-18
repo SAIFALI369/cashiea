@@ -87,9 +87,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error
     // Profile is auto-created via database trigger
     if (data.user) {
-      // Grant 14-day Pro trial (retry-safe; profile may take a moment)
+      // Grant 14-day Pro trial. Non-fatal: if the RPC isn't deployed yet,
+      // signup still succeeds (the trial just won't be active).
       await new Promise((r) => setTimeout(r, 400))
-      await supabase.rpc('grant_trial', { user_uuid: data.user.id })
+      try {
+        await supabase.rpc('grant_trial', { user_uuid: data.user.id })
+      } catch {
+        /* trial RPC missing — non-fatal */
+      }
       await fetchProfile(data.user.id)
     }
   }
