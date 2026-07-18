@@ -36,9 +36,15 @@ export interface Invoice {
   tax_rate: number
   tax_amount: number
   total: number
-  status: 'draft' | 'sent' | 'paid' | 'overdue'
+  status: 'draft' | 'sent' | 'viewed' | 'paid' | 'partial' | 'overdue'
   due_date: string | null
   notes: string | null
+  client_phone: string | null
+  upi_id: string | null
+  payment_link: string | null
+  paid_at: string | null
+  reminder_count: number
+  last_reminder_at: string | null
   created_at: string
   updated_at: string
 }
@@ -344,6 +350,21 @@ export interface Correction {
   category: string
   context: string | null
   correction: string
+  created_at: string
+}
+
+// ─── Team & roles ───────────────────────────────────────────────
+export type TeamRole = 'owner' | 'manager' | 'accountant' | 'staff'
+
+export interface TeamMember {
+  id: string
+  user_id: string
+  member_email: string
+  member_user_id: string | null
+  name: string | null
+  role: TeamRole
+  status: 'invited' | 'active' | 'revoked'
+  permissions: Record<string, boolean>
   created_at: string
 }
 
