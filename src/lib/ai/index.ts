@@ -132,6 +132,38 @@ export async function callBrain(mode: 'learn' | 'predict' | 'correct', extra: Re
 }
 
 /**
+ * Kick off the Google OAuth flow — opens Google's consent screen.
+ * Returns the authorize URL to redirect to, or null if OAuth isn't configured.
+ */
+export function googleAuthorizeUrl(userId: string, provider: 'gmail' | 'google_sheets'): string {
+  const base = (import.meta.env.VITE_SUPABASE_URL || '').replace('.supabase.co', '.functions.supabase.co')
+  const fn = `${base}/google-oauth`
+  return `${fn}?action=authorize&user=${encodeURIComponent(userId)}&provider=${provider}`
+}
+
+/**
+ * Trigger a live sync from a connected Google source (calls google-fetch).
+ */
+export async function syncGoogleSource(provider: 'gmail' | 'google_sheets', spreadsheetId?: string): Promise<any> {
+  const { data: { session } } = await supabase.auth.getSession()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!session || !user) throw new Error('You must be logged in.')
+  const base = (import.meta.env.VITE_SUPABASE_URL || '').replace('.supabase.co', '.functions.supabase.co')
+  const res = await fetchWithRetry(`${base}/google-fetch`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ user_id: user.id, provider, spreadsheet_id: spreadsheetId }),
+  })
+  const data = await res.json().catch(() => ({ error: 'Invalid response' }))
+  if (!res.ok) throw new Error(data?.error || `Sync failed (HTTP ${res.status})`)
+  return data
+}
+
+/**
  * Robustly extract JSON from an AI response. AI models frequently:
  *  - wrap output in ```json fences
  *  - add preamble ("Here is the invoice:") before/after the JSON

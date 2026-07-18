@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import { callBrain } from '../lib/ai'
+import { callBrain, googleAuthorizeUrl, syncGoogleSource } from '../lib/ai'
 import type { Integration, IntegrationProvider } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
@@ -38,13 +38,21 @@ export default function Integrations() {
   const getStatus = (p: IntegrationProvider) => integrations.find((i) => i.provider === p)?.status || 'disconnected'
   const getInt = (p: IntegrationProvider) => integrations.find((i) => i.provider === p)
 
-  // Connect = mark as connected (live OAuth needs Google Cloud creds; we scaffold it)
+  // Connect — Gmail/Sheets use real Google OAuth; others mark connected
   const connect = async (p: IntegrationProvider) => {
+    // Real OAuth flow for Google sources (opens Google consent screen)
+    if (p === 'gmail' || p === 'google_sheets') {
+      const url = googleAuthorizeUrl(profile!.id, p)
+      // If OAuth isn't configured, the function returns a 503; we open it
+      // in a new tab and the callback will redirect back here.
+      window.open(url, '_blank')
+      toast(`Opening Google to connect ${PROVIDERS.find((x) => x.id === p)?.name}…`)
+      return
+    }
+
+    // Non-Google sources: mark connected (paste-data feeds them)
     setConnecting(p)
     try {
-      // NOTE: For live Gmail/Sheets OAuth, set GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET
-      // secrets and add an OAuth redirect here. This scaffold marks the connection
-      // so the AI knows the data source exists. Use "Paste data" to feed real info.
       const { data, error } = await supabase.from('integrations').upsert({
         user_id: profile!.id,
         provider: p,
@@ -64,6 +72,22 @@ export default function Integrations() {
       toast.error(err instanceof Error ? err.message : 'Connection failed')
     } finally {
       setConnecting(null)
+    }
+  }
+
+  // Live-sync a connected Google source (real Gmail/Sheets fetch)
+  const [syncing, setSyncing] = useState<IntegrationProvider | null>(null)
+  const liveSync = async (p: IntegrationProvider) => {
+    if (p !== 'gmail' && p !== 'google_sheets') return
+    setSyncing(p)
+    try {
+      const result = await syncGoogleSource(p)
+      toast.success(`Synced ${result.records_fetched} records from ${PROVIDERS.find((x) => x.id === p)?.name}${result.learned ? ' — AI learned from it' : ''}`)
+      await loadData()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Sync failed')
+    } finally {
+      setSyncing(null)
     }
   }
 
@@ -163,8 +187,16 @@ export default function Integrations() {
                       <button onClick={() => setShowPaste(p.id)} className="btn-secondary text-xs" title="Paste data to teach the AI">Paste data</button>
                     </div>
                   ) : (
-                    <div className="flex gap-2">
-                      <button onClick={() => setShowPaste(p.id)} className="btn-secondary text-xs flex-1"><RefreshCw className="w-3.5 h-3.5" /> Sync data</button>
+                    <div className="flex gap-2 flex-wrap">
+                      {(p.id === 'gmail' || p.id === 'google_sheets') && (
+                        <button onClick={() => liveSync(p.id)} disabled={syncing === p.id} className="btn-primary text-xs flex-1">
+                          {syncing === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} Live sync
+                        </button>
+                      )}
+                      {!(p.id === 'gmail' || p.id === 'google_sheets') && (
+                        <button onClick={() => setShowPaste(p.id)} className="btn-secondary text-xs flex-1"><RefreshCw className="w-3.5 h-3.5" /> Sync data</button>
+                      )}
+                      <button onClick={() => setShowPaste(p.id)} className="btn-secondary text-xs" title="Paste data to teach the AI">Paste</button>
                       <button onClick={() => disconnect(p.id)} className="btn-ghost text-xs text-red-400"><XCircle className="w-3.5 h-3.5" /></button>
                     </div>
                   )}
