@@ -8,6 +8,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
+import { callGateway, GATEWAY_DEFAULT_MODEL } from "../_shared/ai-gateway.ts";
 
 // ─── Provider calls (each returns {ok, status, value}) ──────────
 async function callOpenAI(systemPrompt: string, prompt: string): Promise<{ ok: boolean; status: number; value: string }> {
@@ -74,6 +75,10 @@ async function callAnthropic(systemPrompt: string, prompt: string): Promise<{ ok
 }
 
 async function callProvider(provider: string, systemPrompt: string, prompt: string): Promise<string> {
+  // Vercel AI Gateway is OpenAI-compatible and routes to any provider/model
+  if (provider === "vercel_gateway") {
+    return withRetry(() => callGateway(systemPrompt, prompt), 2, 600);
+  }
   const callers: Record<string, (s: string, p: string) => Promise<{ ok: boolean; status: number; value: string }>> = {
     openai: callOpenAI,
     gemini: callGemini,

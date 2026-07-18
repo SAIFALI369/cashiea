@@ -7,6 +7,7 @@ import toast from 'react-hot-toast'
 import type { AIProvider } from '../lib/ai'
 
 const providers: { value: AIProvider; label: string; desc: string }[] = [
+  { value: 'vercel_gateway', label: 'Vercel AI Gateway', desc: '302 models (GPT-5.5, Claude, Gemini) — one key' },
   { value: 'openai', label: 'OpenAI', desc: 'GPT-4o — most versatile' },
   { value: 'gemini', label: 'Google Gemini', desc: 'Fast & cost-effective' },
   { value: 'anthropic', label: 'Anthropic Claude', desc: 'Best for writing & reasoning' },
