@@ -6,7 +6,7 @@ export interface Profile {
   company_name: string | null
   avatar_url: string | null
   plan: 'free' | 'starter' | 'pro' | 'enterprise'
-  ai_provider: 'openai' | 'gemini' | 'anthropic'
+  ai_provider: 'openai' | 'gemini' | 'anthropic' | 'vercel_gateway'
   api_usage_count: number
   api_usage_limit: number
   trial_ends_at: string | null
