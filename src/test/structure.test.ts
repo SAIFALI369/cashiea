@@ -18,6 +18,8 @@ const read = (p: string) => readFileSync(join(ROOT, p), 'utf-8')
 
 const EXPECTED_PAGES = [
   'Dashboard',
+  'AIBrain',
+  'Integrations',
   'AIAssistant',
   'POS',
   'Products',
@@ -54,7 +56,7 @@ const EXPECTED_EDGE_FUNCTIONS = [
   'stripe-webhook',
 ]
 
-const EXPECTED_SQL = ['schema.sql', 'schema-additions.sql', 'schema-v3.sql', 'schema-v4.sql', 'schema-v5.sql']
+const EXPECTED_SQL = ['schema.sql', 'schema-additions.sql', 'schema-v3.sql', 'schema-v4.sql', 'schema-v5.sql', 'schema-v6.sql']
 
 describe('page files exist', () => {
   for (const page of EXPECTED_PAGES) {
@@ -75,6 +77,8 @@ describe('App.tsx routes every page', () => {
   it('imports Quotations', () => expect(app).toMatch(/import Quotations/))
   it('imports Accounts', () => expect(app).toMatch(/import Accounts/))
   it('imports AIAssistant', () => expect(app).toMatch(/import AIAssistant/))
+  it('imports AIBrain', () => expect(app).toMatch(/import AIBrain/))
+  it('imports Integrations', () => expect(app).toMatch(/import Integrations/))
   it('imports Invoices', () => expect(app).toMatch(/import Invoices/))
   it('imports Reports', () => expect(app).toMatch(/import Reports/))
   it('imports DataEntryPage', () => expect(app).toMatch(/import DataEntryPage/))
@@ -108,12 +112,16 @@ describe('App.tsx routes every page', () => {
   it('has a public privacy route', () => expect(app).toMatch(/path="\/privacy"/))
   it('has a public terms route', () => expect(app).toMatch(/path="\/terms"/))
   it('has an app support route', () => expect(app).toMatch(/path="support"/))
+  it('has a brain route', () => expect(app).toMatch(/path="brain"/))
+  it('has an integrations route', () => expect(app).toMatch(/path="integrations"/))
 })
 
 describe('Sidebar links to every app page', () => {
   const sidebar = read('src/components/Sidebar.tsx')
 
   const routes = [
+    '/app/brain',
+    '/app/integrations',
     '/app/assistant',
     '/app/pos',
     '/app/products',
