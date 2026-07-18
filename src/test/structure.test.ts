@@ -38,6 +38,9 @@ const EXPECTED_PAGES = [
   'CaseStudy',
   'Subscription',
   'Settings',
+  'Support',
+  'Privacy',
+  'Terms',
   'Landing',
 ]
 
@@ -85,6 +88,9 @@ describe('App.tsx routes every page', () => {
   it('imports CaseStudy', () => expect(app).toMatch(/import CaseStudy/))
   it('imports Subscription', () => expect(app).toMatch(/import Subscription/))
   it('imports SettingsPage', () => expect(app).toMatch(/import SettingsPage/))
+  it('imports Support', () => expect(app).toMatch(/import Support/))
+  it('imports Privacy', () => expect(app).toMatch(/import Privacy/))
+  it('imports Terms', () => expect(app).toMatch(/import Terms/))
   it('imports Landing', () => expect(app).toMatch(/import Landing/))
 
   it('has a route element for campaigns/new', () => expect(app).toMatch(/path="campaigns\/new"/))
@@ -99,6 +105,9 @@ describe('App.tsx routes every page', () => {
   it('has a route element for api-keys', () => expect(app).toMatch(/path="api-keys"/))
   it('has a route element for compliance', () => expect(app).toMatch(/path="compliance"/))
   it('has a public case-study route', () => expect(app).toMatch(/path="\/case-study"/))
+  it('has a public privacy route', () => expect(app).toMatch(/path="\/privacy"/))
+  it('has a public terms route', () => expect(app).toMatch(/path="\/terms"/))
+  it('has an app support route', () => expect(app).toMatch(/path="support"/))
 })
 
 describe('Sidebar links to every app page', () => {
@@ -123,6 +132,7 @@ describe('Sidebar links to every app page', () => {
     '/app/compliance',
     '/app/subscription',
     '/app/settings',
+    '/app/support',
   ]
   for (const route of routes) {
     it(`links to ${route}`, () => {
