@@ -77,9 +77,10 @@ begin
         updated_at = now()
     where id = auth.uid();
   elsif step = 3 then
-    -- WhatsApp number confirmed → onboarding done
+    -- WhatsApp number + report time confirmed → onboarding done
     update public.profiles
     set whatsapp_number = data->>'whatsapp_number',
+        report_time_utc = coalesce(data->>'report_time_utc', '17:00'),
         onboarding_step = 4,
         updated_at = now()
     where id = auth.uid();

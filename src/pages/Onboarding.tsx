@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import {
   Sparkles, Store, ShoppingCart, Smartphone, ArrowRight, ArrowLeft,
-  Plus, X, Check, Loader2, Tag, Package,
+  Plus, X, Check, Loader2, Tag, Package, Clock,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -41,8 +41,9 @@ export default function Onboarding() {
     { name: '', quantity: '' },
   ])
 
-  // Step 3: WhatsApp number (separate from login phone)
+  // Step 3: WhatsApp number (separate from login phone) + report time
   const [whatsapp, setWhatsapp] = useState(profile?.whatsapp_number || profile?.phone || '')
+  const [reportTime, setReportTime] = useState('22:30')  // IST display; default 10:30 PM IST
 
   // Wait for auth/profile to load before showing the wizard
   useEffect(() => {
@@ -111,17 +112,26 @@ export default function Onboarding() {
     } finally { setSaving(false) }
   }
 
-  // ── Step 3: WhatsApp number + finish ───────────────────────────
+  // ── Step 3: WhatsApp number + report time + finish ────────────
   const finishStep3 = async () => {
     if (!whatsapp.trim()) return toast.error('Enter a WhatsApp number')
     setSaving(true)
     try {
+      // Convert IST HH:MM -> UTC HH:MM (IST = UTC+5:30)
+      const [h, m] = reportTime.split(':').map(Number)
+      let utcMin = (h * 60 + m) - (5 * 60 + 30)
+      if (utcMin < 0) utcMin += 24 * 60
+      const utcH = Math.floor(utcMin / 60)
+      const utcM = utcMin % 60
+      const reportTimeUtc = `${String(utcH).padStart(2, '0')}:${String(utcM).padStart(2, '0')}`
+
       const { error } = await supabase.rpc('update_onboarding_step', {
-        step: 3, data: { whatsapp_number: whatsapp.trim() },
+        step: 3,
+        data: { whatsapp_number: whatsapp.trim(), report_time_utc: reportTimeUtc },
       })
       if (error) throw error
       await refreshProfile()
-      toast.success('You\u2019re all set! Welcome to BizAutomate 🎉')
+      toast.success('You are all set! Welcome to BizAutomate')
       navigate('/app', { replace: true })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed')
@@ -254,7 +264,7 @@ export default function Onboarding() {
             </div>
           )}
 
-          {/* Step 3: WhatsApp number */}
+          {/* Step 3: WhatsApp number + report time */}
           {step === 3 && (
             <div className="card p-6 animate-fade-in">
               <h2 className="font-semibold text-white mb-1 flex items-center gap-2">
@@ -274,6 +284,22 @@ export default function Onboarding() {
                   placeholder="+91 98765 43210"
                 />
               </div>
+
+              <div className="mt-4">
+                <label className="label flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-brand-400" /> Daily report time (IST)
+                </label>
+                <input
+                  type="time"
+                  value={reportTime}
+                  onChange={(e) => setReportTime(e.target.value)}
+                  className="input-field"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  When should your daily sales report arrive each day? Default 10:30 PM IST. Change anytime in Settings.
+                </p>
+              </div>
+
               <p className="text-xs text-slate-500 mt-2">
                 \u2709\ufe0f We\u2019ll never spam. You can change this anytime in Settings.
               </p>

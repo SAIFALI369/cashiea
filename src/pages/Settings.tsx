@@ -22,6 +22,14 @@ export default function SettingsPage() {
   const [businessState, setBusinessState] = useState(profile?.business_state || '')
   const [upiId, setUpiId] = useState(profile?.upi_id || '')
   const [dailyBriefing, setDailyBriefing] = useState(profile?.daily_briefing !== false)
+  const [reportTime, setReportTime] = useState(() => {
+    // Convert stored UTC HH:MM to IST for display
+    if (!profile?.report_time_utc) return '22:30'
+    const [h, m] = profile.report_time_utc.split(':').map(Number)
+    let istMin = (h * 60 + m) + (5 * 60 + 30)
+    if (istMin >= 24 * 60) istMin -= 24 * 60
+    return `${String(Math.floor(istMin / 60)).padStart(2, '0')}:${String(istMin % 60).padStart(2, '0')}`
+  })
   const [aiProvider, setAiProvider] = useState<AIProvider>(profile?.ai_provider || 'openai')
   const [saving, setSaving] = useState(false)
 
@@ -38,6 +46,11 @@ export default function SettingsPage() {
           business_state: businessState || null,
           upi_id: upiId || null,
           daily_briefing: dailyBriefing,
+          report_time_utc: (() => {
+            const [h, m] = reportTime.split(':').map(Number)
+            let u = (h * 60 + m) - (5 * 60 + 30); if (u < 0) u += 24 * 60
+            return `${String(Math.floor(u / 60)).padStart(2, '0')}:${String(u % 60).padStart(2, '0')}`
+          })(),
           ai_provider: aiProvider,
         })
         .eq('id', profile!.id)
@@ -121,6 +134,16 @@ export default function SettingsPage() {
                 placeholder="myshop@okhdfcbank"
               />
               <p className="text-xs text-slate-500 mt-1">Customers can pay any invoice by scanning a QR or tapping a link — works with PhonePe, GPay, Paytm, BHIM.</p>
+            </div>
+            <div>
+              <label className="label">Daily WhatsApp report time (IST)</label>
+              <input
+                type="time"
+                value={reportTime}
+                onChange={(e) => setReportTime(e.target.value)}
+                className="input-field"
+              />
+              <p className="text-xs text-slate-500 mt-1">When your daily sales report arrives on WhatsApp. Default 10:30 PM IST.</p>
             </div>
           </div>
         </div>
