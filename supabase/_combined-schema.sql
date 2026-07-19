@@ -1,8 +1,5 @@
--- ════════════════════════════════════════════════════════════════
--- COMBINED SCHEMA (v2) — run ONCE in the Supabase SQL Editor.
--- All 11 schema files merged in dependency order. Idempotent.
--- ════════════════════════════════════════════════════════════════
-
+-- COMBINED SCHEMA (v3) — run ONCE in the Supabase SQL Editor.
+-- All 12 schema files merged in dependency order. Idempotent.
 
 -- >>> schema.sql <<<
 -- ════════════════════════════════════════════════════════════════
@@ -193,7 +190,6 @@ create trigger profiles_updated_at before update on public.profiles
 create trigger invoices_updated_at before update on public.invoices
   for each row execute function public.set_updated_at();
 
-
 -- >>> schema-additions.sql <<<
 -- ════════════════════════════════════════════════════════════════
 -- Schema Additions — run AFTER schema.sql in the Supabase SQL Editor
@@ -227,7 +223,6 @@ create unique index if not exists subscriptions_user_id_unique
 
 -- ─── subscription.current_period_end should be nullable ─────────
 -- (already nullable in schema.sql, nothing to do — kept for clarity)
-
 
 -- >>> schema-v3.sql <<<
 -- ════════════════════════════════════════════════════════════════
@@ -352,7 +347,6 @@ as $$
   where c.id = campaign_uuid;
 $$;
 
-
 -- >>> schema-v4.sql <<<
 -- ════════════════════════════════════════════════════════════════
 -- Schema v4 (Retail POS) — run AFTER schema.sql + additions + v3
@@ -467,7 +461,6 @@ as $$
   where id = p_id;
 $$;
 
-
 -- >>> schema-v5.sql <<<
 -- ════════════════════════════════════════════════════════════════
 -- Schema v5 (Retail ERP) — run AFTER schema.sql + additions + v3 + v4
@@ -578,7 +571,6 @@ as $$
   where s.id = supplier_uuid;
 $$;
 
-
 -- >>> schema-v6.sql <<<
 -- ════════════════════════════════════════════════════════════════
 -- Schema v6 (AI Business Brain) — run AFTER schema.sql + additions + v3-5
@@ -661,7 +653,6 @@ create policy "Owner can manage corrections" on public.ai_corrections
 
 create index if not exists idx_corrections_user on public.ai_corrections (user_id, created_at desc);
 
-
 -- >>> schema-v7.sql <<<
 -- ════════════════════════════════════════════════════════════════
 -- Schema v7 (Daily Brain cron + briefing opt-in) — run AFTER schema-v6
@@ -705,7 +696,6 @@ create extension if not exists pg_net with schema extensions;
 -- NOTE: The exact scheduling syntax depends on your Supabase version.
 -- Easiest path: use the Supabase Dashboard → Database → Scheduled Functions,
 -- or run from the edge function with a separate scheduler service.
-
 
 -- >>> schema-v8.sql <<<
 -- ════════════════════════════════════════════════════════════════
@@ -756,7 +746,6 @@ create policy "Owner can manage reminders" on public.invoice_reminders
 create index if not exists idx_invoices_status_due on public.invoices (user_id, status, due_date);
 create index if not exists idx_team_members_user on public.team_members (user_id);
 
-
 -- >>> schema-v9.sql <<<
 -- ════════════════════════════════════════════════════════════════
 -- Schema v9 (Vercel AI Gateway provider) — run AFTER schema-v8
@@ -778,7 +767,6 @@ alter table public.profiles add constraint profiles_ai_provider_check
 --   google/gemini-2.5-flash-lite   ($0.10/$0.40)
 --   deepseek/deepseek-v3.1         ($0.25/$0.95)
 
-
 -- >>> schema-v10.sql <<<
 -- ════════════════════════════════════════════════════════════════
 -- Schema v10 (UPI ID for merchant + fix) — run AFTER schema-v9
@@ -791,7 +779,6 @@ alter table public.profiles add column if not exists upi_id text;  -- e.g. shop@
 -- The Invoices page reads profile.upi_id to generate payment links.
 -- Users set it in Settings → it powers every invoice's "Pay via UPI"
 -- button + scannable QR code.
-
 
 -- >>> schema-v11.sql <<<
 -- ════════════════════════════════════════════════════════════════
@@ -873,13 +860,90 @@ begin
         updated_at = now()
     where id = auth.uid();
   elsif step = 3 then
-    -- WhatsApp number confirmed → onboarding done
+    -- WhatsApp number + report time confirmed → onboarding done
     update public.profiles
     set whatsapp_number = data->>'whatsapp_number',
+        report_time_utc = coalesce(data->>'report_time_utc', '17:00'),
         onboarding_step = 4,
         updated_at = now()
     where id = auth.uid();
   end if;
 end;
 $$;
+
+-- >>> schema-v12.sql <<<
+-- ════════════════════════════════════════════════════════════════
+-- Schema v12 (Daily Reports job) — run AFTER schema-v11
+-- Adds: daily_reports, failed_jobs, report_time_utc on profiles
+-- ════════════════════════════════════════════════════════════════
+
+-- ─── Owner-configurable report time (UTC HH:MM, default 17:00 = 22:30 IST) ─
+alter table public.profiles add column if not exists report_time_utc text not null default '17:00';
+alter table public.profiles add column if not exists report_timezone text not null default 'Asia/Kolkata';
+-- Allow 'cancelled' as a plan_tier so the job filter is meaningful
+alter table public.profiles drop constraint if exists profiles_plan_tier_check;
+alter table public.profiles add constraint profiles_plan_tier_check
+  check (plan_tier in ('free', 'trial', 'paid', 'cancelled'));
+
+-- ─── DAILY REPORTS (one per shop per day) ───────────────────────
+create table if not exists public.daily_reports (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  report_date date not null,
+  total_revenue numeric(12,2) not null default 0,
+  transaction_count integer not null default 0,
+  top_items jsonb not null default '[]'::jsonb,        -- [{name, qty, revenue}]
+  payment_breakdown jsonb not null default '{}'::jsonb,-- {cash: 60, upi: 30, card: 10}
+  message_text text,
+  status text not null default 'pending' check (status in ('pending','sent','failed','retry')),
+  sent_at timestamptz,
+  error text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.daily_reports enable row level security;
+create policy "Owner can view daily reports" on public.daily_reports
+  for select using (auth.uid() = user_id);
+
+-- One report per shop per day (the job uses this to avoid dupes)
+create unique index if not exists daily_reports_user_date_unique
+  on public.daily_reports (user_id, report_date);
+
+create index if not exists idx_daily_reports_status on public.daily_reports (status, report_date);
+
+-- ─── FAILED JOBS (Task 8 referenced — needed now for retry logging) ──
+create table if not exists public.failed_jobs (
+  id uuid primary key default gen_random_uuid(),
+  job_type text not null,                              -- 'daily_report', 'reminder', etc.
+  user_id uuid references auth.users(id) on delete cascade,
+  payload jsonb not null default '{}'::jsonb,          -- enough to retry
+  error text,
+  retry_count integer not null default 0,
+  status text not null default 'pending' check (status in ('pending','retried','dead')),
+  last_attempted_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+alter table public.failed_jobs enable row level security;
+create policy "Owner can view failed jobs" on public.failed_jobs
+  for select using (auth.uid() = user_id);
+
+create index if not exists idx_failed_jobs_status on public.failed_jobs (status, created_at desc);
+
+-- ─── pg_cron schedule: run the daily-reports function every 30 min ─
+-- It self-filters to shops whose report_time_utc matches the current slot
+-- AND haven't received today's report yet.
+create extension if not exists pg_cron with schema extensions;
+create extension if not exists pg_net with schema extensions;
+
+-- NOTE: scheduling requires your service-role key as a named setting.
+-- Run these manually ONCE after deploy (replace $KEY):
+--   alter database current_database() set app.service_role_key to '$KEY';
+--   alter database current_database() set app.functions_url to 'https://<proj>.functions.supabase.co';
+--   select cron.schedule('daily-reports', '*/30 * * * *',
+--     $$ select net.http_post(
+--          url := current_setting('app.functions_url') || '/daily-reports',
+--          headers := jsonb_build_object('Content-Type','application/json',
+--                    'Authorization','Bearer '||current_setting('app.service_role_key')),
+--          body := '{}'::jsonb) $$);
 

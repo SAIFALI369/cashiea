@@ -21,6 +21,8 @@ export interface Profile {
   whatsapp_number: string | null
   onboarding_step: number
   role: 'owner' | 'manager' | 'accountant' | 'staff'
+  report_time_utc: string
+  report_timezone: string
   created_at: string
   updated_at: string
 }
