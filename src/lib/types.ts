@@ -6,6 +6,7 @@ export interface Profile {
   company_name: string | null
   avatar_url: string | null
   plan: 'free' | 'starter' | 'pro' | 'enterprise'
+  plan_tier: 'free' | 'trial' | 'paid'
   ai_provider: 'openai' | 'gemini' | 'anthropic' | 'vercel_gateway'
   api_usage_count: number
   api_usage_limit: number
@@ -15,6 +16,11 @@ export interface Profile {
   business_state: string | null
   upi_id: string | null
   daily_briefing: boolean
+  phone: string | null
+  shop_category: string | null
+  whatsapp_number: string | null
+  onboarding_step: number
+  role: 'owner' | 'manager' | 'accountant' | 'staff'
   created_at: string
   updated_at: string
 }

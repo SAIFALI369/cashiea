@@ -1,14 +1,10 @@
 -- ════════════════════════════════════════════════════════════════
--- COMBINED SCHEMA — run ONCE in the Supabase SQL Editor.
--- This is all 10 schema files (schema.sql + schema-additions + v3–v10)
--- concatenated in dependency order. Safe to run repeatedly (idempotent).
+-- COMBINED SCHEMA (v2) — run ONCE in the Supabase SQL Editor.
+-- All 11 schema files merged in dependency order. Idempotent.
 -- ════════════════════════════════════════════════════════════════
 
 
--- ════════════════════════════════════════════════════════════════
 -- >>> schema.sql <<<
--- ════════════════════════════════════════════════════════════════
-
 -- ════════════════════════════════════════════════════════════════
 -- BizAutomate AI — Database Schema
 -- Run this in the Supabase SQL Editor
@@ -198,10 +194,7 @@ create trigger invoices_updated_at before update on public.invoices
   for each row execute function public.set_updated_at();
 
 
--- ════════════════════════════════════════════════════════════════
 -- >>> schema-additions.sql <<<
--- ════════════════════════════════════════════════════════════════
-
 -- ════════════════════════════════════════════════════════════════
 -- Schema Additions — run AFTER schema.sql in the Supabase SQL Editor
 -- Adds: emails table (for the AI Email Assistant feature)
@@ -236,10 +229,7 @@ create unique index if not exists subscriptions_user_id_unique
 -- (already nullable in schema.sql, nothing to do — kept for clarity)
 
 
--- ════════════════════════════════════════════════════════════════
 -- >>> schema-v3.sql <<<
--- ════════════════════════════════════════════════════════════════
-
 -- ════════════════════════════════════════════════════════════════
 -- Schema v3 — run AFTER schema.sql + schema-additions.sql
 -- Adds: activity logs, API keys, email campaigns, tracking, trial
@@ -363,10 +353,7 @@ as $$
 $$;
 
 
--- ════════════════════════════════════════════════════════════════
 -- >>> schema-v4.sql <<<
--- ════════════════════════════════════════════════════════════════
-
 -- ════════════════════════════════════════════════════════════════
 -- Schema v4 (Retail POS) — run AFTER schema.sql + additions + v3
 -- Adds: products, customers, transactions (cashier/POS core)
@@ -481,10 +468,7 @@ as $$
 $$;
 
 
--- ════════════════════════════════════════════════════════════════
 -- >>> schema-v5.sql <<<
--- ════════════════════════════════════════════════════════════════
-
 -- ════════════════════════════════════════════════════════════════
 -- Schema v5 (Retail ERP) — run AFTER schema.sql + additions + v3 + v4
 -- Adds: suppliers, purchase_orders, quotations, expenses + GST field
@@ -595,10 +579,7 @@ as $$
 $$;
 
 
--- ════════════════════════════════════════════════════════════════
 -- >>> schema-v6.sql <<<
--- ════════════════════════════════════════════════════════════════
-
 -- ════════════════════════════════════════════════════════════════
 -- Schema v6 (AI Business Brain) — run AFTER schema.sql + additions + v3-5
 -- Adds: integrations, business_memory, ai_predictions, ai_corrections
@@ -681,10 +662,7 @@ create policy "Owner can manage corrections" on public.ai_corrections
 create index if not exists idx_corrections_user on public.ai_corrections (user_id, created_at desc);
 
 
--- ════════════════════════════════════════════════════════════════
 -- >>> schema-v7.sql <<<
--- ════════════════════════════════════════════════════════════════
-
 -- ════════════════════════════════════════════════════════════════
 -- Schema v7 (Daily Brain cron + briefing opt-in) — run AFTER schema-v6
 -- ════════════════════════════════════════════════════════════════
@@ -729,10 +707,7 @@ create extension if not exists pg_net with schema extensions;
 -- or run from the edge function with a separate scheduler service.
 
 
--- ════════════════════════════════════════════════════════════════
 -- >>> schema-v8.sql <<<
--- ════════════════════════════════════════════════════════════════
-
 -- ════════════════════════════════════════════════════════════════
 -- Schema v8 (Payments + Team + Reminders) — run AFTER schema-v7
 -- Adds: team_members, payment fields on invoices, reminder tracking
@@ -782,10 +757,7 @@ create index if not exists idx_invoices_status_due on public.invoices (user_id, 
 create index if not exists idx_team_members_user on public.team_members (user_id);
 
 
--- ════════════════════════════════════════════════════════════════
 -- >>> schema-v9.sql <<<
--- ════════════════════════════════════════════════════════════════
-
 -- ════════════════════════════════════════════════════════════════
 -- Schema v9 (Vercel AI Gateway provider) — run AFTER schema-v8
 -- Adds 'vercel_gateway' as a valid ai_provider option.
@@ -807,10 +779,7 @@ alter table public.profiles add constraint profiles_ai_provider_check
 --   deepseek/deepseek-v3.1         ($0.25/$0.95)
 
 
--- ════════════════════════════════════════════════════════════════
 -- >>> schema-v10.sql <<<
--- ════════════════════════════════════════════════════════════════
-
 -- ════════════════════════════════════════════════════════════════
 -- Schema v10 (UPI ID for merchant + fix) — run AFTER schema-v9
 -- Adds the merchant's UPI VPA to profiles so invoices can build
@@ -822,4 +791,95 @@ alter table public.profiles add column if not exists upi_id text;  -- e.g. shop@
 -- The Invoices page reads profile.upi_id to generate payment links.
 -- Users set it in Settings → it powers every invoice's "Pay via UPI"
 -- button + scannable QR code.
+
+
+-- >>> schema-v11.sql <<<
+-- ════════════════════════════════════════════════════════════════
+-- Schema v11 (Auth + Onboarding flow) — run AFTER schema-v10
+-- Adds: phone, shop_category, whatsapp_number, onboarding_step,
+--       plan_tier='trial', and a trigger that fires on signup.
+-- ════════════════════════════════════════════════════════════════
+
+-- ─── New columns on profiles ────────────────────────────────────
+alter table public.profiles add column if not exists phone text;
+alter table public.profiles add column if not exists shop_category text;
+alter table public.profiles add column if not exists whatsapp_number text;
+alter table public.profiles add column if not exists onboarding_step integer not null default 0;
+alter table public.profiles add column if not exists role text not null default 'owner';
+-- onboarding_step: 0=not started, 1=category, 2=items, 3=whatsapp, 4=done
+
+-- ─── plan_tier replaces 'plan' for the trial concept ────────────
+-- Keep plan as-is (free/starter/pro/enterprise) but add plan_tier
+-- that distinguishes trial vs paid vs free.
+alter table public.profiles add column if not exists plan_tier text not null default 'free'
+  check (plan_tier in ('free', 'trial', 'paid'));
+
+-- ─── handle_new_user trigger (rewritten to be authoritative) ────
+-- This fires ON auth.users INSERT. It's the single source of truth for
+-- new-profile creation — clients CANNOT skip or fake it.
+-- Reads shop_name, phone from raw_user_meta_data (sent at signup).
+-- Sets: role='owner', plan_tier='trial', trial_ends_at = now()+14d,
+-- onboarding_step=1 (so the wizard starts at step 1 after login).
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.profiles (
+    id, full_name, company_name, phone,
+    role, plan_tier, trial_ends_at, onboarding_step
+  )
+  values (
+    new.id,
+    new.raw_user_meta_data ->> 'full_name',
+    new.raw_user_meta_data ->> 'company_name',
+    new.raw_user_meta_data ->> 'phone',
+    'owner',
+    'trial',
+    now() + interval '14 days',
+    1   -- start onboarding at step 1 (category)
+  )
+  on conflict (id) do nothing;  -- safe if profile somehow already exists
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- ─── RPCs for the onboarding wizard ─────────────────────────────
+-- update_onboarding_step: called after each wizard step completes.
+-- Uses the user's JWT auth.uid() so it can't be faked for other users.
+create or replace function public.update_onboarding_step(step integer, data jsonb)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if step = 1 then
+    -- Shop category chosen
+    update public.profiles
+    set shop_category = data->>'shop_category',
+        onboarding_step = greatest(onboarding_step, 2),
+        updated_at = now()
+    where id = auth.uid();
+  elsif step = 2 then
+    -- First 3 inventory items added (client also inserts into products table)
+    update public.profiles
+    set onboarding_step = greatest(onboarding_step, 3),
+        updated_at = now()
+    where id = auth.uid();
+  elsif step = 3 then
+    -- WhatsApp number confirmed → onboarding done
+    update public.profiles
+    set whatsapp_number = data->>'whatsapp_number',
+        onboarding_step = 4,
+        updated_at = now()
+    where id = auth.uid();
+  end if;
+end;
+$$;
 
