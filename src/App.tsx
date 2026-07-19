@@ -33,6 +33,7 @@ import SettingsPage from './pages/Settings'
 import Support from './pages/Support'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
+import Onboarding from './pages/Onboarding'
 import SetupScreen from './components/SetupScreen'
 
 function App() {
@@ -53,6 +54,9 @@ function App() {
       <Route path="/case-study" element={<CaseStudy />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
+
+      {/* Onboarding wizard (auth required, handled inside the page) */}
+      <Route path="/app/onboarding" element={<Onboarding />} />
 
       {/* Protected app */}
       <Route

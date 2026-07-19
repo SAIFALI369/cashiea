@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { Sparkles, Mail, Lock, User, Building2, Loader2, ArrowLeft, Check } from 'lucide-react'
+import { Sparkles, Mail, Lock, Store, Phone, Loader2, ArrowLeft, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function Signup() {
@@ -9,22 +9,27 @@ export default function Signup() {
   const navigate = useNavigate()
 
   const [fullName, setFullName] = useState('')
-  const [companyName, setCompanyName] = useState('')
+  const [shopName, setShopName] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!fullName.trim() || !shopName.trim() || !phone.trim()) {
+      toast.error('Please fill in all fields')
+      return
+    }
     if (password.length < 6) {
       toast.error('Password must be at least 6 characters')
       return
     }
     setLoading(true)
     try {
-      await signUp(email, password, fullName, companyName)
-      toast.success('Account created! Welcome to BizAutomate AI 🎉')
-      navigate('/app', { replace: true })
+      await signUp(email, password, fullName, shopName, phone)
+      toast.success('Account created! Let\u2019s set up your shop \u2192')
+      navigate('/app/onboarding', { replace: true })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create account')
     } finally {
@@ -46,16 +51,16 @@ export default function Signup() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-white text-xl">BizAutomate AI</span>
+            <span className="font-bold text-white text-xl">BizAutomate</span>
           </div>
 
-          <h1 className="text-2xl font-bold text-white mb-1 text-center">Create your account</h1>
+          <h1 className="text-2xl font-bold text-white mb-1 text-center">Start your free trial</h1>
           <p className="text-slate-400 text-sm text-center mb-6">
-            Start free with 50 AI actions — no credit card required
+            14 days free, full access. No credit card required.
           </p>
 
-          <div className="flex items-center justify-center gap-2 mb-6">
-            {['Invoices', 'Reports', 'Data Entry', 'Summaries'].map((feat) => (
+          <div className="flex items-center justify-center gap-2 mb-6 flex-wrap">
+            {['POS', 'Invoices', 'Inventory', 'UPI', 'AI Assistant'].map((feat) => (
               <span key={feat} className="flex items-center gap-1 text-xs text-slate-400">
                 <Check className="w-3 h-3 text-brand-400" /> {feat}
               </span>
@@ -63,38 +68,53 @@ export default function Signup() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="label">Full Name</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                  <input
-                    type="text"
-                    required
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="input-field pl-10 text-sm"
-                    placeholder="Jane Doe"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="label">Company</label>
-                <div className="relative">
-                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                  <input
-                    type="text"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    className="input-field pl-10 text-sm"
-                    placeholder="Acme Inc"
-                  />
-                </div>
+            <div>
+              <label className="label">Your Name *</label>
+              <div className="relative">
+                <Store className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="input-field pl-11"
+                  placeholder="Ramesh Kumar"
+                />
               </div>
             </div>
 
             <div>
-              <label className="label">Email</label>
+              <label className="label">Shop / Business Name *</label>
+              <div className="relative">
+                <Store className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <input
+                  type="text"
+                  required
+                  value={shopName}
+                  onChange={(e) => setShopName(e.target.value)}
+                  className="input-field pl-11"
+                  placeholder="Sharma General Store"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="label">Phone Number *</label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <input
+                  type="tel"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="input-field pl-11"
+                  placeholder="+91 98765 43210"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="label">Email *</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                 <input
@@ -103,13 +123,13 @@ export default function Signup() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="input-field pl-11"
-                  placeholder="you@company.com"
+                  placeholder="you@shop.com"
                 />
               </div>
             </div>
 
             <div>
-              <label className="label">Password</label>
+              <label className="label">Password *</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                 <input
@@ -124,7 +144,7 @@ export default function Signup() {
             </div>
 
             <button type="submit" disabled={loading} className="btn-primary w-full py-3">
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Create Free Account'}
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Create Account \u2192 Start Setup'}
             </button>
           </form>
 

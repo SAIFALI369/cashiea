@@ -8,7 +8,7 @@ interface AuthContextValue {
   session: Session | null
   profile: Profile | null
   loading: boolean
-  signUp: (email: string, password: string, fullName: string, companyName?: string) => Promise<void>
+  signUp: (email: string, password: string, fullName: string, companyName?: string, phone?: string) => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
@@ -71,7 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string,
     fullName: string,
-    companyName?: string
+    companyName?: string,
+    phone?: string
   ) => {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -80,21 +81,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: {
           full_name: fullName,
           company_name: companyName || '',
+          phone: phone || '',
         },
       },
     })
 
     if (error) throw error
-    // Profile is auto-created via database trigger
+    // Profile + trial + onboarding_step=1 are all auto-created by the
+    // handle_new_user trigger (schema-v11) — nothing client-side to skip.
     if (data.user) {
-      // Grant 14-day Pro trial. Non-fatal: if the RPC isn't deployed yet,
-      // signup still succeeds (the trial just won't be active).
-      await new Promise((r) => setTimeout(r, 400))
-      try {
-        await supabase.rpc('grant_trial', { user_uuid: data.user.id })
-      } catch {
-        /* trial RPC missing — non-fatal */
-      }
+      await new Promise((r) => setTimeout(r, 500))
       await fetchProfile(data.user.id)
     }
   }
