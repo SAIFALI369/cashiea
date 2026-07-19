@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
+import QuickActionBar from './QuickActionBar'
 import { Menu } from 'lucide-react'
 
 export default function AppLayout() {
@@ -26,6 +27,9 @@ export default function AppLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Floating Quick-Action Bar — available on every page */}
+      <QuickActionBar />
     </div>
   )
 }
