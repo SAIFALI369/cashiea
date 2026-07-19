@@ -63,6 +63,7 @@ const EXPECTED_EDGE_FUNCTIONS = [
   'support-email',
   'invoice-reminders',
   'quickbooks-oauth',
+  'quick-tasks',
 ]
 
 const EXPECTED_SQL = ['schema.sql', 'schema-additions.sql', 'schema-v3.sql', 'schema-v4.sql', 'schema-v5.sql', 'schema-v6.sql', 'schema-v7.sql', 'schema-v8.sql', 'schema-v9.sql', 'schema-v10.sql']
