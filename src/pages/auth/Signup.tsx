@@ -14,6 +14,7 @@ export default function Signup() {
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [needsConfirmation, setNeedsConfirmation] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,13 +29,45 @@ export default function Signup() {
     setLoading(true)
     try {
       await signUp(email, password, fullName, shopName, phone)
-      toast.success('Account created! Let\u2019s set up your shop \u2192')
+      toast.success('Account created!')
       navigate('/app/onboarding', { replace: true })
     } catch (err) {
+      if (err instanceof Error && err.message === 'EMAIL_CONFIRMATION_REQUIRED') {
+        setNeedsConfirmation(true)
+        setLoading(false)
+        return
+      }
       toast.error(err instanceof Error ? err.message : 'Failed to create account')
     } finally {
       setLoading(false)
     }
+  }
+
+  if (needsConfirmation) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4 relative overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-brand-600/10 rounded-full blur-[100px]" />
+        <div className="relative w-full max-w-md">
+          <div className="card p-8 text-center">
+            <div className="w-16 h-16 rounded-full bg-brand-600/15 flex items-center justify-center mx-auto mb-4">
+              <Mail className="w-8 h-8 text-brand-400" />
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">Check your email</h2>
+            <p className="text-slate-400 text-sm mb-6">
+              We sent a confirmation link to <span className="text-white font-medium">{email}</span>.
+              Click it to activate your account, then sign in.
+            </p>
+            <div className="bg-amber-500/10 border border-amber-600/30 rounded-xl p-3 mb-4 text-left">
+              <p className="text-xs text-amber-200">
+                <strong>Tip:</strong> To skip this for testing, go to your Supabase Dashboard,
+                Authentication, Providers, Email, and turn off "Confirm email".
+              </p>
+            </div>
+            <Link to="/login" className="btn-primary w-full">Go to Sign In</Link>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
