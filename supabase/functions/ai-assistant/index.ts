@@ -8,9 +8,16 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
+import { callOpenRouter } from "../_shared/openrouter.ts";
 import { callGateway } from "../_shared/ai-gateway.ts";
 
 async function callAI(provider: string, systemPrompt: string, prompt: string): Promise<string> {
+  // OpenRouter — auto-fallback chain: Gemini -> Kimi K3 -> Llama -> any free model
+  if (provider === "openrouter") {
+    const r = await callOpenRouter(systemPrompt, prompt, { maxTokens: 1500 });
+    if (!r.ok) throw new Error(r.value);
+    return r.value;
+  }
   const callers: Record<string, (s: string, p: string) => Promise<{ ok: boolean; status: number; value: string }>> = {
     openai: async (s, p) => {
       const res = await fetch("https://api.openai.com/v1/chat/completions", {

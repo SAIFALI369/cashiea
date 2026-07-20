@@ -8,6 +8,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
+import { callOpenRouter } from "../_shared/openrouter.ts";
 import { callGateway, GATEWAY_DEFAULT_MODEL } from "../_shared/ai-gateway.ts";
 
 // ─── Provider calls (each returns {ok, status, value}) ──────────
@@ -75,6 +76,12 @@ async function callAnthropic(systemPrompt: string, prompt: string): Promise<{ ok
 }
 
 async function callProvider(provider: string, systemPrompt: string, prompt: string): Promise<string> {
+  // OpenRouter — auto-fallback chain: Gemini -> Kimi K3 -> Llama -> any free model
+  if (provider === "openrouter") {
+    const r = await callOpenRouter(systemPrompt, prompt, { maxTokens: 1500 });
+    if (!r.ok) throw new Error(r.value);
+    return r.value;
+  }
   // Vercel AI Gateway is OpenAI-compatible and routes to any provider/model
   if (provider === "vercel_gateway") {
     return withRetry(() => callGateway(systemPrompt, prompt), 2, 600);
