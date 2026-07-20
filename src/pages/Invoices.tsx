@@ -6,10 +6,11 @@ import {
   buildUpiLink, buildUpiQrUrl, buildInvoiceMessage,
   buildWhatsappLink, buildSmsLink, copyToClipboard, type UPIParams,
 } from '../lib/payments'
+import { generateInvoicePdf } from '../lib/invoice-pdf'
 import type { Invoice, InvoiceItem } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
-import { FileText, Sparkles, Loader2, Trash2, Plus, Smartphone, MessageCircle, Send, QrCode, Check, Clock, Copy, Zap, X } from 'lucide-react'
+import { FileText, Sparkles, Loader2, Trash2, Plus, Smartphone, MessageCircle, Send, QrCode, Check, Clock, Copy, Zap, X, Download, FileDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const statusColor: Record<string, string> = {
@@ -155,6 +156,20 @@ export default function Invoices() {
     else copyToClipboard(msg).then((ok) => ok ? toast.success('Copied!') : toast.error('Copy failed'))
   }
 
+  // Download a professional PDF invoice (generated in-browser via jsPDF)
+  const [downloadingPdf, setDownloadingPdf] = useState<string | null>(null)
+  const downloadPdf = async (inv: Invoice) => {
+    setDownloadingPdf(inv.id)
+    try {
+      await generateInvoicePdf(inv, profile)
+      toast.success('PDF downloaded')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'PDF generation failed')
+    } finally {
+      setDownloadingPdf(null)
+    }
+  }
+
   // Stats
   const unpaid = invoices.filter((i) => i.status !== 'paid' && i.status !== 'draft')
   const unpaidTotal = unpaid.reduce((s, i) => s + Number(i.total), 0)
@@ -256,6 +271,9 @@ export default function Invoices() {
               {/* Actions */}
               <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-800">
                 <button onClick={() => setShareInv(inv)} className="btn-ghost text-xs"><QrCode className="w-3.5 h-3.5" /> Pay / Share</button>
+                <button onClick={() => downloadPdf(inv)} disabled={downloadingPdf === inv.id} className="btn-ghost text-xs">
+                  {downloadingPdf === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />} PDF
+                </button>
                 <button onClick={() => share('whatsapp', inv)} className="btn-ghost text-xs text-green-400"><MessageCircle className="w-3.5 h-3.5" /> WhatsApp</button>
                 {inv.status !== 'paid' && inv.status !== 'draft' && (
                   <button onClick={() => markPaid(inv)} className="btn-ghost text-xs text-green-400"><Check className="w-3.5 h-3.5" /> Mark paid</button>
@@ -293,10 +311,14 @@ export default function Invoices() {
 
             {/* Share channels */}
             <p className="text-xs text-slate-500 mb-2 mt-2">Send this invoice</p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               <button onClick={() => share('whatsapp', shareInv)} className="p-3 rounded-xl bg-green-500/10 text-green-400 hover:bg-green-500/20 flex flex-col items-center gap-1"><MessageCircle className="w-5 h-5" /><span className="text-xs">WhatsApp</span></button>
               <button onClick={() => share('sms', shareInv)} className="p-3 rounded-xl bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 flex flex-col items-center gap-1"><MessageCircle className="w-5 h-5" /><span className="text-xs">SMS</span></button>
               <button onClick={() => share('copy', shareInv)} className="p-3 rounded-xl bg-slate-700/50 text-slate-300 hover:bg-slate-700 flex flex-col items-center gap-1"><Copy className="w-5 h-5" /><span className="text-xs">Copy</span></button>
+              <button onClick={() => downloadPdf(shareInv)} disabled={downloadingPdf === shareInv.id} className="p-3 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 flex flex-col items-center gap-1">
+                {downloadingPdf === shareInv.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileDown className="w-5 h-5" />}
+                <span className="text-xs">PDF</span>
+              </button>
             </div>
           </div>
         </div>
