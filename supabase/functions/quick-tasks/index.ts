@@ -15,9 +15,16 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
+import { callOpenRouter } from "../_shared/openrouter.ts";
 import { callGateway, GATEWAY_DEFAULT_MODEL } from "../_shared/ai-gateway.ts";
 
 async function callAI(provider: string, systemPrompt: string, prompt: string, maxTokens = 1000): Promise<string> {
+  // OpenRouter — auto-fallback chain: Gemini -> Kimi K3 -> Llama -> any free model
+  if (provider === "openrouter") {
+    const r = await callOpenRouter(systemPrompt, prompt, { maxTokens: 1500 });
+    if (!r.ok) throw new Error(r.value);
+    return r.value;
+  }
   // Prefer the Vercel AI Gateway if configured, else fall back to the direct provider
   const gatewayKey = Deno.env.get("AI_GATEWAY_API_KEY");
   if (gatewayKey) {

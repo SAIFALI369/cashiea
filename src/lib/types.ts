@@ -7,7 +7,7 @@ export interface Profile {
   avatar_url: string | null
   plan: 'free' | 'starter' | 'pro' | 'enterprise'
   plan_tier: 'free' | 'trial' | 'paid'
-  ai_provider: 'openai' | 'gemini' | 'anthropic' | 'vercel_gateway'
+  ai_provider: 'openai' | 'gemini' | 'anthropic' | 'vercel_gateway' | 'openrouter'
   api_usage_count: number
   api_usage_limit: number
   trial_ends_at: string | null

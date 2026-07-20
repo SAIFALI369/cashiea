@@ -7,7 +7,7 @@
 import { supabase, AI_FUNCTION_URL } from '../supabase'
 
 export type TaskType = 'invoice' | 'report' | 'extract' | 'summary' | 'email' | 'sentiment'
-export type AIProvider = 'openai' | 'gemini' | 'anthropic' | 'vercel_gateway'
+export type AIProvider = 'openai' | 'gemini' | 'anthropic' | 'vercel_gateway' | 'openrouter'
 
 export interface AICallParams {
   task_type: TaskType
