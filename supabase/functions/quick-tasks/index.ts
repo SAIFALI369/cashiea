@@ -78,9 +78,18 @@ Deno.serve(async (req) => {
     let result = "";
     let meta: Record<string, unknown> = {};
 
-    // ─── Helper to grab today's data ───────────────────────────────
-    const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
-    const { data: todayTx } = await supabase.from("transactions").select("total,items,payment_method").eq("user_id", user.id).eq("status", "completed").gte("created_at", todayStart);
+    // ─── Helper to grab data for a given IST day (defaults to today) ──
+    // target_date lets owners rerun daily_closing for a past date.
+    const targetDate = body.target_date || null;
+    const dayStart = targetDate
+      ? new Date(targetDate + "T00:00:00+05:30").toISOString()
+      : new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+    const dayEnd = targetDate
+      ? new Date(targetDate + "T23:59:59+05:30").toISOString()
+      : new Date().toISOString();
+    let txQuery = supabase.from("transactions").select("total,items,payment_method").eq("user_id", user.id).eq("status", "completed").gte("created_at", dayStart);
+    if (targetDate) txQuery = txQuery.lte("created_at", dayEnd);
+    const { data: todayTx } = await txQuery;
     const { data: allProducts } = await supabase.from("products").select("name,sku,stock_quantity,low_stock_threshold,price,cost").eq("user_id", user.id);
 
     if (mode === "low_stock_alert") {
@@ -102,7 +111,7 @@ Deno.serve(async (req) => {
       meta = { revenue, orders: (todayTx || []).length, itemCount, byMethod };
       result = await callAI(provider,
         `Generate a clean DAILY CLOSING REPORT for an Indian retail shop. Be warm, professional, and concise. Format with clear sections. End with a one-line summary. Use ₹ symbol.`,
-        `Today's data:\n- Total revenue: ₹${revenue.toFixed(2)}\n- Orders: ${(todayTx || []).length}\n- Items sold: ${itemCount}\n- By payment method: ${JSON.stringify(byMethod)}\n- Shop name: ${profile?.company_name || profile?.full_name || 'My Shop'}`,
+        `Target date: ${targetDate || 'today'} data:\n- Total revenue: ₹${revenue.toFixed(2)}\n- Orders: ${(todayTx || []).length}\n- Items sold: ${itemCount}\n- By payment method: ${JSON.stringify(byMethod)}\n- Shop name: ${profile?.company_name || profile?.full_name || 'My Shop'}`,
         500);
     }
 
