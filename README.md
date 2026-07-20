@@ -139,7 +139,7 @@ The app supports 5 AI providers (pick in Settings):
 
 ---
 
-## 🐛 Troubleshooting
+##  nothing
 
 | Problem | Fix |
 |---------|-----|
