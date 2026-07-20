@@ -405,7 +405,7 @@ export const PLANS = {
   },
   starter: {
     name: 'Starter',
-    price: 19,
+    price: 499,
     usageLimit: 500,
     features: [
       '500 AI actions per month',
@@ -417,7 +417,7 @@ export const PLANS = {
   },
   pro: {
     name: 'Pro',
-    price: 49,
+    price: 999,
     usageLimit: 2000,
     features: [
       '2,000 AI actions per month',
@@ -429,7 +429,7 @@ export const PLANS = {
   },
   enterprise: {
     name: 'Enterprise',
-    price: 149,
+    price: 2999,
     usageLimit: 10000,
     features: [
       '10,000 AI actions per month',

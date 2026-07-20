@@ -117,7 +117,7 @@ export default function Landing() {
               <div key={key} className={`card p-6 relative ${popular ? 'border-brand-600 ring-1 ring-brand-600/50' : ''}`}>
                 {popular && <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-brand-600 text-white text-xs font-bold whitespace-nowrap">Most Popular</div>}
                 <h3 className="font-bold text-white text-lg">{plan.name}</h3>
-                <div className="my-4"><span className="text-4xl font-extrabold text-white">${plan.price}</span><span className="text-slate-500 text-sm">/mo</span></div>
+                <div className="my-4"><span className="text-4xl font-extrabold text-white">₹{plan.price}</span><span className="text-slate-500 text-sm">/mo</span></div>
                 <ul className="space-y-2.5 mb-6">
                   {plan.features.map((feat) => (
                     <li key={feat} className="flex items-start gap-2 text-sm text-slate-400"><Check className="w-4 h-4 text-brand-400 mt-0.5 flex-shrink-0" />{feat}</li>

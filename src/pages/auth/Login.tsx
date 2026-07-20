@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import { Sparkles, Mail, Lock, Loader2, ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -13,6 +14,22 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+
+  const [resetting, setResetting] = useState(false)
+
+  const handleForgotPassword = async () => {
+    if (!email) { toast.error('Enter your email first'); return }
+    setResetting(true)
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email)
+      if (error) throw error
+      toast.success('Password reset link sent! Check your email.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Reset failed')
+    } finally {
+      setResetting(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -84,7 +101,12 @@ export default function Login() {
             </button>
           </form>
 
-          <p className="text-sm text-slate-400 text-center mt-6">
+          <div className="text-center mt-4">
+            <button type="button" onClick={handleForgotPassword} disabled={resetting} className="text-xs text-slate-500 hover:text-brand-400 transition-colors">
+              {resetting ? 'Sending...' : 'Forgot password?'}
+            </button>
+          </div>
+          <p className="text-sm text-slate-400 text-center mt-4">
             Don't have an account?{' '}
             <Link to="/signup" className="text-brand-400 hover:text-brand-300 font-semibold">
               Sign up free
