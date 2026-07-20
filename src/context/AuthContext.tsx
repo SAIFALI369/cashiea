@@ -90,6 +90,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Profile + trial + onboarding_step=1 are all auto-created by the
     // handle_new_user trigger (schema-v11) — nothing client-side to skip.
     if (data.user) {
+      // If email confirmation is enabled, there's no session yet — the
+      // user needs to click the link in their email. We don't try to
+      // fetch the profile (no session = RLS would fail).
+      if (!data.session) {
+        throw new Error('EMAIL_CONFIRMATION_REQUIRED')
+      }
       await new Promise((r) => setTimeout(r, 500))
       await fetchProfile(data.user.id)
     }
