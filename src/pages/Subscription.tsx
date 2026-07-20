@@ -143,7 +143,7 @@ export default function Subscription() {
 
               <h3 className="font-bold text-white text-lg">{plan.name}</h3>
               <div className="my-4">
-                <span className="text-4xl font-extrabold text-white">${plan.price}</span>
+                <span className="text-4xl font-extrabold text-white">₹{plan.price}</span>
                 <span className="text-slate-500 text-sm">/mo</span>
               </div>
 
