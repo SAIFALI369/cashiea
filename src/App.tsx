@@ -24,6 +24,7 @@ import AIAssistant from './pages/AIAssistant'
 import Team from './pages/Team'
 import AIBrain from './pages/AIBrain'
 import Integrations from './pages/Integrations'
+import FailedJobs from './pages/FailedJobs'
 import ActivityLogs from './pages/ActivityLogs'
 import ApiKeys from './pages/ApiKeys'
 import Compliance from './pages/Compliance'
@@ -87,6 +88,7 @@ function App() {
         <Route path="campaigns/new" element={<CampaignBuilder />} />
         <Route path="campaigns/:id" element={<CampaignBuilder />} />
         <Route path="activity" element={<ActivityLogs />} />
+        <Route path="failed-jobs" element={<FailedJobs />} />
         <Route path="api-keys" element={<ApiKeys />} />
         <Route path="compliance" element={<Compliance />} />
         <Route path="subscription" element={<Subscription />} />

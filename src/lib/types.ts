@@ -377,6 +377,19 @@ export interface TeamMember {
   created_at: string
 }
 
+// ─── Failed jobs (admin view) ───────────────────────────────────
+export interface FailedJob {
+  id: string
+  job_type: string
+  user_id: string
+  payload: Record<string, unknown>
+  error: string | null
+  retry_count: number
+  status: 'pending' | 'retried' | 'dead'
+  last_attempted_at: string | null
+  created_at: string
+}
+
 // ─── Subscription plans ─────────────────────────────────────────
 export const PLANS = {
   free: {
