@@ -1,5 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import { PLANS } from '../lib/types'
 import {
   LayoutDashboard,
@@ -13,6 +15,7 @@ import {
   Brain,
   Plug,
   UsersRound,
+  AlertOctagon,
   FileText,
   BarChart3,
   Database,
@@ -32,7 +35,15 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 
-const navSections = [
+interface NavItem {
+  to: string
+  label: string
+  icon: typeof LayoutDashboard
+  end?: boolean
+  badge?: boolean
+}
+
+const navSections: { label: string; items: NavItem[] }[] = [
   {
     label: 'Tools',
     items: [
@@ -63,6 +74,7 @@ const navSections = [
     label: 'Account',
     items: [
       { to: '/app/team', label: 'Team', icon: UsersRound },
+      { to: '/app/failed-jobs', label: 'Failed Jobs', icon: AlertOctagon, badge: true },
       { to: '/app/support', label: 'Support', icon: LifeBuoy },
       { to: '/app/activity', label: 'Activity Logs', icon: History },
       { to: '/app/api-keys', label: 'API Keys', icon: Key },
@@ -82,6 +94,24 @@ export default function Sidebar({
 }) {
   const { profile, signOut } = useAuth()
   const navigate = useNavigate()
+  const [failedCount, setFailedCount] = useState(0)
+
+  // Live count of pending failed jobs — powers the red badge
+  useEffect(() => {
+    if (!profile) return
+    const fetchCount = async () => {
+      const { count } = await supabase
+        .from('failed_jobs')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', profile.id)
+        .eq('status', 'pending')
+      setFailedCount(count || 0)
+    }
+    fetchCount()
+    // Poll every 60s while the sidebar is open
+    const interval = setInterval(fetchCount, 60000)
+    return () => clearInterval(interval)
+  }, [profile])
 
   const handleSignOut = async () => {
     await signOut()
@@ -145,8 +175,14 @@ export default function Sidebar({
                       )
                     }
                   >
-                    <item.icon className="w-5 h-5" />
-                    {item.label}
+                    <item.icon className={clsx('w-5 h-5', item.badge && failedCount > 0 && 'text-red-400')} />
+                    <span className="flex-1">{item.label}</span>
+                    {/* Live red badge for failed jobs */}
+                    {item.badge && failedCount > 0 && (
+                      <span className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center animate-pulse">
+                        {failedCount > 9 ? '9+' : failedCount}
+                      </span>
+                    )}
                   </NavLink>
                 ))}
               </div>

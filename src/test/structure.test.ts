@@ -44,6 +44,7 @@ const EXPECTED_PAGES = [
   'Privacy',
   'Terms',
   'Team',
+  'FailedJobs',
   'Onboarding',
   'Landing',
 ]
@@ -106,6 +107,7 @@ describe('App.tsx routes every page', () => {
   it('imports SettingsPage', () => expect(app).toMatch(/import SettingsPage/))
   it('imports Support', () => expect(app).toMatch(/import Support/))
   it('imports Team', () => expect(app).toMatch(/import Team/))
+  it('imports FailedJobs', () => expect(app).toMatch(/import FailedJobs/))
   it('imports Privacy', () => expect(app).toMatch(/import Privacy/))
   it('imports Terms', () => expect(app).toMatch(/import Terms/))
   it('imports Landing', () => expect(app).toMatch(/import Landing/))
@@ -126,6 +128,7 @@ describe('App.tsx routes every page', () => {
   it('has a public terms route', () => expect(app).toMatch(/path="\/terms"/))
   it('has an app support route', () => expect(app).toMatch(/path="support"/))
   it('has a team route', () => expect(app).toMatch(/path="team"/))
+  it('has a failed-jobs route', () => expect(app).toMatch(/path="failed-jobs"/))
   it('has a brain route', () => expect(app).toMatch(/path="brain"/))
   it('has an integrations route', () => expect(app).toMatch(/path="integrations"/))
 })
@@ -156,6 +159,7 @@ describe('Sidebar links to every app page', () => {
     '/app/settings',
     '/app/support',
     '/app/team',
+    '/app/failed-jobs',
   ]
   for (const route of routes) {
     it(`links to ${route}`, () => {
