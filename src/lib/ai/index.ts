@@ -169,7 +169,7 @@ export async function syncGoogleSource(provider: 'gmail' | 'google_sheets', spre
  */
 export type QuickTaskMode = 'low_stock_alert' | 'daily_closing' | 'hindi_bot' | 'gst_invoice_voice' | 'custom'
 
-export async function runQuickTask(mode: QuickTaskMode, text?: string): Promise<{ result: string; mode: string; meta: any }> {
+export async function runQuickTask(mode: QuickTaskMode, text?: string, extra?: Record<string, unknown>): Promise<{ result: string; mode: string; meta: any }> {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('You must be logged in.')
 
@@ -181,7 +181,7 @@ export async function runQuickTask(mode: QuickTaskMode, text?: string): Promise<
       Authorization: `Bearer ${session.access_token}`,
       apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
     },
-    body: JSON.stringify({ mode, text }),
+    body: JSON.stringify({ mode, text, ...extra }),
   })
   const data = await res.json().catch(() => ({ error: 'Invalid response' }))
   if (!res.ok) throw new Error(data?.error || `Quick task failed (HTTP ${res.status})`)
