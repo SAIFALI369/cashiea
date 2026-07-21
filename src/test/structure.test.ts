@@ -45,6 +45,7 @@ const EXPECTED_PAGES = [
   'Terms',
   'Team',
   'FailedJobs',
+  'ConnectApps',
   'Onboarding',
   'Landing',
 ]
@@ -67,9 +68,10 @@ const EXPECTED_EDGE_FUNCTIONS = [
   'quickbooks-oauth',
   'quick-tasks',
   'daily-reports',
+  'integrations-api',
 ]
 
-const EXPECTED_SQL = ['schema.sql', 'schema-additions.sql', 'schema-v3.sql', 'schema-v4.sql', 'schema-v5.sql', 'schema-v6.sql', 'schema-v7.sql', 'schema-v8.sql', 'schema-v9.sql', 'schema-v10.sql', 'schema-v11.sql', 'schema-v12.sql', 'schema-v13.sql']
+const EXPECTED_SQL = ['schema.sql', 'schema-additions.sql', 'schema-v3.sql', 'schema-v4.sql', 'schema-v5.sql', 'schema-v6.sql', 'schema-v7.sql', 'schema-v8.sql', 'schema-v9.sql', 'schema-v10.sql', 'schema-v11.sql', 'schema-v12.sql', 'schema-v13.sql', 'schema-v14.sql']
 
 describe('page files exist', () => {
   for (const page of EXPECTED_PAGES) {
@@ -108,6 +110,7 @@ describe('App.tsx routes every page', () => {
   it('imports Support', () => expect(app).toMatch(/import Support/))
   it('imports Team', () => expect(app).toMatch(/import Team/))
   it('imports FailedJobs', () => expect(app).toMatch(/import FailedJobs/))
+  it('imports ConnectApps', () => expect(app).toMatch(/import ConnectApps/))
   it('imports Privacy', () => expect(app).toMatch(/import Privacy/))
   it('imports Terms', () => expect(app).toMatch(/import Terms/))
   it('imports Landing', () => expect(app).toMatch(/import Landing/))

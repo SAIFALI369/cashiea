@@ -74,6 +74,7 @@ Deno.serve(async (req) => {
     if (action === "authorize") {
       const userId = url.searchParams.get("user");
       const provider = url.searchParams.get("provider") || "gmail";
+      const permission = url.searchParams.get("permission") || "read_only";
       if (!userId) {
         return new Response(JSON.stringify({ error: "Missing user id" }), {
           status: 400, headers: { ...cors(), "Content-Type": "application/json" },
@@ -87,7 +88,7 @@ Deno.serve(async (req) => {
         scope: SCOPES,
         access_type: "offline",      // request a refresh token
         prompt: "consent",           // force consent so refresh token is returned
-        state: `${userId}|${provider}`,
+        state: `${userId}|${provider}|${permission}`,
       });
       return Response.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`, 302);
     }
@@ -96,7 +97,7 @@ Deno.serve(async (req) => {
     if (action === "callback") {
       const code = url.searchParams.get("code");
       const state = url.searchParams.get("state") || "";
-      const [userId, provider] = state.split("|");
+      const [userId, provider, permission] = state.split("|");
 
       if (!code || !userId) {
         return Response.redirect(`${APP_URL}/app/integrations?error=missing_code`, 302);
@@ -155,10 +156,33 @@ Deno.serve(async (req) => {
       }, { onConflict: "user_id,provider" });
 
       if (error) {
-        return Response.redirect(`${APP_URL}/app/integrations?error=db&detail=${encodeURIComponent(error.message)}`, 302);
+        return Response.redirect(`${APP_URL}/app/connect-apps?error=db&detail=${encodeURIComponent(error.message)}`, 302);
       }
 
-      return Response.redirect(`${APP_URL}/app/integrations?connected=${provider}`, 302);
+      // Also store in connected_apps (the new, richer data model)
+      const appSlug = provider === "google_sheets" ? "google-sheets" : provider;
+      const appName = provider === "google_sheets" ? "Google Sheets" : "Gmail";
+      await supabase.from("connected_apps").upsert({
+        user_id: userId,
+        app_slug: appSlug,
+        app_name: appName,
+        provider_email: connectedEmail,
+        permission_mode: permission || "read_only",
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token || null,
+        token_expires_at: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000).toISOString() : null,
+        scopes_granted: (tokens.scope || SCOPES).split(" "),
+        status: "connected",
+        last_synced_at: new Date().toISOString(),
+      }, { onConflict: "user_id,app_slug" });
+
+      // Audit log
+      await supabase.rpc("log_integration_event", {
+        p_user_id: userId, p_app_slug: appSlug, p_action_type: "oauth_success",
+        p_metadata: { email: connectedEmail, permission_mode: permission },
+      });
+
+      return Response.redirect(`${APP_URL}/app/connect-apps?connected=${appSlug}`, 302);
     }
 
     return new Response(JSON.stringify({ error: "Unknown action. Use ?action=authorize or ?action=callback" }), {

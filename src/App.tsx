@@ -24,6 +24,7 @@ import AIAssistant from './pages/AIAssistant'
 import Team from './pages/Team'
 import AIBrain from './pages/AIBrain'
 import Integrations from './pages/Integrations'
+import ConnectApps from './pages/ConnectApps'
 import FailedJobs from './pages/FailedJobs'
 import ActivityLogs from './pages/ActivityLogs'
 import ApiKeys from './pages/ApiKeys'
@@ -79,6 +80,7 @@ function App() {
         <Route path="assistant" element={<AIAssistant />} />
         <Route path="brain" element={<AIBrain />} />
         <Route path="integrations" element={<Integrations />} />
+        <Route path="connect-apps" element={<ConnectApps />} />
         <Route path="invoices" element={<Invoices />} />
         <Route path="reports" element={<Reports />} />
         <Route path="data-entry" element={<DataEntryPage />} />

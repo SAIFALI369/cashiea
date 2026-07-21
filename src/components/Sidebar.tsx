@@ -85,6 +85,7 @@ const ADVANCED_ITEMS: NavItem[] = [
   { to: '/app/email-assistant', label: 'Retargeting Emails', icon: Mail },
   { to: '/app/campaigns', label: 'Campaigns', icon: Megaphone },
   { to: '/app/integrations', label: 'Integrations', icon: Plug },
+  { to: '/app/connect-apps', label: 'Connect Apps', icon: Zap },
 ]
 
 const SETTINGS_ITEMS: NavItem[] = [
