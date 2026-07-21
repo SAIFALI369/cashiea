@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -9,7 +9,7 @@
     @apply box-border;
   }
   body {
-    @apply bg-slate-950 text-slate-100 font-sans antialiased;
+    @apply font-sans antialiased;
   }
 }
 
