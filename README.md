@@ -1,4 +1,4 @@
-# 🛒 BizAutomate — POS, CRM & AI Automation for Retail
+# cashiea — POS, CRM & AI Automation for Retail
 
 > **The all-in-one cashier & customer-growth platform for Indian retail businesses.** Ring up sales, manage inventory, track customers, generate GST invoices with UPI payment links, send WhatsApp reports, and let AI handle the busywork.
 
