@@ -79,9 +79,9 @@ export default function Login() {
   )
 
   return (
-    <div className="min-h-screen flex" style={{ background: C.bg }}>
+    <div className="flex" style={{ background: C.bg, minHeight: '100dvh' }}>
       {/* ═══ LEFT: Brand Panel ═══ */}
-      <div className="hidden lg:flex flex-col justify-center w-[45%] p-16 relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${C.blue} 0%, ${C.blueDark} 100%)` }}>
+      <div className="hidden lg:flex flex-col justify-center w-[45%] p-16 relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${C.blue} 0%, ${C.blueDark} 100%)`, minHeight: '100dvh' }}>
         {/* Glow orbs */}
         <div className="absolute top-10 right-10 w-80 h-80 rounded-full" style={{ background: `radial-gradient(circle, ${C.blueLight}20 0%, transparent 70%)` }} />
         <div className="absolute bottom-10 left-10 w-60 h-60 rounded-full" style={{ background: `radial-gradient(circle, white 08 0%, transparent 70%)` }} />
@@ -115,7 +115,7 @@ export default function Login() {
       </div>
 
       {/* ═══ RIGHT: Form ═══ */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-12">
+      <div className="flex-1 flex items-start justify-center p-6 sm:p-12 py-12">
         <div className="w-full max-w-[420px]" style={{ animation: 'fadeInUp 0.6s ease-out' }}>
           <style>{`@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
 

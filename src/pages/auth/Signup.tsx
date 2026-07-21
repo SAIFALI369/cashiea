@@ -94,7 +94,7 @@ export default function Signup() {
 
   if (needsConfirmation) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6" style={{ background: C.bg }}>
+      <div className="flex items-center justify-center p-6" style={{ background: C.bg, minHeight: '100dvh' }}>
         <div className="max-w-md w-full text-center" style={{ animation: 'fadeIn 0.5s ease-out' }}>
           <style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
           <div className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center" style={{ background: C.blue + '12' }}><Mail className="w-10 h-10" style={{ color: C.blue }} /></div>
@@ -110,9 +110,9 @@ export default function Signup() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: C.bg }}>
+    <div className="flex" style={{ background: C.bg, minHeight: '100dvh' }}>
       {/* ═══ LEFT: Brand Panel ═══ */}
-      <div className="hidden lg:flex flex-col justify-center w-[42%] p-16 relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${C.blueDark} 0%, ${C.blue} 100%)` }}>
+      <div className="hidden lg:flex flex-col justify-center w-[42%] p-16 relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${C.blueDark} 0%, ${C.blue} 100%)`, minHeight: '100dvh' }}>
         <div className="absolute top-20 right-0 w-96 h-96 rounded-full" style={{ background: `radial-gradient(circle, ${C.blueLight}25 0%, transparent 70%)` }} />
         <div className="relative max-w-md">
           <div className="flex items-center gap-3 mb-12">
@@ -153,7 +153,7 @@ export default function Signup() {
       </div>
 
       {/* ═══ RIGHT: Signup Form ═══ */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-10 overflow-y-auto">
+      <div className="flex-1 flex items-start justify-center p-6 sm:p-10 py-10 overflow-y-auto">
         <div className="w-full max-w-[460px] py-8" style={{ animation: 'fadeInUp 0.6s ease-out' }}>
           <style>{`@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
 
