@@ -24,11 +24,12 @@
 // ════════════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY } from "../_shared/env.ts";
 
 const CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID");
 const CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET");
 const APP_URL = Deno.env.get("APP_URL") || "http://localhost:5173";
-const REDIRECT_URI = `${Deno.env.get("SUPABASE_URL")!.replace(".supabase.co", ".functions.supabase.co")}/google-oauth`;
+const REDIRECT_URI = `${SUPABASE_URL!.replace(".supabase.co", ".functions.supabase.co")}/google-oauth`;
 
 // Scopes: Gmail read (messages) + Sheets read + user email/profile
 const SCOPES = [
@@ -51,8 +52,8 @@ Deno.serve(async (req) => {
 
   // Service-role client for writing integration state
   const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    SUPABASE_URL!,
+    SUPABASE_SERVICE_ROLE_KEY!
   );
 
   const url = new URL(req.url);

@@ -15,49 +15,9 @@
 // ════════════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
-import { callOpenRouter } from "../_shared/openrouter.ts";
-import { callGateway } from "../_shared/ai-gateway.ts";
-
-async function callAI(provider: string, systemPrompt: string, prompt: string, maxTokens = 1400): Promise<string> {
-  // OpenRouter — auto-fallback chain: Gemini -> Kimi K3 -> Llama -> any free model
-  if (provider === "openrouter") {
-    const r = await callOpenRouter(systemPrompt, prompt, { maxTokens: 1500 });
-    if (!r.ok) throw new Error(r.value);
-    return r.value;
-  }
-  const callers: Record<string, (s: string, p: string) => Promise<{ ok: boolean; status: number; value: string }>> = {
-    openai: async (s, p) => {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
-        body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: s }, { role: "user", content: p }], temperature: 0.5, max_tokens: maxTokens }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).choices[0].message.content };
-    },
-    gemini: async (s, p) => {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${Deno.env.get("GEMINI_API_KEY")}`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system_instruction: { parts: [{ text: s }] }, contents: [{ parts: [{ text: p }] }], generationConfig: { temperature: 0.5, maxOutputTokens: maxTokens } }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).candidates[0].content.parts[0].text };
-    },
-    anthropic: async (s, p) => {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!, "anthropic-version": "2023-06-01" },
-        body: JSON.stringify({ model: "claude-3-5-sonnet-20241022", max_tokens: maxTokens, system: s, messages: [{ role: "user", content: p }] }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).content[0].text };
-    },
-  };
-  // Vercel AI Gateway is OpenAI-compatible and routes to any provider/model
-  if (provider === "vercel_gateway") {
-    return withRetry(() => callGateway(systemPrompt, prompt), 2, 600);
-  }
-  return withRetry(() => callers[provider || "openai"](systemPrompt, prompt), 2, 600);
-}
+import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY } from "../_shared/env.ts";
+import { corsHeaders, json } from "../_shared/retry.ts";
+import { callAI } from "../_shared/ai.ts";
 
 // ─── Gather a snapshot of the business ──────────────────────────
 async function gatherSnapshot(supabase: any, userId: string) {
@@ -103,9 +63,12 @@ async function gatherSnapshot(supabase: any, userId: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: req.headers.get("Authorization")! } } });
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, { global: { headers: { Authorization: req.headers.get("Authorization")! } } });
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) return json({ error: "Unauthorized" }, 401);
+
+    // Service-role client for OpenRouter key decryption.
+    const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
     const { data: profile } = await supabase.from("profiles").select("ai_provider, api_usage_count, api_usage_limit, trial_ends_at").eq("id", user.id).single();
     const onTrial = profile?.trial_ends_at && new Date(profile.trial_ends_at) > new Date();
@@ -146,7 +109,7 @@ Deno.serve(async (req) => {
 Return ONLY valid JSON: {"business_type":"one short phrase","summary":"3-5 sentence overview of what the business is, what it sells, who its customers are, and how it's doing","key_facts":[{"fact":"...","source":"data|owner|integrations","confidence":"high|medium|low"}]}.
 Key facts should be specific, useful, and actionable (e.g. "Top product is X", "60% of customers are dormant", "Margin averages Y%"). No markdown.`;
       const prompt = `Business data snapshot:\n${JSON.stringify({ ...snap, existingMemory: snap.existingMemory?.summary }, null, 1)}${manualNotes}${integrationList}`;
-      result = await callAI(provider, sys, prompt, 1000);
+      result = await callAI(supabaseAdmin, user.id, sys, prompt, { maxTokens: 1000 });
 
       // Parse + persist the memory
       const cleaned = result.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
@@ -174,7 +137,7 @@ Key facts should be specific, useful, and actionable (e.g. "Top product is X", "
 Return ONLY valid JSON: {"predictions":[{"prediction_type":"reorder|followup|invoice|offer|alert|expense|custom","title":"short action title","description":"what to do","rationale":"why (based on the data)","priority":"low|medium|high|urgent"}]}.
 Base each prediction on real signals in the data (low stock, dormant customers, overdue payments, trends). Do NOT propose generic advice — be specific with names and numbers.`;
       const prompt = `Business data snapshot:\n${JSON.stringify(snap, null, 1)}`;
-      result = await callAI(provider, sys, prompt, 1200);
+      result = await callAI(supabaseAdmin, user.id, sys, prompt, { maxTokens: 1200 });
 
       // Parse + insert predictions as pending
       const cleaned = result.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();

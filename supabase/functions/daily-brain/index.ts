@@ -14,55 +14,15 @@
 // ════════════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { withRetry } from "../_shared/retry.ts";
-import { callOpenRouter } from "../_shared/openrouter.ts";
-import { callGateway } from "../_shared/ai-gateway.ts";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY } from "../_shared/env.ts";
+import { json } from "../_shared/retry.ts";
+import { callAI } from "../_shared/ai.ts";
 import { refreshGoogleToken, fetchGmail } from "../_shared/google.ts";
 
 const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  SUPABASE_URL!,
+  SUPABASE_SERVICE_ROLE_KEY!
 );
-
-async function callAI(provider: string, systemPrompt: string, prompt: string, maxTokens = 1000): Promise<string> {
-  // OpenRouter — auto-fallback chain: Gemini -> Kimi K3 -> Llama -> any free model
-  if (provider === "openrouter") {
-    const r = await callOpenRouter(systemPrompt, prompt, { maxTokens: 1500 });
-    if (!r.ok) throw new Error(r.value);
-    return r.value;
-  }
-  const callers: Record<string, (s: string, p: string) => Promise<{ ok: boolean; status: number; value: string }>> = {
-    openai: async (s, p) => {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
-        body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: s }, { role: "user", content: p }], temperature: 0.5, max_tokens: maxTokens }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).choices[0].message.content };
-    },
-    gemini: async (s, p) => {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${Deno.env.get("GEMINI_API_KEY")}`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system_instruction: { parts: [{ text: s }] }, contents: [{ parts: [{ text: p }] }], generationConfig: { temperature: 0.5, maxOutputTokens: maxTokens } }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).candidates[0].content.parts[0].text };
-    },
-    anthropic: async (s, p) => {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!, "anthropic-version": "2023-06-01" },
-        body: JSON.stringify({ model: "claude-3-5-sonnet-20241022", max_tokens: maxTokens, system: s, messages: [{ role: "user", content: p }] }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).content[0].text };
-    },
-  };
-  // Vercel AI Gateway is OpenAI-compatible and routes to any provider/model
-  if (provider === "vercel_gateway") {
-    return withRetry(() => callGateway(systemPrompt, prompt), 1, 800);
-  }
-  return withRetry(() => callers[provider || "openai"](systemPrompt, prompt), 1, 800);
-}
 
 async function gatherSnapshot(userId: string) {
   const now = new Date();
@@ -112,7 +72,7 @@ async function deliverBriefing(to: string, subject: string, markdown: string): P
 Deno.serve(async (req) => {
   // Service-role invocation only (from pg_cron or manual trigger)
   const authHeader = req.headers.get("authorization") || "";
-  const expectedKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const expectedKey = SUPABASE_SERVICE_ROLE_KEY;
   if (!expectedKey || !authHeader.endsWith(expectedKey)) {
     return new Response(JSON.stringify({ error: "Unauthorized — service-role only" }), {
       status: 401, headers: { "Content-Type": "application/json" },
@@ -153,7 +113,7 @@ Deno.serve(async (req) => {
         // 1. Generate predictions (pending approval)
         const sys = `You are a proactive retail business assistant. Based on the snapshot${learned}, propose 3-5 specific actions. Return ONLY JSON: {"predictions":[{"prediction_type":"reorder|followup|invoice|offer|alert","title":"...","description":"...","rationale":"...","priority":"low|medium|high|urgent"}]}. Be specific with names and numbers.`;
         const prompt = `Daily snapshot for ${user.full_name || "the owner"}:\n${JSON.stringify(snap, null, 1)}`;
-        const result = await callAI(user.ai_provider || "openai", sys, prompt, 900);
+        const result = await callAI(supabase, user.id, sys, prompt, { maxTokens: 900 });
 
         let predsCreated = 0;
         try {
@@ -179,13 +139,15 @@ Deno.serve(async (req) => {
         const optedIn = (user as any).daily_briefing !== false; // default on unless explicitly off
 
         if (email && optedIn) {
-          const briefing = await callAI(user.ai_provider || "openai",
+          const r = await callAI(supabase, user.id,
             "Write a concise, friendly morning briefing for a shop owner. Use markdown with short bullets and bold headings. Keep it under 150 words.",
             `Snapshot:\n${JSON.stringify({ todayRevenue: snap.todayRevenue, todayOrders: snap.todayOrders, lowStockCount: snap.lowStock.length, dormantCount: snap.dormantCustomers.length, suppliersOwedCount: snap.suppliersOwed.length, newPredictions: predsCreated })}\n\nBe encouraging and specific.`,
-            500
+            { maxTokens: 500 }
           );
-          const sent = await deliverBriefing(email, "🌅 Your BizAutomate Morning Briefing", briefing);
-          if (sent) emailsSent++;
+          if (r.ok) {
+            const sent = await deliverBriefing(email, "🌅 Your BizAutomate Morning Briefing", r.value);
+            if (sent) emailsSent++;
+          }
         }
 
         await supabase.rpc("increment_api_usage", { user_uuid: user.id });

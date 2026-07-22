@@ -17,11 +17,12 @@
 // ════════════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY } from "../_shared/env.ts";
 
 const CLIENT_ID = Deno.env.get("QB_CLIENT_ID");
 const CLIENT_SECRET = Deno.env.get("QB_CLIENT_SECRET");
 const APP_URL = Deno.env.get("APP_URL") || "http://localhost:5173";
-const REDIRECT_URI = `${Deno.env.get("SUPABASE_URL")!.replace(".supabase.co", ".functions.supabase.co")}/quickbooks-oauth`;
+const REDIRECT_URI = `${SUPABASE_URL!.replace(".supabase.co", ".functions.supabase.co")}/quickbooks-oauth`;
 const SCOPE = "com.intuit.quickbooks.accounting";
 
 function cors() {
@@ -31,7 +32,7 @@ function cors() {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors() });
 
-  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+  const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
   const url = new URL(req.url);
   const action = url.searchParams.get("action") || "authorize";
 

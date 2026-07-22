@@ -14,12 +14,13 @@
 // ════════════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY } from "../_shared/env.ts";
 import Stripe from "https://esm.sh/stripe@16?target=deno";
 
 // Service-role client so the webhook can write to the DB
 const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  SUPABASE_URL!,
+  SUPABASE_SERVICE_ROLE_KEY!,
   { auth: { persistSession: false } }
 );
 

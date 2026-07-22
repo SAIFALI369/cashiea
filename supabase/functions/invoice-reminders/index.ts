@@ -9,8 +9,9 @@
 // ════════════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY } from "../_shared/env.ts";
 
-const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
 async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
   const key = Deno.env.get("RESEND_API_KEY");
@@ -26,7 +27,7 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
 
 Deno.serve(async (req) => {
   const authHeader = req.headers.get("authorization") || "";
-  const expectedKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const expectedKey = SUPABASE_SERVICE_ROLE_KEY;
   if (!expectedKey || !authHeader.endsWith(expectedKey)) {
     return new Response(JSON.stringify({ error: "Unauthorized — service-role only" }), {
       status: 401, headers: { "Content-Type": "application/json" },

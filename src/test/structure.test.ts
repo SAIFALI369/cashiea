@@ -67,9 +67,10 @@ const EXPECTED_EDGE_FUNCTIONS = [
   'quickbooks-oauth',
   'quick-tasks',
   'daily-reports',
+  'set-user-api-key',
 ]
 
-const EXPECTED_SQL = ['schema.sql', 'schema-additions.sql', 'schema-v3.sql', 'schema-v4.sql', 'schema-v5.sql', 'schema-v6.sql', 'schema-v7.sql', 'schema-v8.sql', 'schema-v9.sql', 'schema-v10.sql', 'schema-v11.sql', 'schema-v12.sql', 'schema-v13.sql']
+const EXPECTED_SQL = ['schema.sql', 'schema-additions.sql', 'schema-v3.sql', 'schema-v4.sql', 'schema-v5.sql', 'schema-v6.sql', 'schema-v7.sql', 'schema-v8.sql', 'schema-v9.sql', 'schema-v10.sql', 'schema-v11.sql', 'schema-v12.sql', 'schema-v13.sql', 'schema-v14.sql']
 
 describe('page files exist', () => {
   for (const page of EXPECTED_PAGES) {
@@ -183,7 +184,8 @@ describe('edge functions exist', () => {
 
   it('shared AI gateway helpers exist', () => {
     expect(existsSync(join(ROOT, 'supabase', 'functions', '_shared', 'ai-gateway.ts'))).toBe(true)
-    expect(existsSync(join(ROOT, 'supabase', 'functions', '_shared', 'openrouter.ts'))).toBe(true)
+    expect(existsSync(join(ROOT, 'supabase', 'functions', '_shared', 'ai.ts'))).toBe(true)
+    expect(existsSync(join(ROOT, 'supabase', 'functions', '_shared', 'env.ts'))).toBe(true)
     expect(existsSync(join(ROOT, 'supabase', 'functions', '_shared', 'google.ts'))).toBe(true)
   })
 })

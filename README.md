@@ -43,20 +43,47 @@ The app shows a **Setup Screen** until you fill `.env`. That's normal — it mea
   - `VITE_STRIPE_ENABLED` = `false` (keep demo mode until Stripe is set up)
 - Deploy → you get a live URL
 
-### 4. Set the AI key (3 min, needs CLI)
+### 4. Set the AI encryption key (3 min, needs CLI)
 ```bash
 npm i -g supabase
 supabase login
 supabase link --project-ref YOUR_PROJECT_REF
-supabase secrets set OPENROUTER_API_KEY=sk-or-v1-...
-# Then in the app: Settings → pick "OpenRouter"
+# The encryption passphrase used to store each shop owner's
+# OpenRouter key in the database. Make it long and random.
+supabase secrets set USER_KEY_ENC_PASS=$(openssl rand -hex 32)
 ```
-The OpenRouter fallback chain (Gemini → Kimi K3 → Llama → free model) means AI works even before you purchase credits — it auto-falls to a free model.
+
+> **Per-user AI keys**: each shop owner picks **any** AI provider
+> in **Settings → AI assistant** — OpenAI, Anthropic, Google Gemini,
+> OpenRouter, DeepSeek, Meta Llama (via OpenRouter), Mistral, Groq,
+> xAI (Grok), Cohere, Perplexity, or any OpenAI-compatible
+> endpoint (Together, Anyscale, self-hosted llama.cpp / vLLM /
+> ollama) — and pastes their own key. Free keys take 2 minutes
+> from each provider's website. The key is encrypted with
+> `USER_KEY_ENC_PASS` and stored in the `user_api_keys` table;
+> the frontend never sees it again. The AI assistant, daily
+> briefings, low-stock alerts, Hindi/Hinglish replies, GST voice
+> invoicing, and every other automation use this key. No
+> operator-side API key needed.
+>
+> Optionally, operators can still set a global key as a fallback
+> for users who haven't set their own:
+> `supabase secrets set OPENROUTER_API_KEY=sk-or-v1-...`
+
+The OpenRouter fallback chain (Gemini → Kimi K3 → Llama → free model) means AI works even before a user purchases credits — it auto-falls to a free model.
 
 ### 5. Deploy edge functions (5 min, needs CLI)
 ```bash
-supabase functions deploy ai-automation ai-assistant business-brain daily-brain quick-tasks google-oauth google-fetch invoice-reminders quickbooks-oauth support-email campaign-send track api-generate-invoice api-draft-email create-checkout stripe-webhook daily-reports
+supabase functions deploy ai-automation ai-assistant business-brain daily-brain quick-tasks google-oauth google-fetch invoice-reminders quickbooks-oauth support-email campaign-send track api-generate-invoice api-draft-email create-checkout stripe-webhook daily-reports set-user-api-key
 ```
+
+> **Note (2025+ Supabase platform)**: if your project is on the
+> new Supabase platform (publishable + secret keys), the edge
+> functions will auto-detect the new `SUPABASE_PUBLISHABLE_KEYS`
+> and `SUPABASE_SECRET_KEYS` env vars (JSON objects keyed by
+> name) AND fall back to the legacy `SUPABASE_ANON_KEY` /
+> `SUPABASE_SERVICE_ROLE_KEY` names. No code changes needed.
+> See `supabase/functions/_shared/env.ts`.
 
 **Done.** Signup → onboarding (3 steps) → dashboard with inventory → start selling.
 
@@ -148,6 +175,7 @@ The app supports 5 AI providers (pick in Settings):
 | AI buttons show error toast | Edge functions not deployed — run `supabase functions deploy ...` |
 | WhatsApp reports not arriving | Set `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID` secrets |
 | "Insufficient credits" from AI | OpenRouter auto-falls to a free model — but you can add credits at openrouter.ai |
+| AI not responding with "API key" error | Open **Settings → AI assistant** and paste a key for any provider (OpenAI, Anthropic, Gemini, OpenRouter, DeepSeek, Groq, xAI, etc.) |
 
 ---
 

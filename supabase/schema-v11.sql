@@ -23,6 +23,8 @@ alter table public.profiles add column if not exists plan_tier text not null def
 -- new-profile creation — clients CANNOT skip or fake it.
 -- Reads shop_name, phone from raw_user_meta_data (sent at signup).
 -- Sets: role='owner', plan_tier='trial', trial_ends_at = now()+14d,
+-- ai_provider='openrouter' (so the AI assistant works as soon as
+-- the user pastes their OpenRouter key in Settings), and
 -- onboarding_step=1 (so the wizard starts at step 1 after login).
 create or replace function public.handle_new_user()
 returns trigger
@@ -32,7 +34,7 @@ as $$
 begin
   insert into public.profiles (
     id, full_name, company_name, phone,
-    role, plan_tier, trial_ends_at, onboarding_step
+    role, plan_tier, trial_ends_at, ai_provider, onboarding_step
   )
   values (
     new.id,
@@ -42,7 +44,8 @@ begin
     'owner',
     'trial',
     now() + interval '14 days',
-    1   -- start onboarding at step 1 (category)
+    'openrouter',  -- OpenRouter by default — works as soon as user adds their key
+    1              -- start onboarding at step 1 (category)
   )
   on conflict (id) do nothing;  -- safe if profile somehow already exists
   return new;

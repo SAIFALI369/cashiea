@@ -9,9 +9,10 @@
 // ════════════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY } from "../_shared/env.ts";
 import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
 
-const TRACK_BASE = Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", ".functions.supabase.co") + "/track" || "";
+const TRACK_BASE = SUPABASE_URL?.replace(".supabase.co", ".functions.supabase.co") + "/track" || "";
 
 async function callAI(provider: string, systemPrompt: string, prompt: string): Promise<string> {
   const callers: Record<string, () => Promise<{ ok: boolean; status: number; value: string }>> = {
@@ -68,7 +69,7 @@ async function deliverViaResend(to: string, subject: string, htmlBody: string, r
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: req.headers.get("Authorization")! } } });
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, { global: { headers: { Authorization: req.headers.get("Authorization")! } } });
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) return json({ error: "Unauthorized" }, 401);
 

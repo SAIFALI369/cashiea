@@ -4,6 +4,7 @@
 // ════════════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY } from "../_shared/env.ts";
 import { withRetry, apiCorsHeaders, json } from "../_shared/retry.ts";
 
 async function sha256(text: string): Promise<string> {
@@ -48,7 +49,7 @@ Deno.serve(async (req) => {
     const apiKey = req.headers.get("x-api-key");
     if (!apiKey) return json({ error: "Missing x-api-key header" }, 401, apiCorsHeaders);
 
-    const service = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const service = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
     const keyHash = await sha256(apiKey);
     const { data: keyRow } = await service.from("api_keys").select("user_id, active").eq("key_hash", keyHash).maybeSingle();
     if (!keyRow || !keyRow.active) return json({ error: "Invalid API key" }, 401, apiCorsHeaders);

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -8,62 +8,133 @@
   * {
     @apply box-border;
   }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
   body {
     @apply font-sans antialiased;
+    background: #fbfbfd;
+    color: #1d1d1f;
+    font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "ss01" 1;
   }
 }
 
 @layer components {
+  /* ── Apple-style buttons ───────────────────────────────────── */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-white
-           bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400
-           transition-all duration-200 shadow-lg shadow-brand-900/30 hover:shadow-brand-700/40
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full font-medium text-white text-sm
+           bg-[#0071e3] hover:bg-[#0077ED] active:bg-[#006EDB]
+           transition-all duration-200
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold
-           bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 hover:border-slate-600
-           transition-all duration-200 disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full font-medium
+           bg-transparent text-[#0071e3] border border-[#0071e3] hover:bg-[#0071e3]/5
+           transition-all duration-200 disabled:opacity-50 text-sm;
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium
-           text-slate-400 hover:text-white hover:bg-slate-800 transition-all duration-200;
+    @apply inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md font-normal
+           text-[#0071e3] hover:underline transition-all duration-150 text-sm;
   }
+  .btn-link {
+    @apply inline-flex items-center gap-1 text-[#0071e3] hover:underline transition-all text-sm font-normal;
+  }
+
+  /* ── Apple-style input ────────────────────────────────────── */
   .input-field {
-    @apply w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-100
-           placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500
-           focus:border-transparent transition-all duration-200;
+    @apply w-full px-4 py-3 rounded-xl bg-white border border-[#d2d2d7] text-[#1d1d1f] text-sm
+           placeholder-[#86868b] focus:outline-none focus:ring-2 focus:ring-[#0071e3]/40
+           focus:border-[#0071e3] transition-all duration-200;
   }
+
+  /* ── Apple-style card ─────────────────────────────────────── */
   .card {
-    @apply bg-slate-900/60 backdrop-blur border border-slate-800 rounded-2xl;
+    @apply bg-white border border-[#d2d2d7]/60 rounded-2xl;
   }
+  .card-elevated {
+    @apply bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.04)] border border-[#d2d2d7]/40;
+  }
+
   .label {
-    @apply block text-sm font-medium text-slate-300 mb-1.5;
+    @apply block text-xs font-medium text-[#6e6e73] mb-1.5;
+  }
+
+  .section-eyebrow {
+    @apply text-xs font-semibold tracking-wide uppercase text-[#6e6e73] mb-2;
   }
 }
 
-/* Custom scrollbar */
+/* ── Apple-style scrollbar ─────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 4px;
+  background: #d2d2d7;
+  border-radius: 5px;
+  border: 2px solid #fbfbfd;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: #a1a1a6;
 }
 
-/* Markdown content rendering in reports/summaries */
-.prose-content h1 { @apply text-2xl font-bold text-white mb-3 mt-4; }
-.prose-content h2 { @apply text-xl font-bold text-white mb-2 mt-4; }
-.prose-content h3 { @apply text-lg font-semibold text-slate-100 mb-2 mt-3; }
-.prose-content p { @apply text-slate-300 mb-3 leading-relaxed; }
-.prose-content ul { @apply list-disc list-inside mb-3 text-slate-300 space-y-1; }
-.prose-content ol { @apply list-decimal list-inside mb-3 text-slate-300 space-y-1; }
-.prose-content strong { @apply font-semibold text-white; }
-.prose-content code { @apply bg-slate-800 px-1.5 py-0.5 rounded text-brand-300 text-sm; }
+/* ── Markdown content ─────────────────────────────────── */
+.prose-content h1 { @apply text-2xl font-semibold text-[#1d1d1f] mb-3 mt-4; }
+.prose-content h2 { @apply text-xl font-semibold text-[#1d1d1f] mb-2 mt-4; }
+.prose-content h3 { @apply text-lg font-medium text-[#1d1d1f] mb-2 mt-3; }
+.prose-content p  { @apply text-[#1d1d1f] mb-3 leading-relaxed; }
+.prose-content ul { @apply list-disc list-inside mb-3 text-[#1d1d1f] space-y-1; }
+.prose-content ol { @apply list-decimal list-inside mb-3 text-[#1d1d1f] space-y-1; }
+.prose-content strong { @apply font-semibold text-[#1d1d1f]; }
+.prose-content code { @apply bg-[#f5f5f7] px-1.5 py-0.5 rounded text-[#0071e3] text-sm; }
+
+/* ── Apple-style scroll reveal ─────────────────────────── */
+.fade-in {
+  opacity: 0;
+  transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fade-in.in {
+  opacity: 1;
+}
+
+/* ── Apple-style subtle gradients ─────────────────────── */
+.bg-apple-gradient-blue  { background: linear-gradient(180deg, #fbfbfd 0%, #e8f1ff 100%); }
+.bg-apple-gradient-cream { background: linear-gradient(180deg, #fbfbfd 0%, #fdf6ec 100%); }
+.bg-apple-gradient-gray  { background: linear-gradient(180deg, #f5f5f7 0%, #e8e8ed 100%); }
+.bg-apple-hero {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 113, 227, 0.12), rgba(255,255,255,0)),
+    linear-gradient(180deg, #fbfbfd 0%, #ffffff 100%);
+}
+
+/* ─────────────────────────────────────────────
+   Apple-INSPIRED REPAINT SCOPE — `.app-light-scope`
+
+   Apply this class on the in-app shell element (AppLayout
+   root in our case). Inside this scope, the old dark-mode
+   Tailwind utility classes used throughout the in-app
+   codebase (text-white, bg-slate-900, border-slate-800,
+   bg-brand-*, text-brand-*) repaint into the new Apple-
+   style light palette — so every in-app page inherits
+   the refresh automatically without a per-file rewrite.
+
+   The Landing page and the Login/Signup pages have
+   already been edited directly to use the new palette,
+   so they don't need this scope.
+
+   NOTE: the primary / secondary / link / ghost button
+   utility classes (`.btn-primary`, `.btn-secondary`,
+   `.btn-ghost`, `.btn-link`) keep their white text /
+   blue color — they're accent buttons, not surfaces.
+   ───────────────────────────────────────────── */
+.app-light-scope .text-white:not(.btn-primary):not(.btn-secondary) { color: #1d1d1f !important; }
+.app-light-scope .bg-white:not(.btn-primary):not(.btn-secondary) { background-color: #ffffff !important; }
+.app-light-scope .border-white { border-color: #d2d2d7 !important; }
+.app-light-scope button.fixed.bottom-5.right-5 { color: #ffffff !important; }
+.app-light-scope button.fixed.bottom-5.right-5 * { color: #ffffff !important; }

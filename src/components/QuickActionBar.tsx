@@ -49,11 +49,11 @@ interface TaskDef {
 }
 
 const TASKS: TaskDef[] = [
-  { id: 'low_stock_alert', label: 'Low-Stock Alert', icon: AlertTriangle, desc: 'Scan inventory + reorder list', color: 'from-amber-500/20 to-amber-600/5', iconColor: 'text-amber-400', primary: true },
-  { id: 'daily_closing', label: 'Daily Closing Report', icon: FileBarChart, desc: "Today's sales summary (WhatsApp ready)", color: 'from-green-500/20 to-green-600/5', iconColor: 'text-green-400', primary: true },
-  { id: 'gst_invoice_voice', label: 'GST Invoice (Voice)', icon: Receipt, desc: 'Speak a sale, get a GST invoice', color: 'from-purple-500/20 to-purple-600/5', iconColor: 'text-purple-400', needsText: true, textLabel: 'Describe the sale (speak or type)', textPlaceholder: 'Ramesh ko 5 cement bag 400 rupaye each aur 10 paint roll', primary: true },
-  { id: 'hindi_bot', label: 'Hindi/Hinglish Bot', icon: MessageCircle, desc: 'Reply to a customer in Hinglish', color: 'from-emerald-500/20 to-emerald-600/5', iconColor: 'text-emerald-400', needsText: true, textLabel: "Customer's message", textPlaceholder: 'Bhai, mera order kab tak ready hoga?' },
-  { id: 'custom', label: 'Custom AI Task', icon: Sparkles, desc: 'Ask anything in Hinglish or English', color: 'from-brand-500/20 to-brand-600/5', iconColor: 'text-brand-400', needsText: true, textLabel: 'What do you need?', textPlaceholder: 'Kal ka sales report do, ya purane customers ko followup bhejo' },
+  { id: 'low_stock_alert', label: 'Low-Stock Alert', icon: AlertTriangle, desc: 'Scan inventory + reorder list', color: 'bg-[#fff4e5]', iconColor: 'text-[#ff9500]', primary: true },
+  { id: 'daily_closing', label: 'Daily Closing Report', icon: FileBarChart, desc: "Today's sales summary (WhatsApp ready)", color: 'bg-[#e8f8ee]', iconColor: 'text-[#00863a]', primary: true },
+  { id: 'gst_invoice_voice', label: 'GST Invoice (Voice)', icon: Receipt, desc: 'Speak a sale, get a GST invoice', color: 'bg-[#f4eafe]', iconColor: 'text-[#7c3aed]', needsText: true, textLabel: 'Describe the sale (speak or type)', textPlaceholder: 'Ramesh ko 5 cement bag 400 rupaye each aur 10 paint roll', primary: true },
+  { id: 'hindi_bot', label: 'Hindi/Hinglish Bot', icon: MessageCircle, desc: 'Reply to a customer in Hinglish', color: 'bg-[#e8f8ee]', iconColor: 'text-[#00863a]', needsText: true, textLabel: "Customer's message", textPlaceholder: 'Bhai, mera order kab tak ready hoga?' },
+  { id: 'custom', label: 'Custom AI Task', icon: Sparkles, desc: 'Ask anything in Hinglish or English', color: 'bg-apple-50', iconColor: 'text-apple-500', needsText: true, textLabel: 'What do you need?', textPlaceholder: 'Kal ka sales report do, ya purane customers ko followup bhejo' },
 ]
 
 const FRIENDLY_ERROR = 'Something went wrong — we\'ve noted it and you can try again in a moment.'
@@ -239,33 +239,33 @@ export default function QuickActionBar() {
     <>
       {/* Repeat last task shortcut */}
       {!open && lastUsedTask && (
-        <button onClick={repeatLastTask} className="fixed z-40 px-4 py-2.5 rounded-full bg-slate-800/90 backdrop-blur border border-brand-600/40 text-brand-300 text-sm font-medium shadow-lg hover:bg-slate-700 transition-all flex items-center gap-2" style={{ bottom: '5.5rem', right: '1.25rem' }}>
-          <Zap className="w-4 h-4" /> Repeat: {TASKS.find((t) => t.id === lastUsedTask)?.label || 'Last'}
+        <button onClick={repeatLastTask} className="fixed z-40 px-4 py-2.5 rounded-full bg-white/90 backdrop-blur border border-ink-200 text-ink-700 text-sm font-medium shadow-apple hover:bg-white transition-all flex items-center gap-2" style={{ bottom: '5.5rem', right: '1.25rem' }}>
+          <Zap className="w-4 h-4 text-apple-500" /> Repeat: {TASKS.find((t) => t.id === lastUsedTask)?.label || 'Last'}
         </button>
       )}
 
       {/* Floating button */}
       {!open && (
-        <button onClick={() => setOpen(true)} className="fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-900/40 flex items-center justify-center hover:scale-105 transition-transform group" title="Quick Actions">
+        <button onClick={() => setOpen(true)} className="fixed bottom-5 right-5 z-40 w-14 h-14 rounded-full text-white shadow-apple-lg flex items-center justify-center hover:scale-105 transition-transform group" style={{ background: 'linear-gradient(135deg, #0071e3 0%, #3a8eff 100%)' }} title="Quick Actions">
           <Zap className="w-6 h-6 group-hover:rotate-12 transition-transform" />
-          <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-slate-950 animate-pulse" />
+          <span className="absolute -top-1 -right-1 w-3 h-3 bg-[#00863a] rounded-full border-2 border-white animate-pulse" />
         </button>
       )}
 
       {/* Modal */}
       {open && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm" onClick={reset}>
-          <div className="card w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-slate-700/50" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-ink-900/30 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={reset}>
+          <div className="card w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl border border-ink-200 shadow-apple-lg" onClick={(e) => e.stopPropagation()}>
 
             {/* ── History detail overlay ──────────────────────────── */}
             {historyDetail ? (
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-semibold text-slate-300 flex items-center gap-2"><History className="w-4 h-4 text-brand-400" /> {historyDetail.label}</h2>
-                  <button onClick={() => setHistoryDetail(null)} className="text-slate-500 hover:text-white"><X className="w-5 h-5" /></button>
+                  <h2 className="text-sm font-medium text-ink-800 flex items-center gap-2"><History className="w-4 h-4 text-apple-500" /> {historyDetail.label}</h2>
+                  <button onClick={() => setHistoryDetail(null)} className="text-ink-500 hover:text-ink-800"><X className="w-5 h-5" /></button>
                 </div>
-                <p className="text-xs text-slate-500 mb-3">{new Date(historyDetail.timestamp).toLocaleString()}</p>
-                <div className="bg-slate-900/60 rounded-xl border border-slate-800 p-4">
+                <p className="text-xs text-ink-500 mb-3">{new Date(historyDetail.timestamp).toLocaleString()}</p>
+                <div className="bg-ink-50 rounded-xl border border-ink-200 p-4">
                   <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(historyDetail.fullResult) }} />
                 </div>
                 <button onClick={() => { copyToClipboard(historyDetail.fullResult).then(() => toast.success('Copied!')) }} className="btn-secondary w-full mt-4 text-sm"><Copy className="w-4 h-4" /> Copy result</button>
@@ -274,31 +274,28 @@ export default function QuickActionBar() {
               /* ── Results view ──────────────────────────────────── */
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-bold text-white flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-green-400" /> Done</h2>
+                  <h2 className="text-lg font-semibold text-ink-800 flex items-center gap-2"><CheckCircle2 className="w-5 h-5 text-[#00863a]" /> Done</h2>
                   <div className="flex items-center gap-2">
-                    {/* TODO 2: history toggle */}
                     {history.length > 0 && (
-                      <button onClick={() => setShowHistory(!showHistory)} className={`text-xs px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 ${showHistory ? 'bg-brand-600/20 text-brand-300' : 'text-slate-500 hover:text-white'}`}>
+                      <button onClick={() => setShowHistory(!showHistory)} className={`text-xs px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 ${showHistory ? 'bg-apple-50 text-apple-500' : 'text-ink-500 hover:text-ink-800'}`}>
                         <History className="w-3.5 h-3.5" /> Recent
                       </button>
                     )}
-                    <button onClick={reset} className="text-slate-500 hover:text-white"><X className="w-5 h-5" /></button>
+                    <button onClick={reset} className="text-ink-500 hover:text-ink-800"><X className="w-5 h-5" /></button>
                   </div>
                 </div>
 
-                {/* TODO 2: History panel */}
                 {showHistory && history.length > 0 && (
                   <div className="mb-4 space-y-1.5 animate-fade-in">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Last {history.length} runs</p>
+                    <p className="text-xs font-semibold text-ink-500 uppercase tracking-wide mb-2">Last {history.length} runs</p>
                     {history.map((h, i) => (
-                      <button key={i} onClick={() => setHistoryDetail(h)} className="w-full p-2.5 rounded-lg bg-slate-900/40 hover:bg-slate-800/60 border border-slate-800 text-left transition-all flex items-center gap-3">
-                        <span className="text-lg flex-shrink-0">{TASKS.find(t => t.id === h.mode)?.icon ? '' : '\u2728'}</span>
+                      <button key={i} onClick={() => setHistoryDetail(h)} className="w-full p-2.5 rounded-lg bg-ink-50 hover:bg-ink-100 border border-ink-200 text-left transition-all flex items-center gap-3">
                         {(() => { const d = TASKS.find(t => t.id === h.mode); return d ? <d.icon className={`w-4 h-4 ${d.iconColor} flex-shrink-0`} /> : null })()}
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-slate-200 truncate">{h.label}</p>
-                          <p className="text-xs text-slate-500 truncate">{h.resultPreview.slice(0, 60)}</p>
+                          <p className="text-sm text-ink-800 truncate">{h.label}</p>
+                          <p className="text-xs text-ink-500 truncate">{h.resultPreview.slice(0, 60)}</p>
                         </div>
-                        <span className="text-xs text-slate-600 flex-shrink-0">{relativeTime(h.timestamp)}</span>
+                        <span className="text-xs text-ink-400 flex-shrink-0">{relativeTime(h.timestamp)}</span>
                       </button>
                     ))}
                   </div>
@@ -310,25 +307,24 @@ export default function QuickActionBar() {
                     const def = TASKS.find((t) => t.id === r.mode)
                     const shareable = ['daily_closing', 'low_stock_alert', 'hindi_bot'].includes(r.mode)
                     return (
-                      <div key={i} className="bg-slate-900/60 rounded-xl border border-slate-800 p-4">
+                      <div key={i} className="bg-ink-50 rounded-xl border border-ink-200 p-4">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
                             {def && <def.icon className={`w-4 h-4 ${def.iconColor}`} />}
-                            <h3 className="font-semibold text-white text-sm">{def?.label || r.mode}</h3>
-                            {r.meta?.report_date && <span className="text-xs text-slate-500">{r.meta.report_date}</span>}
+                            <h3 className="font-medium text-ink-800 text-sm">{def?.label || r.mode}</h3>
+                            {r.meta?.report_date && <span className="text-xs text-ink-500">{r.meta.report_date}</span>}
                           </div>
                           <button onClick={() => shareResult(r.mode, r.result)} className="btn-ghost text-xs">{shareable ? <Send className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}</button>
                         </div>
                         <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(r.result) }} />
-                        {r.meta?.items?.length > 0 && <div className="mt-2 pt-2 border-t border-slate-800 text-xs text-slate-500">{r.meta.items.length} items flagged</div>}
-                        {r.meta?.invoice && <div className="mt-2 pt-2 border-t border-slate-800 text-xs text-green-400">Invoice {r.meta.invoice.invoice_number} created - Rs.{r.meta.invoice.total}</div>}
+                        {r.meta?.items?.length > 0 && <div className="mt-2 pt-2 border-t border-ink-200 text-xs text-ink-500">{r.meta.items.length} items flagged</div>}
+                        {r.meta?.invoice && <div className="mt-2 pt-2 border-t border-ink-200 text-xs text-[#00863a]">Invoice {r.meta.invoice.invoice_number} created - Rs.{r.meta.invoice.total}</div>}
 
-                        {/* TODO 1: "View past report" — date rerun for daily_closing */}
                         {r.mode === 'daily_closing' && (
-                          <div className="mt-3 pt-3 border-t border-slate-800">
+                          <div className="mt-3 pt-3 border-t border-ink-200">
                             <div className="flex items-center gap-2 mb-2">
-                              <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                              <span className="text-xs text-slate-400">View another day</span>
+                              <Calendar className="w-3.5 h-3.5 text-ink-500" />
+                              <span className="text-xs text-ink-500">View another day</span>
                             </div>
                             <div className="flex gap-2">
                               <button onClick={() => rerunForDate(yesterdayIST())} disabled={running} className="btn-ghost text-xs whitespace-nowrap">
@@ -349,30 +345,29 @@ export default function QuickActionBar() {
               /* ── Task picker view ─────────────────────────────── */
               <div className="p-6">
                 <div className="flex items-center justify-between mb-1">
-                  <h2 className="text-lg font-bold text-white flex items-center gap-2"><Zap className="w-5 h-5 text-brand-400" /> Quick Actions</h2>
+                  <h2 className="text-lg font-semibold text-ink-800 flex items-center gap-2"><Zap className="w-5 h-5 text-apple-500" /> Quick Actions</h2>
                   <div className="flex items-center gap-2">
                     {history.length > 0 && (
-                      <button onClick={() => setShowHistory(!showHistory)} className={`text-xs px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 ${showHistory ? 'bg-brand-600/20 text-brand-300' : 'text-slate-500 hover:text-white'}`}>
+                      <button onClick={() => setShowHistory(!showHistory)} className={`text-xs px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 ${showHistory ? 'bg-apple-50 text-apple-500' : 'text-ink-500 hover:text-ink-800'}`}>
                         <History className="w-3.5 h-3.5" /> History
                       </button>
                     )}
-                    <button onClick={reset} className="text-slate-500 hover:text-white"><X className="w-5 h-5" /></button>
+                    <button onClick={reset} className="text-ink-500 hover:text-ink-800"><X className="w-5 h-5" /></button>
                   </div>
                 </div>
-                <p className="text-xs text-slate-400 mb-5">Pick one or more — tasks run after you confirm</p>
+                <p className="text-xs text-ink-500 mb-5">Pick one or more — tasks run after you confirm</p>
 
-                {/* TODO 2: Inline history in picker */}
                 {showHistory && history.length > 0 && (
                   <div className="mb-5 space-y-1.5 animate-fade-in">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Recent</p>
+                    <p className="text-xs font-semibold text-ink-500 uppercase tracking-wide mb-2">Recent</p>
                     {history.slice(0, 5).map((h, i) => (
-                      <button key={i} onClick={() => setHistoryDetail(h)} className="w-full p-2.5 rounded-lg bg-slate-900/40 hover:bg-slate-800/60 border border-slate-800 text-left transition-all flex items-center gap-3">
+                      <button key={i} onClick={() => setHistoryDetail(h)} className="w-full p-2.5 rounded-lg bg-ink-50 hover:bg-ink-100 border border-ink-200 text-left transition-all flex items-center gap-3">
                         {(() => { const d = TASKS.find(t => t.id === h.mode); return d ? <d.icon className={`w-4 h-4 ${d.iconColor} flex-shrink-0`} /> : <Sparkles className="w-4 h-4 flex-shrink-0" /> })()}
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-slate-200 truncate">{h.label}</p>
-                          <p className="text-xs text-slate-500 truncate">{h.resultPreview.slice(0, 50)}</p>
+                          <p className="text-sm text-ink-800 truncate">{h.label}</p>
+                          <p className="text-xs text-ink-500 truncate">{h.resultPreview.slice(0, 50)}</p>
                         </div>
-                        <span className="text-xs text-slate-600">{relativeTime(h.timestamp)}</span>
+                        <span className="text-xs text-ink-400">{relativeTime(h.timestamp)}</span>
                       </button>
                     ))}
                   </div>
@@ -384,24 +379,23 @@ export default function QuickActionBar() {
                     const on = selected.has(t.id)
                     return (
                       <div key={t.id}>
-                        <button onClick={() => toggle(t.id)} className={`w-full p-3.5 rounded-xl border text-left transition-all flex items-center gap-3 ${on ? 'border-brand-600 bg-brand-600/10' : 'border-slate-700 bg-slate-900/40 hover:border-slate-600'}`}>
-                          <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${t.color} flex items-center justify-center flex-shrink-0`}><t.icon className={`w-5 h-5 ${t.iconColor}`} /></div>
-                          <div className="flex-1 min-w-0"><p className="font-semibold text-white text-sm">{t.label}</p><p className="text-xs text-slate-400">{t.desc}</p></div>
-                          {on && <CheckCircle2 className="w-5 h-5 text-brand-400 flex-shrink-0" />}
+                        <button onClick={() => toggle(t.id)} className={`w-full p-3.5 rounded-xl border text-left transition-all flex items-center gap-3 ${on ? 'border-apple-500 bg-apple-50' : 'border-ink-200 bg-white hover:border-ink-300'}`}>
+                          <div className={`w-10 h-10 rounded-lg ${t.color} flex items-center justify-center flex-shrink-0`}><t.icon className={`w-5 h-5 ${t.iconColor}`} /></div>
+                          <div className="flex-1 min-w-0"><p className="font-medium text-ink-800 text-sm">{t.label}</p><p className="text-xs text-ink-500">{t.desc}</p></div>
+                          {on && <CheckCircle2 className="w-5 h-5 text-apple-500 flex-shrink-0" />}
                         </button>
 
-                        {/* TODO 3: Auto-schedule toggle on daily_closing */}
                         {t.id === 'daily_closing' && (
-                          <div className="mt-1.5 ml-1 p-2.5 rounded-lg bg-slate-900/30 border border-slate-800/50 flex items-center justify-between">
+                          <div className="mt-1.5 ml-1 p-2.5 rounded-lg bg-ink-50 border border-ink-200 flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <Bell className={`w-3.5 h-3.5 ${autoSchedule ? 'text-green-400' : 'text-slate-600'}`} />
+                              <Bell className={`w-3.5 h-3.5 ${autoSchedule ? 'text-[#00863a]' : 'text-ink-500'}`} />
                               <div>
-                                <p className="text-xs text-slate-300">Auto-run daily at {reportTimeIST} IST</p>
-                                <p className="text-[10px] text-slate-600">{autoSchedule ? 'Report arrives on WhatsApp automatically' : 'Tap to enable automatic daily reports'}</p>
+                                <p className="text-xs text-ink-700">Auto-run daily at {reportTimeIST} IST</p>
+                                <p className="text-[10px] text-ink-500">{autoSchedule ? 'Report arrives on WhatsApp automatically' : 'Tap to enable automatic daily reports'}</p>
                               </div>
                             </div>
-                            <button onClick={toggleAutoSchedule} disabled={togglingSchedule} className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${autoSchedule ? 'bg-green-500' : 'bg-slate-700'}`}>
-                              {togglingSchedule ? <Loader2 className="absolute inset-0 m-auto w-3 h-3 animate-spin text-white" /> : <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${autoSchedule ? 'translate-x-5' : 'translate-x-0.5'}`} />}
+                            <button onClick={toggleAutoSchedule} disabled={togglingSchedule} className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${autoSchedule ? 'bg-[#00863a]' : 'bg-ink-200'}`}>
+                              {togglingSchedule ? <Loader2 className="absolute inset-0 m-auto w-3 h-3 animate-spin text-white" /> : <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform shadow-sm ${autoSchedule ? 'translate-x-5' : 'translate-x-0.5'}`} />}
                             </button>
                           </div>
                         )}
@@ -410,13 +404,11 @@ export default function QuickActionBar() {
                   })}
                 </div>
 
-                {/* More options */}
                 {!showMore && secondaryTasks.length > 0 && (
                   <button onClick={() => setShowMore(true)} className="btn-ghost text-xs w-full mb-4"><ChevronDown className="w-3.5 h-3.5" /> More options</button>
                 )}
                 {showMore && <button onClick={() => setShowMore(false)} className="btn-ghost text-xs w-full mb-4"><ChevronUp className="w-3.5 h-3.5" /> Show less</button>}
 
-                {/* Text + voice */}
                 {(() => {
                   const anyNeedsText = Array.from(selected).some((id) => TASKS.find((t) => t.id === id)?.needsText)
                   const activeDef = TASKS.find((t) => selected.has(t.id) && t.needsText)
@@ -426,16 +418,16 @@ export default function QuickActionBar() {
                       <label className="label flex items-center justify-between">
                         <span>{activeDef?.textLabel || 'Optional input'}</span>
                         <div className="flex items-center gap-3">
-                          <button type="button" onClick={() => setVoiceLang(voiceLang === 'hi-IN' ? 'en-IN' : 'hi-IN')} className="text-xs text-slate-500 hover:text-brand-400 flex items-center gap-1" title="Toggle language"><Globe className="w-3.5 h-3.5" /> {voiceLang === 'hi-IN' ? 'HI' : 'EN'}</button>
+                          <button type="button" onClick={() => setVoiceLang(voiceLang === 'hi-IN' ? 'en-IN' : 'hi-IN')} className="text-xs text-ink-500 hover:text-apple-500 flex items-center gap-1" title="Toggle language"><Globe className="w-3.5 h-3.5" /> {voiceLang === 'hi-IN' ? 'HI' : 'EN'}</button>
                           {!listening ? (
-                            <button type="button" onClick={startListening} className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1"><Mic className="w-3.5 h-3.5" /> Speak</button>
+                            <button type="button" onClick={startListening} className="text-xs text-apple-500 hover:text-apple-600 flex items-center gap-1"><Mic className="w-3.5 h-3.5" /> Speak</button>
                           ) : (
-                            <button type="button" onClick={stopListening} className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 animate-pulse"><Square className="w-3.5 h-3.5" /> Stop</button>
+                            <button type="button" onClick={stopListening} className="text-xs text-danger hover:opacity-80 flex items-center gap-1 animate-pulse"><Square className="w-3.5 h-3.5" /> Stop</button>
                           )}
                         </div>
                       </label>
                       <textarea ref={textareaRef} value={text} onChange={(e) => setText(e.target.value)} rows={anyNeedsText ? 3 : 2} className="input-field resize-none" placeholder={activeDef?.textPlaceholder || 'Add details...'} />
-                      {listening && <p className="text-xs text-red-400 mt-1 animate-pulse">Listening in {voiceLang === 'hi-IN' ? 'Hindi' : 'English'}...</p>}
+                      {listening && <p className="text-xs text-danger mt-1 animate-pulse">Listening in {voiceLang === 'hi-IN' ? 'Hindi' : 'English'}...</p>}
                     </div>
                   )
                 })()}

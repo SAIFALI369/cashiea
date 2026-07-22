@@ -1,18 +1,18 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/ui/PageHeader'
-import { Settings as SettingsIcon, User, Building2, Sparkles, Loader2, Save, Check, Mail } from 'lucide-react'
+import { Settings as SettingsIcon, User, Building2, Sparkles, Loader2, Save, Check, Mail, Key, ExternalLink, Trash2, Eye, EyeOff, AlertCircle, Zap, Globe } from 'lucide-react'
 import toast from 'react-hot-toast'
-import type { AIProvider } from '../lib/ai'
-
-const providers: { value: AIProvider; label: string; desc: string }[] = [
-  { value: 'openrouter', label: 'OpenRouter', desc: 'Gemini → Kimi → Llama auto-fallback. One key, 300+ models' },
-  { value: 'vercel_gateway', label: 'Vercel AI Gateway', desc: '302 models (GPT-5.5, Claude, Gemini) — one key' },
-  { value: 'openai', label: 'OpenAI', desc: 'GPT-4o — most versatile' },
-  { value: 'gemini', label: 'Google Gemini', desc: 'Fast & cost-effective' },
-  { value: 'anthropic', label: 'Anthropic Claude', desc: 'Best for writing & reasoning' },
-]
+import {
+  PROVIDER_OPTIONS,
+  detectProviderFromKey,
+  getUserAPIKeyStatus,
+  setUserAPIKey,
+  deleteUserAPIKey,
+  type UserAPIKeyStatus,
+  type AIProviderId,
+} from '../lib/userKeys'
 
 export default function SettingsPage() {
   const { user, profile, refreshProfile } = useAuth()
@@ -24,15 +24,70 @@ export default function SettingsPage() {
   const [upiId, setUpiId] = useState(profile?.upi_id || '')
   const [dailyBriefing, setDailyBriefing] = useState(profile?.daily_briefing !== false)
   const [reportTime, setReportTime] = useState(() => {
-    // Convert stored UTC HH:MM to IST for display
     if (!profile?.report_time_utc) return '22:30'
     const [h, m] = profile.report_time_utc.split(':').map(Number)
     let istMin = (h * 60 + m) + (5 * 60 + 30)
     if (istMin >= 24 * 60) istMin -= 24 * 60
     return `${String(Math.floor(istMin / 60)).padStart(2, '0')}:${String(istMin % 60).padStart(2, '0')}`
   })
-  const [aiProvider, setAiProvider] = useState<AIProvider>(profile?.ai_provider || 'openai')
+
+  // ── AI key form state ──────────────────────────────────────
+  const [keyStatus, setKeyStatus] = useState<UserAPIKeyStatus | null>(null)
+  const [provider, setProvider] = useState<AIProviderId>('openrouter')
+  const [newKey, setNewKey] = useState('')
+  const [showKey, setShowKey] = useState(false)
+  const [model, setModel] = useState('google/gemini-2.5-flash-lite')
+  const [customModel, setCustomModel] = useState('')
+  const [baseUrl, setBaseUrl] = useState('')
+  const [savingKey, setSavingKey] = useState(false)
+  const [deletingKey, setDeletingKey] = useState(false)
+
   const [saving, setSaving] = useState(false)
+
+  const selectedProvider = useMemo(
+    () => PROVIDER_OPTIONS.find((p) => p.id === provider) ?? PROVIDER_OPTIONS[0],
+    [provider]
+  )
+
+  // Load the user's current AI key status on mount
+  useEffect(() => {
+    getUserAPIKeyStatus()
+      .then((s) => {
+        setKeyStatus(s)
+        if (s.provider) {
+          setProvider(s.provider as AIProviderId)
+        }
+        if (s.model) {
+          setModel(s.model)
+        }
+      })
+      .catch(() => setKeyStatus({ has_key: false, provider: null, hint: null, model: null }))
+  }, [])
+
+  // When the user types a key, auto-detect the provider (unless
+  // they've already picked one that matches).
+  useEffect(() => {
+    if (!newKey.trim()) return
+    const detected = detectProviderFromKey(newKey)
+    if (detected !== provider) {
+      // Only auto-switch if the user hasn't picked something different
+      // intentionally. We always switch when the current selection is
+      // 'openrouter' (the default) and the key is clearly something else.
+      if (provider === 'openrouter' && detected !== 'openrouter') {
+        setProvider(detected)
+        const p = PROVIDER_OPTIONS.find((p) => p.id === detected)
+        if (p) setModel(p.defaultModel)
+      }
+    }
+  }, [newKey, provider])
+
+  // When the user picks a different provider, reset the model to
+  // that provider's default.
+  function onProviderChange(newProv: AIProviderId) {
+    setProvider(newProv)
+    const p = PROVIDER_OPTIONS.find((p) => p.id === newProv)
+    if (p) setModel(p.defaultModel)
+  }
 
   const handleSave = async () => {
     setSaving(true)
@@ -52,7 +107,6 @@ export default function SettingsPage() {
             let u = (h * 60 + m) - (5 * 60 + 30); if (u < 0) u += 24 * 60
             return `${String(Math.floor(u / 60)).padStart(2, '0')}:${String(u % 60).padStart(2, '0')}`
           })(),
-          ai_provider: aiProvider,
         })
         .eq('id', profile!.id)
 
@@ -66,170 +120,290 @@ export default function SettingsPage() {
     }
   }
 
+  const handleSaveKey = async () => {
+    if (!newKey.trim()) {
+      toast.error('Paste your API key first')
+      return
+    }
+    if (selectedProvider.requiresBaseUrl && !baseUrl.trim()) {
+      toast.error('Custom provider requires a base URL')
+      return
+    }
+    setSavingKey(true)
+    try {
+      const finalModel = model === '__custom__' ? (customModel.trim() || selectedProvider.defaultModel) : model
+      const r = await setUserAPIKey(newKey.trim(), provider, finalModel, baseUrl.trim() || undefined)
+      setKeyStatus({ has_key: true, provider: r.provider, hint: r.hint, model: r.model, baseUrl: r.baseUrl ?? null })
+      setNewKey('')
+      setShowKey(false)
+      setModel(r.model)
+      toast.success(`Connected to ${PROVIDER_OPTIONS.find((p) => p.id === r.provider)?.label || r.provider}. The AI assistant is now ready.`)
+      await refreshProfile()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save key')
+    } finally {
+      setSavingKey(false)
+    }
+  }
+
+  const handleDeleteKey = async () => {
+    if (!confirm('Remove your API key? You can re-add it any time.')) return
+    setDeletingKey(true)
+    try {
+      await deleteUserAPIKey()
+      setKeyStatus({ has_key: false, provider: null, hint: null, model: null })
+      toast.success('API key removed')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove key')
+    } finally {
+      setDeletingKey(false)
+    }
+  }
+
   return (
     <div className="animate-fade-in">
       <PageHeader
         title="Settings"
-        subtitle="Manage your profile and AI preferences"
+        subtitle="Your profile, business details, and AI key"
         icon={<SettingsIcon className="w-5 h-5" />}
       />
 
       <div className="max-w-2xl space-y-6">
-        {/* Profile */}
-        <div className="card p-6">
-          <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
-            <User className="w-5 h-5 text-brand-400" /> Profile Information
-          </h2>
+        {/* ═══════════════════════════════════════════════════
+            AI SETUP — any provider. Users bring their own key
+            (OpenAI, Anthropic, Google Gemini, OpenRouter,
+            DeepSeek, Meta, Mistral, Groq, xAI, Cohere,
+            Perplexity, or any OpenAI-compatible endpoint).
+            Encrypted server-side, never leaves the backend.
+           ═══════════════════════════════════════════════════ */}
+        <div className="card p-7 border-[#0071e3]/30">
+          <div className="flex items-center gap-2.5 mb-1">
+            <div className="w-9 h-9 rounded-xl bg-apple-50 flex items-center justify-center">
+              <Sparkles className="w-4.5 h-4.5 text-apple-500" strokeWidth={1.75} />
+            </div>
+            <h2 className="text-[20px] font-semibold tracking-tight text-ink-800">AI assistant</h2>
+          </div>
+          <p className="text-[14px] text-ink-500 mt-1 mb-5">
+            The AI powers your assistant, daily briefings, low-stock alerts, Hindi/Hinglish customer replies,
+            GST voice invoicing, campaign drafts, and every other automation. Pick any provider and paste
+            your own key — your data stays in your account.
+          </p>
+
+          {/* Status row */}
+          {keyStatus?.has_key ? (
+            <div className="rounded-xl border border-[#00863a]/30 bg-[#e8f8ee] p-4 mb-5 flex items-center gap-3">
+              <Check className="w-5 h-5 text-[#00863a] flex-shrink-0" strokeWidth={2.5} />
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-medium text-[#0a5a28]">
+                  Connected to {PROVIDER_OPTIONS.find((p) => p.id === keyStatus.provider)?.label || keyStatus.provider}
+                </p>
+                <p className="text-[12px] text-[#0a5a28]/80 mt-0.5 font-mono">
+                  ••••{keyStatus.hint} · {keyStatus.model}
+                </p>
+              </div>
+              <button
+                onClick={handleDeleteKey}
+                disabled={deletingKey}
+                className="text-[12px] text-[#ff3b30] hover:underline flex items-center gap-1 flex-shrink-0"
+              >
+                {deletingKey ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                Remove
+              </button>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-[#ff9500]/30 bg-[#fff4e5] p-4 mb-5 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-[#ff9500] flex-shrink-0 mt-0.5" strokeWidth={1.75} />
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-medium text-[#8a5500]">No API key set yet</p>
+                <p className="text-[12px] text-[#8a5500]/80 mt-0.5 leading-relaxed">
+                  The AI assistant won't respond until you add a key. Pick a provider below and paste your key —
+                  get one from the provider's website (most have free tiers).
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Provider picker */}
           <div className="space-y-4">
             <div>
-              <label className="label">Full Name</label>
-              <input
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+              <label className="label">Provider</label>
+              <select
+                value={provider}
+                onChange={(e) => onProviderChange(e.target.value as AIProviderId)}
                 className="input-field"
-                placeholder="Jane Doe"
-              />
-            </div>
-            <div>
-              <label className="label">Company Name</label>
-              <input
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                className="input-field"
-                placeholder="Acme Inc"
-              />
-            </div>
-            <div>
-              <label className="label">GSTIN (for GST invoices)</label>
-              <input
-                value={gstin}
-                onChange={(e) => setGstin(e.target.value)}
-                className="input-field font-mono"
-                placeholder="22AAAAA0000A1Z5"
-              />
-            </div>
-            <div>
-              <label className="label">Business Address</label>
-              <input
-                value={businessAddress}
-                onChange={(e) => setBusinessAddress(e.target.value)}
-                className="input-field"
-                placeholder="123 Main St, City"
-              />
-            </div>
-            <div>
-              <label className="label">State</label>
-              <input
-                value={businessState}
-                onChange={(e) => setBusinessState(e.target.value)}
-                className="input-field"
-                placeholder="Bihar"
-              />
-            </div>
-            <div>
-              <label className="label">UPI ID (for instant invoice payments)</label>
-              <input
-                value={upiId}
-                onChange={(e) => setUpiId(e.target.value)}
-                className="input-field font-mono"
-                placeholder="myshop@okhdfcbank"
-              />
-              <p className="text-xs text-slate-500 mt-1">Customers can pay any invoice by scanning a QR or tapping a link — works with PhonePe, GPay, Paytm, BHIM.</p>
-            </div>
-            <div>
-              <label className="label">Daily WhatsApp report time (IST)</label>
-              <input
-                type="time"
-                value={reportTime}
-                onChange={(e) => setReportTime(e.target.value)}
-                className="input-field"
-              />
-              <p className="text-xs text-slate-500 mt-1">When your daily sales report arrives on WhatsApp. Default 10:30 PM IST.</p>
-            </div>
-          </div>
-        </div>
-
-        {/* AI Provider */}
-        <div className="card p-6">
-          <h2 className="font-semibold text-white mb-1 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-brand-400" /> AI Provider
-          </h2>
-          <p className="text-sm text-slate-400 mb-4">
-            Choose which AI model powers your automations. Switch anytime.
-          </p>
-          <div className="space-y-3">
-            {providers.map((p) => (
-              <button
-                key={p.value}
-                onClick={() => setAiProvider(p.value)}
-                className={`w-full p-4 rounded-xl border text-left transition-all flex items-center justify-between ${
-                  aiProvider === p.value
-                    ? 'border-brand-600 bg-brand-600/10'
-                    : 'border-slate-700 bg-slate-900/50 hover:border-slate-600'
-                }`}
               >
-                <div>
-                  <p className="font-semibold text-white">{p.label}</p>
-                  <p className="text-sm text-slate-400">{p.desc}</p>
-                </div>
-                <div
-                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                    aiProvider === p.value ? 'border-brand-500 bg-brand-500' : 'border-slate-600'
-                  }`}
-                >
-                  {aiProvider === p.value && <Check className="w-3 h-3 text-white" />}
-                </div>
-              </button>
-            ))}
-          </div>
-
-          {/* Daily briefing opt-in */}
-          <div className="mt-6 p-4 rounded-xl border border-slate-700 bg-slate-900/50 flex items-center justify-between">
-            <div className="flex-1 pr-4">
-              <p className="font-semibold text-white flex items-center gap-2"><Mail className="w-4 h-4 text-brand-400" /> Daily AI Briefing</p>
-              <p className="text-sm text-slate-400 mt-0.5">Every morning the AI scans your business, predicts tasks, and emails you a briefing with what needs attention.</p>
+                {PROVIDER_OPTIONS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+              {selectedProvider.signupUrl && (
+                <p className="text-[12px] text-ink-500 mt-1.5">
+                  Get a key at{' '}
+                  <a href={selectedProvider.signupUrl} target="_blank" rel="noreferrer" className="text-apple-500 hover:underline font-medium">
+                    {selectedProvider.signupUrl.replace(/^https?:\/\//, '')} <ExternalLink className="w-3 h-3 inline -mt-0.5" />
+                  </a>
+                </p>
+              )}
             </div>
+
+            {/* API key input */}
+            <div>
+              <label className="label">API key</label>
+              <div className="relative">
+                <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-ink-400" />
+                <input
+                  type={showKey ? 'text' : 'password'}
+                  value={newKey}
+                  onChange={(e) => setNewKey(e.target.value)}
+                  className="input-field pl-11 pr-11 font-mono text-[13px]"
+                  placeholder={keyStatus?.has_key ? `••••••••••••${keyStatus.hint || ''}` : selectedProvider.keyPrefix || 'Paste your API key'}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKey(!showKey)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-700"
+                  title={showKey ? 'Hide' : 'Show'}
+                >
+                  {showKey ? <EyeOff className="w-[18px] h-[18px]" /> : <Eye className="w-[18px] h-[18px]" />}
+                </button>
+              </div>
+              <p className="text-[12px] text-ink-500 mt-1.5">
+                Stored encrypted in your database. Never sent anywhere except your provider, never shown in the UI.
+              </p>
+            </div>
+
+            {/* Custom base URL (only for "custom" provider) */}
+            {selectedProvider.requiresBaseUrl && (
+              <div>
+                <label className="label">Base URL</label>
+                <div className="relative">
+                  <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-ink-400" />
+                  <input
+                    value={baseUrl}
+                    onChange={(e) => setBaseUrl(e.target.value)}
+                    className="input-field pl-11 font-mono text-[13px]"
+                    placeholder="https://api.together.xyz/v1"
+                  />
+                </div>
+                <p className="text-[12px] text-ink-500 mt-1.5">
+                  Any OpenAI-compatible endpoint — Together, Anyscale, self-hosted llama.cpp / vLLM / ollama, etc.
+                </p>
+              </div>
+            )}
+
+            {/* Model */}
+            <div>
+              <label className="label">Default model</label>
+              <input
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                className="input-field font-mono text-[13px]"
+                placeholder={selectedProvider.defaultModel}
+              />
+              <p className="text-[12px] text-ink-500 mt-1.5">
+                The exact model name your provider expects. Leave as <code className="bg-ink-100 px-1.5 py-0.5 rounded text-[11px]">{selectedProvider.defaultModel}</code> for the provider's recommended default, or type any other.
+              </p>
+            </div>
+
             <button
-              type="button"
-              onClick={() => setDailyBriefing(!dailyBriefing)}
-              className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${dailyBriefing ? 'bg-brand-500' : 'bg-slate-700'}`}
+              onClick={handleSaveKey}
+              disabled={savingKey || !newKey.trim()}
+              className="btn-primary w-full py-3"
             >
-              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${dailyBriefing ? 'translate-x-6' : 'translate-x-0.5'}`} />
+              {savingKey ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+              {keyStatus?.has_key ? 'Update AI key' : 'Save and activate AI'}
             </button>
           </div>
         </div>
 
-        {/* Usage info */}
+        {/* Profile */}
         <div className="card p-6">
-          <h2 className="font-semibold text-white mb-3 flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-brand-400" /> Account Details
+          <h2 className="font-semibold text-ink-800 mb-4 flex items-center gap-2">
+            <User className="w-5 h-5 text-apple-500" /> Profile information
+          </h2>
+          <div className="space-y-4">
+            <div>
+              <label className="label">Full name</label>
+              <input value={fullName} onChange={(e) => setFullName(e.target.value)} className="input-field" placeholder="Ramesh Kumar" />
+            </div>
+            <div>
+              <label className="label">Company / shop name</label>
+              <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="input-field" placeholder="Kumar General Store" />
+            </div>
+            <div>
+              <label className="label">GSTIN (for GST invoices)</label>
+              <input value={gstin} onChange={(e) => setGstin(e.target.value)} className="input-field font-mono" placeholder="22AAAAA0000A1Z5" />
+            </div>
+            <div>
+              <label className="label">Business address</label>
+              <input value={businessAddress} onChange={(e) => setBusinessAddress(e.target.value)} className="input-field" placeholder="123 Main St, City" />
+            </div>
+            <div>
+              <label className="label">State</label>
+              <input value={businessState} onChange={(e) => setBusinessState(e.target.value)} className="input-field" placeholder="Bihar" />
+            </div>
+            <div>
+              <label className="label">UPI ID (for instant invoice payments)</label>
+              <input value={upiId} onChange={(e) => setUpiId(e.target.value)} className="input-field font-mono" placeholder="myshop@okhdfcbank" />
+              <p className="text-xs text-ink-500 mt-1">Customers can pay any invoice by scanning a QR or tapping a link — works with PhonePe, GPay, Paytm, BHIM.</p>
+            </div>
+            <div>
+              <label className="label">Daily WhatsApp report time (IST)</label>
+              <input type="time" value={reportTime} onChange={(e) => setReportTime(e.target.value)} className="input-field" />
+              <p className="text-xs text-ink-500 mt-1">When your daily sales report arrives on WhatsApp. Default 10:30 PM IST.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Daily briefing toggle */}
+        <div className="card p-6">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <p className="font-semibold text-ink-800 flex items-center gap-2"><Mail className="w-4 h-4 text-apple-500" /> Daily AI briefing</p>
+              <p className="text-sm text-ink-500 mt-1">Every morning the AI scans your business, predicts tasks, and emails you a briefing with what needs attention.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDailyBriefing(!dailyBriefing)}
+              className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${dailyBriefing ? 'bg-apple-500' : 'bg-ink-200'}`}
+            >
+              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform shadow-sm ${dailyBriefing ? 'translate-x-6' : 'translate-x-0.5'}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Account details */}
+        <div className="card p-6">
+          <h2 className="font-semibold text-ink-800 mb-3 flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-apple-500" /> Account
           </h2>
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between py-1.5 border-b border-slate-800">
-              <span className="text-slate-400">Email</span>
-              <span className="text-slate-200">{user?.email || '—'}</span>
+            <div className="flex justify-between py-1.5 border-b border-ink-100">
+              <span className="text-ink-500">Email</span>
+              <span className="text-ink-800">{user?.email || '—'}</span>
             </div>
-            <div className="flex justify-between py-1.5 border-b border-slate-800">
-              <span className="text-slate-400">Plan</span>
-              <span className="text-slate-200 capitalize">{profile?.plan}</span>
+            <div className="flex justify-between py-1.5 border-b border-ink-100">
+              <span className="text-ink-500">Plan</span>
+              <span className="text-ink-800 capitalize">{profile?.plan}</span>
             </div>
-            <div className="flex justify-between py-1.5 border-b border-slate-800">
-              <span className="text-slate-400">Actions Used</span>
-              <span className="text-slate-200">{profile?.api_usage_count} / {profile?.api_usage_limit}</span>
+            <div className="flex justify-between py-1.5 border-b border-ink-100">
+              <span className="text-ink-500">AI actions used</span>
+              <span className="text-ink-800">{profile?.api_usage_count} / {profile?.api_usage_limit}</span>
             </div>
             <div className="flex justify-between py-1.5">
-              <span className="text-slate-400">Member Since</span>
-              <span className="text-slate-200">
+              <span className="text-ink-500">Member since</span>
+              <span className="text-ink-800">
                 {profile ? new Date(profile.created_at).toLocaleDateString() : '—'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Save button */}
         <button onClick={handleSave} disabled={saving} className="btn-primary w-full py-3">
           {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-          Save Changes
+          Save profile changes
         </button>
       </div>
     </div>

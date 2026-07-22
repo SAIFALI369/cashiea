@@ -7,79 +7,42 @@
 //   - gst_invoice_voice : take a spoken/typed description, generate a GST invoice
 //   - custom            : free-form — the AI assistant routes it
 //
-// Called from the Quick-Action Bar UI. All tasks confirm with the owner
-// before doing anything that sends a message.
+// All AI calls go through the unified callAI() in _shared/ai.ts,
+// which uses the user's per-user API key (any provider they pick
+// in Settings). The plaintext key never leaves the backend.
+//
+// Called from the Quick-Action Bar UI. All tasks confirm with the
+// owner before doing anything that sends a message.
 //
 // Deploy:  supabase functions deploy quick-tasks
 // ════════════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
-import { callOpenRouter } from "../_shared/openrouter.ts";
-import { callGateway, GATEWAY_DEFAULT_MODEL } from "../_shared/ai-gateway.ts";
-
-async function callAI(provider: string, systemPrompt: string, prompt: string, maxTokens = 1000): Promise<string> {
-  // OpenRouter — auto-fallback chain: Gemini -> Kimi K3 -> Llama -> any free model
-  if (provider === "openrouter") {
-    const r = await callOpenRouter(systemPrompt, prompt, { maxTokens: 1500 });
-    if (!r.ok) throw new Error(r.value);
-    return r.value;
-  }
-  // Prefer the Vercel AI Gateway if configured, else fall back to the direct provider
-  const gatewayKey = Deno.env.get("AI_GATEWAY_API_KEY");
-  if (gatewayKey) {
-    return withRetry(() => callGateway(systemPrompt, prompt, { maxTokens }), 2, 600);
-  }
-  const callers: Record<string, () => Promise<{ ok: boolean; status: number; value: string }>> = {
-    openai: async () => {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
-        body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: systemPrompt }, { role: "user", content: prompt }], temperature: 0.6, max_tokens: maxTokens }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).choices[0].message.content };
-    },
-    gemini: async () => {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${Deno.env.get("GEMINI_API_KEY")}`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system_instruction: { parts: [{ text: systemPrompt }] }, contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.6, maxOutputTokens: maxTokens } }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).candidates[0].content.parts[0].text };
-    },
-    anthropic: async () => {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!, "anthropic-version": "2023-06-01" },
-        body: JSON.stringify({ model: "claude-3-5-sonnet-20241022", max_tokens: maxTokens, system: systemPrompt, messages: [{ role: "user", content: prompt }] }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).content[0].text };
-    },
-  };
-  return withRetry(() => callers[provider || "openai"](), 2, 600);
-}
+import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY } from "../_shared/env.ts";
+import { corsHeaders, json } from "../_shared/retry.ts";
+import { callAI } from "../_shared/ai.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: req.headers.get("Authorization")! } } });
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, { global: { headers: { Authorization: req.headers.get("Authorization")! } } });
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) return json({ error: "Unauthorized" }, 401);
 
-    const { data: profile } = await supabase.from("profiles").select("ai_provider, api_usage_count, api_usage_limit, trial_ends_at, company_name, full_name, gstin, upi_id").eq("id", user.id).single();
+    const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+
+    const { data: profile } = await supabase.from("profiles").select("api_usage_count, api_usage_limit, trial_ends_at, company_name, full_name, gstin, upi_id").eq("id", user.id).single();
     const onTrial = profile?.trial_ends_at && new Date(profile.trial_ends_at) > new Date();
     const limit = onTrial ? Math.max(profile.api_usage_limit, 500) : profile?.api_usage_limit || 50;
     if (profile && profile.api_usage_count >= limit) return json({ error: "Usage limit reached" }, 429);
 
     const body = await req.json();
     const mode = body.mode;
-    const provider = profile?.ai_provider || "openai";
     const userText = (body.text || "").trim();
     let result = "";
     let meta: Record<string, unknown> = {};
 
     // ─── Helper to grab data for a given IST day (defaults to today) ──
-    // target_date lets owners rerun daily_closing for a past date.
     const targetDate = body.target_date || null;
     const dayStart = targetDate
       ? new Date(targetDate + "T00:00:00+05:30").toISOString()
@@ -98,8 +61,11 @@ Deno.serve(async (req) => {
       if (low.length === 0) {
         result = "✅ All products are well stocked. No reorders needed right now.";
       } else {
-        result = await callAI(provider, `You are a retail inventory assistant for a shop in India. Write a clear low-stock alert in friendly Hinglish (Hindi+English mixed in Roman script). Use bullet points. Suggest reorder quantities based on the gap. Sign off as the shop's AI assistant.`,
-          `Low-stock items:\n${JSON.stringify(low, null, 1)}`, 600);
+        const r = await callAI(supabaseAdmin, user.id,
+          `You are a retail inventory assistant for a shop in India. Write a clear low-stock alert in friendly Hinglish (Hindi+English mixed in Roman script). Use bullet points. Suggest reorder quantities based on the gap. Sign off as the shop's AI assistant.`,
+          `Low-stock items:\n${JSON.stringify(low, null, 1)}`, { maxTokens: 600 });
+        if (!r.ok) throw new Error(r.value);
+        result = r.value;
       }
     }
 
@@ -109,30 +75,34 @@ Deno.serve(async (req) => {
       const byMethod: Record<string, number> = {};
       (todayTx || []).forEach((t) => { byMethod[t.payment_method] = (byMethod[t.payment_method] || 0) + Number(t.total); });
       meta = { revenue, orders: (todayTx || []).length, itemCount, byMethod };
-      result = await callAI(provider,
+      const r = await callAI(supabaseAdmin, user.id,
         `Generate a clean DAILY CLOSING REPORT for an Indian retail shop. Be warm, professional, and concise. Format with clear sections. End with a one-line summary. Use ₹ symbol.`,
         `Target date: ${targetDate || 'today'} data:\n- Total revenue: ₹${revenue.toFixed(2)}\n- Orders: ${(todayTx || []).length}\n- Items sold: ${itemCount}\n- By payment method: ${JSON.stringify(byMethod)}\n- Shop name: ${profile?.company_name || profile?.full_name || 'My Shop'}`,
-        500);
+        { maxTokens: 500 });
+      if (!r.ok) throw new Error(r.value);
+      result = r.value;
     }
 
     else if (mode === "hindi_bot") {
       if (!userText) return json({ error: "Paste the customer's message to reply to" }, 400);
-      result = await callAI(provider,
+      const r = await callAI(supabaseAdmin, user.id,
         `You are a friendly Hinglish WhatsApp assistant for an Indian retail shop. Hinglish = Hindi + English mixed in Roman script (e.g. "Namaste! Aapka order ready hai, please collect kar lijiye."). Reply warmly and naturally to the customer. Keep replies short (2-4 lines) — perfect for WhatsApp. Use emojis sparingly. Sign off as the shop.`,
         `Customer's message: "${userText}"\n\nShop name: ${profile?.company_name || 'My Shop'}\n\nWrite a helpful Hinglish reply:`,
-        300);
+        { maxTokens: 300 });
+      if (!r.ok) throw new Error(r.value);
+      result = r.value;
     }
 
     else if (mode === "gst_invoice_voice") {
-      // userText is the spoken/typed invoice description
       if (!userText) return json({ error: "Describe the sale (by voice or text) first" }, 400);
-      const aiOut = await callAI(provider,
+      const r = await callAI(supabaseAdmin, user.id,
         `You are a GST billing assistant for an Indian shop. Parse the sale description and return ONLY valid JSON: {"customer_name","customer_phone","items":[{"description","quantity","unit_price"}],"tax_rate" (use 18 for most, 5 for essentials, 0 for unbranded), "notes"}. Calculate subtotal, tax_amount, total in INR. If the spoken amount sounds like rupees, treat it as ₹.`,
-        `Description: "${userText}"\nShop GSTIN: ${profile?.gstin || 'not set'}`, 700);
-      meta.raw = aiOut;
-      // Try to parse + create the invoice
+        `Description: "${userText}"\nShop GSTIN: ${profile?.gstin || 'not set'}`,
+        { maxTokens: 700 });
+      if (!r.ok) throw new Error(r.value);
+      meta.raw = r.value;
       try {
-        const cleaned = aiOut.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+        const cleaned = r.value.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
         const parsed = JSON.parse(cleaned);
         const items = parsed.items || [];
         const subtotal = items.reduce((s: number, it: any) => s + (it.quantity || 0) * (it.unit_price || 0), 0);
@@ -149,22 +119,24 @@ Deno.serve(async (req) => {
         meta.invoice = invoice;
         result = `🧾 GST Invoice ${invoiceNumber} created!\nCustomer: ${parsed.customer_name || "Customer"}\nItems: ${items.length}\nTax (${taxRate}%): ₹${taxAmount.toFixed(2)}\nTotal: ₹${total.toFixed(2)}`;
       } catch {
-        result = `I heard: "${userText}"\n\nRaw AI output:\n${aiOut}`;
+        result = `I heard: "${userText}"\n\nRaw AI output:\n${r.value}`;
       }
     }
 
     else if (mode === "custom") {
       if (!userText) return json({ error: "Tell me what you want to do" }, 400);
-      // Free-form: route through the AI assistant-style reasoning
       const snapshot = {
         todayRevenue: (todayTx || []).reduce((s, t) => s + Number(t.total), 0),
         todayOrders: (todayTx || []).length,
         lowStock: (allProducts || []).filter((p) => p.stock_quantity <= p.low_stock_threshold).map((p) => p.name),
         shop: profile?.company_name || profile?.full_name,
       };
-      result = await callAI(provider,
+      const r = await callAI(supabaseAdmin, user.id,
         `You are a helpful retail business assistant for an Indian shop owner. Answer their request clearly in Hinglish (Hindi+English mixed in Roman script) or English — match their language. Be concise and actionable.`,
-        `Owner request: "${userText}"\n\nShop context: ${JSON.stringify(snapshot)}`, 800);
+        `Owner request: "${userText}"\n\nShop context: ${JSON.stringify(snapshot)}`,
+        { maxTokens: 800 });
+      if (!r.ok) throw new Error(r.value);
+      result = r.value;
     }
 
     else return json({ error: "Unknown mode. Use low_stock_alert | daily_closing | hindi_bot | gst_invoice_voice | custom" }, 400);
@@ -173,7 +145,7 @@ Deno.serve(async (req) => {
     await supabase.from("activity_logs").insert({
       user_id: user.id, action_type: "summary",
       description: `Quick task: ${mode}${userText ? ` — ${userText.slice(0, 50)}` : ""}`,
-      time_saved_minutes: 8, money_saved: 5, provider,
+      time_saved_minutes: 8, money_saved: 5,
       metadata: meta,
     });
 

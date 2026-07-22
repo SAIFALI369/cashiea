@@ -12,6 +12,7 @@
 // ════════════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY } from "../_shared/env.ts";
 import { corsHeaders, json, withRetry } from "../_shared/retry.ts";
 import { refreshGoogleToken, fetchGmail, fetchSheet } from "../_shared/google.ts";
 
@@ -22,7 +23,7 @@ Deno.serve(async (req) => {
     const { user_id, provider, spreadsheet_id } = body;
     if (!user_id || !provider) return json({ error: "user_id and provider required" }, 400);
 
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
     // Load the integration
     const { data: integration } = await supabase.from("integrations")
@@ -65,7 +66,7 @@ Deno.serve(async (req) => {
 
     // Feed the data into the business-brain (learn mode) by calling it
     // directly with the same service client.
-    const brainUrl = `${Deno.env.get("SUPABASE_URL")!.replace(".supabase.co", ".functions.supabase.co")}/business-brain`;
+    const brainUrl = `${SUPABASE_URL!.replace(".supabase.co", ".functions.supabase.co")}/business-brain`;
     const { data: profile } = await supabase.from("profiles").select("ai_provider").eq("id", user_id).single();
 
     // We call the brain in "learn" mode with the fetched data as manual_notes.

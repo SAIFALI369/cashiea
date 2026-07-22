@@ -1,100 +1,20 @@
 // ════════════════════════════════════════════════════════════════
-// BizAutomate AI — Multi-Provider AI Edge Function
+// AI AUTOMATION — Multi-task endpoint (invoice, report, extract,
+// summary, email, sentiment). Used by the Invoices, Reports,
+// DataEntry, Summaries, and EmailAssistant pages.
+//
+// All AI calls go through the unified callAI() in _shared/ai.ts,
+// which reads the user's per-user API key from user_api_keys
+// (encrypted with pgcrypto). The plaintext key never leaves the
+// backend.
+//
 // Deploy:  supabase functions deploy ai-automation
-// Secrets: supabase secrets set OPENAI_API_KEY=sk-...
-//          supabase secrets set GEMINI_API_KEY=...
-//          supabase secrets set ANTHROPIC_API_KEY=...
 // ════════════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
-import { callOpenRouter } from "../_shared/openrouter.ts";
-import { callGateway, GATEWAY_DEFAULT_MODEL } from "../_shared/ai-gateway.ts";
-
-// ─── Provider calls (each returns {ok, status, value}) ──────────
-async function callOpenAI(systemPrompt: string, prompt: string): Promise<{ ok: boolean; status: number; value: string }> {
-  const key = Deno.env.get("OPENAI_API_KEY");
-  if (!key) throw new Error("OPENAI_API_KEY not configured");
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: prompt }],
-      temperature: 0.7,
-      max_tokens: 2000,
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`OpenAI error (${res.status}): ${err.slice(0, 300)}`);
-  }
-  const data = await res.json();
-  return { ok: true, status: 200, value: data.choices[0].message.content };
-}
-
-async function callGemini(systemPrompt: string, prompt: string): Promise<{ ok: boolean; status: number; value: string }> {
-  const key = Deno.env.get("GEMINI_API_KEY");
-  if (!key) throw new Error("GEMINI_API_KEY not configured");
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: systemPrompt }] },
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 2000 },
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Gemini error (${res.status}): ${err.slice(0, 300)}`);
-  }
-  const data = await res.json();
-  return { ok: true, status: 200, value: data.candidates[0].content.parts[0].text };
-}
-
-async function callAnthropic(systemPrompt: string, prompt: string): Promise<{ ok: boolean; status: number; value: string }> {
-  const key = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!key) throw new Error("ANTHROPIC_API_KEY not configured");
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({
-      model: "claude-3-5-sonnet-20241022",
-      max_tokens: 2000,
-      system: systemPrompt,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Anthropic error (${res.status}): ${err.slice(0, 300)}`);
-  }
-  const data = await res.json();
-  return { ok: true, status: 200, value: data.content[0].text };
-}
-
-async function callProvider(provider: string, systemPrompt: string, prompt: string): Promise<string> {
-  // OpenRouter — auto-fallback chain: Gemini -> Kimi K3 -> Llama -> any free model
-  if (provider === "openrouter") {
-    const r = await callOpenRouter(systemPrompt, prompt, { maxTokens: 1500 });
-    if (!r.ok) throw new Error(r.value);
-    return r.value;
-  }
-  // Vercel AI Gateway is OpenAI-compatible and routes to any provider/model
-  if (provider === "vercel_gateway") {
-    return withRetry(() => callGateway(systemPrompt, prompt), 2, 600);
-  }
-  const callers: Record<string, (s: string, p: string) => Promise<{ ok: boolean; status: number; value: string }>> = {
-    openai: callOpenAI,
-    gemini: callGemini,
-    anthropic: callAnthropic,
-  };
-  const caller = callers[provider];
-  if (!caller) throw new Error(`Unknown provider: ${provider}`);
-  return withRetry(() => caller(systemPrompt, prompt), 2, 600);
-}
+import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY } from "../_shared/env.ts";
+import { corsHeaders, json } from "../_shared/retry.ts";
+import { callAI } from "../_shared/ai.ts";
 
 // ─── Structured system prompts per task type ────────────────────
 // Report sub-types get tailored instructions so output is genuinely
@@ -144,18 +64,23 @@ Deno.serve(async (req) => {
 
   try {
     const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
+      SUPABASE_URL!,
+      SUPABASE_ANON_KEY!,
       { global: { headers: { Authorization: req.headers.get("Authorization")! } } }
     );
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) return json({ error: "Unauthorized" }, 401);
 
+    const supabaseAdmin = createClient(
+      SUPABASE_URL!,
+      SUPABASE_SERVICE_ROLE_KEY!
+    );
+
     // Usage check — honor trial boost
     const { data: profile } = await supabase
       .from("profiles")
-      .select("api_usage_count, api_usage_limit, ai_provider, plan, trial_ends_at")
+      .select("api_usage_count, api_usage_limit, plan, trial_ends_at")
       .eq("id", user.id)
       .single();
 
@@ -165,10 +90,9 @@ Deno.serve(async (req) => {
       return json({ error: "Usage limit reached. Please upgrade your plan." }, 429);
     }
 
-    const { task_type, prompt, provider: requestedProvider, report_type, title } = await req.json();
+    const { task_type, prompt, report_type, title } = await req.json();
     if (!task_type || !prompt) return json({ error: "task_type and prompt are required" }, 400);
 
-    const provider = requestedProvider || profile?.ai_provider || "openai";
     const systemPrompt = SYSTEM_PROMPTS[task_type] || "You are a helpful business assistant.";
 
     // Build the actual user prompt (report sub-type framing)
@@ -177,7 +101,7 @@ Deno.serve(async (req) => {
       userPrompt = frameReportPrompt(report_type || "custom", title || "", prompt);
     }
 
-    const result = await callProvider(provider, systemPrompt, userPrompt);
+    const result = await callAI(supabaseAdmin, user.id, systemPrompt, userPrompt, { maxTokens: 2000 });
 
     // Increment usage + log activity
     await supabase.rpc("increment_api_usage", { user_uuid: user.id });
@@ -188,10 +112,9 @@ Deno.serve(async (req) => {
       description: `${task_type} generated`,
       time_saved_minutes: savings.time,
       money_saved: savings.money,
-      provider,
     });
 
-    return json({ result, provider, task_type });
+    return json({ result, task_type });
   } catch (error) {
     return json({ error: error.message }, 500);
   }

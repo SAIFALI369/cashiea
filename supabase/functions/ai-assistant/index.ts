@@ -3,60 +3,22 @@
 // Gathers a snapshot of the user's business data, then lets the AI
 // answer questions like "How was business today?", "Who bought
 // cement last month?", "Which customers should I follow up?".
+//
+// Uses the unified per-user callAI() in _shared/ai.ts — works
+// with any provider the user has configured in Settings.
 // Deploy:  supabase functions deploy ai-assistant
 // ════════════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
-import { callOpenRouter } from "../_shared/openrouter.ts";
-import { callGateway } from "../_shared/ai-gateway.ts";
-
-async function callAI(provider: string, systemPrompt: string, prompt: string): Promise<string> {
-  // OpenRouter — auto-fallback chain: Gemini -> Kimi K3 -> Llama -> any free model
-  if (provider === "openrouter") {
-    const r = await callOpenRouter(systemPrompt, prompt, { maxTokens: 1500 });
-    if (!r.ok) throw new Error(r.value);
-    return r.value;
-  }
-  const callers: Record<string, (s: string, p: string) => Promise<{ ok: boolean; status: number; value: string }>> = {
-    openai: async (s, p) => {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
-        body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: s }, { role: "user", content: p }], temperature: 0.5, max_tokens: 1200 }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).choices[0].message.content };
-    },
-    gemini: async (s, p) => {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${Deno.env.get("GEMINI_API_KEY")}`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system_instruction: { parts: [{ text: s }] }, contents: [{ parts: [{ text: p }] }], generationConfig: { temperature: 0.5, maxOutputTokens: 1200 } }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).candidates[0].content.parts[0].text };
-    },
-    anthropic: async (s, p) => {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!, "anthropic-version": "2023-06-01" },
-        body: JSON.stringify({ model: "claude-3-5-sonnet-20241022", max_tokens: 1200, system: s, messages: [{ role: "user", content: p }] }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).content[0].text };
-    },
-  };
-  // Vercel AI Gateway is OpenAI-compatible and routes to any provider/model
-  if (provider === "vercel_gateway") {
-    return withRetry(() => callGateway(systemPrompt, prompt), 2, 600);
-  }
-  return withRetry(() => callers[provider || "openai"](systemPrompt, prompt), 2, 600);
-}
+import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY } from "../_shared/env.ts";
+import { corsHeaders, json } from "../_shared/retry.ts";
+import { callAI } from "../_shared/ai.ts";
 
 // Build a compact business snapshot for the AI to reason over
 async function buildContext(supabase: any, userId: string): Promise<string> {
   const now = new Date();
   const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   const startMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const startLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
   const sixtyDaysAgo = new Date(now.getTime() - 60 * 86400000).toISOString();
 
   const [todayTx, monthTx, products, customers, expenses, lowStock, dormant, suppliers] = await Promise.all([
@@ -102,7 +64,7 @@ async function buildContext(supabase: any, userId: string): Promise<string> {
   }, null, 1);
 }
 
-const SYSTEM = `You are Hostomate's retail business assistant. You receive a JSON snapshot of the shop owner's business data and answer their questions naturally and helpfully.
+const SYSTEM = `You are Cashiea's retail business assistant. You receive a JSON snapshot of the shop owner's business data and answer their questions naturally and helpfully.
 
 You can answer questions about: sales/revenue, profit, expenses, top products, slow products, low stock, customer history, dormant customers (for follow-up), suppliers owed, daily summaries, and trends.
 
@@ -117,11 +79,14 @@ Rules:
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: req.headers.get("Authorization")! } } });
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, { global: { headers: { Authorization: req.headers.get("Authorization")! } } });
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) return json({ error: "Unauthorized" }, 401);
 
-    const { data: profile } = await supabase.from("profiles").select("ai_provider, api_usage_count, api_usage_limit, trial_ends_at").eq("id", user.id).single();
+    // Service-role client for key decryption
+    const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+
+    const { data: profile } = await supabase.from("profiles").select("api_usage_count, api_usage_limit, trial_ends_at").eq("id", user.id).single();
     const onTrial = profile?.trial_ends_at && new Date(profile.trial_ends_at) > new Date();
     const limit = onTrial ? Math.max(profile.api_usage_limit, 500) : profile?.api_usage_limit || 50;
     if (profile && profile.api_usage_count >= limit) return json({ error: "Usage limit reached" }, 429);
@@ -133,13 +98,13 @@ Deno.serve(async (req) => {
       ? `Generate a concise MORNING BRIEFING for today based on this business snapshot. Include: a greeting, today's tasks (follow-ups, stock, payments due), and a quick status. Snapshot:\n${context}`
       : `Business owner asks: "${message}"\n\nHere is the current business data snapshot:\n${context}\n\nAnswer the owner's question based on this data.`;
 
-    const result = await callAI(profile?.ai_provider || "openai", SYSTEM, userPrompt);
+    const result = await callAI(supabaseAdmin, user.id, SYSTEM, userPrompt, { maxTokens: 1500 });
 
     await supabase.rpc("increment_api_usage", { user_uuid: user.id });
     await supabase.from("activity_logs").insert({
       user_id: user.id, action_type: "summary",
       description: briefing ? "AI briefing generated" : `AI: ${String(message).slice(0, 60)}`,
-      time_saved_minutes: 10, money_saved: 5, provider: profile?.ai_provider,
+      time_saved_minutes: 10, money_saved: 5,
     });
 
     return json({ reply: result });

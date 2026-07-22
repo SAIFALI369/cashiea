@@ -20,10 +20,11 @@
 // ════════════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY } from "../_shared/env.ts";
 
 const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  SUPABASE_URL!,
+  SUPABASE_SERVICE_ROLE_KEY!
 );
 
 const WHATSAPP_TOKEN = Deno.env.get("WHATSAPP_TOKEN");
@@ -161,7 +162,7 @@ async function sendWhatsApp(toPhone: string, message: string): Promise<{ ok: boo
 Deno.serve(async (req) => {
   // Service-role only (cron or manual trigger)
   const authHeader = req.headers.get("authorization") || "";
-  const expectedKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const expectedKey = SUPABASE_SERVICE_ROLE_KEY;
   if (!expectedKey || !authHeader.endsWith(expectedKey)) {
     return new Response(JSON.stringify({ error: "Unauthorized — service-role only" }), {
       status: 401, headers: { "Content-Type": "application/json" },
