@@ -16,6 +16,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
+import { callDefaultGemini, hasDefaultAI } from "../_shared/ai-default.ts";
 import { callOpenRouter } from "../_shared/openrouter.ts";
 import { callGateway } from "../_shared/ai-gateway.ts";
 
@@ -57,6 +58,20 @@ async function callAI(provider: string, systemPrompt: string, prompt: string, ma
     return withRetry(() => callGateway(systemPrompt, prompt), 2, 600);
   }
   return withRetry(() => callers[provider || "openai"](systemPrompt, prompt), 2, 600);
+}
+
+// Fallback: if the selected provider has no key, use the built-in default Gemini
+async function callAIWithFallback(provider: string, systemPrompt: string, prompt: string, maxTokens = 1200): Promise<string> {
+  try {
+    return await callAI(provider, systemPrompt, prompt, maxTokens);
+  } catch (err) {
+    if (hasDefaultAI() && (err.message.includes("not configured") || err.message.includes("OPENROUTER_API_KEY") || err.message.includes("OPENAI_API_KEY") || err.message.includes("GEMINI_API_KEY") || err.message.includes("ANTHROPIC_API_KEY") || err.message.includes("AI_GATEWAY_API_KEY"))) {
+      const fb = await callDefaultGemini(systemPrompt, prompt, { maxTokens });
+      if (!fb.ok) throw new Error(fb.value);
+      return fb.value;
+    }
+    throw err;
+  }
 }
 
 // ─── Gather a snapshot of the business ──────────────────────────
@@ -146,7 +161,7 @@ Deno.serve(async (req) => {
 Return ONLY valid JSON: {"business_type":"one short phrase","summary":"3-5 sentence overview of what the business is, what it sells, who its customers are, and how it's doing","key_facts":[{"fact":"...","source":"data|owner|integrations","confidence":"high|medium|low"}]}.
 Key facts should be specific, useful, and actionable (e.g. "Top product is X", "60% of customers are dormant", "Margin averages Y%"). No markdown.`;
       const prompt = `Business data snapshot:\n${JSON.stringify({ ...snap, existingMemory: snap.existingMemory?.summary }, null, 1)}${manualNotes}${integrationList}`;
-      result = await callAI(provider, sys, prompt, 1000);
+      result = await callAIWithFallback(provider, sys, prompt, 1000);
 
       // Parse + persist the memory
       const cleaned = result.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
@@ -174,7 +189,7 @@ Key facts should be specific, useful, and actionable (e.g. "Top product is X", "
 Return ONLY valid JSON: {"predictions":[{"prediction_type":"reorder|followup|invoice|offer|alert|expense|custom","title":"short action title","description":"what to do","rationale":"why (based on the data)","priority":"low|medium|high|urgent"}]}.
 Base each prediction on real signals in the data (low stock, dormant customers, overdue payments, trends). Do NOT propose generic advice — be specific with names and numbers.`;
       const prompt = `Business data snapshot:\n${JSON.stringify(snap, null, 1)}`;
-      result = await callAI(provider, sys, prompt, 1200);
+      result = await callAIWithFallback(provider, sys, prompt, 1200);
 
       // Parse + insert predictions as pending
       const cleaned = result.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();

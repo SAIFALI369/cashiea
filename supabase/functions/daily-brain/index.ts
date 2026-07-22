@@ -15,6 +15,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry } from "../_shared/retry.ts";
+import { callDefaultGemini, hasDefaultAI } from "../_shared/ai-default.ts";
 import { callOpenRouter } from "../_shared/openrouter.ts";
 import { callGateway } from "../_shared/ai-gateway.ts";
 import { refreshGoogleToken, fetchGmail } from "../_shared/google.ts";
@@ -62,6 +63,20 @@ async function callAI(provider: string, systemPrompt: string, prompt: string, ma
     return withRetry(() => callGateway(systemPrompt, prompt), 1, 800);
   }
   return withRetry(() => callers[provider || "openai"](systemPrompt, prompt), 1, 800);
+}
+
+// Fallback: if the selected provider has no key, use the built-in default Gemini
+async function callAIWithFallback(provider: string, systemPrompt: string, prompt: string, maxTokens = 1200): Promise<string> {
+  try {
+    return await callAI(provider, systemPrompt, prompt, maxTokens);
+  } catch (err) {
+    if (hasDefaultAI() && (err.message.includes("not configured") || err.message.includes("OPENROUTER_API_KEY") || err.message.includes("OPENAI_API_KEY") || err.message.includes("GEMINI_API_KEY") || err.message.includes("ANTHROPIC_API_KEY") || err.message.includes("AI_GATEWAY_API_KEY"))) {
+      const fb = await callDefaultGemini(systemPrompt, prompt, { maxTokens });
+      if (!fb.ok) throw new Error(fb.value);
+      return fb.value;
+    }
+    throw err;
+  }
 }
 
 async function gatherSnapshot(userId: string) {
@@ -153,7 +168,7 @@ Deno.serve(async (req) => {
         // 1. Generate predictions (pending approval)
         const sys = `You are a proactive retail business assistant. Based on the snapshot${learned}, propose 3-5 specific actions. Return ONLY JSON: {"predictions":[{"prediction_type":"reorder|followup|invoice|offer|alert","title":"...","description":"...","rationale":"...","priority":"low|medium|high|urgent"}]}. Be specific with names and numbers.`;
         const prompt = `Daily snapshot for ${user.full_name || "the owner"}:\n${JSON.stringify(snap, null, 1)}`;
-        const result = await callAI(user.ai_provider || "openai", sys, prompt, 900);
+        const result = await callAIWithFallback(user.ai_provider || "openai", sys, prompt, 900);
 
         let predsCreated = 0;
         try {
@@ -179,7 +194,7 @@ Deno.serve(async (req) => {
         const optedIn = (user as any).daily_briefing !== false; // default on unless explicitly off
 
         if (email && optedIn) {
-          const briefing = await callAI(user.ai_provider || "openai",
+          const briefing = await callAIWithFallback(user.ai_provider || "openai",
             "Write a concise, friendly morning briefing for a shop owner. Use markdown with short bullets and bold headings. Keep it under 150 words.",
             `Snapshot:\n${JSON.stringify({ todayRevenue: snap.todayRevenue, todayOrders: snap.todayOrders, lowStockCount: snap.lowStock.length, dormantCount: snap.dormantCustomers.length, suppliersOwedCount: snap.suppliersOwed.length, newPredictions: predsCreated })}\n\nBe encouraging and specific.`,
             500

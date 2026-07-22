@@ -15,6 +15,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
+import { callDefaultGemini, hasDefaultAI } from "../_shared/ai-default.ts";
 import { callOpenRouter } from "../_shared/openrouter.ts";
 import { callGateway, GATEWAY_DEFAULT_MODEL } from "../_shared/ai-gateway.ts";
 
@@ -59,6 +60,19 @@ async function callAI(provider: string, systemPrompt: string, prompt: string, ma
   return withRetry(() => callers[provider || "openai"](), 2, 600);
 }
 
+async function callAIWithFallback(provider: string, systemPrompt: string, prompt: string, maxTokens = 1000): Promise<string> {
+  try {
+    return await callAI(provider, systemPrompt, prompt, maxTokens);
+  } catch (err) {
+    if (hasDefaultAI() && err.message.includes("not configured")) {
+      const fb = await callDefaultGemini(systemPrompt, prompt, { maxTokens });
+      if (!fb.ok) throw new Error(fb.value);
+      return fb.value;
+    }
+    throw err;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
@@ -98,7 +112,7 @@ Deno.serve(async (req) => {
       if (low.length === 0) {
         result = "✅ All products are well stocked. No reorders needed right now.";
       } else {
-        result = await callAI(provider, `You are a retail inventory assistant for a shop in India. Write a clear low-stock alert in friendly Hinglish (Hindi+English mixed in Roman script). Use bullet points. Suggest reorder quantities based on the gap. Sign off as the shop's AI assistant.`,
+        result = await callAIWithFallback(provider, `You are a retail inventory assistant for a shop in India. Write a clear low-stock alert in friendly Hinglish (Hindi+English mixed in Roman script). Use bullet points. Suggest reorder quantities based on the gap. Sign off as the shop's AI assistant.`,
           `Low-stock items:\n${JSON.stringify(low, null, 1)}`, 600);
       }
     }
@@ -109,7 +123,7 @@ Deno.serve(async (req) => {
       const byMethod: Record<string, number> = {};
       (todayTx || []).forEach((t) => { byMethod[t.payment_method] = (byMethod[t.payment_method] || 0) + Number(t.total); });
       meta = { revenue, orders: (todayTx || []).length, itemCount, byMethod };
-      result = await callAI(provider,
+      result = await callAIWithFallback(provider,
         `Generate a clean DAILY CLOSING REPORT for an Indian retail shop. Be warm, professional, and concise. Format with clear sections. End with a one-line summary. Use ₹ symbol.`,
         `Target date: ${targetDate || 'today'} data:\n- Total revenue: ₹${revenue.toFixed(2)}\n- Orders: ${(todayTx || []).length}\n- Items sold: ${itemCount}\n- By payment method: ${JSON.stringify(byMethod)}\n- Shop name: ${profile?.company_name || profile?.full_name || 'My Shop'}`,
         500);
@@ -117,7 +131,7 @@ Deno.serve(async (req) => {
 
     else if (mode === "hindi_bot") {
       if (!userText) return json({ error: "Paste the customer's message to reply to" }, 400);
-      result = await callAI(provider,
+      result = await callAIWithFallback(provider,
         `You are a friendly Hinglish WhatsApp assistant for an Indian retail shop. Hinglish = Hindi + English mixed in Roman script (e.g. "Namaste! Aapka order ready hai, please collect kar lijiye."). Reply warmly and naturally to the customer. Keep replies short (2-4 lines) — perfect for WhatsApp. Use emojis sparingly. Sign off as the shop.`,
         `Customer's message: "${userText}"\n\nShop name: ${profile?.company_name || 'My Shop'}\n\nWrite a helpful Hinglish reply:`,
         300);
@@ -126,7 +140,7 @@ Deno.serve(async (req) => {
     else if (mode === "gst_invoice_voice") {
       // userText is the spoken/typed invoice description
       if (!userText) return json({ error: "Describe the sale (by voice or text) first" }, 400);
-      const aiOut = await callAI(provider,
+      const aiOut = await callAIWithFallback(provider,
         `You are a GST billing assistant for an Indian shop. Parse the sale description and return ONLY valid JSON: {"customer_name","customer_phone","items":[{"description","quantity","unit_price"}],"tax_rate" (use 18 for most, 5 for essentials, 0 for unbranded), "notes"}. Calculate subtotal, tax_amount, total in INR. If the spoken amount sounds like rupees, treat it as ₹.`,
         `Description: "${userText}"\nShop GSTIN: ${profile?.gstin || 'not set'}`, 700);
       meta.raw = aiOut;
@@ -162,7 +176,7 @@ Deno.serve(async (req) => {
         lowStock: (allProducts || []).filter((p) => p.stock_quantity <= p.low_stock_threshold).map((p) => p.name),
         shop: profile?.company_name || profile?.full_name,
       };
-      result = await callAI(provider,
+      result = await callAIWithFallback(provider,
         `You are a helpful retail business assistant for an Indian shop owner. Answer their request clearly in Hinglish (Hindi+English mixed in Roman script) or English — match their language. Be concise and actionable.`,
         `Owner request: "${userText}"\n\nShop context: ${JSON.stringify(snapshot)}`, 800);
     }

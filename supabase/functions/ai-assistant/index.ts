@@ -8,6 +8,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
+import { callDefaultGemini, hasDefaultAI } from "../_shared/ai-default.ts";
 import { callOpenRouter } from "../_shared/openrouter.ts";
 import { callGateway } from "../_shared/ai-gateway.ts";
 
@@ -49,6 +50,20 @@ async function callAI(provider: string, systemPrompt: string, prompt: string): P
     return withRetry(() => callGateway(systemPrompt, prompt), 2, 600);
   }
   return withRetry(() => callers[provider || "openai"](systemPrompt, prompt), 2, 600);
+}
+
+// Fallback: if the selected provider has no key, use the built-in default Gemini
+async function callAIWithFallback(provider: string, systemPrompt: string, prompt: string, maxTokens = 1200): Promise<string> {
+  try {
+    return await callAI(provider, systemPrompt, prompt, maxTokens);
+  } catch (err) {
+    if (hasDefaultAI() && (err.message.includes("not configured") || err.message.includes("OPENROUTER_API_KEY") || err.message.includes("OPENAI_API_KEY") || err.message.includes("GEMINI_API_KEY") || err.message.includes("ANTHROPIC_API_KEY") || err.message.includes("AI_GATEWAY_API_KEY"))) {
+      const fb = await callDefaultGemini(systemPrompt, prompt, { maxTokens });
+      if (!fb.ok) throw new Error(fb.value);
+      return fb.value;
+    }
+    throw err;
+  }
 }
 
 // Build a compact business snapshot for the AI to reason over
@@ -133,7 +148,7 @@ Deno.serve(async (req) => {
       ? `Generate a concise MORNING BRIEFING for today based on this business snapshot. Include: a greeting, today's tasks (follow-ups, stock, payments due), and a quick status. Snapshot:\n${context}`
       : `Business owner asks: "${message}"\n\nHere is the current business data snapshot:\n${context}\n\nAnswer the owner's question based on this data.`;
 
-    const result = await callAI(profile?.ai_provider || "openai", SYSTEM, userPrompt);
+    const result = await callAIWithFallback(profile?.ai_provider || "openai", SYSTEM, userPrompt);
 
     await supabase.rpc("increment_api_usage", { user_uuid: user.id });
     await supabase.from("activity_logs").insert({
