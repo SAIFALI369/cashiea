@@ -21,15 +21,19 @@ async function callAI(provider: string, systemPrompt: string, prompt: string): P
   }
   const callers: Record<string, (s: string, p: string) => Promise<{ ok: boolean; status: number; value: string }>> = {
     openai: async (s, p) => {
+      const key = Deno.env.get("OPENAI_API_KEY");
+      if (!key) throw new Error("OPENAI_API_KEY not configured");
       const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
         body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: s }, { role: "user", content: p }], temperature: 0.5, max_tokens: 1200 }),
       });
       if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
       return { ok: true, status: 200, value: (await res.json()).choices[0].message.content };
     },
     gemini: async (s, p) => {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${Deno.env.get("GEMINI_API_KEY")}`, {
+      const key = Deno.env.get("GEMINI_API_KEY");
+      if (!key) throw new Error("GEMINI_API_KEY not configured");
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ system_instruction: { parts: [{ text: s }] }, contents: [{ parts: [{ text: p }] }], generationConfig: { temperature: 0.5, maxOutputTokens: 1200 } }),
       });
@@ -37,8 +41,10 @@ async function callAI(provider: string, systemPrompt: string, prompt: string): P
       return { ok: true, status: 200, value: (await res.json()).candidates[0].content.parts[0].text };
     },
     anthropic: async (s, p) => {
+      const key = Deno.env.get("ANTHROPIC_API_KEY");
+      if (!key) throw new Error("ANTHROPIC_API_KEY not configured");
       const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!, "anthropic-version": "2023-06-01" },
+        method: "POST", headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({ model: "claude-3-5-sonnet-20241022", max_tokens: 1200, system: s, messages: [{ role: "user", content: p }] }),
       });
       if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
