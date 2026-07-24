@@ -13,11 +13,19 @@ export interface HistoryEntry {
   timestamp: number
 }
 
-const KEY = 'bizautomate_task_history'
+const KEY = 'cashiea_task_history'
+// Storage key used before the product was renamed to Cashiea. Migrated once on read, then discarded.
+const LEGACY_KEY = 'bizautomate_task_history'
 const MAX = 10
 
 export function getHistory(): HistoryEntry[] {
   try {
+    // One-time migration: carry over history saved under the pre-rename key, then drop it.
+    const legacy = localStorage.getItem(LEGACY_KEY)
+    if (legacy) {
+      if (!localStorage.getItem(KEY)) localStorage.setItem(KEY, legacy)
+      localStorage.removeItem(LEGACY_KEY)
+    }
     const raw = localStorage.getItem(KEY)
     return raw ? JSON.parse(raw) : []
   } catch {

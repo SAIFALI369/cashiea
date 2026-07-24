@@ -54,7 +54,7 @@ export default function Support() {
     } catch (err) {
       // Final fallback: build a mailto link client-side
       const body = `Name: ${name}\nEmail: ${email}\n\n[${category}]\n\n${message}`
-      const mailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(`[BizAutomate Support] ${subject || category}`)}&body=${encodeURIComponent(body)}`
+      const mailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(`[Cashiea Support] ${subject || category}`)}&body=${encodeURIComponent(body)}`
       setMailtoUrl(mailto)
       setSent(true)
       toast('Opening your email app to send the message…', { icon: '✉️' })

@@ -14,7 +14,7 @@ export const supabaseConfigured = Boolean(
 
 if (!supabaseConfigured) {
   console.warn(
-    '⚠️  BizAutomate: Missing Supabase env vars. Copy .env.example to .env and fill in your values, then rebuild.'
+    '⚠️  Cashiea: Missing Supabase env vars. Copy .env.example to .env and fill in your values, then rebuild.'
   )
 }
 

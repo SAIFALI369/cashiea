@@ -25,10 +25,10 @@ function buildMailto(name: string, from: string, subject: string, message: strin
     `Message:`,
     message,
     ``,
-    `— Sent from the BizAutomate support form`,
+    `— Sent from the Cashiea support form`,
   ].join("\n");
   const params = new URLSearchParams({
-    subject: `[BizAutomate Support] ${subject}`,
+    subject: `[Cashiea Support] ${subject}`,
     body,
   });
   // cc the sender so they have a copy of their own message
@@ -43,7 +43,7 @@ async function sendViaResend(name: string, from: string, subject: string, messag
 
   const html = `
     <div style="font-family: sans-serif; max-width: 560px; margin: auto; color: #1e293b;">
-      <h2 style="color: #4f46e5;">New Support Request — BizAutomate</h2>
+      <h2 style="color: #4f46e5;">New Support Request — Cashiea</h2>
       <table style="width: 100%; border-collapse: collapse;">
         <tr><td style="padding: 6px 0; font-weight: 600; width: 100px;">Name:</td><td>${name}</td></tr>
         <tr><td style="padding: 6px 0; font-weight: 600;">Email:</td><td>${from}</td></tr>
@@ -52,7 +52,7 @@ async function sendViaResend(name: string, from: string, subject: string, messag
       <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 16px 0;" />
       <p style="white-space: pre-wrap; line-height: 1.6;">${message}</p>
       <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 16px 0;" />
-      <p style="font-size: 12px; color: #94a3b8;">Sent from the BizAutomate support form.</p>
+      <p style="font-size: 12px; color: #94a3b8;">Sent from the Cashiea support form.</p>
     </div>`;
 
   const res = await fetch("https://api.resend.com/emails", {
@@ -62,7 +62,7 @@ async function sendViaResend(name: string, from: string, subject: string, messag
       from: mailFrom,
       to: [SUPPORT_EMAIL],
       reply_to: from || undefined,
-      subject: `[BizAutomate Support] ${subject}`,
+      subject: `[Cashiea Support] ${subject}`,
       html,
     }),
   });

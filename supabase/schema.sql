@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
--- BizAutomate AI — Database Schema
+-- Cashiea — Database Schema
 -- Run this in the Supabase SQL Editor
 -- ════════════════════════════════════════════════════════════════
 

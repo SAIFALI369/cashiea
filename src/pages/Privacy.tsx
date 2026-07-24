@@ -12,7 +12,7 @@ export default function Privacy() {
       <nav className="border-b border-slate-800/50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 text-white font-bold">
-            <Shield className="w-5 h-5 text-brand-400" /> BizAutomate
+            <Shield className="w-5 h-5 text-brand-400" /> Cashiea
           </Link>
           <Link to="/" className="btn-ghost text-sm"><ArrowLeft className="w-4 h-4" /> Home</Link>
         </div>
@@ -30,7 +30,7 @@ export default function Privacy() {
         </div>
 
         <div className="card p-6 sm:p-8 space-y-6 text-slate-300 leading-relaxed text-sm sm:text-base">
-          <p className="text-slate-400">This Privacy Policy explains how BizAutomate ("we", "us", or "our") collects, uses, discloses, and safeguards your information when you use our cashier, point-of-sale, customer management, and related services (the "Service"). Please read this policy carefully.</p>
+          <p className="text-slate-400">This Privacy Policy explains how Cashiea ("we", "us", or "our") collects, uses, discloses, and safeguards your information when you use our cashier, point-of-sale, customer management, and related services (the "Service"). Please read this policy carefully.</p>
 
           <Section title="1. Information We Collect">
             <p>We collect information you provide directly and information collected automatically when you use the Service.</p>
@@ -68,7 +68,7 @@ export default function Privacy() {
               <li><strong>Resend</strong> (if email delivery is enabled) — to send campaign and notification emails on your behalf.</li>
             </ul>
             <Sub>Legal & safety</Sub>
-            <p>We may disclose information when required by law, court order, or to protect the rights, property, or safety of BizAutomate, our users, or others.</p>
+            <p>We may disclose information when required by law, court order, or to protect the rights, property, or safety of Cashiea, our users, or others.</p>
             <Sub>Business transfers</Sub>
             <p>In the event of a merger, acquisition, or asset sale, information may be transferred subject to the protections in this policy.</p>
           </Section>
@@ -127,7 +127,7 @@ export default function Privacy() {
           </Section>
         </div>
 
-        <p className="text-center text-sm text-slate-600 mt-8">© 2026 BizAutomate. All rights reserved.</p>
+        <p className="text-center text-sm text-slate-600 mt-8">© 2026 Cashiea. All rights reserved.</p>
       </article>
     </div>
   )

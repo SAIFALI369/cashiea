@@ -85,7 +85,7 @@ export default function ApiKeys() {
     <div className="animate-fade-in">
       <PageHeader
         title="API Keys"
-        subtitle="Integrate BizAutomate AI into your apps & workflows"
+        subtitle="Integrate Cashiea into your apps & workflows"
         icon={<Key className="w-5 h-5" />}
         action={
           <button onClick={() => setShowCreate(!showCreate)} className="btn-primary text-sm">
@@ -117,7 +117,7 @@ export default function ApiKeys() {
       {loading ? (
         <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-brand-500" /></div>
       ) : keys.length === 0 && !createdKey ? (
-        <EmptyState icon={Key} title="No API keys yet" description="Create a key to call BizAutomate AI from your own apps, scripts, or no-code tools like Zapier." />
+        <EmptyState icon={Key} title="No API keys yet" description="Create a key to call Cashiea from your own apps, scripts, or no-code tools like Zapier." />
       ) : (
         <div className="space-y-3 mb-8">
           {keys.map((k) => (

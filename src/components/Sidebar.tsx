@@ -196,7 +196,7 @@ export default function Sidebar({
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-white text-lg leading-none">BizAutomate</h1>
+              <h1 className="font-bold text-white text-lg leading-none">Cashiea</h1>
               <p className="text-xs text-brand-400">{profile?.company_name || 'AI Platform'}</p>
             </div>
           </div>

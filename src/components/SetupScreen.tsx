@@ -16,7 +16,7 @@ export default function SetupScreen() {
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-white" />
           </div>
-          <span className="font-bold text-white text-lg">BizAutomate</span>
+          <span className="font-bold text-white text-lg">Cashiea</span>
         </div>
         <h1 className="text-xl font-bold text-white mb-2">One-time setup needed</h1>
         <p className="text-slate-400 text-sm mb-6">

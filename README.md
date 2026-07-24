@@ -11,8 +11,8 @@
 ## 🚀 Quick Start (for developers)
 
 ```bash
-git clone https://github.com/SAIFALI369/bizautomate.git
-cd bizautomate
+git clone https://github.com/SAIFALI369/cashiea.git
+cd cashiea
 npm install
 cp .env.example .env     # then fill in your Supabase keys
 npm run dev              # → http://localhost:5173
@@ -36,7 +36,7 @@ The app shows a **Setup Screen** until you fill `.env`. That's normal — it mea
 - **URL Configuration** → set Site URL to your Vercel domain + add `https://yourdomain/**` to Redirect URLs
 
 ### 3. Deploy to Vercel (5 min)
-- Go to [vercel.com](https://vercel.com) → New Project → import `SAIFALI369/bizautomate`
+- Go to [vercel.com](https://vercel.com) → New Project → import `SAIFALI369/cashiea`
 - Before deploy, set Environment Variables:
   - `VITE_SUPABASE_URL` = your Supabase URL
   - `VITE_SUPABASE_ANON_KEY` = your anon key

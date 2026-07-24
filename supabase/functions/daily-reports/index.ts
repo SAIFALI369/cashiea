@@ -118,7 +118,7 @@ function formatMessage(shopName: string, dateStr: string, data: ReturnType<typeo
     });
   }
   lines.push(``);
-  lines.push(`— BizAutomate`);
+  lines.push(`— Cashiea`);
   return lines.join("\n");
 }
 

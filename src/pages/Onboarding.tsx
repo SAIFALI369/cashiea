@@ -131,7 +131,7 @@ export default function Onboarding() {
       })
       if (error) throw error
       await refreshProfile()
-      toast.success('You are all set! Welcome to BizAutomate')
+      toast.success('You are all set! Welcome to Cashiea')
       navigate('/app', { replace: true })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed')

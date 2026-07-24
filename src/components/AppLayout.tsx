@@ -20,7 +20,7 @@ export default function AppLayout() {
           >
             <Menu className="w-6 h-6" />
           </button>
-          <span className="font-bold text-white">BizAutomate AI</span>
+          <span className="font-bold text-white">Cashiea</span>
         </header>
 
         <main className="flex-1 p-4 lg:p-8 max-w-6xl mx-auto w-full">

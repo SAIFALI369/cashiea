@@ -48,8 +48,8 @@ async function tryModel(
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
         // OpenRouter recommends these for ranking/identification
-        "HTTP-Referer": "https://bizautomate.ai",
-        "X-Title": "BizAutomate",
+        "HTTP-Referer": "https://cashiea.ai",
+        "X-Title": "Cashiea",
       },
       body: JSON.stringify({
         model,

@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════
-// BizAutomate AI — Multi-Provider AI Edge Function
+// Cashiea — Multi-Provider AI Edge Function
 // Deploy:  supabase functions deploy ai-automation
 // Secrets: supabase secrets set OPENAI_API_KEY=sk-...
 //          supabase secrets set GEMINI_API_KEY=...

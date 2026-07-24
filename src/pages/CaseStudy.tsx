@@ -30,7 +30,7 @@ export default function CaseStudy() {
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
               <ShoppingCart className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-white">BizAutomate</span>
+            <span className="font-bold text-white">Cashiea</span>
           </Link>
           <Link to="/" className="btn-ghost text-sm"><ArrowLeft className="w-4 h-4" /> Home</Link>
         </div>
@@ -56,7 +56,7 @@ export default function CaseStudy() {
         <div className="card p-8 mb-12 bg-gradient-to-br from-brand-900/30 to-transparent">
           <Quote className="w-8 h-8 text-brand-500 mb-3" />
           <p className="text-xl text-slate-200 leading-relaxed italic mb-4">
-            "Checkout got 3× faster, I finally know who my customers are, and win-back campaigns bring people back every week. BizAutomate runs my counter and my growth."
+            "Checkout got 3× faster, I finally know who my customers are, and win-back campaigns bring people back every week. Cashiea runs my counter and my growth."
           </p>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white font-bold">M</div>
@@ -90,9 +90,9 @@ export default function CaseStudy() {
           <h2>The problem</h2>
           <p>Running a busy retail store, Maya handled checkout manually, kept no customer records, and had no visibility into what sold. Lines built up at the counter, and one-time buyers never returned.</p>
           <h2>The setup</h2>
-          <p>In under 20 minutes, Maya added her products to BizAutomate, set stock levels, and started ringing up sales on the POS — card, cash, or UPI.</p>
+          <p>In under 20 minutes, Maya added her products to Cashiea, set stock levels, and started ringing up sales on the POS — card, cash, or UPI.</p>
           <h2>The breakthrough</h2>
-          <p>The Customer CRM changed everything. Every sale automatically linked to a customer profile, building lifetime value and purchase history. BizAutomate flagged dormant customers, and Maya launched a win-back campaign with personalized offers.</p>
+          <p>The Customer CRM changed everything. Every sale automatically linked to a customer profile, building lifetime value and purchase history. Cashiea flagged dormant customers, and Maya launched a win-back campaign with personalized offers.</p>
           <p>"I sent 60 win-back emails in ten minutes. A third of them came back to shop."</p>
           <h2>The result</h2>
           <p>Six months in, checkout was 3× faster, repeat customers grew 27%, and Maya saved 6 hours a week on admin. She used the full overview dashboard to spot best-sellers and restock before running out.</p>

@@ -199,7 +199,7 @@ Deno.serve(async (req) => {
             `Snapshot:\n${JSON.stringify({ todayRevenue: snap.todayRevenue, todayOrders: snap.todayOrders, lowStockCount: snap.lowStock.length, dormantCount: snap.dormantCustomers.length, suppliersOwedCount: snap.suppliersOwed.length, newPredictions: predsCreated })}\n\nBe encouraging and specific.`,
             500
           );
-          const sent = await deliverBriefing(email, "🌅 Your BizAutomate Morning Briefing", briefing);
+          const sent = await deliverBriefing(email, "🌅 Your Cashiea Morning Briefing", briefing);
           if (sent) emailsSent++;
         }
 
