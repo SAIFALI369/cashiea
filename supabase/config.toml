@@ -1,7 +1,5 @@
 # Supabase project configuration
-# https://supabase.com/docs/guides/local-development/cli/config
-
-project_id = "bizautomate-ai"
+project_id = "oxlwbxkifyrhggrsaoin"
 
 [api]
 enabled = true
@@ -27,8 +25,28 @@ enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
 
+# All functions verify JWT by default (set per-function below to override)
 [functions]
 verify_jwt = true
 
+# Functions that should NOT verify JWT (webhooks, OAuth callbacks)
 [functions.stripe-webhook]
-verify_jwt = false   # Stripe signs webhooks itself; no JWT expected
+verify_jwt = false
+
+[functions.track]
+verify_jwt = false
+
+[functions.google-oauth]
+verify_jwt = false
+
+[functions.quickbooks-oauth]
+verify_jwt = false
+
+[functions.daily-brain]
+verify_jwt = false
+
+[functions.daily-reports]
+verify_jwt = false
+
+[functions.invoice-reminders]
+verify_jwt = false

@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'supabase/functions/**'
+      - 'supabase/config.toml'
       - '.github/workflows/deploy-supabase.yml'
   workflow_dispatch:
 
@@ -24,31 +25,57 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
-      - name: Deploy edge functions
+      - name: Deploy ALL edge functions
         run: |
           set -e
-          for dir in supabase/functions/*/; do
-            fn=$(basename "$dir")
-            if [ "$fn" != "_shared" ]; then
-              echo "::group::Deploying $fn"
-              supabase functions deploy "$fn" --no-verify-jwt
-              echo "::endgroup::"
-            fi
-          done
-          echo "All functions deployed!"
+          echo "Deploying all functions..."
+          supabase functions deploy ai-automation
+          echo "  ✅ ai-automation"
+          supabase functions deploy ai-assistant
+          echo "  ✅ ai-assistant"
+          supabase functions deploy business-brain
+          echo "  ✅ business-brain"
+          supabase functions deploy daily-brain
+          echo "  ✅ daily-brain"
+          supabase functions deploy quick-tasks
+          echo "  ✅ quick-tasks"
+          supabase functions deploy google-oauth
+          echo "  ✅ google-oauth"
+          supabase functions deploy google-fetch
+          echo "  ✅ google-fetch"
+          supabase functions deploy integrations-api
+          echo "  ✅ integrations-api"
+          supabase functions deploy support-email
+          echo "  ✅ support-email"
+          supabase functions deploy campaign-send
+          echo "  ✅ campaign-send"
+          supabase functions deploy track
+          echo "  ✅ track"
+          supabase functions deploy api-generate-invoice
+          echo "  ✅ api-generate-invoice"
+          supabase functions deploy api-draft-email
+          echo "  ✅ api-draft-email"
+          supabase functions deploy create-checkout
+          echo "  ✅ create-checkout"
+          supabase functions deploy stripe-webhook
+          echo "  ✅ stripe-webhook"
+          supabase functions deploy daily-reports
+          echo "  ✅ daily-reports"
+          supabase functions deploy invoice-reminders
+          echo "  ✅ invoice-reminders"
+          supabase functions deploy quickbooks-oauth
+          echo "  ✅ quickbooks-oauth"
+          echo ""
+          echo "🎉 ALL 17 FUNCTIONS DEPLOYED!"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
-      - name: Set AI secrets
+      - name: Set Supabase secrets
         run: |
-          echo "Setting DEFAULT_GEMINI_API_KEY..."
-          echo '${{ secrets.DEFAULT_GEMINI_API_KEY }}' | supabase secrets set DEFAULT_GEMINI_API_KEY=$(cat)
-          echo "Setting SUPABASE_URL..."
-          supabase secrets set SUPABASE_URL=https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co
-          echo "Setting SUPABASE_ANON_KEY..."
-          echo '${{ secrets.SUPABASE_ANON_KEY }}' | supabase secrets set SUPABASE_ANON_KEY=$(cat)
-          echo "Setting SUPABASE_SERVICE_ROLE_KEY..."
-          echo '${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}' | supabase secrets set SUPABASE_SERVICE_ROLE_KEY=$(cat)
-          echo "All secrets set!"
+          supabase secrets set DEFAULT_GEMINI_API_KEY='${{ secrets.DEFAULT_GEMINI_API_KEY }}' \
+            SUPABASE_URL='https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co' \
+            SUPABASE_ANON_KEY='${{ secrets.SUPABASE_ANON_KEY }}' \
+            SUPABASE_SERVICE_ROLE_KEY='${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}'
+          echo "✅ All secrets set!"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
