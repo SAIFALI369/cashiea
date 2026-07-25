@@ -51,7 +51,6 @@ async function callAI(provider: string, systemPrompt: string, prompt: string): P
       return { ok: true, status: 200, value: (await res.json()).content[0].text };
     },
   };
-  // Vercel AI Gateway is OpenAI-compatible and routes to any provider/model
   if (provider === "vercel_gateway") {
     return withRetry(() => callGateway(systemPrompt, prompt), 2, 600);
   }
@@ -63,7 +62,8 @@ async function callAIWithFallback(provider: string, systemPrompt: string, prompt
   try {
     return await callAI(provider, systemPrompt, prompt, maxTokens);
   } catch (err) {
-    if (hasDefaultAI() && (err.message.includes("not configured") || err.message.includes("OPENROUTER_API_KEY") || err.message.includes("OPENAI_API_KEY") || err.message.includes("GEMINI_API_KEY") || err.message.includes("ANTHROPIC_API_KEY") || err.message.includes("AI_GATEWAY_API_KEY"))) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (hasDefaultAI() && (msg.includes("not configured") || msg.includes("OPENROUTER_API_KEY") || msg.includes("OPENAI_API_KEY") || msg.includes("GEMINI_API_KEY") || msg.includes("ANTHROPIC_API_KEY") || msg.includes("AI_GATEWAY_API_KEY"))) {
       const fb = await callDefaultGemini(systemPrompt, prompt, { maxTokens });
       if (!fb.ok) throw new Error(fb.value);
       return fb.value;
@@ -92,33 +92,32 @@ async function buildContext(supabase: any, userId: string): Promise<string> {
 
   const today = todayTx.data || [];
   const month = monthTx.data || [];
-  const todayRevenue = today.reduce((s, t) => s + Number(t.total), 0);
-  const monthRevenue = month.reduce((s, t) => s + Number(t.total), 0);
+  const todayRevenue = today.reduce((s: number, t: any) => s + Number(t.total), 0);
+  const monthRevenue = month.reduce((s: number, t: any) => s + Number(t.total), 0);
 
-  // Top products this month
   const prodMap: Record<string, { name: string; qty: number; rev: number }> = {};
-  month.forEach((t) => (t.items || []).forEach((it) => {
+  month.forEach((t: any) => (t.items || []).forEach((it: any) => {
     const k = it.product_id || it.name;
     if (!prodMap[k]) prodMap[k] = { name: it.name, qty: 0, rev: 0 };
     prodMap[k].qty += it.quantity; prodMap[k].rev += it.quantity * it.unit_price;
   }));
   const topProducts = Object.values(prodMap).sort((a, b) => b.rev - a.rev).slice(0, 10);
 
-  const lowStockItems = (lowStock.data || []).filter((p) => p.stock_quantity <= p.low_stock_threshold).slice(0, 15);
-  const monthExpenses = (expenses.data || []).filter((e) => e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
-  const monthIncome = (expenses.data || []).filter((e) => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
+  const lowStockItems = (lowStock.data || []).filter((p: any) => p.stock_quantity <= p.low_stock_threshold).slice(0, 15);
+  const monthExpenses = (expenses.data || []).filter((e: any) => e.type === "expense").reduce((s: number, e: any) => s + Number(e.amount), 0);
+  const monthIncome = (expenses.data || []).filter((e: any) => e.type === "income").reduce((s: number, e: any) => s + Number(e.amount), 0);
 
   return JSON.stringify({
     date: now.toISOString().split("T")[0],
-    today: { revenue: +todayRevenue.toFixed(2), orders: today.length, payment_methods: today.reduce((m, t) => { m[t.payment_method] = (m[t.payment_method] || 0) + 1; return m; }, {}) },
+    today: { revenue: +todayRevenue.toFixed(2), orders: today.length, payment_methods: today.reduce((m: any, t: any) => { m[t.payment_method] = (m[t.payment_method] || 0) + 1; return m; }, {}) },
     thisMonth: { revenue: +monthRevenue.toFixed(2), orders: month.length, expenses: +monthExpenses.toFixed(2), otherIncome: +monthIncome.toFixed(2) },
     monthProfit: +(monthRevenue - monthExpenses).toFixed(2),
     topProducts: topProducts.map((p) => ({ name: p.name, qty: p.qty, revenue: +p.rev.toFixed(2) })),
-    lowStock: lowStockItems.map((p) => ({ name: p.name, stock: p.stock_quantity, reorderAt: p.low_stock_threshold })),
-    dormantCustomers: (dormant.data || []).map((c) => ({ name: c.name, email: c.email, orders: c.total_orders, lastPurchase: c.last_purchase_at })),
-    productCatalog: (products.data || []).slice(0, 40).map((p) => ({ name: p.name, sku: p.sku, category: p.category, price: p.price, stock: p.stock_quantity })),
-    customers: (customers.data || []).slice(0, 40).map((c) => ({ name: c.name, email: c.email, phone: c.phone, spent: +Number(c.total_spent).toFixed(2), orders: c.total_orders, last: c.last_purchase_at })),
-    suppliersOwed: (suppliers.data || []).filter((s) => s.outstanding > 0).map((s) => ({ name: s.name, outstanding: s.outstanding })),
+    lowStock: lowStockItems.map((p: any) => ({ name: p.name, stock: p.stock_quantity, reorderAt: p.low_stock_threshold })),
+    dormantCustomers: (dormant.data || []).map((c: any) => ({ name: c.name, email: c.email, orders: c.total_orders, lastPurchase: c.last_purchase_at })),
+    productCatalog: (products.data || []).slice(0, 40).map((p: any) => ({ name: p.name, sku: p.sku, category: p.category, price: p.price, stock: p.stock_quantity })),
+    customers: (customers.data || []).slice(0, 40).map((c: any) => ({ name: c.name, email: c.email, phone: c.phone, spent: +Number(c.total_spent).toFixed(2), orders: c.total_orders, last: c.last_purchase_at })),
+    suppliersOwed: (suppliers.data || []).filter((s: any) => s.outstanding > 0).map((s: any) => ({ name: s.name, outstanding: s.outstanding })),
   }, null, 1);
 }
 
@@ -133,6 +132,7 @@ Your only job is to help the owner run THEIR shop: sales and revenue, profit and
 - When asked who bought a product, scan productCatalog + customers + topProducts.
 - Suggest proactive actions (reorder stock, follow up dormant customers) when relevant.
 - If a specific record is not in the snapshot, say so plainly rather than guessing.
+- You remember what the owner has told you before (see the memory section). Use those details naturally.
 
 SCOPE — you are this shop's business assistant, NOT a general chatbot:
 - Politely decline anything outside their business: general world knowledge, math or homework, coding help, creative writing, or medical/legal/tax advice.
@@ -144,7 +144,7 @@ FORMATTING:
 - Do NOT use LaTeX or math notation (no $$, \\frac, \\sqrt, \\pm). Plain numbers and text only.
 - Keep it scannable — no long paragraphs.`;
 
-// Build the persistent-memory block (owner identity + learned business facts).
+// ── Memory: load owner identity + learned business facts + recent chat ──
 async function buildMemory(supabase: any, userId: string): Promise<{ block: string; profile: any; memory: any }> {
   const [profileRes, memRes] = await Promise.all([
     supabase.from("profiles").select("full_name, company_name, shop_category, business_address, phone").eq("id", userId).single(),
@@ -156,8 +156,13 @@ async function buildMemory(supabase: any, userId: string): Promise<{ block: stri
   const prefs: Record<string, any> = (mem.preferences && typeof mem.preferences === "object") ? mem.preferences : {};
   const ownerName = prefs.preferred_name || p.full_name || "";
   const remember: string[] = Array.isArray(prefs.remember) ? prefs.remember : [];
+  const chat: any[] = Array.isArray(prefs.chat) ? prefs.chat : [];
+  const recent = chat.slice(-6);
 
   const factLines = facts.slice(0, 15).map((f) => `  • ${typeof f === "string" ? f : (f?.fact || JSON.stringify(f))}`);
+  const rememberLines = remember.map((r: any) => `  • ${String(r)}`);
+  const chatLines = recent.map((t: any) => `  ${t?.role === "owner" ? "Owner" : "Meraj"}: ${String(t?.text || "").slice(0, 220)}`);
+
   const block = `WHAT YOU ALREADY KNOW ABOUT THIS OWNER & THEIR SHOP (use it naturally — don't repeat unless asked):
 - Owner's name: ${ownerName || "(not known yet — ask or learn it)"}
 - Shop / business: ${p.company_name || "(not known yet)"}${p.shop_category ? ` — ${p.shop_category}` : ""}
@@ -165,68 +170,46 @@ async function buildMemory(supabase: any, userId: string): Promise<{ block: stri
 - Business type you've learned: ${mem.business_type || "(not set)"}
 - About this business (learned): ${mem.summary || "(not learned yet — pick up details as the owner shares them)"}
 - Key facts you've noted:${factLines.length ? "\n" + factLines.join("\n") : " (none yet)"}
-- Things the owner asked you to remember:${remember.length ? "\n" + remember.map((r) => `  • ${r}`).join("\n") : " (none yet)"}`;
+- Things the owner asked you to remember:${rememberLines.length ? "\n" + rememberLines.join("\n") : " (none yet)"}
+- Recent conversation (for continuity — the owner expects you to remember this):${chatLines.length ? "\n" + chatLines.join("\n") : " (this is the start of our conversation)"}`;
 
   return { block, profile: p, memory: mem };
 }
 
-// Heuristic: is this message worth extracting durable memory from?
+// Is this message worth a durable-memory extraction pass?
 function isMemoryWorthy(message: string): boolean {
   return /\b(remember|my name is|call me|i am|i'm|we are|we sell|we run|our shop|our store|our business|i work|note that|don't forget|for next time|fyi|prefer|i like|i want|important|remind me)\b/i.test(message);
 }
 
-// Extract durable facts from the owner's message and merge into business_memory.
-async function rememberFromMessage(supabase: any, userId: string, message: string, profile: any, memory: any): Promise<void> {
+// Robustly extract durable facts from the owner's message (best-effort).
+async function tryExtract(
+  provider: string, message: string, profile: any, remember: string[], facts: any[]
+): Promise<{ facts: string[]; remember: string[]; owner_name: string | null }> {
+  const empty = { facts: [] as string[], remember: [] as string[], owner_name: null as string | null };
   try {
-    const facts: any[] = Array.isArray(memory.key_facts) ? memory.key_facts : [];
-    const prefs: Record<string, any> = (memory.preferences && typeof memory.preferences === "object") ? memory.preferences : {};
-    const remember: string[] = Array.isArray(prefs.remember) ? prefs.remember : [];
+    const sys = `You extract durable long-term memory from a shop owner's chat with their AI assistant. From the OWNER'S message only, pull things worth remembering long-term: their preferred name, their shop/workplace name, what they sell, preferences, or anything they explicitly asked to remember. Ignore questions about data or small talk. Return ONLY a JSON object (no prose, no markdown fences): {"owner_name": string|null, "facts": [string], "remember": [string]}. Use null when unknown and empty arrays when nothing applies.`;
+    const usr = `Owner's message: """${message}"""\n\nReturn the JSON now.`;
+    const out = await callAIWithFallback(provider, sys, usr, 250);
 
-    const out = await callAIWithFallback(
-      "openai", // resolved to fallback chain inside the function if no key
-      `You extract durable long-term memory from a shop owner's chat with their AI assistant. From the OWNER'S message only, pull things worth remembering: their preferred name, their shop/workplace name, what they sell, preferences, or anything they explicitly asked to remember. Ignore questions about data. Return ONLY JSON: {"owner_name": string|null, "company": string|null, "facts": [string], "remember": [string]}. null when unknown; empty arrays when nothing applies.`,
-      `Owner's message: """${message}"""\n\nAlready known — owner_name: ${prefs.preferred_name || profile.full_name || "null"}; company: ${profile.company_name || "null"}; facts: ${JSON.stringify(facts.map((f) => (typeof f === "string" ? f : f?.fact)))}; remember: ${JSON.stringify(remember)}`,
-      250,
-    );
-    const cleaned = out.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
-    const parsed = JSON.parse(cleaned);
+    // Bulletproof JSON extraction: grab the first {...} block and parse.
+    let parsed: any = null;
+    const m = String(out).match(/\{[\s\S]*\}/);
+    if (m) { try { parsed = JSON.parse(m[0]); } catch { /* keep null */ } }
 
-    const newPrefs: Record<string, any> = { ...prefs };
-    if (!Array.isArray(newPrefs.remember)) newPrefs.remember = [];
-    if (Array.isArray(parsed.remember)) {
-      for (const r of parsed.remember) {
-        const s = String(r).trim();
-        if (s && !newPrefs.remember.includes(s)) newPrefs.remember.push(s);
-      }
-      if (newPrefs.remember.length > 30) newPrefs.remember = newPrefs.remember.slice(-30);
+    const exFacts = Array.isArray(parsed?.facts) ? parsed.facts.map((x: any) => String(x).trim()).filter(Boolean) : [];
+    const exRemember = Array.isArray(parsed?.remember) ? parsed.remember.map((x: any) => String(x).trim()).filter(Boolean) : [];
+    const ownerName = parsed?.owner_name ? String(parsed.owner_name).trim().slice(0, 80) : null;
+
+    // Keyword fallback if the model returned nothing useful.
+    if (!exFacts.length && !exRemember.length && !ownerName) {
+      const ex = message.match(/\bremember(?:\s+that)?\s+(.+)/i);
+      if (ex) exRemember.push(ex[1].trim().slice(0, 200));
     }
-    if (parsed.owner_name && !profile.full_name && !newPrefs.preferred_name) {
-      newPrefs.preferred_name = String(parsed.owner_name).slice(0, 80);
-    }
-
-    let newFacts = [...facts];
-    if (Array.isArray(parsed.facts)) {
-      const existing = newFacts.map((f) => (typeof f === "string" ? f : f?.fact || ""));
-      for (const f of parsed.facts) {
-        const s = String(f).trim();
-        if (s && !existing.includes(s)) { newFacts.push(s); existing.push(s); }
-      }
-      if (newFacts.length > 40) newFacts = newFacts.slice(-40);
-    }
-
-    const hasNew = (Array.isArray(parsed.remember) && parsed.remember.length) || (Array.isArray(parsed.facts) && parsed.facts.length) || (parsed.owner_name && !profile.full_name);
-    if (!hasNew) return;
-
-    await supabase.from("business_memory").upsert({
-      user_id: userId,
-      summary: memory.summary,
-      business_type: memory.business_type,
-      key_facts: newFacts,
-      preferences: newPrefs,
-      last_updated_at: new Date().toISOString(),
-    }, { onConflict: "user_id" });
+    return { facts: exFacts, remember: exRemember, owner_name: ownerName };
   } catch {
-    // Memory extraction is best-effort — never fail the chat over it.
+    // Last-resort deterministic capture of "remember X".
+    const ex = message.match(/\bremember(?:\s+that)?\s+(.+)/i);
+    return ex ? { facts: [], remember: [ex[1].trim().slice(0, 200)], owner_name: null } : empty;
   }
 }
 
@@ -243,6 +226,7 @@ Deno.serve(async (req) => {
     if (profile && profile.api_usage_count >= limit) return json({ error: "Usage limit reached" }, 429);
 
     const { message, briefing } = await req.json();
+    const provider = profile?.ai_provider || "openai";
     const [context, mem] = await Promise.all([
       buildContext(supabase, user.id),
       buildMemory(supabase, user.id),
@@ -252,12 +236,47 @@ Deno.serve(async (req) => {
       ? `Generate a concise MORNING BRIEFING for today based on this business snapshot. Greet the owner by name, list today's tasks (follow-ups, stock, payments due), and give a quick status.\n\n${mem.block}\n\nSnapshot:\n${context}`
       : `Business owner asks: "${message}"\n\n${mem.block}\n\nHere is the current business data snapshot:\n${context}\n\nAnswer the owner's question based on this data and what you already know about them.`;
 
-    const result = await callAIWithFallback(profile?.ai_provider || "openai", SYSTEM, userPrompt);
+    const result = await callAIWithFallback(provider, SYSTEM, userPrompt);
 
-    // Persist any durable memory the owner just shared (best-effort, non-blocking to the reply value).
-    if (!briefing && message && isMemoryWorthy(String(message))) {
-      await rememberFromMessage(supabase, user.id, String(message), mem.profile, mem.memory);
+    // ── Persist memory (single upsert): append this turn to the transcript,
+    //    and (if memory-worthy) extract durable facts to remember. ──
+    const basePrefs: Record<string, any> = (mem.memory.preferences && typeof mem.memory.preferences === "object") ? { ...mem.memory.preferences } : {};
+    if (!Array.isArray(basePrefs.chat)) basePrefs.chat = [];
+    if (!Array.isArray(basePrefs.remember)) basePrefs.remember = [];
+
+    // append the turn to the persisted transcript (capped)
+    if (!briefing) {
+      basePrefs.chat.push({ role: "owner", text: String(message).slice(0, 500), ts: Date.now() });
     }
+    basePrefs.chat.push({ role: "meraj", text: String(result).slice(0, 500), ts: Date.now() });
+    if (basePrefs.chat.length > 20) basePrefs.chat = basePrefs.chat.slice(-20);
+
+    let newFacts: any[] = Array.isArray(mem.memory.key_facts) ? [...mem.memory.key_facts] : [];
+    if (!briefing && message && isMemoryWorthy(String(message))) {
+      const extracted = await tryExtract(provider, String(message), mem.profile, basePrefs.remember, newFacts);
+      if (extracted.owner_name && !mem.profile.full_name && !basePrefs.preferred_name) {
+        basePrefs.preferred_name = extracted.owner_name;
+      }
+      for (const r of extracted.remember) if (!basePrefs.remember.includes(r)) basePrefs.remember.push(r);
+      if (basePrefs.remember.length > 30) basePrefs.remember = basePrefs.remember.slice(-30);
+      for (const f of extracted.facts) {
+        const s = String(f);
+        if (!newFacts.some((x) => (typeof x === "string" ? x === s : x?.fact === s))) newFacts.push(s);
+      }
+      if (newFacts.length > 40) newFacts = newFacts.slice(-40);
+    }
+
+    // Single best-effort write — never fail the chat over memory persistence.
+    try {
+      await supabase.from("business_memory").upsert({
+        user_id: user.id,
+        summary: mem.memory.summary,
+        business_type: mem.memory.business_type,
+        key_facts: newFacts,
+        preferences: basePrefs,
+        last_updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" });
+    } catch { /* best-effort */ }
 
     await supabase.rpc("increment_api_usage", { user_uuid: user.id });
     await supabase.from("activity_logs").insert({
@@ -268,6 +287,6 @@ Deno.serve(async (req) => {
 
     return json({ reply: result });
   } catch (e) {
-    return json({ error: e.message }, 500);
+    return json({ error: (e as Error)?.message || String(e) }, 500);
   }
 });
