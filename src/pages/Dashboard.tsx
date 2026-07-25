@@ -4,10 +4,13 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import {
   DollarSign, ShoppingCart, Users, Package, TrendingUp, ArrowRight,
-  Sparkles, Clock, AlertTriangle, Receipt, Gift, Megaphone, Zap,
+  Sparkles, Clock, AlertTriangle, Receipt, Gift, Megaphone, Zap, Send, Loader2,
 } from 'lucide-react'
 import { PLANS } from '../lib/types'
 import type { ActivityLog, Transaction, Product, Customer } from '../lib/types'
+import { askAssistant } from '../lib/ai'
+import DOMPurify from 'dompurify'
+import { marked } from 'marked'
 
 export default function Dashboard() {
   const { profile } = useAuth()
@@ -19,6 +22,32 @@ export default function Dashboard() {
   const [savings, setSavings] = useState({ timeMinutes: 0, money: 0, actions: 0 })
   const [recent, setRecent] = useState<ActivityLog[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Meraj (AI assistant) on the dashboard
+  const [merajLoading, setMerajLoading] = useState(false)
+  const [merajReply, setMerajReply] = useState('')
+  const [merajInput, setMerajInput] = useState('')
+
+  const renderSafeMarkdown = (md: string) =>
+    DOMPurify.sanitize(marked.parse(md, { async: false }) as string, {
+      ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'p', 'strong', 'em', 'b', 'i', 'ul', 'ol', 'li', 'br', 'hr', 'code', 'blockquote', 'a'],
+      ALLOWED_ATTR: ['href', 'target', 'rel'],
+    })
+
+  const askMeraj = async (text: string, briefing = false) => {
+    const q = text.trim()
+    if (merajLoading || (!q && !briefing)) return
+    setMerajLoading(true)
+    setMerajInput('')
+    try {
+      const reply = await askAssistant(briefing ? '' : q, briefing)
+      setMerajReply(reply)
+    } catch (e) {
+      setMerajReply('⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.'))
+    } finally {
+      setMerajLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (!profile) return
@@ -133,6 +162,42 @@ export default function Dashboard() {
           <p className="text-3xl font-extrabold text-white">{stats.products}</p>
           <Link to="/app/products" className="text-xs text-brand-400 hover:text-brand-300 mt-1 inline-block">View →</Link>
         </div>
+      </div>
+
+      {/* Meraj — AI assistant on the dashboard */}
+      <div className="card p-6 mb-6 bg-gradient-to-br from-brand-600/10 to-transparent border-brand-600/30">
+        <div className="flex items-center gap-3 mb-4">
+          <img src="/meraj-avatar.png" alt="Meraj" className="w-11 h-11 rounded-full ring-2 ring-brand-500/40 bg-slate-800 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-white flex items-center gap-2">Meraj <span className="text-xs font-normal text-slate-400">— your Cashiea AI assistant</span></h3>
+            <p className="text-xs text-slate-400">Ask about today's sales, stock, or customers — or get a quick briefing.</p>
+          </div>
+          <button onClick={() => askMeraj('', true)} disabled={merajLoading} className="btn-primary text-xs flex items-center gap-1.5 whitespace-nowrap"><Sparkles className="w-3.5 h-3.5" /> Briefing</button>
+        </div>
+
+        {merajReply && (
+          <div className="bg-slate-900/40 rounded-xl p-4 mb-3 border border-slate-700/50">
+            <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(merajReply) }} />
+          </div>
+        )}
+        {merajLoading && !merajReply && (
+          <div className="flex items-center gap-2 text-sm text-slate-400 mb-3"><Loader2 className="w-4 h-4 animate-spin text-brand-400" /> Meraj is analyzing your business…</div>
+        )}
+
+        <div className="flex gap-2">
+          <input
+            value={merajInput}
+            onChange={(e) => setMerajInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && askMeraj(merajInput)}
+            placeholder="Ask Meraj anything about your business…"
+            className="input-field flex-1"
+            disabled={merajLoading}
+          />
+          <button onClick={() => askMeraj(merajInput)} disabled={merajLoading || !merajInput.trim()} className="btn-primary px-4 flex items-center justify-center" aria-label="Ask Meraj">
+            {merajLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          </button>
+        </div>
+        <Link to="/app/assistant" className="text-xs text-brand-400 hover:text-brand-300 mt-3 inline-block">Open full chat with Meraj →</Link>
       </div>
 
       {/* Quick actions */}
