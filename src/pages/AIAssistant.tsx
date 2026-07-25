@@ -19,7 +19,7 @@ const suggestions = [
   'Why did sales drop?',
 ]
 
-// Render assistant Markdown safely (matches QuickActionBar's approach).
+// Render assistant Markdown safely (marked + DOMPurify).
 function renderSafeMarkdown(md: string): string {
   const rawHtml = marked.parse(md, { async: false }) as string
   return DOMPurify.sanitize(rawHtml, {

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
-import QuickActionBar from './QuickActionBar'
+import FloatingMeraj from './FloatingMeraj'
 import { Menu } from 'lucide-react'
 
 export default function AppLayout() {
@@ -28,8 +28,8 @@ export default function AppLayout() {
         </main>
       </div>
 
-      {/* Floating Quick-Action Bar — available on every page */}
-      <QuickActionBar />
+      {/* Floating Meraj AI assistant — draggable launcher, available on every page */}
+      <FloatingMeraj />
     </div>
   )
 }
