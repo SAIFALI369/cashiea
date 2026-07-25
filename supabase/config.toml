@@ -25,11 +25,8 @@ enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
 
-# All functions verify JWT by default (set per-function below to override)
-[functions]
-verify_jwt = true
-
-# Functions that should NOT verify JWT (webhooks, OAuth callbacks)
+# Functions verify JWT by default. Override per-function below (verify_jwt = false)
+# for webhooks / OAuth callbacks that must be callable without a user JWT.
 [functions.stripe-webhook]
 verify_jwt = false
 

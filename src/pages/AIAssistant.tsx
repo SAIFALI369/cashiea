@@ -1,10 +1,15 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { askAssistant } from '../lib/ai'
 import PageHeader from '../components/ui/PageHeader'
-import { Sparkles, Send, Loader2, Bot, User } from 'lucide-react'
+import { Sparkles, Send, Loader2, User } from 'lucide-react'
+import DOMPurify from 'dompurify'
+import { marked } from 'marked'
 import toast from 'react-hot-toast'
 
 interface Msg { role: 'user' | 'ai'; text: string }
+
+const CHAT_KEY = 'cashiea_meraj_chat'
+const MAX_STORED = 50
 
 const suggestions = [
   'How was business today?',
@@ -14,22 +19,53 @@ const suggestions = [
   'Why did sales drop?',
 ]
 
-function renderMarkdown(md: string): string {
-  return md
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h2>$1</h2>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/^\s*[-*] (.+)$/gm, '<li>$1</li>')
-    .replace(/(<li>.*<\/li>)/s, (m) => `<ul>${m}</ul>`)
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/^(?!<[hlup])(.+)$/gm, '<p>$1</p>')
+// Render assistant Markdown safely (matches QuickActionBar's approach).
+function renderSafeMarkdown(md: string): string {
+  const rawHtml = marked.parse(md, { async: false }) as string
+  return DOMPurify.sanitize(rawHtml, {
+    ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'p', 'strong', 'em', 'b', 'i', 'ul', 'ol', 'li', 'br', 'hr', 'code', 'blockquote', 'a'],
+    ALLOWED_ATTR: ['href', 'target', 'rel'],
+  })
+}
+
+function MerajAvatar({ size = 36 }: { size?: number }) {
+  return (
+    <img
+      src="/meraj-avatar.png"
+      alt="Meraj"
+      width={size}
+      height={size}
+      style={{ width: size, height: size }}
+      className="rounded-full object-cover ring-2 ring-brand-500/40 bg-slate-800 flex-shrink-0"
+    />
+  )
 }
 
 export default function AIAssistant() {
   const [messages, setMessages] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Restore the last conversation so the chat survives refresh / reopens.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CHAT_KEY)
+      if (raw) setMessages(JSON.parse(raw))
+    } catch { /* ignore */ }
+  }, [])
+
+  // Persist the transcript (capped) as it changes.
+  useEffect(() => {
+    try {
+      localStorage.setItem(CHAT_KEY, JSON.stringify(messages.slice(-MAX_STORED)))
+    } catch { /* ignore */ }
+  }, [messages])
+
+  // Auto-scroll to the latest message.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+  }, [messages, loading])
 
   const send = async (text: string, isBriefing = false) => {
     const q = text.trim()
@@ -42,8 +78,9 @@ export default function AIAssistant() {
       const reply = await askAssistant(q, isBriefing)
       setMessages([...next, { role: 'ai', text: reply }])
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed')
-      setMessages([...next, { role: 'ai', text: '⚠️ ' + (err instanceof Error ? err.message : 'Something went wrong.') }])
+      const msg = err instanceof Error ? err.message : 'Something went wrong.'
+      toast.error(msg)
+      setMessages([...next, { role: 'ai', text: '⚠️ ' + msg }])
     } finally {
       setLoading(false)
     }
@@ -65,25 +102,35 @@ export default function AIAssistant() {
   return (
     <div className="animate-fade-in">
       <PageHeader
-        title="AI Assistant"
-        subtitle="Ask anything about your business — sales, customers, stock, follow-ups"
-        icon={<Bot className="w-5 h-5" />}
-        action={<button onClick={briefing} disabled={loading} className="btn-primary text-sm"><Sparkles className="w-4 h-4" /> Morning Briefing</button>}
+        title="Meraj"
+        subtitle="Your Cashiea AI assistant — sales, stock, customers, follow-ups"
+        icon={<MerajAvatar size={28} />}
+        action={
+          <button onClick={briefing} disabled={loading} className="btn-primary text-sm flex items-center gap-2">
+            <Sparkles className="w-4 h-4" /> Morning Briefing
+          </button>
+        }
       />
 
-      <div className="card flex flex-col" style={{ minHeight: '60vh' }}>
+      <div className="card flex flex-col" style={{ minHeight: '62vh' }}>
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 space-y-5">
           {messages.length === 0 && (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 rounded-2xl bg-brand-600/15 flex items-center justify-center mx-auto mb-4">
-                <Bot className="w-8 h-8 text-brand-400" />
-              </div>
-              <h3 className="font-semibold text-white mb-1">Ask me about your business</h3>
-              <p className="text-sm text-slate-400 mb-6">Like: "How was business today?" or "Who bought cement?"</p>
+            <div className="text-center py-10">
+              <div className="flex justify-center"><MerajAvatar size={64} /></div>
+              <h3 className="font-semibold text-white mt-4 mb-1">Hi, I'm Meraj 👋</h3>
+              <p className="text-sm text-slate-400 mb-6 max-w-md mx-auto">
+                I'm your Cashiea shop assistant. Ask me about sales, stock, customers, or follow-ups — and tell me anything you'd like me to remember.
+              </p>
               <div className="flex flex-wrap gap-2 justify-center max-w-lg mx-auto">
                 {suggestions.map((s) => (
-                  <button key={s} onClick={() => send(s)} className="px-3 py-1.5 rounded-full text-xs bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-all border border-slate-700">{s}</button>
+                  <button
+                    key={s}
+                    onClick={() => send(s)}
+                    className="px-3 py-1.5 rounded-full text-xs bg-slate-800/80 text-slate-300 hover:bg-slate-700 hover:text-white transition-all border border-slate-700"
+                  >
+                    {s}
+                  </button>
                 ))}
               </div>
             </div>
@@ -91,14 +138,24 @@ export default function AIAssistant() {
 
           {messages.map((m, i) => (
             <div key={i} className={`flex gap-3 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${m.role === 'user' ? 'bg-brand-600' : 'bg-slate-800'}`}>
-                {m.role === 'user' ? <User className="w-4 h-4 text-white" /> : <Bot className="w-4 h-4 text-brand-400" />}
-              </div>
-              <div className={`rounded-2xl p-3.5 max-w-[80%] ${m.role === 'user' ? 'bg-brand-600 text-white' : 'bg-slate-800 text-slate-200'}`}>
+              {m.role === 'user' ? (
+                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-brand-600">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+              ) : (
+                <MerajAvatar size={36} />
+              )}
+              <div
+                className={`rounded-2xl px-4 py-3 max-w-[82%] ${
+                  m.role === 'user'
+                    ? 'bg-brand-600 text-white rounded-tr-sm'
+                    : 'bg-slate-800/80 text-slate-200 border border-slate-700/60 rounded-tl-sm'
+                }`}
+              >
                 {m.role === 'ai' ? (
-                  <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.text) }} />
+                  <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(m.text) }} />
                 ) : (
-                  <p className="text-sm">{m.text}</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{m.text}</p>
                 )}
               </div>
             </div>
@@ -106,12 +163,10 @@ export default function AIAssistant() {
 
           {loading && (
             <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center flex-shrink-0">
-                <Bot className="w-4 h-4 text-brand-400" />
-              </div>
-              <div className="bg-slate-800 rounded-2xl p-3.5 flex items-center gap-2">
+              <MerajAvatar size={36} />
+              <div className="bg-slate-800/80 rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-2 border border-slate-700/60">
                 <Loader2 className="w-4 h-4 animate-spin text-brand-400" />
-                <span className="text-sm text-slate-400">Analyzing your business...</span>
+                <span className="text-sm text-slate-400">Meraj is analyzing your business…</span>
               </div>
             </div>
           )}
@@ -123,11 +178,16 @@ export default function AIAssistant() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && send(input)}
-            placeholder="Ask about sales, customers, stock..."
+            placeholder="Ask Meraj about sales, customers, stock…"
             className="input-field flex-1"
             disabled={loading}
           />
-          <button onClick={() => send(input)} disabled={loading || !input.trim()} className="btn-primary px-4">
+          <button
+            onClick={() => send(input)}
+            disabled={loading || !input.trim()}
+            className="btn-primary px-4 flex items-center justify-center"
+            aria-label="Send message"
+          >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
           </button>
         </div>
