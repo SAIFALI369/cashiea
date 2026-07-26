@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import FloatingMeraj from './FloatingMeraj'
 import ThemeToggle from './ThemeToggle'
 import { motion } from './motion'
+import Skeleton from './ui/Skeleton'
 import { Menu } from 'lucide-react'
 
 export default function AppLayout() {
@@ -35,7 +36,18 @@ export default function AppLayout() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
           >
-            <Outlet />
+            <Suspense fallback={
+              <div className="space-y-5">
+                <Skeleton className="h-8 w-64" />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className="card p-5"><Skeleton className="h-4 w-24 mb-3" /><Skeleton className="h-8 w-20" /></div>
+                  ))}
+                </div>
+              </div>
+            }>
+              <Outlet />
+            </Suspense>
           </motion.div>
         </main>
       </div>
