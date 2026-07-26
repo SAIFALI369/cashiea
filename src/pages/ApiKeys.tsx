@@ -96,7 +96,7 @@ export default function ApiKeys() {
 
       {/* Created key reveal */}
       {createdKey && (
-        <div className="card p-6 mb-6 border-green-600/40 bg-green-600/5 animate-slide-up">
+        <div className="card p-4 mb-6 border-green-600/40 bg-green-600/5 animate-slide-up">
           <div className="flex items-center gap-2 mb-2">
             <Check className="w-5 h-5 text-green-400" />
             <h3 className="font-semibold text-white">API Key Created — copy it now!</h3>
@@ -143,7 +143,7 @@ export default function ApiKeys() {
 
       {/* Create form */}
       {showCreate && (
-        <div className="card p-6 mb-6 animate-slide-up">
+        <div className="card p-4 mb-6 animate-slide-up">
           <label className="label">Key Name</label>
           <input value={newName} onChange={(e) => setNewName(e.target.value)} className="input-field" placeholder="e.g. Production, Zapier, Internal CRM" />
           <div className="flex justify-end gap-2 mt-3">
@@ -154,7 +154,7 @@ export default function ApiKeys() {
       )}
 
       {/* API Docs */}
-      <div className="card p-6">
+      <div className="card p-4">
         <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
           <Terminal className="w-5 h-5 text-brand-400" /> Quick Start
         </h3>

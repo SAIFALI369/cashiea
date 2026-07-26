@@ -15,8 +15,8 @@ export default function PlaceholderPage({
   return (
     <div className="animate-fade-in">
       <PageHeader title={title} subtitle={subtitle} icon={<Icon className="w-5 h-5" />} />
-      <div className="card p-10 sm:p-14 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-accent-soft text-accent inline-flex items-center justify-center mb-5">
+      <div className="card p-6 sm:p-14 text-center">
+        <div className="w-14 h-14 rounded-xl bg-accent-soft text-accent inline-flex items-center justify-center mb-5">
           <Icon className="w-7 h-7" strokeWidth={1.6} />
         </div>
         <h2 className="text-lg font-semibold text-fg">{title}</h2>

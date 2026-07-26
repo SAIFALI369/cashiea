@@ -50,10 +50,10 @@ export default function Account() {
     <div className="animate-fade-in max-w-xl">
       <PageHeader title="Edit Account" subtitle="Manage your profile & contact details" icon={<UserCog className="w-5 h-5" />} />
 
-      <div className="card p-6 sm:p-8">
+      <div className="card p-4 sm:p-5">
         {/* Profile photo placeholder */}
         <div className="flex items-center gap-4 mb-8">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-accent to-accent-strong text-accent-fg flex items-center justify-center text-2xl font-bold ring-1 ring-line">
+          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-accent to-accent-strong text-accent-fg flex items-center justify-center text-xl font-bold ring-1 ring-line">
             {initial}
           </div>
           <div>

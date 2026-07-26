@@ -68,7 +68,7 @@ export default function Support() {
     return (
       <div className="animate-fade-in">
         <PageHeader title="Support" subtitle="We’re here to help" icon={<LifeBuoy className="w-5 h-5" />} />
-        <div className="card p-10 text-center max-w-md mx-auto">
+        <div className="card p-6 text-center max-w-md mx-auto">
           <div className="w-16 h-16 rounded-full bg-green-500/15 flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 className="w-8 h-8 text-green-400" />
           </div>
@@ -92,7 +92,7 @@ export default function Support() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Form */}
         <div className="lg:col-span-2">
-          <form onSubmit={handleSubmit} className="card p-6 space-y-4">
+          <form onSubmit={handleSubmit} className="card p-4 space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">Your Name *</label>

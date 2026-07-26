@@ -20,7 +20,7 @@ export default function AppLayout() {
         <header className="lg:hidden sticky top-0 z-30 bg-slate-900/80 backdrop-blur border-b border-slate-800 px-4 py-3 flex items-center gap-3">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="text-slate-400 hover:text-white"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-muted hover:text-fg"
           >
             <Menu className="w-6 h-6" />
           </button>
@@ -28,7 +28,7 @@ export default function AppLayout() {
           <div className="ml-auto"><ThemeToggle /></div>
         </header>
 
-        <main className="flex-1 p-5 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full">
+        <main className="flex-1 p-4 sm:p-5 lg:p-8 max-w-7xl mx-auto w-full">
           {/* Route transition — gentle fade/slide on every navigation */}
           <motion.div
             key={location.pathname}

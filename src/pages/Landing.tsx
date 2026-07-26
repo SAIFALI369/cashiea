@@ -207,9 +207,9 @@ export default function Landing() {
               { icon: AlertCircle, stat: 'Zero visibility', problem: "You don't know what's selling", fix: 'Daily reports, WhatsApp alerts, no login needed' },
             ].map((item, i) => (
               <Reveal key={i} delay={i * 120} dir="scale">
-                <div className="rounded-2xl p-8 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-lg" style={{ background: C.bg, border: `1px solid ${C.border}` }}>
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5" style={{ background: C.blue + '12' }}><item.icon className="w-7 h-7" style={{ color: C.blue }} /></div>
-                  <p className="text-2xl font-bold mb-2" style={{ color: C.text }}>{item.stat}</p>
+                <div className="rounded-xl p-5 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-lg" style={{ background: C.bg, border: `1px solid ${C.border}` }}>
+                  <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-5" style={{ background: C.blue + '12' }}><item.icon className="w-7 h-7" style={{ color: C.blue }} /></div>
+                  <p className="text-xl font-bold mb-2" style={{ color: C.text }}>{item.stat}</p>
                   <p className="text-sm mb-3" style={{ color: C.textMuted }}>{item.problem}</p>
                   <p className="text-sm font-semibold" style={{ color: C.green }}>{item.fix}</p>
                 </div>
@@ -230,8 +230,8 @@ export default function Landing() {
               { icon: Zap, title: 'AI Does the Admin Work', desc: 'Daily closing reports. Low-stock alerts. Hinglish customer replies. Voice commands in Hindi.', emoji: '\u2699\ufe0f' },
             ].map((card, i) => (
               <Reveal key={i} delay={i * 120} dir={i === 1 ? 'up' : i === 0 ? 'left' : 'right'}>
-                <div className="rounded-2xl p-9 transition-all duration-400 group relative overflow-hidden hover:-translate-y-2 hover:shadow-2xl" style={{ background: C.bgAlt, border: `1px solid ${C.border}` }}>
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5 transition-transform group-hover:scale-110" style={{ background: 'rgb(var(--positive) / 0.1)' }}><card.icon className="w-5.5 h-5.5" style={{ color: C.green }} /></div>
+                <div className="rounded-xl p-9 transition-all duration-400 group relative overflow-hidden hover:-translate-y-2 hover:shadow-2xl" style={{ background: C.bgAlt, border: `1px solid ${C.border}` }}>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-5 transition-transform group-hover:scale-110" style={{ background: 'rgb(var(--positive) / 0.1)' }}><card.icon className="w-5.5 h-5.5" style={{ color: C.green }} /></div>
                   <h3 className="font-semibold text-xl mb-3" style={{ fontFamily: '"Plus Jakarta Sans"', color: C.text }}>{card.emoji} {card.title}</h3>
                   <p className="leading-relaxed mb-5" style={{ fontSize: '16px', color: C.textBody }}>{card.desc}</p>
                   <button className="text-sm font-medium transition-colors flex items-center gap-1" style={{ color: C.blue }} onMouseEnter={e => e.currentTarget.style.color = C.blueDark} onMouseLeave={e => e.currentTarget.style.color = C.blue}>See how <ArrowRight className="w-3.5 h-3.5" /></button>
@@ -250,9 +250,9 @@ export default function Landing() {
           <div className="grid md:grid-cols-3 gap-6">
             {TESTIMONIALS.map((t, i) => (
               <Reveal key={i} delay={i * 120} dir="up">
-                <div className="rounded-2xl p-7" style={{ background: C.bg, border: `1px solid ${C.border}` }}>
+                <div className="rounded-xl p-7" style={{ background: C.bg, border: `1px solid ${C.border}` }}>
                   <div className="flex items-center gap-3 mb-5">
-                    <div className="w-11 h-11 rounded-full text-white flex items-center justify-center font-bold text-sm flex-shrink-0" style={{ background: `linear-gradient(135deg, ${C.blue}, ${C.blueLight})` }}>{t.initials}</div>
+                    <div className="w-9 h-9 rounded-full text-white flex items-center justify-center font-bold text-sm flex-shrink-0" style={{ background: `linear-gradient(135deg, ${C.blue}, ${C.blueLight})` }}>{t.initials}</div>
                     <div className="min-w-0"><p className="font-semibold text-sm" style={{ color: C.text }}>{t.name}</p><p className="text-xs" style={{ color: C.textMuted }}>{t.shop} {'\u00b7'} {t.city}</p></div>
                   </div>
                   <p className="text-base italic leading-relaxed mb-5" style={{ color: C.text }}>"{t.quote}"</p>
@@ -273,7 +273,7 @@ export default function Landing() {
           <Reveal><h2 className="text-center font-semibold mb-3" style={{ fontFamily: '"Plus Jakarta Sans"', fontSize: 'clamp(28px, 4vw, 38px)', color: C.text }}>One Plan. Transparent Pricing.</h2></Reveal>
           <Reveal delay={100}><p className="text-center mb-14" style={{ fontSize: '16px', color: C.textMuted }}>No tiers, no upsells, no confusion.</p></Reveal>
           <Reveal delay={200} dir="scale">
-            <div className="max-w-md mx-auto rounded-2xl p-12 text-center relative" style={{ background: C.bgAlt, border: `2px solid ${C.blue}` }}>
+            <div className="max-w-md mx-auto rounded-xl p-12 text-center relative" style={{ background: C.bgAlt, border: `2px solid ${C.blue}` }}>
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-semibold text-white px-4 py-1.5 rounded-full whitespace-nowrap" style={{ background: C.green }}>14 days free. No card required.</div>
               <h3 className="font-bold text-lg mb-3" style={{ fontFamily: '"Plus Jakarta Sans"', color: C.text }}>Cashiea Pro</h3>
               <div className="mb-8"><span className="text-5xl font-bold" style={{ color: C.blue }}>{'\u20b9'}7,500</span><span className="text-sm ml-1" style={{ color: C.textMuted }}>/month</span></div>
@@ -357,8 +357,8 @@ export default function Landing() {
 function FAQItem({ faq, colors: C }: { faq: { q: string; a: string }; colors: Record<string, string> }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="rounded-2xl overflow-hidden transition-all" style={{ background: C.bg, border: `1px solid ${C.border}` }}>
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between p-6 text-left">
+    <div className="rounded-xl overflow-hidden transition-all" style={{ background: C.bg, border: `1px solid ${C.border}` }}>
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between p-4 text-left">
         <span className="font-semibold text-base" style={{ color: C.text }}>{faq.q}</span>
         <ChevronDown className={`w-5 h-5 flex-shrink-0 ml-4 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} style={{ color: C.blue }} />
       </button>

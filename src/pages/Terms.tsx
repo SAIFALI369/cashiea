@@ -23,12 +23,12 @@ export default function Terms() {
             <FileText className="w-6 h-6 text-brand-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Terms of Use</h1>
+            <h1 className="text-xl font-bold text-white">Terms of Use</h1>
             <p className="text-sm text-slate-500">Last updated: {updated}</p>
           </div>
         </div>
 
-        <div className="card p-6 sm:p-8 space-y-6 text-slate-300 leading-relaxed text-sm sm:text-base">
+        <div className="card p-4 sm:p-5 space-y-6 text-slate-300 leading-relaxed text-sm sm:text-base">
           <p className="text-slate-400">Welcome to Cashiea. These Terms of Use ("Terms") govern your access to and use of the Cashiea cashier, point-of-sale, customer management, and related services (the "Service"). By creating an account or using the Service, you agree to be bound by these Terms. If you do not agree, please do not use the Service.</p>
 
           <Section title="1. Eligibility & Account">

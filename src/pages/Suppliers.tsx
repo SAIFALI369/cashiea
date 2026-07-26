@@ -109,7 +109,7 @@ export default function Suppliers() {
       ) : tab === 'suppliers' ? (
         <>
           {showSupplier && (
-            <div className="card p-6 mb-6 animate-slide-up">
+            <div className="card p-4 mb-6 animate-slide-up">
               <div className="grid sm:grid-cols-2 gap-4">
                 <div><label className="label">Name *</label><input value={supForm.name} onChange={(e) => setSupForm({ ...supForm, name: e.target.value })} className="input-field" placeholder="ABC Distributors" /></div>
                 <div><label className="label">Contact person</label><input value={supForm.contact_person} onChange={(e) => setSupForm({ ...supForm, contact_person: e.target.value })} className="input-field" /></div>
@@ -148,7 +148,7 @@ export default function Suppliers() {
       ) : (
         <>
           {showPO && (
-            <div className="card p-6 mb-6 animate-slide-up">
+            <div className="card p-4 mb-6 animate-slide-up">
               <div className="grid sm:grid-cols-2 gap-4 mb-4">
                 <div><label className="label">Supplier *</label><select value={poForm.supplier_id} onChange={(e) => setPoForm({ ...poForm, supplier_id: e.target.value })} className="input-field"><option value="">Select...</option>{suppliers.map((s) => <option key={s.id} value={s.id} className="bg-slate-900">{s.name}</option>)}</select></div>
                 <div><label className="label">Expected date</label><input type="date" value={poForm.expected_date} onChange={(e) => setPoForm({ ...poForm, expected_date: e.target.value })} className="input-field" /></div>

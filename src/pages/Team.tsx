@@ -83,7 +83,7 @@ export default function Team() {
       </div>
 
       {showForm && (
-        <div className="card p-6 mb-6 animate-slide-up">
+        <div className="card p-4 mb-6 animate-slide-up">
           <h3 className="font-semibold text-white mb-4">Invite a team member</h3>
           <div className="grid sm:grid-cols-3 gap-4">
             <div><label className="label">Email *</label><input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field" placeholder="staff@shop.com" /></div>

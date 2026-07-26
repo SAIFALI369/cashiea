@@ -98,11 +98,11 @@ export default function Signup() {
 
   if (needsConfirmation) {
     return (
-      <div className="flex items-center justify-center p-6" style={{ background: C.bg, minHeight: '100dvh' }}>
+      <div className="flex items-center justify-center p-4" style={{ background: C.bg, minHeight: '100dvh' }}>
         <div className="max-w-md w-full text-center" style={{ animation: 'fadeIn 0.5s ease-out' }}>
           <style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
           <div className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center" style={{ background: C.blue + '12' }}><Mail className="w-10 h-10" style={{ color: C.blue }} /></div>
-          <h2 className="font-bold text-2xl mb-3" style={{ fontFamily: '"Plus Jakarta Sans"', color: C.text }}>Check your email</h2>
+          <h2 className="font-bold text-xl mb-3" style={{ fontFamily: '"Plus Jakarta Sans"', color: C.text }}>Check your email</h2>
           <p className="mb-6 leading-relaxed" style={{ color: C.textBody }}>We sent a confirmation link to <span className="font-semibold" style={{ color: C.text }}>{email}</span>. Click it to activate your account.</p>
           <div className="p-4 rounded-xl text-left mb-6" style={{ background: 'rgb(var(--warning) / 0.12)', border: '1px solid rgb(var(--warning) / 0.3)' }}>
             <p className="text-sm" style={{ color: 'rgb(var(--warning))' }}><strong>Tip:</strong> To skip this for testing, go to Supabase Dashboard → Authentication → Email → turn off "Confirm email".</p>
@@ -120,8 +120,8 @@ export default function Signup() {
         <div className="absolute top-20 right-0 w-96 h-96 rounded-full" style={{ background: `radial-gradient(circle, ${C.blueLight}25 0%, transparent 70%)` }} />
         <div className="relative max-w-md">
           <div className="flex items-center gap-3 mb-12">
-            <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center p-1.5"><Logo size={36} /></div>
-            <span className="text-white font-bold text-2xl" style={{ fontFamily: '"Plus Jakarta Sans"' }}>Cashiea</span>
+            <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center p-1.5"><Logo size={36} /></div>
+            <span className="text-white font-bold text-xl" style={{ fontFamily: '"Plus Jakarta Sans"' }}>Cashiea</span>
           </div>
           <h1 className="text-white font-bold mb-6" style={{ fontFamily: '"Plus Jakarta Sans"', fontSize: '36px', lineHeight: 1.25 }}>Start automating your shop in 5 minutes.</h1>
           <p className="text-white/70 text-lg leading-relaxed mb-10">Join 47+ shop owners who save hours every week with AI-powered billing, reports, and customer follow-ups.</p>
@@ -134,7 +134,7 @@ export default function Signup() {
               { stat: '90%', label: 'faster billing' },
             ].map((s, i) => (
               <div key={i} className="text-center p-3 rounded-xl bg-white/10 backdrop-blur" style={{ animation: `slideUp 0.5s ease-out ${0.3 + i * 0.1}s both` }}>
-                <p className="text-2xl font-bold text-white">{s.stat}</p>
+                <p className="text-xl font-bold text-white">{s.stat}</p>
                 <p className="text-xs text-white/60">{s.label}</p>
               </div>
             ))}
@@ -157,14 +157,14 @@ export default function Signup() {
       </div>
 
       {/* ═══ RIGHT: Signup Form ═══ */}
-      <div className="flex-1 flex items-start justify-center p-6 sm:p-10 py-10 overflow-y-auto cashiea-form-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div className="flex-1 flex items-start justify-center p-4 sm:p-6 py-10 overflow-y-auto cashiea-form-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div className="w-full max-w-[460px] py-8" style={{ animation: 'fadeInUp 0.6s ease-out' }}>
           <style>{`@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
 
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2.5 mb-8 justify-center">
             <Logo size={40} />
-            <span className="font-bold text-2xl" style={{ fontFamily: '"Plus Jakarta Sans"', color: C.text }}>Cashiea</span>
+            <span className="font-bold text-xl" style={{ fontFamily: '"Plus Jakarta Sans"', color: C.text }}>Cashiea</span>
           </div>
 
           <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium mb-6 transition-colors" style={{ color: C.muted }} onMouseEnter={e => e.currentTarget.style.color = C.blue} onMouseLeave={e => e.currentTarget.style.color = C.muted}>

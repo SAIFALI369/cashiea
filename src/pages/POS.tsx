@@ -311,7 +311,7 @@ export default function POS() {
       {/* Customer picker modal */}
       {showCustomerPicker && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowCustomerPicker(false)}>
-          <div className="card p-6 w-full max-w-md max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="card p-4 w-full max-w-md max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-bold text-white mb-3">Select customer</h3>
             <input autoFocus placeholder="Search customers..." className="input-field mb-3" onChange={(e) => {
               const q = e.target.value.toLowerCase()
@@ -333,7 +333,7 @@ export default function POS() {
       {/* Receipt confirmation */}
       {lastReceipt && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setLastReceipt(null)}>
-          <div className="card p-8 w-full max-w-sm text-center" onClick={(e) => e.stopPropagation()}>
+          <div className="card p-5 w-full max-w-sm text-center" onClick={(e) => e.stopPropagation()}>
             <div className="w-16 h-16 rounded-full bg-green-500/15 flex items-center justify-center mx-auto mb-4">
               <Receipt className="w-8 h-8 text-green-400" />
             </div>

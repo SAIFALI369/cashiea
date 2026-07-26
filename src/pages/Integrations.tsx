@@ -133,7 +133,7 @@ export default function Integrations() {
 
       {/* Paste-data quick feed */}
       {showPaste && (
-        <div className="card p-6 mb-6 animate-slide-up border-brand-700/40">
+        <div className="card p-4 mb-6 animate-slide-up border-brand-700/40">
           <h3 className="font-semibold text-white mb-1">Paste data from {PROVIDERS.find((x) => x.id === showPaste)?.name}</h3>
           <p className="text-sm text-slate-400 mb-3">Export from the app and paste here. The AI will learn your business from it right now.</p>
           <textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)} rows={6} className="input-field resize-none font-mono text-sm" placeholder="Paste products, customer list, sales data, or any business info..." />
@@ -161,7 +161,7 @@ export default function Integrations() {
                 <div key={p.id} className={`card p-5 ${status === 'connected' ? 'border-green-700/40' : ''}`}>
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-xl bg-slate-800 flex items-center justify-center">
+                      <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center">
                         <p.icon className={`w-5.5 h-5.5 ${p.color}`} />
                       </div>
                       <div>

@@ -176,7 +176,7 @@ export default function FloatingMeraj() {
       {/* Executive Briefing panel */}
       {open && (
         <div
-          className="fixed z-50 bottom-4 right-4 left-4 sm:left-auto sm:w-[400px] flex flex-col card rounded-3xl overflow-hidden animate-scale-in origin-bottom-right shadow-float"
+          className="fixed z-50 bottom-4 right-4 left-4 sm:left-auto sm:w-[400px] flex flex-col card rounded-xl overflow-hidden animate-scale-in origin-bottom-right shadow-float"
           style={{ maxHeight: '80vh' }}
         >
           {/* Header — X in upper-left */}
@@ -199,7 +199,7 @@ export default function FloatingMeraj() {
             {messages.length === 0 ? (
               /* Briefing hero (empty state) */
               <div className="p-4">
-                <div className="rounded-2xl border border-line bg-gradient-to-br from-accent-soft to-surface p-4">
+                <div className="rounded-xl border border-line bg-gradient-to-br from-accent-soft to-surface p-4">
                   <span className="text-[10px] font-semibold tracking-[0.14em] uppercase text-accent">Daily Briefing</span>
                   <p className="text-sm text-fg leading-relaxed mt-2">{greeting()}. Get your snapshot of today's sales, stock alerts, and follow-ups in one tap.</p>
                   <button onClick={briefing} disabled={loading} className="btn-primary w-full mt-3.5 text-sm">
@@ -216,13 +216,13 @@ export default function FloatingMeraj() {
                       <span className="text-xs text-fg-muted bg-surface-2 border border-line rounded-full px-3 py-1 max-w-[80%]">{m.text}</span>
                     </div>
                   ) : (
-                    <div key={i} className="rounded-2xl border border-line border-l-2 border-l-accent bg-surface-2 p-3.5">
+                    <div key={i} className="rounded-xl border border-line border-l-2 border-l-accent bg-surface-2 p-3.5">
                       <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(m.text) }} />
                     </div>
                   )
                 )}
                 {loading && (
-                  <div className="rounded-2xl border border-line bg-surface-2 p-3.5 space-y-2">
+                  <div className="rounded-xl border border-line bg-surface-2 p-3.5 space-y-2">
                     <div className="h-3 w-1/3 rounded bg-surface-3 animate-pulse" />
                     <div className="h-3 w-full rounded bg-surface-3 animate-pulse" />
                     <div className="h-3 w-5/6 rounded bg-surface-3 animate-pulse" />

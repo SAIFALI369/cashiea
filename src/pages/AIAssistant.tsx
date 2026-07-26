@@ -110,7 +110,7 @@ export default function AIAssistant() {
 
       {/* Top bar: history (left) · title · mark (right) */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-line">
-        <button onClick={() => setShowHistory(true)} className="w-9 h-9 rounded-lg flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors relative" aria-label="Conversation history">
+        <button onClick={() => setShowHistory(true)} className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors relative" aria-label="Conversation history">
           <History className="w-5 h-5" strokeWidth={1.75} />
           {convos.length > 0 && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-accent" />}
         </button>
@@ -137,11 +137,11 @@ export default function AIAssistant() {
           {messages.map((m, i) =>
             m.role === 'user' ? (
               <div key={i} className="flex justify-end">
-                <span className="text-sm bg-accent-strong text-accent-fg rounded-2xl rounded-br-sm px-3.5 py-2 max-w-[80%]">{m.text}</span>
+                <span className="text-sm bg-accent-strong text-accent-fg rounded-xl rounded-br-sm px-3.5 py-2 max-w-[80%]">{m.text}</span>
               </div>
             ) : (
               <div key={i} className="flex justify-start">
-                <div className="rounded-2xl rounded-bl-sm bg-surface-2 border border-line border-l-2 border-l-accent px-4 py-3 max-w-[88%]">
+                <div className="rounded-xl rounded-bl-sm bg-surface-2 border border-line border-l-2 border-l-accent px-4 py-3 max-w-[88%]">
                   <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: render(m.text) }} />
                 </div>
               </div>
@@ -149,7 +149,7 @@ export default function AIAssistant() {
           )}
           {loading && (
             <div className="flex justify-start">
-              <div className="flex items-center gap-1.5 bg-surface-2 border border-line rounded-2xl rounded-bl-sm px-4 py-3">
+              <div className="flex items-center gap-1.5 bg-surface-2 border border-line rounded-xl rounded-bl-sm px-4 py-3">
                 {[0, 1, 2].map((d) => (
                   <motion.span key={d} className="w-1.5 h-1.5 rounded-full bg-accent" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1, repeat: Infinity, delay: d * 0.15 }} />
                 ))}
@@ -164,7 +164,7 @@ export default function AIAssistant() {
         <div className="flex items-center gap-2">
           {/* Camera — mobile only, offers gallery or camera */}
           <div className="relative lg:hidden">
-            <button onClick={() => setShowCam((s) => !s)} className="w-10 h-10 rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors" aria-label="Camera"><Camera className="w-5 h-5" strokeWidth={1.75} /></button>
+            <button onClick={() => setShowCam((s) => !s)} className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors" aria-label="Camera"><Camera className="w-5 h-5" strokeWidth={1.75} /></button>
             <AnimatePresence>
               {showCam && (
                 <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} className="absolute bottom-12 left-0 card p-1.5 w-40 shadow-float z-10">
@@ -176,7 +176,7 @@ export default function AIAssistant() {
           </div>
 
           {/* Mic */}
-          <button onClick={listening ? stopListen : startListen} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${listening ? 'text-negative bg-negative/10' : 'text-fg-muted hover:text-fg hover:bg-surface-2'}`} aria-label="Voice input">
+          <button onClick={listening ? stopListen : startListen} className={`min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center transition-colors ${listening ? 'text-negative bg-negative/10' : 'text-fg-muted hover:text-fg hover:bg-surface-2'}`} aria-label="Voice input">
             {listening ? <Square className="w-4 h-4" /> : <Mic className="w-5 h-5" strokeWidth={1.75} />}
           </button>
 
@@ -191,7 +191,7 @@ export default function AIAssistant() {
             className="input-field flex-1 text-sm"
             disabled={loading}
           />
-          <button onClick={send} disabled={loading || !input.trim()} className="btn-primary px-3.5 h-10 flex items-center justify-center" aria-label="Send">
+          <button onClick={send} disabled={loading || !input.trim()} className="btn-primary px-3.5 h-11 flex items-center justify-center" aria-label="Send">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>

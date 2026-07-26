@@ -127,7 +127,7 @@ export default function AIBrain() {
       />
 
       {/* About My Business — the living summary */}
-      <div className="card p-6 mb-6 bg-gradient-to-br from-brand-600/10 to-transparent">
+      <div className="card p-4 mb-6 bg-gradient-to-br from-brand-600/10 to-transparent">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold text-white flex items-center gap-2"><Sparkles className="w-5 h-5 text-brand-400" /> About My Business</h2>
           {memory?.last_updated_at && <span className="text-xs text-slate-500">Updated {new Date(memory.last_updated_at).toLocaleString()}</span>}
@@ -248,7 +248,7 @@ export default function AIBrain() {
       {/* Deny-with-reason modal */}
       {showCorrect && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowCorrect(null)}>
-          <div className="card p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+          <div className="card p-4 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-white">Teach the AI</h3>
               <button onClick={() => setShowCorrect(null)} className="text-slate-500 hover:text-white"><X className="w-5 h-5" /></button>

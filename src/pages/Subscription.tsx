@@ -92,7 +92,7 @@ export default function Subscription() {
       />
 
       {/* Current plan banner */}
-      <div className="card p-6 mb-8 bg-gradient-to-r from-brand-900/30 to-transparent">
+      <div className="card p-4 mb-8 bg-gradient-to-r from-brand-900/30 to-transparent">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-brand-600/20 border border-brand-700/50 flex items-center justify-center">
@@ -122,7 +122,7 @@ export default function Subscription() {
           return (
             <div
               key={key}
-              className={`card p-6 relative ${
+              className={`card p-4 relative ${
                 isCurrent
                   ? 'border-brand-600 ring-1 ring-brand-600/50'
                   : isPopular

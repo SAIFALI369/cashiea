@@ -83,13 +83,13 @@ export default function Products() {
 
       {/* Quick stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="card p-4"><p className="text-2xl font-bold text-white">{products.length}</p><p className="text-xs text-slate-400">Products</p></div>
-        <div className="card p-4"><p className="text-2xl font-bold text-amber-400">{lowStockCount}</p><p className="text-xs text-slate-400">Low stock</p></div>
-        <div className="card p-4"><p className="text-2xl font-bold text-white">${inventoryValue.toFixed(0)}</p><p className="text-xs text-slate-400">Inventory value</p></div>
+        <div className="card p-4"><p className="text-xl font-bold text-white">{products.length}</p><p className="text-xs text-slate-400">Products</p></div>
+        <div className="card p-4"><p className="text-xl font-bold text-amber-400">{lowStockCount}</p><p className="text-xs text-slate-400">Low stock</p></div>
+        <div className="card p-4"><p className="text-xl font-bold text-white">${inventoryValue.toFixed(0)}</p><p className="text-xs text-slate-400">Inventory value</p></div>
       </div>
 
       {showForm && (
-        <div className="card p-6 mb-6 animate-slide-up">
+        <div className="card p-4 mb-6 animate-slide-up">
           <h2 className="font-semibold text-white mb-4">New Product</h2>
           <div className="grid sm:grid-cols-2 gap-4">
             <div><label className="label">Name *</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field" placeholder="Wireless Mouse" /></div>
@@ -124,7 +124,7 @@ export default function Products() {
               const margin = p.price > 0 ? (((p.price - p.cost) / p.price) * 100).toFixed(0) : '—'
               return (
                 <div key={p.id} className="card p-4 flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0">
                     <Package className="w-5 h-5 text-brand-400" />
                   </div>
                   <div className="flex-1 min-w-0">

@@ -37,7 +37,7 @@ export default function Dashboard() {
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent-soft text-accent text-[11px] font-semibold tracking-wide">
           <Sparkles className="w-3 h-3" /> Mere
         </span>
-        <h1 className="text-2xl font-bold text-fg mt-3">{greet}, {profile?.full_name?.split(' ')[0] || 'there'} 👋</h1>
+        <h1 className="text-xl font-bold text-fg mt-3">{greet}, {profile?.full_name?.split(' ')[0] || 'there'} 👋</h1>
         <p className="text-sm text-fg-muted mt-1">What would you like to do today?</p>
       </div>
 
@@ -46,19 +46,19 @@ export default function Dashboard() {
       {/* 4-icon row (camera is mobile-only) */}
       <div className="grid grid-cols-4 lg:grid-cols-3 gap-3 sm:gap-4 mb-7">
         <button onClick={() => fileRef.current?.click()} className="lg:hidden card card-hover p-3 sm:p-4 flex flex-col items-center gap-2 group">
-          <span className="w-11 h-11 rounded-2xl bg-surface-2 text-fg inline-flex items-center justify-center group-hover:bg-accent-soft group-hover:text-accent transition-colors"><Camera className="w-5 h-5" /></span>
+          <span className="w-9 h-9 rounded-xl bg-surface-2 text-fg inline-flex items-center justify-center group-hover:bg-accent-soft group-hover:text-accent transition-colors"><Camera className="w-5 h-5" /></span>
           <span className="text-[11px] font-medium text-fg-muted">Camera</span>
         </button>
         <Link to="/app/invoices" className="card card-hover p-3 sm:p-4 flex flex-col items-center gap-2 group">
-          <span className="w-11 h-11 rounded-2xl bg-surface-2 text-fg inline-flex items-center justify-center group-hover:bg-accent-soft group-hover:text-accent transition-colors"><Receipt className="w-5 h-5" /></span>
+          <span className="w-9 h-9 rounded-xl bg-surface-2 text-fg inline-flex items-center justify-center group-hover:bg-accent-soft group-hover:text-accent transition-colors"><Receipt className="w-5 h-5" /></span>
           <span className="text-[11px] font-medium text-fg-muted">Quick Bill</span>
         </Link>
         <Link to="/app/products" className="card card-hover p-3 sm:p-4 flex flex-col items-center gap-2 group">
-          <span className="w-11 h-11 rounded-2xl bg-surface-2 text-fg inline-flex items-center justify-center group-hover:bg-accent-soft group-hover:text-accent transition-colors"><Package className="w-5 h-5" /></span>
+          <span className="w-9 h-9 rounded-xl bg-surface-2 text-fg inline-flex items-center justify-center group-hover:bg-accent-soft group-hover:text-accent transition-colors"><Package className="w-5 h-5" /></span>
           <span className="text-[11px] font-medium text-fg-muted">Products</span>
         </Link>
         <Link to="/app/customers" className="card card-hover p-3 sm:p-4 flex flex-col items-center gap-2 group">
-          <span className="w-11 h-11 rounded-2xl bg-surface-2 text-fg inline-flex items-center justify-center group-hover:bg-accent-soft group-hover:text-accent transition-colors"><Users className="w-5 h-5" /></span>
+          <span className="w-9 h-9 rounded-xl bg-surface-2 text-fg inline-flex items-center justify-center group-hover:bg-accent-soft group-hover:text-accent transition-colors"><Users className="w-5 h-5" /></span>
           <span className="text-[11px] font-medium text-fg-muted">Customers</span>
         </Link>
       </div>
@@ -72,7 +72,7 @@ export default function Dashboard() {
         {FEATURES.map((f) => (
           <motion.div key={f.label} variants={fadeUp} className="card card-hover p-4 flex items-center gap-3 group">
             <Link to={f.to} className="flex items-center gap-4 flex-1 min-w-0">
-              <span className="w-11 h-11 rounded-xl bg-accent-soft text-accent inline-flex items-center justify-center flex-shrink-0"><f.icon className="w-5 h-5" /></span>
+              <span className="w-9 h-9 rounded-xl bg-accent-soft text-accent inline-flex items-center justify-center flex-shrink-0"><f.icon className="w-5 h-5" /></span>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-fg">{f.label}</p>
                 <p className="text-xs text-fg-muted mt-0.5 truncate">{f.desc}</p>

@@ -199,9 +199,9 @@ export default function FailedJobs() {
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="card p-4"><p className="text-2xl font-bold text-red-400">{pending.length}</p><p className="text-xs text-slate-400">Need attention</p></div>
-        <div className="card p-4"><p className="text-2xl font-bold text-amber-400">{jobs.filter((j) => j.status === 'retried').length}</p><p className="text-xs text-slate-400">Retried</p></div>
-        <div className="card p-4"><p className="text-2xl font-bold text-slate-500">{jobs.filter((j) => j.status === 'dead').length}</p><p className="text-xs text-slate-400">Dismissed</p></div>
+        <div className="card p-4"><p className="text-xl font-bold text-red-400">{pending.length}</p><p className="text-xs text-slate-400">Need attention</p></div>
+        <div className="card p-4"><p className="text-xl font-bold text-amber-400">{jobs.filter((j) => j.status === 'retried').length}</p><p className="text-xs text-slate-400">Retried</p></div>
+        <div className="card p-4"><p className="text-xl font-bold text-slate-500">{jobs.filter((j) => j.status === 'dead').length}</p><p className="text-xs text-slate-400">Dismissed</p></div>
       </div>
 
       {loading ? (

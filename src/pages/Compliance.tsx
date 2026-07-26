@@ -48,7 +48,7 @@ export default function Compliance() {
       </div>
 
       {/* Security practices */}
-      <div className="card p-6 mb-8">
+      <div className="card p-4 mb-8">
         <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
           <Lock className="w-5 h-5 text-brand-400" /> Security Practices
         </h2>
@@ -62,7 +62,7 @@ export default function Compliance() {
       </div>
 
       {/* Trust badges row */}
-      <div className="card p-8 text-center bg-gradient-to-br from-brand-900/20 to-transparent">
+      <div className="card p-5 text-center bg-gradient-to-br from-brand-900/20 to-transparent">
         <Shield className="w-12 h-12 text-brand-400 mx-auto mb-3" />
         <h2 className="text-xl font-bold text-white mb-2">Your data stays yours</h2>
         <p className="text-slate-400 max-w-md mx-auto mb-6">

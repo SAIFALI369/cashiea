@@ -24,12 +24,12 @@ export default function Privacy() {
             <Shield className="w-6 h-6 text-brand-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Privacy Policy</h1>
+            <h1 className="text-xl font-bold text-white">Privacy Policy</h1>
             <p className="text-sm text-slate-500">Last updated: {updated}</p>
           </div>
         </div>
 
-        <div className="card p-6 sm:p-8 space-y-6 text-slate-300 leading-relaxed text-sm sm:text-base">
+        <div className="card p-4 sm:p-5 space-y-6 text-slate-300 leading-relaxed text-sm sm:text-base">
           <p className="text-slate-400">This Privacy Policy explains how Cashiea ("we", "us", or "our") collects, uses, discloses, and safeguards your information when you use our cashier, point-of-sale, customer management, and related services (the "Service"). Please read this policy carefully.</p>
 
           <Section title="1. Information We Collect">

@@ -115,7 +115,7 @@ export default function Summaries() {
       />
 
       {/* Summarizer */}
-      <div className="card p-6 mb-6">
+      <div className="card p-4 mb-6">
         <label className="label flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-brand-400" /> Text to summarize
         </label>

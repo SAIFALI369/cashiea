@@ -92,8 +92,8 @@ export default function Login() {
 
         <div className="relative max-w-md">
           <div className="flex items-center gap-3 mb-12">
-            <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center p-1.5"><Logo size={36} /></div>
-            <span className="text-white font-bold text-2xl" style={{ fontFamily: '"Plus Jakarta Sans"' }}>Cashiea</span>
+            <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center p-1.5"><Logo size={36} /></div>
+            <span className="text-white font-bold text-xl" style={{ fontFamily: '"Plus Jakarta Sans"' }}>Cashiea</span>
           </div>
 
           <h1 className="text-white font-bold mb-6" style={{ fontFamily: '"Plus Jakarta Sans"', fontSize: '36px', lineHeight: 1.25 }}>
@@ -119,14 +119,14 @@ export default function Login() {
       </div>
 
       {/* ═══ RIGHT: Form ═══ */}
-      <div className="flex-1 flex items-start justify-center p-6 sm:p-12 py-12 cashiea-form-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
+      <div className="flex-1 flex items-start justify-center p-4 sm:p-12 py-12 cashiea-form-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div className="w-full max-w-[420px]" style={{ animation: 'fadeInUp 0.6s ease-out' }}>
           <style>{`@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
 
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2.5 mb-10 justify-center">
             <Logo size={40} />
-            <span className="font-bold text-2xl" style={{ fontFamily: '"Plus Jakarta Sans"', color: C.text }}>Cashiea</span>
+            <span className="font-bold text-xl" style={{ fontFamily: '"Plus Jakarta Sans"', color: C.text }}>Cashiea</span>
           </div>
 
           {/* Back link */}

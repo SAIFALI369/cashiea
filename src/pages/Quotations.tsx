@@ -96,7 +96,7 @@ export default function Quotations() {
       <PageHeader title="Quotations" subtitle="Create price quotes and convert them to invoices" icon={<FileSignature className="w-5 h-5" />} action={<button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showForm ? 'Close' : 'New Quote'}</button>} />
 
       {showForm && (
-        <div className="card p-6 mb-6 animate-slide-up">
+        <div className="card p-4 mb-6 animate-slide-up">
           <div className="grid sm:grid-cols-2 gap-4 mb-4">
             <div><label className="label">Customer</label><select value={form.customer_id} onChange={(e) => selectCustomer(e.target.value)} className="input-field"><option value="">Walk-in / type name</option>{customers.map((c) => <option key={c.id} value={c.id} className="bg-slate-900">{c.name}</option>)}</select></div>
             <div><label className="label">Or customer name</label><input value={form.customer_name} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} className="input-field" placeholder="Customer name" /></div>

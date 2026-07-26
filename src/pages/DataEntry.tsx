@@ -194,7 +194,7 @@ export default function DataEntryPage() {
       </div>
 
       {/* Extractor */}
-      <div className="card p-6 mb-6">
+      <div className="card p-4 mb-6">
         <div className="mb-4">
           <label className="label">Category</label>
           <select value={category} onChange={(e) => setCategory(e.target.value)} className="input-field">

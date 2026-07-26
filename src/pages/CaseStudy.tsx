@@ -45,7 +45,7 @@ export default function CaseStudy() {
 
         <div className="grid grid-cols-3 gap-4 mb-12">
           {results.map((r) => (
-            <div key={r.label} className="card p-6 text-center">
+            <div key={r.label} className="card p-4 text-center">
               <r.icon className={`w-7 h-7 mx-auto mb-2 ${r.color}`} />
               <p className="text-3xl font-extrabold text-white">{r.value}</p>
               <p className="text-xs text-slate-400">{r.label}</p>
@@ -53,7 +53,7 @@ export default function CaseStudy() {
           ))}
         </div>
 
-        <div className="card p-8 mb-12 bg-gradient-to-br from-brand-900/30 to-transparent">
+        <div className="card p-5 mb-12 bg-gradient-to-br from-brand-900/30 to-transparent">
           <Quote className="w-8 h-8 text-brand-500 mb-3" />
           <p className="text-xl text-slate-200 leading-relaxed italic mb-4">
             "Checkout got 3× faster, I finally know who my customers are, and win-back campaigns bring people back every week. Cashiea runs my counter and my growth."
@@ -68,7 +68,7 @@ export default function CaseStudy() {
         </div>
 
         <div className="grid sm:grid-cols-2 gap-6 mb-12">
-          <div className="card p-6">
+          <div className="card p-4">
             <h2 className="font-bold text-white mb-4 text-red-400">Before</h2>
             <ul className="space-y-3">
               {before.map((b) => (
@@ -76,7 +76,7 @@ export default function CaseStudy() {
               ))}
             </ul>
           </div>
-          <div className="card p-6 border-brand-700/40">
+          <div className="card p-4 border-brand-700/40">
             <h2 className="font-bold text-white mb-4 text-green-400">After</h2>
             <ul className="space-y-3">
               {after.map((a) => (
@@ -98,8 +98,8 @@ export default function CaseStudy() {
           <p>Six months in, checkout was 3× faster, repeat customers grew 27%, and Maya saved 6 hours a week on admin. She used the full overview dashboard to spot best-sellers and restock before running out.</p>
         </div>
 
-        <div className="card p-10 text-center bg-gradient-to-br from-brand-950/30 to-transparent">
-          <h2 className="text-2xl font-bold text-white mb-3">Want results like Maya's?</h2>
+        <div className="card p-6 text-center bg-gradient-to-br from-brand-950/30 to-transparent">
+          <h2 className="text-xl font-bold text-white mb-3">Want results like Maya's?</h2>
           <p className="text-slate-400 mb-6">Start your 14-day free trial. No credit card required.</p>
           <Link to="/signup" className="btn-primary px-8 py-3.5">Get Started Free</Link>
         </div>

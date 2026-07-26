@@ -18,12 +18,12 @@ export default function GoogleSheetsConnect({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
-      <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl animate-fade-in" style={{ background: 'rgb(var(--surface))' }} onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-xl animate-fade-in" style={{ background: 'rgb(var(--surface))' }} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="p-6 pb-4" style={{ borderBottom: `1px solid ${C.border}` }}>
+        <div className="p-4 pb-4" style={{ borderBottom: `1px solid ${C.border}` }}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl font-bold" style={{ background: app.iconBg, color: app.iconText }}>{app.iconLetter}</div>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold" style={{ background: app.iconBg, color: app.iconText }}>{app.iconLetter}</div>
               <div>
                 <h3 className="font-bold text-lg" style={{ color: C.text, fontFamily: '"Plus Jakarta Sans"' }}>{app.name}</h3>
                 <p className="text-xs" style={{ color: C.muted }}>Connect your account securely</p>
@@ -50,7 +50,7 @@ export default function GoogleSheetsConnect({
         </div>
 
         {/* Permission selection */}
-        <div className="p-6">
+        <div className="p-4">
           <p className="text-sm font-semibold mb-3" style={{ color: C.text }}>Choose a permission level</p>
           <div className="space-y-2.5">
             {app.permissions.map((perm) => {

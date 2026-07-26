@@ -76,7 +76,7 @@ export default function SettingsPage() {
 
       <div className="max-w-2xl space-y-6">
         {/* Profile */}
-        <div className="card p-6">
+        <div className="card p-4">
           <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
             <User className="w-5 h-5 text-brand-400" /> Profile Information
           </h2>
@@ -150,7 +150,7 @@ export default function SettingsPage() {
         </div>
 
         {/* AI Provider */}
-        <div className="card p-6">
+        <div className="card p-4">
           <h2 className="font-semibold text-white mb-1 flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-brand-400" /> AI Provider
           </h2>
@@ -200,7 +200,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Usage info */}
-        <div className="card p-6">
+        <div className="card p-4">
           <h2 className="font-semibold text-white mb-3 flex items-center gap-2">
             <Building2 className="w-5 h-5 text-brand-400" /> Account Details
           </h2>

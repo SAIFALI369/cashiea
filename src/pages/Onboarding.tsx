@@ -184,13 +184,13 @@ export default function Onboarding() {
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center mx-auto mb-3">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-white">Let\u2019s set up your shop</h1>
+            <h1 className="text-xl font-bold text-white">Let\u2019s set up your shop</h1>
             <p className="text-slate-400 text-sm mt-1">Takes under a minute \u2014 you\u2019re on step {step} of 3</p>
           </div>
 
           {/* Step 1: Category */}
           {step === 1 && (
-            <div className="card p-6 animate-fade-in">
+            <div className="card p-4 animate-fade-in">
               <h2 className="font-semibold text-white mb-1 flex items-center gap-2">
                 <Tag className="w-5 h-5 text-brand-400" /> What do you sell?
               </h2>
@@ -204,7 +204,7 @@ export default function Onboarding() {
                       category === c.value ? 'border-brand-600 bg-brand-600/10' : 'border-slate-700 bg-slate-900/40 hover:border-slate-600'
                     }`}
                   >
-                    <span className="text-2xl">{c.icon}</span>
+                    <span className="text-xl">{c.icon}</span>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-white text-sm">{c.value}</p>
                       <p className="text-xs text-slate-500 truncate">{c.desc}</p>
@@ -221,7 +221,7 @@ export default function Onboarding() {
 
           {/* Step 2: First 3 products */}
           {step === 2 && (
-            <div className="card p-6 animate-fade-in">
+            <div className="card p-4 animate-fade-in">
               <h2 className="font-semibold text-white mb-1 flex items-center gap-2">
                 <Package className="w-5 h-5 text-brand-400" /> Add your first products
               </h2>
@@ -266,7 +266,7 @@ export default function Onboarding() {
 
           {/* Step 3: WhatsApp number + report time */}
           {step === 3 && (
-            <div className="card p-6 animate-fade-in">
+            <div className="card p-4 animate-fade-in">
               <h2 className="font-semibold text-white mb-1 flex items-center gap-2">
                 <Smartphone className="w-5 h-5 text-brand-400" /> Where should we send alerts?
               </h2>

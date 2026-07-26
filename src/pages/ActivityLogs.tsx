@@ -68,17 +68,17 @@ export default function ActivityLogs() {
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="card p-4">
           <Clock className="w-5 h-5 text-green-400 mb-1" />
-          <p className="text-2xl font-bold text-white">{(totalMinutes / 60).toFixed(1)}h</p>
+          <p className="text-xl font-bold text-white">{(totalMinutes / 60).toFixed(1)}h</p>
           <p className="text-xs text-slate-400">Time saved</p>
         </div>
         <div className="card p-4">
           <DollarSign className="w-5 h-5 text-emerald-400 mb-1" />
-          <p className="text-2xl font-bold text-white">${totalMoney.toFixed(0)}</p>
+          <p className="text-xl font-bold text-white">${totalMoney.toFixed(0)}</p>
           <p className="text-xs text-slate-400">Money saved</p>
         </div>
         <div className="card p-4">
           <History className="w-5 h-5 text-brand-400 mb-1" />
-          <p className="text-2xl font-bold text-white">{logs.length}</p>
+          <p className="text-xl font-bold text-white">{logs.length}</p>
           <p className="text-xs text-slate-400">Total actions</p>
         </div>
       </div>

@@ -126,11 +126,11 @@ export default function ConnectApps() {
           const isConnected = status === 'connected'
 
           return (
-            <div key={app.slug} className="rounded-2xl p-6 transition-all" style={{ background: 'rgb(var(--surface))', border: `1px solid ${C.border}` }}>
+            <div key={app.slug} className="rounded-xl p-4 transition-all" style={{ background: 'rgb(var(--surface))', border: `1px solid ${C.border}` }}>
               {/* Header */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl font-bold flex-shrink-0" style={{ background: app.iconBg, color: app.iconText }}>{app.iconLetter}</div>
+                  <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold flex-shrink-0" style={{ background: app.iconBg, color: app.iconText }}>{app.iconLetter}</div>
                   <div>
                     <h3 className="font-bold" style={{ color: C.text }}>{app.name}</h3>
                     <div className="flex items-center gap-1.5 mt-0.5">
@@ -177,7 +177,7 @@ export default function ConnectApps() {
       </div>
 
       {/* Coming soon section */}
-      <div className="rounded-2xl p-6 text-center" style={{ background: 'rgb(var(--surface))', border: `1px dashed ${C.border}` }}>
+      <div className="rounded-xl p-4 text-center" style={{ background: 'rgb(var(--surface))', border: `1px dashed ${C.border}` }}>
         <p className="text-sm font-medium mb-1" style={{ color: C.muted }}>More apps coming soon</p>
         <p className="text-xs" style={{ color: C.muted }}>Gmail, Razorpay, Tally, Shopify, and more</p>
       </div>

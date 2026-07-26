@@ -200,7 +200,7 @@ export default function Invoices() {
 
       {/* AI invoice form */}
       {showForm && (
-        <div className="card p-6 mb-6 animate-slide-up">
+        <div className="card p-4 mb-6 animate-slide-up">
           <label className="label flex items-center gap-2"><Sparkles className="w-4 h-4 text-brand-400" /> Describe your invoice</label>
           <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={3} className="input-field resize-none"
             placeholder="e.g. Invoice for Ramesh: 5 bags cement ₹400 each, 10 bricks ₹8 each. Tax 18%. Due 7 days. Phone 9876543210" />
@@ -216,7 +216,7 @@ export default function Invoices() {
 
       {/* Quick invoice (mobile-first) */}
       {showQuick && (
-        <div className="card p-6 mb-6 animate-slide-up border-brand-700/40">
+        <div className="card p-4 mb-6 animate-slide-up border-brand-700/40">
           <h3 className="font-semibold text-white mb-3 flex items-center gap-2"><Zap className="w-4 h-4 text-amber-400" /> Quick Invoice — 30 seconds</h3>
           <div className="grid grid-cols-2 gap-3">
             <input value={quick.name} onChange={(e) => setQuick({ ...quick, name: e.target.value })} className="input-field col-span-2" placeholder="Customer name *" />
@@ -288,7 +288,7 @@ export default function Invoices() {
       {/* Share / Pay modal */}
       {shareInv && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setShareInv(null)}>
-          <div className="card w-full max-w-sm rounded-t-2xl sm:rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="card w-full max-w-sm rounded-t-2xl sm:rounded-xl p-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-white">{shareInv.invoice_number} · ₹{shareInv.total.toFixed(0)}</h3>
               <button onClick={() => setShareInv(null)} className="text-slate-500 hover:text-white"><X className="w-5 h-5" /></button>

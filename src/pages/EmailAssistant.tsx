@@ -133,7 +133,7 @@ export default function EmailAssistant() {
       />
 
       {/* Generator */}
-      <div className="card p-6 mb-6">
+      <div className="card p-4 mb-6">
         {/* Type selector */}
         <label className="label">Email Type</label>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-4">

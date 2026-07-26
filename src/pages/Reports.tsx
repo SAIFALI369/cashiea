@@ -117,7 +117,7 @@ export default function Reports() {
       />
 
       {showForm && (
-        <div className="card p-6 mb-6 animate-slide-up">
+        <div className="card p-4 mb-6 animate-slide-up">
           {/* Type selector with guidance */}
           <label className="label">Report Type</label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">

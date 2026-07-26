@@ -8,8 +8,8 @@ import { Sparkles, AlertTriangle } from 'lucide-react'
 export default function SetupScreen() {
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <div className="max-w-lg w-full card p-8 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-600/30 flex items-center justify-center mx-auto mb-5">
+      <div className="max-w-lg w-full card p-5 text-center">
+        <div className="w-16 h-16 rounded-xl bg-amber-500/15 border border-amber-600/30 flex items-center justify-center mx-auto mb-5">
           <AlertTriangle className="w-8 h-8 text-amber-400" />
         </div>
         <div className="flex items-center justify-center gap-2 mb-3">

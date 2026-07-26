@@ -158,7 +158,7 @@ export default function CampaignBuilder() {
         {/* Main config */}
         <div className="lg:col-span-2 space-y-6">
           {/* Basics */}
-          <div className="card p-6">
+          <div className="card p-4">
             <h2 className="font-semibold text-white mb-4">1. Campaign Details</h2>
             <div className="space-y-4">
               <div>
@@ -193,7 +193,7 @@ export default function CampaignBuilder() {
           </div>
 
           {/* A/B test */}
-          <div className="card p-6">
+          <div className="card p-4">
             <label className="flex items-center justify-between cursor-pointer mb-3">
               <h2 className="font-semibold text-white flex items-center gap-2">
                 <FlaskConical className="w-4 h-4 text-purple-400" /> A/B Test Subject Lines
@@ -210,7 +210,7 @@ export default function CampaignBuilder() {
           </div>
 
           {/* Follow-ups */}
-          <div className="card p-6">
+          <div className="card p-4">
             <label className="flex items-center justify-between cursor-pointer mb-3">
               <h2 className="font-semibold text-white flex items-center gap-2">
                 <Repeat className="w-4 h-4 text-cyan-400" /> Follow-up Sequence
@@ -235,7 +235,7 @@ export default function CampaignBuilder() {
         {/* Recipients + schedule */}
         <div className="space-y-6">
           {/* Recipients */}
-          <div className="card p-6">
+          <div className="card p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-white flex items-center gap-2">
                 <Users className="w-4 h-4 text-brand-400" /> Recipients
@@ -285,7 +285,7 @@ export default function CampaignBuilder() {
           </div>
 
           {/* Schedule */}
-          <div className="card p-6">
+          <div className="card p-4">
             <h2 className="font-semibold text-white flex items-center gap-2 mb-4">
               <Calendar className="w-4 h-4 text-amber-400" /> Schedule (optional)
             </h2>

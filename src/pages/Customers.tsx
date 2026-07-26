@@ -108,7 +108,7 @@ export default function Customers() {
       </div>
 
       {showForm && (
-        <div className="card p-6 mb-6 animate-slide-up">
+        <div className="card p-4 mb-6 animate-slide-up">
           <div className="grid sm:grid-cols-2 gap-4">
             <div><label className="label">Name *</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field" placeholder="Jane Doe" /></div>
             <div><label className="label">Email</label><input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field" placeholder="jane@email.com" /></div>
@@ -165,8 +165,8 @@ export default function Customers() {
       {/* Customer detail drawer */}
       {selected && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setSelected(null)}>
-          <div className="card w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-b-none sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6 border-b border-slate-800">
+          <div className="card w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-b-none sm:rounded-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 border-b border-slate-800">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white font-bold text-lg">{selected.name.charAt(0).toUpperCase()}</div>
@@ -202,7 +202,7 @@ export default function Customers() {
             </div>
 
             {/* Purchase history */}
-            <div className="p-6">
+            <div className="p-4">
               <h3 className="font-semibold text-white mb-3 flex items-center gap-2"><ShoppingBag className="w-4 h-4 text-brand-400" /> Purchase History</h3>
               {loadingOrders ? (
                 <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 animate-spin text-brand-500" /></div>
