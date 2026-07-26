@@ -66,12 +66,12 @@ async function callAI(provider: string, systemPrompt: string, prompt: string, ma
 }
 
 // Fallback: if the selected provider has no key, use the built-in default Gemini
-async function callAIWithFallback(provider: string, systemPrompt: string, prompt: string, maxTokens = 1200): Promise<string> {
+async function callAIWithFallback(provider: string, systemPrompt: string, prompt: string, maxTokens = 1200, feature = "daily-brain"): Promise<string> {
   try {
     return await callAI(provider, systemPrompt, prompt, maxTokens);
   } catch (err) {
     if (hasDefaultAI() && (err.message.includes("not configured") || err.message.includes("OPENROUTER_API_KEY") || err.message.includes("OPENAI_API_KEY") || err.message.includes("GEMINI_API_KEY") || err.message.includes("ANTHROPIC_API_KEY") || err.message.includes("AI_GATEWAY_API_KEY"))) {
-      const fb = await callDefaultGemini(systemPrompt, prompt, { maxTokens });
+      const fb = await callDefaultGemini(systemPrompt, prompt, { maxTokens, feature });
       if (!fb.ok) throw new Error(fb.value);
       return fb.value;
     }

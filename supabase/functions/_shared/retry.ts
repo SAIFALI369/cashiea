@@ -4,7 +4,8 @@
 
 /**
  * Retry an async operation with exponential backoff.
- * Retries on thrown errors and on 429 / 5xx HTTP responses.
+ * Retries ONLY on transient 5xx / network errors. A 429 (rate limit) is NEVER
+ * retried — it surfaces immediately so we don't amplify a per-minute cap.
  */
 export async function withRetry<T>(
   fn: () => Promise<{ ok: boolean; status?: number; value: T }>,
@@ -17,15 +18,23 @@ export async function withRetry<T>(
       const res = await fn()
       if (res.ok) return res.value
       const status = res.status ?? 0
-      // Only retry on transient failures
-      if ((status === 429 || status >= 500) && attempt < retries) {
+      // 429 = rate limit. NEVER auto-retry — retrying into a per-MINUTE cap
+      // amplifies the burst (3 calls in ~2s instead of 1). Surface immediately.
+      if (status === 429) {
+        throw new Error('Rate limit reached (429). Please wait a minute and try again.')
+      }
+      // 5xx = transient upstream error — worth a backoff-and-retry.
+      if (status >= 500 && attempt < retries) {
         await sleep(baseDelayMs * Math.pow(2, attempt))
         continue
       }
-      // Non-retryable failure — surface the last known error
       throw new Error(`Upstream returned status ${status}`)
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err))
+      const msg = lastError.message
+      // Do NOT retry configuration or rate-limit errors — only genuine transient
+      // (network) failures. This stops "not configured" from being retried 3x.
+      if (/not configured|Rate limit|\b429\b/.test(msg)) throw lastError
       if (attempt < retries) {
         await sleep(baseDelayMs * Math.pow(2, attempt))
         continue

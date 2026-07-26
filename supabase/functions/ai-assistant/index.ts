@@ -58,13 +58,13 @@ async function callAI(provider: string, systemPrompt: string, prompt: string): P
 }
 
 // Fallback: if the selected provider has no key, use the built-in default Gemini
-async function callAIWithFallback(provider: string, systemPrompt: string, prompt: string, maxTokens = 1200): Promise<string> {
+async function callAIWithFallback(provider: string, systemPrompt: string, prompt: string, maxTokens = 1200, feature = "unknown"): Promise<string> {
   try {
     return await callAI(provider, systemPrompt, prompt, maxTokens);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (hasDefaultAI() && (msg.includes("not configured") || msg.includes("OPENROUTER_API_KEY") || msg.includes("OPENAI_API_KEY") || msg.includes("GEMINI_API_KEY") || msg.includes("ANTHROPIC_API_KEY") || msg.includes("AI_GATEWAY_API_KEY"))) {
-      const fb = await callDefaultGemini(systemPrompt, prompt, { maxTokens });
+      const fb = await callDefaultGemini(systemPrompt, prompt, { maxTokens, feature });
       if (!fb.ok) throw new Error(fb.value);
       return fb.value;
     }
@@ -177,8 +177,12 @@ async function buildMemory(supabase: any, userId: string): Promise<{ block: stri
 }
 
 // Is this message worth a durable-memory extraction pass?
+// Fires ONLY on explicit memory requests — keeps ordinary chat at 1 Gemini call.
+// (Recall of recent conversation still works via the persisted transcript in
+//  business_memory.preferences.chat, so we don't need a 2nd extraction call for
+//  normal questions like "I want to know my sales".)
 function isMemoryWorthy(message: string): boolean {
-  return /\b(remember|my name is|call me|i am|i'm|we are|we sell|we run|our shop|our store|our business|i work|note that|don't forget|for next time|fyi|prefer|i like|i want|important|remind me)\b/i.test(message);
+  return /\b(remember|my name is|call me|don't forget|note that|remind me|for next time)\b/i.test(message);
 }
 
 // Robustly extract durable facts from the owner's message (best-effort).
@@ -189,7 +193,7 @@ async function tryExtract(
   try {
     const sys = `You extract durable long-term memory from a shop owner's chat with their AI assistant. From the OWNER'S message only, pull things worth remembering long-term: their preferred name, their shop/workplace name, what they sell, preferences, or anything they explicitly asked to remember. Ignore questions about data or small talk. Return ONLY a JSON object (no prose, no markdown fences): {"owner_name": string|null, "facts": [string], "remember": [string]}. Use null when unknown and empty arrays when nothing applies.`;
     const usr = `Owner's message: """${message}"""\n\nReturn the JSON now.`;
-    const out = await callAIWithFallback(provider, sys, usr, 250);
+    const out = await callAIWithFallback(provider, sys, usr, 250, "assistant-memory");
 
     // Bulletproof JSON extraction: grab the first {...} block and parse.
     let parsed: any = null;
@@ -236,7 +240,7 @@ Deno.serve(async (req) => {
       ? `Generate a concise MORNING BRIEFING for today based on this business snapshot. Greet the owner by name, list today's tasks (follow-ups, stock, payments due), and give a quick status.\n\n${mem.block}\n\nSnapshot:\n${context}`
       : `Business owner asks: "${message}"\n\n${mem.block}\n\nHere is the current business data snapshot:\n${context}\n\nAnswer the owner's question based on this data and what you already know about them.`;
 
-    const result = await callAIWithFallback(provider, SYSTEM, userPrompt);
+    const result = await callAIWithFallback(provider, SYSTEM, userPrompt, 1200, "assistant");
 
     // ── Persist memory (single upsert): append this turn to the transcript,
     //    and (if memory-worthy) extract durable facts to remember. ──

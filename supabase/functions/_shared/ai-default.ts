@@ -29,11 +29,15 @@ export function hasDefaultAI(): boolean {
 export async function callDefaultGemini(
   systemPrompt: string,
   prompt: string,
-  opts: { maxTokens?: number; temperature?: number } = {}
+  opts: { maxTokens?: number; temperature?: number; feature?: string } = {}
 ): Promise<{ ok: boolean; status: number; value: string }> {
   if (!DEFAULT_GEMINI_KEY) {
     return { ok: false, status: 503, value: "No AI key configured — set DEFAULT_GEMINI_API_KEY secret" };
   }
+
+  // One log line per actual outbound Gemini call (for RPM diagnosis). Viewable in
+  // Supabase function logs. No UI/dashboard — minimal, diagnosis-only.
+  console.log(`[gemini-default] outbound call feature=${opts.feature || "unknown"} maxTokens=${opts.maxTokens ?? 1500}`);
 
   try {
     const res = await fetch(
@@ -56,6 +60,10 @@ export async function callDefaultGemini(
     );
 
     if (!res.ok) {
+      // 429 = rate limit. Return a clear, user-facing message (no retry — see withRetry).
+      if (res.status === 429) {
+        return { ok: false, status: 429, value: "Rate limit reached (429) — please wait a minute and try again." };
+      }
       const errText = await res.text();
       let detail = errText.slice(0, 300);
       try {
