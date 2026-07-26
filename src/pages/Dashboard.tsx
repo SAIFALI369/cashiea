@@ -4,12 +4,13 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import {
   DollarSign, ShoppingCart, Users, Package, TrendingUp, ArrowRight,
-  Sparkles, Clock, AlertTriangle, Receipt, Gift, Megaphone, Zap, Send, Loader2,
+  Sparkles, AlertTriangle, Receipt, Gift, Megaphone, Zap, Send, Loader2,
 } from 'lucide-react'
 import { PLANS } from '../lib/types'
 import type { ActivityLog, Transaction, Product, Customer } from '../lib/types'
 import { askAssistant } from '../lib/ai'
 import { MerajMark } from '../components/MerajMark'
+import Skeleton from '../components/ui/Skeleton'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 
@@ -123,7 +124,22 @@ export default function Dashboard() {
   const trialDaysLeft = trialActive ? Math.max(0, Math.ceil((new Date(profile!.trial_ends_at!).getTime() - Date.now()) / 86400000)) : 0
 
   if (loading) {
-    return <div className="flex justify-center py-20"><Clock className="w-8 h-8 animate-spin text-brand-500" /></div>
+    return (
+      <div className="animate-fade-in">
+        <Skeleton className="h-8 w-72 mb-2" />
+        <Skeleton className="h-4 w-56 mb-8" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="card p-5"><Skeleton className="h-4 w-24 mb-3" /><Skeleton className="h-9 w-20 mb-2" /><Skeleton className="h-3 w-16" /></div>
+          ))}
+        </div>
+        <div className="grid lg:grid-cols-2 gap-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="card p-6"><Skeleton className="h-5 w-32 mb-4" /><Skeleton className="h-4 w-full mb-2" /><Skeleton className="h-4 w-5/6 mb-2" /><Skeleton className="h-4 w-2/3" /></div>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (

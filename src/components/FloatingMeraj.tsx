@@ -9,14 +9,14 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-// ── Quick actions (preserves the old QuickActionBar's task set) ──
-interface QTask { id: QuickTaskMode; label: string; icon: LucideIcon; color: string; needsText?: boolean }
+// ── Priority quick actions ──
+interface QTask { id: QuickTaskMode; label: string; desc: string; icon: LucideIcon; needsText?: boolean }
 const TASKS: QTask[] = [
-  { id: 'low_stock_alert', label: 'Low stock', icon: AlertTriangle, color: 'text-amber-400' },
-  { id: 'daily_closing', label: 'Daily closing', icon: FileBarChart, color: 'text-green-400' },
-  { id: 'hindi_bot', label: 'Hinglish reply', icon: MessageCircle, color: 'text-emerald-400', needsText: true },
-  { id: 'gst_invoice_voice', label: 'GST invoice', icon: Receipt, color: 'text-purple-400', needsText: true },
-  { id: 'custom', label: 'Custom', icon: Sparkles, color: 'text-brand-400', needsText: true },
+  { id: 'daily_closing', label: 'Daily closing', desc: "Today's sales summary", icon: FileBarChart },
+  { id: 'low_stock_alert', label: 'Low stock', desc: 'Reorder list', icon: AlertTriangle },
+  { id: 'gst_invoice_voice', label: 'GST invoice', desc: 'Speak a sale', icon: Receipt, needsText: true },
+  { id: 'hindi_bot', label: 'Hinglish reply', desc: 'Customer message', icon: MessageCircle, needsText: true },
+  { id: 'custom', label: 'Custom', desc: 'Ask anything', icon: Sparkles, needsText: true },
 ]
 
 interface Msg { role: 'user' | 'meraj'; text: string }
@@ -32,6 +32,11 @@ function renderSafeMarkdown(md: string): string {
   })
 }
 
+function greeting(): string {
+  const h = new Date().getHours()
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
+}
+
 export default function FloatingMeraj() {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Msg[]>([])
@@ -39,30 +44,25 @@ export default function FloatingMeraj() {
   const [loading, setLoading] = useState(false)
   const [pendingTask, setPendingTask] = useState<QuickTaskMode | null>(null)
 
-  // Draggable launcher position (persisted). Default = bottom-right.
   const [pos, setPos] = useState<{ x: number; y: number }>(() => {
     try {
       const saved = localStorage.getItem(POS_KEY)
       if (saved) return JSON.parse(saved)
     } catch { /* ignore */ }
-    return { x: -1, y: -1 } // sentinel: resolved after mount (viewport-relative)
+    return { x: -1, y: -1 }
   })
   const drag = useRef({ active: false, startX: 0, startY: 0, origX: 0, origY: 0, moved: false })
   const inputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Resolve default position relative to viewport on first mount.
   useEffect(() => {
-    if (pos.x === -1) {
-      setPos({ x: window.innerWidth - 76, y: window.innerHeight - 76 - DEFAULT_MARGIN })
-    }
+    if (pos.x === -1) setPos({ x: window.innerWidth - 76, y: window.innerHeight - 76 - DEFAULT_MARGIN })
   }, [pos.x])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, loading])
 
-  // ── Drag handlers (pointer events = mouse + touch) ─────────────
   const onPointerDown = (e: React.PointerEvent) => {
     drag.current = { active: true, startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y, moved: false }
     ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
@@ -81,11 +81,8 @@ export default function FloatingMeraj() {
     if (!drag.current.active) return
     const wasDrag = drag.current.moved
     drag.current.active = false
-    if (!wasDrag) {
-      setOpen(true) // a tap (not a drag) opens the window
-    } else {
-      try { localStorage.setItem(POS_KEY, JSON.stringify(pos)) } catch { /* ignore */ }
-    }
+    if (!wasDrag) setOpen(true)
+    else { try { localStorage.setItem(POS_KEY, JSON.stringify(pos)) } catch { /* ignore */ } }
   }
 
   const push = (m: Msg) => setMessages((prev) => [...prev, m])
@@ -95,6 +92,20 @@ export default function FloatingMeraj() {
     try {
       const r = await runQuickTask(mode, text)
       push({ role: 'meraj', text: r.result + (r.meta?.invoice ? `\n\n✅ Invoice **${r.meta.invoice.invoice_number}** created — ₹${r.meta.invoice.total}` : '') })
+    } catch (e) {
+      push({ role: 'meraj', text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.') })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const briefing = async () => {
+    if (loading) return
+    setLoading(true)
+    push({ role: 'user', text: "Today's briefing" })
+    try {
+      const reply = await askAssistant('', true)
+      push({ role: 'meraj', text: reply })
     } catch (e) {
       push({ role: 'meraj', text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.') })
     } finally {
@@ -141,18 +152,18 @@ export default function FloatingMeraj() {
   }
 
   const placeholder = pendingTask
-    ? (TASKS.find((t) => t.id === pendingTask)?.label + ' — type details…')
-    : 'Ask Meraj anything about your business…'
+    ? `${TASKS.find((t) => t.id === pendingTask)?.label} — type details…`
+    : 'Ask Meraj about sales, stock, customers…'
 
   return (
     <>
-      {/* Draggable Meraj launcher (hidden while the window is open) */}
+      {/* Draggable launcher (hidden while panel open) */}
       {!open && pos.x !== -1 && (
         <button
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
-          aria-label="Open Meraj AI assistant (drag to move)"
+          aria-label="Open Meraj executive briefing (drag to move)"
           title="Meraj — tap to open, drag to move"
           className="fixed z-40 w-[60px] h-[60px] rounded-full shadow-float hover:scale-105 active:scale-95 transition-transform touch-none select-none bg-gradient-to-br from-accent to-accent-strong text-accent-fg flex items-center justify-center"
           style={{ left: pos.x, top: pos.y }}
@@ -162,81 +173,99 @@ export default function FloatingMeraj() {
         </button>
       )}
 
-      {/* Floating AI window */}
+      {/* Executive Briefing panel */}
       {open && (
-        <div className="fixed z-50 bottom-4 right-4 left-4 sm:left-auto sm:w-[380px] flex flex-col card rounded-2xl border border-slate-700/60 shadow-2xl shadow-black/50 overflow-hidden animate-scale-in origin-bottom-right"
-          style={{ maxHeight: '78vh' }}>
-          {/* Header — X is in the UPPER-LEFT corner */}
-          <div className="flex items-center gap-2 p-3 border-b border-slate-800 bg-slate-900/60">
-            <button onClick={() => setOpen(false)} aria-label="Close" className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 flex-shrink-0">
+        <div
+          className="fixed z-50 bottom-4 right-4 left-4 sm:left-auto sm:w-[400px] flex flex-col card rounded-3xl overflow-hidden animate-scale-in origin-bottom-right shadow-float"
+          style={{ maxHeight: '80vh' }}
+        >
+          {/* Header — X in upper-left */}
+          <div className="flex items-center gap-2.5 px-3.5 py-3 border-b border-line">
+            <button onClick={() => setOpen(false)} aria-label="Close" className="w-7 h-7 rounded-lg flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 flex-shrink-0">
               <X className="w-4 h-4" />
             </button>
-            <span className="w-8 h-8 rounded-full bg-accent-soft text-accent ring-1 ring-accent/25 flex-shrink-0 inline-flex items-center justify-center"><MerajMark size={20} /></span>
+            <span className="w-8 h-8 rounded-xl bg-accent-soft text-accent ring-1 ring-accent/20 flex-shrink-0 inline-flex items-center justify-center"><MerajMark size={20} /></span>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-white text-sm leading-tight">Meraj</p>
-              <p className="text-[11px] text-slate-400 leading-tight">Your Cashiea AI assistant</p>
+              <p className="font-semibold text-fg text-sm leading-tight">Meraj</p>
+              <p className="text-[11px] text-fg-subtle leading-tight">Executive Briefing</p>
             </div>
-            <Link to="/app/assistant" onClick={() => setOpen(false)} className="text-slate-400 hover:text-brand-300 flex-shrink-0" title="Open full chat" aria-label="Open full chat">
+            <Link to="/app/assistant" onClick={() => setOpen(false)} className="w-7 h-7 rounded-lg flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 flex-shrink-0" title="Open full view" aria-label="Open full view">
               <ArrowUpRight className="w-4 h-4" />
             </Link>
           </div>
 
-          {/* Quick actions row */}
-          <div className="flex gap-1.5 p-2 overflow-x-auto border-b border-slate-800/60 bg-slate-900/30">
-            {TASKS.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => onPickTask(t)}
+          {/* Body */}
+          <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-[220px]">
+            {messages.length === 0 ? (
+              /* Briefing hero (empty state) */
+              <div className="p-4">
+                <div className="rounded-2xl border border-line bg-gradient-to-br from-accent-soft to-surface p-4">
+                  <span className="text-[10px] font-semibold tracking-[0.14em] uppercase text-accent">Daily Briefing</span>
+                  <p className="text-sm text-fg leading-relaxed mt-2">{greeting()}. Get your snapshot of today's sales, stock alerts, and follow-ups in one tap.</p>
+                  <button onClick={briefing} disabled={loading} className="btn-primary w-full mt-3.5 text-sm">
+                    {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Preparing…</> : <><Sparkles className="w-4 h-4" /> Generate briefing</>}
+                  </button>
+                </div>
+                <p className="text-center text-[11px] text-fg-subtle mt-3">or pick a priority action below</p>
+              </div>
+            ) : (
+              <div className="p-4 space-y-3">
+                {messages.map((m, i) =>
+                  m.role === 'user' ? (
+                    <div key={i} className="flex justify-end">
+                      <span className="text-xs text-fg-muted bg-surface-2 border border-line rounded-full px-3 py-1 max-w-[80%]">{m.text}</span>
+                    </div>
+                  ) : (
+                    <div key={i} className="rounded-2xl border border-line border-l-2 border-l-accent bg-surface-2 p-3.5">
+                      <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(m.text) }} />
+                    </div>
+                  )
+                )}
+                {loading && (
+                  <div className="rounded-2xl border border-line bg-surface-2 p-3.5 space-y-2">
+                    <div className="h-3 w-1/3 rounded bg-surface-3 animate-pulse" />
+                    <div className="h-3 w-full rounded bg-surface-3 animate-pulse" />
+                    <div className="h-3 w-5/6 rounded bg-surface-3 animate-pulse" />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Priority actions */}
+          <div className="px-3 py-2 border-t border-line">
+            <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-fg-subtle px-1 mb-1.5">Priority actions</p>
+            <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+              {TASKS.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => onPickTask(t)}
+                  disabled={loading}
+                  title={t.desc}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-medium whitespace-nowrap border transition-all flex-shrink-0 disabled:opacity-50 ${pendingTask === t.id ? 'border-accent bg-accent-soft text-accent' : 'border-line bg-surface text-fg-muted hover:border-line-2 hover:text-fg'}`}
+                >
+                  <t.icon className="w-3.5 h-3.5" /> {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Ask input */}
+          <div className="p-3 border-t border-line">
+            <div className="flex gap-2 items-center">
+              <input
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && send()}
+                placeholder={placeholder}
+                className="input-field flex-1 text-sm"
                 disabled={loading}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] whitespace-nowrap border transition-all flex-shrink-0 ${pendingTask === t.id ? 'border-brand-500 bg-brand-600/20 text-white' : 'border-slate-700 bg-slate-900/50 text-slate-300 hover:border-slate-600 hover:text-white'}`}
-              >
-                <t.icon className={`w-3.5 h-3.5 ${t.color}`} /> {t.label}
+              />
+              <button onClick={send} disabled={loading || !input.trim()} className="btn-primary px-3 h-[42px] flex items-center justify-center" aria-label="Send">
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </button>
-            ))}
-          </div>
-
-          {/* Messages */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 min-h-[180px]">
-            {messages.length === 0 && (
-              <div className="text-center py-6">
-                <span className="w-12 h-12 rounded-full bg-accent-soft text-accent ring-1 ring-accent/25 mx-auto inline-flex items-center justify-center"><MerajMark size={28} /></span>
-                <p className="text-sm text-slate-300 mt-3 font-medium">Hi, I'm Meraj 👋</p>
-                <p className="text-xs text-slate-500 mt-1 px-2">Ask about sales, stock or customers — or tap a quick action above.</p>
-              </div>
-            )}
-            {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`rounded-2xl px-3 py-2 max-w-[88%] text-sm ${m.role === 'user' ? 'bg-brand-600 text-white rounded-tr-sm' : 'bg-slate-800 text-slate-200 border border-slate-700/60 rounded-tl-sm'}`}>
-                  {m.role === 'meraj'
-                    ? <div className="prose-content" dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(m.text) }} />
-                    : <p className="whitespace-pre-wrap">{m.text}</p>}
-                </div>
-              </div>
-            ))}
-            {loading && (
-              <div className="flex justify-start">
-                <div className="bg-slate-800 rounded-2xl rounded-tl-sm px-3 py-2 flex items-center gap-2 border border-slate-700/60">
-                  <Loader2 className="w-4 h-4 animate-spin text-brand-400" />
-                  <span className="text-xs text-slate-400">Meraj is working…</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Input */}
-          <div className="flex gap-2 p-2.5 border-t border-slate-800 bg-slate-900/40">
-            <input
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && send()}
-              placeholder={placeholder}
-              className="input-field flex-1 text-sm"
-              disabled={loading}
-            />
-            <button onClick={send} disabled={loading || !input.trim()} className="btn-primary px-3 flex items-center justify-center" aria-label="Send">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            </button>
+            </div>
           </div>
         </div>
       )}

@@ -27,7 +27,7 @@ export default function AppLayout() {
           <div className="ml-auto"><ThemeToggle /></div>
         </header>
 
-        <main className="flex-1 p-4 lg:p-8 max-w-6xl mx-auto w-full">
+        <main className="flex-1 p-5 sm:p-6 lg:p-10 max-w-7xl mx-auto w-full">
           {/* Route transition — gentle fade/slide on every navigation */}
           <motion.div
             key={location.pathname}
