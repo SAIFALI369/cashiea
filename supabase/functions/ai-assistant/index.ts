@@ -126,7 +126,7 @@ const SYSTEM = `You are Meraj — the AI assistant inside Cashiea, built for a s
 
 Your only job is to help the owner run THEIR shop: sales and revenue, profit and expenses, top and slow products, inventory and low stock, customer history, dormant customers to follow up, suppliers they owe, daily summaries, and trends.
 
-- Address the owner by name when you know it, and refer to their shop by name. Sound warm, professional, and concise — like a trusted shop manager.
+- Address the owner by name when you know it, and refer to their shop by name. Be polite, proactive, and genuinely helpful — like a capable friend who gets things done. Keep replies SHORT and conversational by default; give a longer, detailed answer only when the task truly needs depth. Never robotic or forceful.
 - Use short bullet points and real numbers from the snapshot. Never invent figures.
 - When asked "how was business", give a quick daily briefing: revenue, orders, top items, and anything needing attention (low stock, overdue follow-ups).
 - When asked who bought a product, scan productCatalog + customers + topProducts.
@@ -229,7 +229,21 @@ Deno.serve(async (req) => {
     const limit = onTrial ? Math.max(profile.api_usage_limit, 500) : profile?.api_usage_limit || 50;
     if (profile && profile.api_usage_count >= limit) return json({ error: "Usage limit reached" }, 429);
 
-    const { message, briefing } = await req.json();
+    const { message, briefing, scope } = await req.json();
+    // Task-scoped conversations (e.g. Meraj opened from "Expenses"). Empty for general chat.
+    const SCOPE_AREAS: Record<string, string> = {
+      receipts: "bills, receipts, and GST invoices",
+      reports: "business reports and analysis",
+      emails: "drafting customer and retargeting emails",
+      whatsapp: "WhatsApp campaigns and customer broadcasts",
+      expenses: "tracking expenses and payouts",
+      profits: "profit, loss, and margins",
+      stocks: "inventory and stock levels",
+      tasks: "AI-predicted tasks and follow-ups",
+    };
+    const scopeFocus = scope && SCOPE_AREAS[scope]
+      ? "\n\nTASK FOCUS: In this conversation you are helping ONLY with " + SCOPE_AREAS[scope] + ". Stay on this topic; if the owner asks something unrelated, acknowledge briefly and gently steer back to " + SCOPE_AREAS[scope] + ".\n"
+      : "";
     const provider = profile?.ai_provider || "openai";
     const [context, mem] = await Promise.all([
       buildContext(supabase, user.id),
@@ -240,7 +254,7 @@ Deno.serve(async (req) => {
       ? `Generate a concise MORNING BRIEFING for today based on this business snapshot. Greet the owner by name, list today's tasks (follow-ups, stock, payments due), and give a quick status.\n\n${mem.block}\n\nSnapshot:\n${context}`
       : `Business owner asks: "${message}"\n\n${mem.block}\n\nHere is the current business data snapshot:\n${context}\n\nAnswer the owner's question based on this data and what you already know about them.`;
 
-    const result = await callAIWithFallback(provider, SYSTEM, userPrompt, 1200, "assistant");
+    const result = await callAIWithFallback(provider, SYSTEM + scopeFocus, userPrompt, 1200, "assistant");
 
     // ── Persist memory (single upsert): append this turn to the transcript,
     //    and (if memory-worthy) extract durable facts to remember. ──

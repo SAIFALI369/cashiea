@@ -10,14 +10,14 @@ import {
 import toast from 'react-hot-toast'
 
 const FEATURES = [
-  { label: 'Receipts', desc: 'Create bills & GST invoices', to: '/app/invoices', icon: Receipt },
-  { label: 'Business Report', desc: 'AI sales & insight reports', to: '/app/reports', icon: FileBarChart },
-  { label: 'E-mails', desc: 'Draft customer & retargeting emails', to: '/app/email-assistant', icon: Mail },
-  { label: 'WhatsApp', desc: 'Win-back & broadcast campaigns', to: '/app/campaigns', icon: MessageCircle },
-  { label: 'Expenses', desc: 'Track spending & payouts', to: '/app/accounts', icon: Wallet },
-  { label: 'Profits', desc: 'Profit & loss overview', to: '/app/accounts', icon: TrendingUp },
-  { label: 'Stocks', desc: 'Inventory & low-stock alerts', to: '/app/products', icon: Package },
-  { label: 'Tasks', desc: 'AI-predicted actions & follow-ups', to: '/app/brain', icon: ListChecks },
+  { label: 'Receipts', desc: 'Create bills & GST invoices', to: '/app/invoices', icon: Receipt, scope: 'receipts' },
+  { label: 'Business Report', desc: 'AI sales & insight reports', to: '/app/reports', icon: FileBarChart, scope: 'reports' },
+  { label: 'E-mails', desc: 'Draft customer & retargeting emails', to: '/app/email-assistant', icon: Mail, scope: 'emails' },
+  { label: 'WhatsApp', desc: 'Win-back & broadcast campaigns', to: '/app/campaigns', icon: MessageCircle, scope: 'whatsapp' },
+  { label: 'Expenses', desc: 'Track spending & payouts', to: '/app/accounts', icon: Wallet, scope: 'expenses' },
+  { label: 'Profits', desc: 'Profit & loss overview', to: '/app/accounts', icon: TrendingUp, scope: 'profits' },
+  { label: 'Stocks', desc: 'Inventory & low-stock alerts', to: '/app/products', icon: Package, scope: 'stocks' },
+  { label: 'Tasks', desc: 'AI-predicted actions & follow-ups', to: '/app/brain', icon: ListChecks, scope: 'tasks' },
 ]
 
 export default function Dashboard() {
@@ -63,25 +63,29 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      {/* Do Anything — docked command bar */}
+      {/* Do Anything — docked launcher into the full Meraj page */}
       <div className="mb-8"><DoAnythingBar /></div>
 
-      {/* Feature rows (AI-tagged) */}
+      {/* Feature rows (each with a scoped AI badge) */}
       <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-2.5">
         <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-fg-subtle px-1 mb-1">Features</p>
         {FEATURES.map((f) => (
-          <motion.div key={f.label} variants={fadeUp}>
-            <Link to={f.to} className="card card-hover p-4 flex items-center gap-4 group">
+          <motion.div key={f.label} variants={fadeUp} className="card card-hover p-4 flex items-center gap-3 group">
+            <Link to={f.to} className="flex items-center gap-4 flex-1 min-w-0">
               <span className="w-11 h-11 rounded-xl bg-accent-soft text-accent inline-flex items-center justify-center flex-shrink-0"><f.icon className="w-5 h-5" /></span>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-fg">{f.label}</span>
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-accent-soft text-accent text-[9px] font-semibold tracking-wide"><Sparkles className="w-2.5 h-2.5" />AI</span>
-                </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-fg">{f.label}</p>
                 <p className="text-xs text-fg-muted mt-0.5 truncate">{f.desc}</p>
               </div>
-              <ChevronRight className="w-5 h-5 text-fg-subtle group-hover:text-fg group-hover:translate-x-0.5 transition-all flex-shrink-0" />
             </Link>
+            <Link
+              to={`/app/assistant?scope=${f.scope}`}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-accent-soft text-accent text-[10px] font-semibold hover:bg-accent hover:text-accent-fg transition-colors flex-shrink-0"
+              title={`Ask Meraj about ${f.label}`}
+            >
+              <Sparkles className="w-3 h-3" /> AI
+            </Link>
+            <ChevronRight className="w-5 h-5 text-fg-subtle group-hover:text-fg group-hover:translate-x-0.5 transition-all flex-shrink-0" />
           </motion.div>
         ))}
       </motion.div>

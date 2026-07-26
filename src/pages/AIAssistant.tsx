@@ -1,196 +1,226 @@
-import { useState, useRef, useEffect } from 'react'
-import { askAssistant } from '../lib/ai'
-import { MerajMark } from '../components/MerajMark'
-import PageHeader from '../components/ui/PageHeader'
-import { Sparkles, Send, Loader2, User } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
+import { motion, AnimatePresence } from 'framer-motion'
+import { askAssistant } from '../lib/ai'
+import { MerajMark } from '../components/MerajMark'
+import { MerajCharacter, type MerajMood } from '../components/MerajCharacter'
+import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-interface Msg { role: 'user' | 'ai'; text: string }
+interface Msg { role: 'user' | 'meraj'; text: string }
+interface Convo { id: string; title: string; msgs: Msg[]; ts: number; scope?: string }
 
-const CHAT_KEY = 'cashiea_meraj_chat'
-const MAX_STORED = 50
+const STORE = 'cashiea_meraj_convos'
+const SCOPE_LABELS: Record<string, string> = {
+  receipts: 'Receipts', reports: 'Reports', emails: 'Emails', whatsapp: 'WhatsApp',
+  expenses: 'Expenses', profits: 'Profits', stocks: 'Stocks', tasks: 'Tasks',
+}
 
-const suggestions = [
-  'How was business today?',
-  'Who bought cement last month?',
-  'Which customers should I follow up?',
-  'What should I reorder?',
-  'Why did sales drop?',
-]
-
-// Render assistant Markdown safely (marked + DOMPurify).
-function renderSafeMarkdown(md: string): string {
-  const rawHtml = marked.parse(md, { async: false }) as string
-  return DOMPurify.sanitize(rawHtml, {
-    ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'p', 'strong', 'em', 'b', 'i', 'ul', 'ol', 'li', 'br', 'hr', 'code', 'blockquote', 'a'],
-    ALLOWED_ATTR: ['href', 'target', 'rel'],
+function render(md: string) {
+  return DOMPurify.sanitize(marked.parse(md, { async: false }) as string, {
+    ALLOWED_TAGS: ['h1', 'h2', 'h3', 'p', 'strong', 'em', 'b', 'i', 'ul', 'ol', 'li', 'br', 'code', 'a'],
+    ALLOWED_ATTR: ['href'],
   })
 }
 
-function MerajAvatar({ size = 36 }: { size?: number }) {
-  return (
-    <span
-      className="inline-flex items-center justify-center rounded-full bg-accent-soft text-accent ring-1 ring-accent/25 flex-shrink-0"
-      style={{ width: size, height: size }}
-    >
-      <MerajMark size={Math.round(size * 0.62)} />
-    </span>
-  )
-}
-
 export default function AIAssistant() {
+  const [params] = useSearchParams()
+  const scope = params.get('scope') || undefined
+  const scopeLabel = scope ? SCOPE_LABELS[scope] : undefined
+
   const [messages, setMessages] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const [convos, setConvos] = useState<Convo[]>([])
+  const [showHistory, setShowHistory] = useState(false)
+
   const scrollRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const galleryRef = useRef<HTMLInputElement>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
+  const [showCam, setShowCam] = useState(false)
+  const recRef = useRef<any>(null)
+  const [listening, setListening] = useState(false)
 
-  // Restore the last conversation so the chat survives refresh / reopens.
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(CHAT_KEY)
-      if (raw) setMessages(JSON.parse(raw))
-    } catch { /* ignore */ }
-  }, [])
+  useEffect(() => { try { setConvos(JSON.parse(localStorage.getItem(STORE) || '[]')) } catch { /* ignore */ } }, [])
 
-  // Persist the transcript (capped) as it changes.
-  useEffect(() => {
-    try {
-      localStorage.setItem(CHAT_KEY, JSON.stringify(messages.slice(-MAX_STORED)))
-    } catch { /* ignore */ }
-  }, [messages])
-
-  // Auto-scroll to the latest message.
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, loading])
 
-  const send = async (text: string, isBriefing = false) => {
-    const q = text.trim()
+  const persist = (next: Convo[]) => {
+    setConvos(next)
+    try { localStorage.setItem(STORE, JSON.stringify(next.slice(0, 5))) } catch { /* ignore */ }
+  }
+
+  const mood: MerajMood = loading ? 'working' : focused || input.trim() ? 'look' : 'idle'
+
+  const send = async () => {
+    const q = input.trim()
     if (!q || loading) return
     setInput('')
-    const next: Msg[] = [...messages, { role: 'user', text: q }]
+    const next = [...messages, { role: 'user' as const, text: q }]
     setMessages(next)
     setLoading(true)
     try {
-      const reply = await askAssistant(q, isBriefing)
-      setMessages([...next, { role: 'ai', text: reply }])
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Something went wrong.'
-      toast.error(msg)
-      setMessages([...next, { role: 'ai', text: '⚠️ ' + msg }])
+      const reply = await askAssistant(q, false, scope)
+      const done = [...next, { role: 'meraj' as const, text: reply }]
+      setMessages(done)
+      // save/refresh conversation in history (cap 5)
+      const existingIdx = convos.findIndex((c) => c.msgs === messages || (c.msgs.length === next.length - 1 && c.msgs.every((m, i) => messages[i] && m.text === messages[i].text)))
+      const convo: Convo = { id: crypto.randomUUID(), title: q.slice(0, 48), msgs: done, ts: Date.now(), scope }
+      persist(existingIdx >= 0 ? [convo, ...convos.filter((_, i) => i !== existingIdx)] : [convo, ...convos].slice(0, 5))
+    } catch (e) {
+      setMessages([...next, { role: 'meraj' as const, text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.') }])
     } finally {
       setLoading(false)
     }
   }
 
-  const briefing = async () => {
-    setLoading(true)
-    setMessages((m) => [...m, { role: 'user', text: 'Give me my morning briefing' }])
-    try {
-      const reply = await askAssistant('', true)
-      setMessages((m) => [...m, { role: 'ai', text: reply }])
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed')
-    } finally {
-      setLoading(false)
-    }
+  const openConvo = (c: Convo) => { setMessages(c.msgs); setShowHistory(false) }
+  const newChat = () => { setMessages([]); setShowHistory(false); inputRef.current?.focus() }
+
+  // ── Voice input ──
+  const startListen = () => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SR) { toast.error('Voice input not supported on this browser.'); return }
+    if (recRef.current) { try { recRef.current.stop() } catch { /* ignore */ } }
+    const rec = new SR(); rec.lang = 'hi-IN'; rec.interimResults = false; rec.maxAlternatives = 1
+    rec.onstart = () => setListening(true); rec.onend = () => setListening(false)
+    rec.onerror = () => setListening(false)
+    rec.onresult = (e: any) => { const t = e.results[0][0].transcript; setInput((p) => (p ? p + ' ' : '') + t) }
+    recRef.current = rec; rec.start()
+  }
+  const stopListen = () => { recRef.current?.stop(); setListening(false) }
+  useEffect(() => () => recRef.current?.stop(), [])
+
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) toast.success('Image attached — visual understanding is coming soon.')
+    setShowCam(false)
+    e.target.value = ''
   }
 
   return (
-    <div className="animate-fade-in">
-      <PageHeader
-        title="Meraj"
-        subtitle="Your Cashiea AI assistant — sales, stock, customers, follow-ups"
-        icon={<MerajAvatar size={28} />}
-        action={
-          <button onClick={briefing} disabled={loading} className="btn-primary text-sm flex items-center gap-2">
-            <Sparkles className="w-4 h-4" /> Morning Briefing
-          </button>
-        }
-      />
+    <div className="animate-fade-in flex flex-col h-[calc(100vh-7rem)] card overflow-hidden">
+      <input ref={galleryRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFile} />
 
-      <div className="card flex flex-col" style={{ minHeight: '62vh' }}>
-        {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 space-y-5">
-          {messages.length === 0 && (
-            <div className="text-center py-10">
-              <div className="flex justify-center"><MerajAvatar size={64} /></div>
-              <h3 className="font-semibold text-white mt-4 mb-1">Hi, I'm Meraj 👋</h3>
-              <p className="text-sm text-slate-400 mb-6 max-w-md mx-auto">
-                I'm your Cashiea shop assistant. Ask me about sales, stock, customers, or follow-ups — and tell me anything you'd like me to remember.
-              </p>
-              <div className="flex flex-wrap gap-2 justify-center max-w-lg mx-auto">
-                {suggestions.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => send(s)}
-                    className="px-3 py-1.5 rounded-full text-xs bg-slate-800/80 text-slate-300 hover:bg-slate-700 hover:text-white transition-all border border-slate-700"
-                  >
-                    {s}
-                  </button>
+      {/* Top bar: history (left) · title · mark (right) */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-line">
+        <button onClick={() => setShowHistory(true)} className="w-9 h-9 rounded-lg flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors relative" aria-label="Conversation history">
+          <History className="w-5 h-5" strokeWidth={1.75} />
+          {convos.length > 0 && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-accent" />}
+        </button>
+        <div className="flex-1 text-center">
+          <p className="font-semibold text-fg leading-tight">Meraj</p>
+          {scopeLabel
+            ? <p className="text-[11px] text-accent leading-tight">Focused on {scopeLabel}</p>
+            : <p className="text-[11px] text-fg-subtle leading-tight">Your shop assistant</p>}
+        </div>
+        <span className="w-9 h-9 rounded-lg flex items-center justify-center bg-accent-soft text-accent"><MerajMark size={22} /></span>
+      </div>
+
+      {/* Character + messages */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+        <div className="flex flex-col items-center pt-8 pb-4">
+          <MerajCharacter mood={mood} />
+          <p className="text-sm font-semibold text-fg mt-3">
+            {loading ? 'Meraj is working on it…' : scopeLabel ? `Let's handle your ${scopeLabel.toLowerCase()}` : 'Hi, I’m Meraj'}
+          </p>
+          {!messages.length && <p className="text-xs text-fg-subtle mt-1 max-w-xs text-center px-4">{scopeLabel ? `Ask me anything about ${scopeLabel.toLowerCase()} — I'll keep us focused there.` : 'Ask about sales, stock, customers, or anything about your business.'}</p>}
+        </div>
+
+        <div className="px-4 pb-4 space-y-3 max-w-2xl mx-auto w-full">
+          {messages.map((m, i) =>
+            m.role === 'user' ? (
+              <div key={i} className="flex justify-end">
+                <span className="text-sm bg-accent-strong text-accent-fg rounded-2xl rounded-br-sm px-3.5 py-2 max-w-[80%]">{m.text}</span>
+              </div>
+            ) : (
+              <div key={i} className="flex justify-start">
+                <div className="rounded-2xl rounded-bl-sm bg-surface-2 border border-line border-l-2 border-l-accent px-4 py-3 max-w-[88%]">
+                  <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: render(m.text) }} />
+                </div>
+              </div>
+            )
+          )}
+          {loading && (
+            <div className="flex justify-start">
+              <div className="flex items-center gap-1.5 bg-surface-2 border border-line rounded-2xl rounded-bl-sm px-4 py-3">
+                {[0, 1, 2].map((d) => (
+                  <motion.span key={d} className="w-1.5 h-1.5 rounded-full bg-accent" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1, repeat: Infinity, delay: d * 0.15 }} />
                 ))}
               </div>
             </div>
           )}
-
-          {messages.map((m, i) => (
-            <div key={i} className={`flex gap-3 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
-              {m.role === 'user' ? (
-                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-brand-600">
-                  <User className="w-4 h-4 text-white" />
-                </div>
-              ) : (
-                <MerajAvatar size={36} />
-              )}
-              <div
-                className={`rounded-2xl px-4 py-3 max-w-[82%] ${
-                  m.role === 'user'
-                    ? 'bg-brand-600 text-white rounded-tr-sm'
-                    : 'bg-slate-800/80 text-slate-200 border border-slate-700/60 rounded-tl-sm'
-                }`}
-              >
-                {m.role === 'ai' ? (
-                  <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(m.text) }} />
-                ) : (
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{m.text}</p>
-                )}
-              </div>
-            </div>
-          ))}
-
-          {loading && (
-            <div className="flex gap-3">
-              <MerajAvatar size={36} />
-              <div className="bg-slate-800/80 rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-2 border border-slate-700/60">
-                <Loader2 className="w-4 h-4 animate-spin text-brand-400" />
-                <span className="text-sm text-slate-400">Meraj is analyzing your business…</span>
-              </div>
-            </div>
-          )}
         </div>
+      </div>
 
-        {/* Input */}
-        <div className="border-t border-slate-800 p-4 flex gap-2">
+      {/* Input bar: camera (mobile) · mic · text · send */}
+      <div className="border-t border-line p-3">
+        <div className="flex items-center gap-2">
+          {/* Camera — mobile only, offers gallery or camera */}
+          <div className="relative lg:hidden">
+            <button onClick={() => setShowCam((s) => !s)} className="w-10 h-10 rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors" aria-label="Camera"><Camera className="w-5 h-5" strokeWidth={1.75} /></button>
+            <AnimatePresence>
+              {showCam && (
+                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} className="absolute bottom-12 left-0 card p-1.5 w-40 shadow-float z-10">
+                  <button onClick={() => galleryRef.current?.click()} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-fg hover:bg-surface-2"><ImageIcon className="w-4 h-4" /> Gallery</button>
+                  <button onClick={() => cameraRef.current?.click()} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-fg hover:bg-surface-2"><Camera className="w-4 h-4" /> Camera</button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Mic */}
+          <button onClick={listening ? stopListen : startListen} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${listening ? 'text-negative bg-negative/10' : 'text-fg-muted hover:text-fg hover:bg-surface-2'}`} aria-label="Voice input">
+            {listening ? <Square className="w-4 h-4" /> : <Mic className="w-5 h-5" strokeWidth={1.75} />}
+          </button>
+
           <input
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && send(input)}
-            placeholder="Ask Meraj about sales, customers, stock…"
-            className="input-field flex-1"
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            onKeyDown={(e) => e.key === 'Enter' && send()}
+            placeholder={scopeLabel ? `Ask about ${scopeLabel.toLowerCase()}…` : 'Ask Meraj anything…'}
+            className="input-field flex-1 text-sm"
             disabled={loading}
           />
-          <button
-            onClick={() => send(input)}
-            disabled={loading || !input.trim()}
-            className="btn-primary px-4 flex items-center justify-center"
-            aria-label="Send message"
-          >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+          <button onClick={send} disabled={loading || !input.trim()} className="btn-primary px-3.5 h-10 flex items-center justify-center" aria-label="Send">
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>
       </div>
+
+      {/* History sheet — last 5 conversations */}
+      <AnimatePresence>
+        {showHistory && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 z-20" onClick={() => setShowHistory(false)} />
+            <motion.div initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'spring', stiffness: 320, damping: 32 }} className="absolute top-0 left-0 bottom-0 w-72 max-w-[80%] bg-paper border-r border-line z-30 flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-line">
+                <p className="text-sm font-semibold text-fg">Recent chats</p>
+                <button onClick={() => setShowHistory(false)} className="text-fg-muted hover:text-fg"><X className="w-5 h-5" /></button>
+              </div>
+              <button onClick={newChat} className="m-3 btn-secondary text-sm"><Sparkles className="w-4 h-4" /> New chat</button>
+              <div className="flex-1 overflow-y-auto px-3 space-y-1.5">
+                {convos.length === 0 && <p className="text-xs text-fg-subtle text-center py-6">No conversations yet.</p>}
+                {convos.map((c) => (
+                  <button key={c.id} onClick={() => openConvo(c)} className="w-full text-left p-3 rounded-xl border border-line bg-surface hover:bg-surface-2 transition-colors">
+                    <p className="text-sm font-medium text-fg truncate">{c.title}</p>
+                    <p className="text-[11px] text-fg-subtle mt-0.5">{new Date(c.ts).toLocaleString()}</p>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
