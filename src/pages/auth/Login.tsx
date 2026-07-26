@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, ArrowRight, Check, Shield, Zap, TrendingUp } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useInputFocus, FOCUS_SCROLL_CLASS } from '../../lib/useInputFocus'
 
 // ═══ Logo (same as landing) ═══
 function Logo({ size = 32 }: { size?: number }) {
@@ -33,6 +34,10 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [error, setError] = useState('')
+
+  // Mobile-friendly focus: keeps the focused input in view when the
+  // on-screen keyboard opens so the keyboard doesn't auto-dismiss.
+  const focusProps = useInputFocus({ focusBorderColor: C.blue, focusShadow: `0 0 0 3px ${C.blue}15`, blurBorderColor: C.border })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -64,16 +69,15 @@ export default function Login() {
     }
   }
 
-  // Input field component with focus glow
+  // Input field component with focus glow + mobile keyboard fix
   const Field = ({ icon: Icon, ...props }: any) => (
     <div className="relative group">
       <Icon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors" style={{ color: C.muted }} />
       <input
         {...props}
-        className="w-full pl-12 pr-4 py-3.5 rounded-xl text-base outline-none transition-all duration-200"
+        {...focusProps}
+        className={`${FOCUS_SCROLL_CLASS} w-full pl-12 pr-4 py-3.5 rounded-xl text-base outline-none transition-all duration-200`}
         style={{ background: 'rgb(var(--surface))', border: `1px solid ${C.border}`, color: C.text }}
-        onFocus={(e) => { e.currentTarget.style.borderColor = C.blue; e.currentTarget.style.boxShadow = `0 0 0 3px ${C.blue}15` }}
-        onBlur={(e) => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.boxShadow = 'none' }}
       />
     </div>
   )
@@ -115,7 +119,7 @@ export default function Login() {
       </div>
 
       {/* ═══ RIGHT: Form ═══ */}
-      <div className="flex-1 flex items-start justify-center p-6 sm:p-12 py-12">
+      <div className="flex-1 flex items-start justify-center p-6 sm:p-12 py-12 cashiea-form-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div className="w-full max-w-[420px]" style={{ animation: 'fadeInUp 0.6s ease-out' }}>
           <style>{`@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
 
@@ -144,7 +148,7 @@ export default function Login() {
             {/* Email */}
             <div>
               <label className="block text-sm font-semibold mb-1.5" style={{ color: C.text }}>Email Address</label>
-              <Field icon={Mail} type="email" required value={email} onChange={(e: any) => setEmail(e.target.value)} placeholder="your@shop.com" />
+              <Field icon={Mail} type="email" required value={email} onChange={(e: any) => setEmail(e.target.value)} placeholder="your@shop.com" autoComplete="email" inputMode="email" />
             </div>
 
             {/* Password */}
@@ -157,11 +161,11 @@ export default function Login() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-12 py-3.5 rounded-xl text-base outline-none transition-all duration-200"
+                  {...focusProps}
+                  className={`${FOCUS_SCROLL_CLASS} w-full pl-12 pr-12 py-3.5 rounded-xl text-base outline-none transition-all duration-200`}
                   style={{ background: 'rgb(var(--surface))', border: `1px solid ${C.border}`, color: C.text }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = C.blue; e.currentTarget.style.boxShadow = `0 0 0 3px ${C.blue}15` }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.boxShadow = 'none' }}
                   placeholder="Enter your password"
+                  autoComplete="current-password"
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors" style={{ color: C.muted }} onMouseEnter={e => e.currentTarget.style.color = C.blue} onMouseLeave={e => e.currentTarget.style.color = C.muted}>
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}

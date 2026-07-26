@@ -102,6 +102,12 @@ export default {
         '3xl': '1.25rem',
         '4xl': '1.5rem',
       },
+      spacing: {
+        // Half-step sizes used by icon containers (e.g. w-5.5 h-5.5).
+        // Without these, classes like `w-5.5` resolve to nothing and
+        // icons render at 0×0, making them invisible in the UI.
+        '5.5': '1.375rem',
+      },
       boxShadow: {
         // Soft elevation (warm, never harsh/neon).
         'soft': '0 1px 2px rgb(var(--shadow) / 0.04), 0 1px 3px rgb(var(--shadow) / 0.06)',

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, ArrowRight, Check, Store, Phone, User, MapPin, Zap, TrendingUp, Shield } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useInputFocus, FOCUS_SCROLL_CLASS } from '../../lib/useInputFocus'
 
 function Logo({ size = 32 }: { size?: number }) {
   return (
@@ -57,6 +58,10 @@ export default function Signup() {
 
   const strength = getStrength(password)
 
+  // Mobile-friendly focus: keeps the focused input in view when the
+  // on-screen keyboard opens so the keyboard doesn't auto-dismiss.
+  const focusProps = useInputFocus({ focusBorderColor: C.blue, focusShadow: `0 0 0 3px ${C.blue}15`, blurBorderColor: C.border })
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -84,10 +89,9 @@ export default function Signup() {
       <Icon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors z-10" style={{ color: C.muted }} />
       <input
         {...props}
-        className="w-full pl-12 pr-4 py-3.5 rounded-xl text-base outline-none transition-all duration-200"
+        {...focusProps}
+        className={`${FOCUS_SCROLL_CLASS} w-full pl-12 pr-4 py-3.5 rounded-xl text-base outline-none transition-all duration-200`}
         style={{ background: 'rgb(var(--surface))', border: `1px solid ${C.border}`, color: C.text }}
-        onFocus={(e) => { e.currentTarget.style.borderColor = C.blue; e.currentTarget.style.boxShadow = `0 0 0 3px ${C.blue}15` }}
-        onBlur={(e) => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.boxShadow = 'none' }}
       />
     </div>
   )
@@ -153,7 +157,7 @@ export default function Signup() {
       </div>
 
       {/* ═══ RIGHT: Signup Form ═══ */}
-      <div className="flex-1 flex items-start justify-center p-6 sm:p-10 py-10 overflow-y-auto">
+      <div className="flex-1 flex items-start justify-center p-6 sm:p-10 py-10 overflow-y-auto cashiea-form-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div className="w-full max-w-[460px] py-8" style={{ animation: 'fadeInUp 0.6s ease-out' }}>
           <style>{`@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
 
@@ -179,11 +183,11 @@ export default function Signup() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-semibold mb-1.5" style={{ color: C.text }}>Your Name *</label>
-                <Input icon={User} type="text" required value={fullName} onChange={(e: any) => setFullName(e.target.value)} placeholder="Ramesh Kumar" />
+                <Input icon={User} type="text" required value={fullName} onChange={(e: any) => setFullName(e.target.value)} placeholder="Ramesh Kumar" autoComplete="name" />
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-1.5" style={{ color: C.text }}>Shop Name *</label>
-                <Input icon={Store} type="text" required value={shopName} onChange={(e: any) => setShopName(e.target.value)} placeholder="Sharma Store" />
+                <Input icon={Store} type="text" required value={shopName} onChange={(e: any) => setShopName(e.target.value)} placeholder="Sharma Store" autoComplete="organization" />
               </div>
             </div>
 
@@ -191,18 +195,18 @@ export default function Signup() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-semibold mb-1.5" style={{ color: C.text }}>Phone *</label>
-                <Input icon={Phone} type="tel" required value={phone} onChange={(e: any) => setPhone(e.target.value)} placeholder="+91 98765 43210" />
+                <Input icon={Phone} type="tel" required value={phone} onChange={(e: any) => setPhone(e.target.value)} placeholder="+91 98765 43210" autoComplete="tel" inputMode="tel" />
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-1.5" style={{ color: C.text }}>City</label>
-                <Input icon={MapPin} type="text" value={city} onChange={(e: any) => setCity(e.target.value)} placeholder="Gaya" />
+                <Input icon={MapPin} type="text" value={city} onChange={(e: any) => setCity(e.target.value)} placeholder="Gaya" autoComplete="address-level2" />
               </div>
             </div>
 
             {/* Email */}
             <div>
               <label className="block text-sm font-semibold mb-1.5" style={{ color: C.text }}>Email *</label>
-              <Input icon={Mail} type="email" required value={email} onChange={(e: any) => setEmail(e.target.value)} placeholder="you@shop.com" />
+              <Input icon={Mail} type="email" required value={email} onChange={(e: any) => setEmail(e.target.value)} placeholder="you@shop.com" autoComplete="email" inputMode="email" />
             </div>
 
             {/* Password */}
@@ -215,11 +219,11 @@ export default function Signup() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-12 py-3.5 rounded-xl text-base outline-none transition-all duration-200"
+                  {...focusProps}
+                  className={`${FOCUS_SCROLL_CLASS} w-full pl-12 pr-12 py-3.5 rounded-xl text-base outline-none transition-all duration-200`}
                   style={{ background: 'rgb(var(--surface))', border: `1px solid ${C.border}`, color: C.text }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = C.blue; e.currentTarget.style.boxShadow = `0 0 0 3px ${C.blue}15` }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.boxShadow = 'none' }}
                   placeholder="Min 6 characters"
+                  autoComplete="new-password"
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors" style={{ color: C.muted }} onMouseEnter={e => e.currentTarget.style.color = C.blue} onMouseLeave={e => e.currentTarget.style.color = C.muted}>
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
