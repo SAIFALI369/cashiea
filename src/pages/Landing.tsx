@@ -12,8 +12,8 @@ function Logo({ size = 32 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#0099ff" />
-          <stop offset="100%" stopColor="#00d4ff" />
+          <stop offset="0%" stopColor="rgb(var(--accent))" />
+          <stop offset="100%" stopColor="rgb(var(--gold))" />
         </linearGradient>
       </defs>
       <rect width="100" height="100" rx="24" fill="url(#logoGrad)" />
@@ -38,7 +38,7 @@ function ScrollProgress() {
   }, [])
   return (
     <div className="fixed top-0 left-0 right-0 z-[60] h-[3px] bg-transparent pointer-events-none">
-      <div className="h-full transition-[width] duration-150 ease-out" style={{ width: `${width}%`, background: 'linear-gradient(90deg, #0099ff, #00d4ff)' }} />
+      <div className="h-full transition-[width] duration-150 ease-out" style={{ width: `${width}%`, background: 'linear-gradient(90deg, rgb(var(--accent)), rgb(var(--gold)))' }} />
     </div>
   )
 }
@@ -93,7 +93,7 @@ export default function Landing() {
   }, [])
 
   const scrollTo = (href: string) => { setMenuOpen(false); document.querySelector(href)?.scrollIntoView({ behavior: 'smooth' }) }
-  const C = { bg: '#fdfbf7', bgAlt: '#faf6ee', bgCard: '#f5efe3', border: '#e8e2d5', blue: '#0099ff', blueDark: '#0066b8', blueLight: '#00d4ff', green: '#10b981', text: '#1a1a1a', textBody: '#4b5563', textMuted: '#9ca3af', dark: '#1a1a1a' }
+  const C = { bg: 'rgb(var(--paper))', bgAlt: 'rgb(var(--surface))', bgCard: 'rgb(var(--surface-2))', border: 'rgb(var(--line))', blue: 'rgb(var(--accent))', blueDark: 'rgb(var(--accent-strong))', blueLight: 'rgb(var(--gold))', green: 'rgb(var(--positive))', text: 'rgb(var(--fg))', textBody: 'rgb(var(--fg-muted))', textMuted: 'rgb(var(--fg-subtle))', dark: 'rgb(var(--fg))' }
 
   return (
     <div style={{ background: C.bg, color: C.text }} className="min-h-screen font-sans">
@@ -111,7 +111,7 @@ export default function Landing() {
           </div>
           <div className="flex items-center gap-3">
             <Link to="/login" className="text-sm font-medium transition-colors hidden sm:block" style={{ color: C.textBody }}>Login</Link>
-            <Link to="/signup" className="text-sm font-semibold text-white px-5 py-2.5 rounded-xl transition-all hover:scale-[1.03] hover:shadow-lg" style={{ background: `linear-gradient(135deg, ${C.blue}, ${C.blueLight})`, boxShadow: `0 4px 14px ${C.blue}40` }}>Start Free</Link>
+            <Link to="/signup" className="text-sm font-semibold text-white px-5 py-2.5 rounded-xl transition-all hover:scale-[1.03] hover:shadow-lg" style={{ background: `linear-gradient(135deg, ${C.blue}, ${C.blueLight})`, boxShadow: `0 4px 14px rgb(var(--accent) / 0.25)` }}>Start Free</Link>
             <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden" style={{ color: C.textBody }}>{menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}</button>
           </div>
         </div>
@@ -126,8 +126,8 @@ export default function Landing() {
       {/* ═══ 2. HERO ═══ */}
       <section className="relative overflow-hidden" style={{ paddingTop: '60px', paddingBottom: '80px' }}>
         {/* Glow background */}
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, ${C.blue}08 0%, transparent 70%)` }} />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, ${C.blueLight}06 0%, transparent 70%)` }} />
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgb(var(--accent) / 0.03) 0%, transparent 70%)` }} />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgb(var(--gold) / 0.02) 0%, transparent 70%)` }} />
 
         <div className="relative max-w-[1200px] mx-auto px-6">
           <div className="grid md:grid-cols-2 gap-12 items-center">
@@ -150,7 +150,7 @@ export default function Landing() {
               </Reveal>
               <Reveal dir="up" delay={300}>
                 <div className="mt-8 flex flex-col sm:flex-row gap-3">
-                  <Link to="/signup" className="inline-flex items-center justify-center gap-2 font-semibold text-white px-8 py-4 rounded-xl transition-all hover:scale-[1.03] hover:shadow-xl" style={{ fontSize: '16px', background: `linear-gradient(135deg, ${C.blue}, ${C.blueLight})`, boxShadow: `0 6px 20px ${C.blue}30` }}>
+                  <Link to="/signup" className="inline-flex items-center justify-center gap-2 font-semibold text-white px-8 py-4 rounded-xl transition-all hover:scale-[1.03] hover:shadow-xl" style={{ fontSize: '16px', background: `linear-gradient(135deg, ${C.blue}, ${C.blueLight})`, boxShadow: `0 6px 20px rgb(var(--accent) / 0.19)` }}>
                     Start 14-Day Free Trial <ArrowRight className="w-5 h-5" />
                   </Link>
                   <button onClick={() => scrollTo('#features')} className="inline-flex items-center justify-center gap-2 font-medium text-sm transition-colors" style={{ color: C.blue }} onMouseEnter={e => e.currentTarget.style.color = C.blueDark}>
@@ -179,11 +179,11 @@ export default function Landing() {
                         <p className="text-3xl font-bold" style={{ color: C.text }}>{'\u20b9'}14,250</p>
                         <p className="text-xs text-green-600 mt-1 font-medium">{'\u2191'} 23% vs yesterday</p>
                       </div>
-                      <div className="rounded-xl p-3 flex items-center gap-3" style={{ background: '#e6f7ff', border: `1px solid ${C.blue}20` }}>
+                      <div className="rounded-xl p-3 flex items-center gap-3" style={{ background: 'rgb(var(--accent) / 0.1)', border: `1px solid rgb(var(--accent) / 0.13)` }}>
                         <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.blue + '20' }}><MessageCircle className="w-4 h-4" style={{ color: C.blue }} /></div>
                         <div className="min-w-0"><p className="text-xs font-medium text-gray-900 truncate">Daily report sent to WhatsApp</p><p className="text-xs text-gray-500">23 bills {'\u00b7'} {'\u20b9'}14,250 total</p></div>
                       </div>
-                      <div className="rounded-xl p-3 flex items-center gap-3" style={{ background: '#ecfdf5', border: '1px solid #10b98120' }}>
+                      <div className="rounded-xl p-3 flex items-center gap-3" style={{ background: 'rgb(var(--positive) / 0.1)', border: '1px solid rgb(var(--positive) / 0.13)' }}>
                         <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0"><Zap className="w-4 h-4 text-green-600" /></div>
                         <div className="min-w-0"><p className="text-xs font-medium text-gray-900 truncate">AI: 3 items low on stock</p><p className="text-xs text-gray-500">Tap to reorder {'\u2192'}</p></div>
                       </div>
@@ -231,7 +231,7 @@ export default function Landing() {
             ].map((card, i) => (
               <Reveal key={i} delay={i * 120} dir={i === 1 ? 'up' : i === 0 ? 'left' : 'right'}>
                 <div className="rounded-2xl p-9 transition-all duration-400 group relative overflow-hidden hover:-translate-y-2 hover:shadow-2xl" style={{ background: C.bgAlt, border: `1px solid ${C.border}` }}>
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5 transition-transform group-hover:scale-110" style={{ background: '#ecfdf5' }}><card.icon className="w-5.5 h-5.5" style={{ color: C.green }} /></div>
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5 transition-transform group-hover:scale-110" style={{ background: 'rgb(var(--positive) / 0.1)' }}><card.icon className="w-5.5 h-5.5" style={{ color: C.green }} /></div>
                   <h3 className="font-semibold text-xl mb-3" style={{ fontFamily: '"Plus Jakarta Sans"', color: C.text }}>{card.emoji} {card.title}</h3>
                   <p className="leading-relaxed mb-5" style={{ fontSize: '16px', color: C.textBody }}>{card.desc}</p>
                   <button className="text-sm font-medium transition-colors flex items-center gap-1" style={{ color: C.blue }} onMouseEnter={e => e.currentTarget.style.color = C.blueDark} onMouseLeave={e => e.currentTarget.style.color = C.blue}>See how <ArrowRight className="w-3.5 h-3.5" /></button>
@@ -282,7 +282,7 @@ export default function Landing() {
                   <li key={f} className="flex items-start gap-2.5" style={{ fontSize: '16px', color: C.textBody }}><Check className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: C.green }} /> {f}</li>
                 ))}
               </ul>
-              <Link to="/signup" className="inline-flex items-center justify-center gap-2 font-semibold text-white px-8 py-4 rounded-xl transition-all hover:scale-[1.03] hover:shadow-xl w-full" style={{ background: `linear-gradient(135deg, ${C.blue}, ${C.blueLight})`, boxShadow: `0 6px 20px ${C.blue}30` }}>Start Free Trial</Link>
+              <Link to="/signup" className="inline-flex items-center justify-center gap-2 font-semibold text-white px-8 py-4 rounded-xl transition-all hover:scale-[1.03] hover:shadow-xl w-full" style={{ background: `linear-gradient(135deg, ${C.blue}, ${C.blueLight})`, boxShadow: `0 6px 20px rgb(var(--accent) / 0.19)` }}>Start Free Trial</Link>
               <p className="text-xs mt-5" style={{ color: C.textMuted }}>Cancel anytime. No hidden fees. We don't lock you in.</p>
             </div>
           </Reveal>
@@ -301,7 +301,7 @@ export default function Landing() {
 
       {/* ═══ 8. FINAL CTA ═══ */}
       <section className="relative overflow-hidden" style={{ paddingTop: '90px', paddingBottom: '90px', background: `linear-gradient(135deg, ${C.blue} 0%, ${C.blueDark} 100%)` }}>
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, ${C.blueLight}30 0%, transparent 70%)` }} />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgb(var(--gold) / 0.19) 0%, transparent 70%)` }} />
         <div className="relative max-w-[1200px] mx-auto px-6 text-center">
           <Reveal dir="scale">
             <h2 className="font-bold text-white mb-5" style={{ fontFamily: '"Plus Jakarta Sans"', fontSize: 'clamp(32px, 5vw, 50px)', lineHeight: 1.2 }}>Your Retail Business Deserves Better.</h2>
@@ -319,34 +319,34 @@ export default function Landing() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-3"><Logo size={32} /><span className="font-bold text-lg text-white">Cashiea</span></div>
-              <p className="text-sm" style={{ color: '#888' }}>POS + CRM + AI for Indian retail</p>
+              <p className="text-sm" style={{ color: 'rgb(var(--fg-subtle))' }}>POS + CRM + AI for Indian retail</p>
             </div>
             <div>
               <p className="text-sm font-semibold text-white mb-4">Product</p>
               <div className="space-y-2.5">
-                <button onClick={() => scrollTo('#features')} className="block text-sm transition-colors hover:text-white" style={{ color: '#888' }}>Features</button>
-                <button onClick={() => scrollTo('#pricing')} className="block text-sm transition-colors hover:text-white" style={{ color: '#888' }}>Pricing</button>
-                <button onClick={() => scrollTo('#faq')} className="block text-sm transition-colors hover:text-white" style={{ color: '#888' }}>FAQ</button>
+                <button onClick={() => scrollTo('#features')} className="block text-sm transition-colors hover:text-white" style={{ color: 'rgb(var(--fg-subtle))' }}>Features</button>
+                <button onClick={() => scrollTo('#pricing')} className="block text-sm transition-colors hover:text-white" style={{ color: 'rgb(var(--fg-subtle))' }}>Pricing</button>
+                <button onClick={() => scrollTo('#faq')} className="block text-sm transition-colors hover:text-white" style={{ color: 'rgb(var(--fg-subtle))' }}>FAQ</button>
               </div>
             </div>
             <div>
               <p className="text-sm font-semibold text-white mb-4">Company</p>
               <div className="space-y-2.5">
-                <Link to="/privacy" className="block text-sm transition-colors hover:text-white" style={{ color: '#888' }}>Privacy</Link>
-                <Link to="/terms" className="block text-sm transition-colors hover:text-white" style={{ color: '#888' }}>Terms</Link>
-                <Link to="/case-study" className="block text-sm transition-colors hover:text-white" style={{ color: '#888' }}>Case Study</Link>
+                <Link to="/privacy" className="block text-sm transition-colors hover:text-white" style={{ color: 'rgb(var(--fg-subtle))' }}>Privacy</Link>
+                <Link to="/terms" className="block text-sm transition-colors hover:text-white" style={{ color: 'rgb(var(--fg-subtle))' }}>Terms</Link>
+                <Link to="/case-study" className="block text-sm transition-colors hover:text-white" style={{ color: 'rgb(var(--fg-subtle))' }}>Case Study</Link>
               </div>
             </div>
             <div>
               <p className="text-sm font-semibold text-white mb-4">Support</p>
               <div className="space-y-2.5">
-                <Link to="/app/support" className="block text-sm transition-colors hover:text-white" style={{ color: '#888' }}>Help Center</Link>
-                <a href="mailto:supportcashiea@gmail.com" className="block text-sm transition-colors hover:text-white" style={{ color: '#888' }}>supportcashiea@gmail.com</a>
+                <Link to="/app/support" className="block text-sm transition-colors hover:text-white" style={{ color: 'rgb(var(--fg-subtle))' }}>Help Center</Link>
+                <a href="mailto:supportcashiea@gmail.com" className="block text-sm transition-colors hover:text-white" style={{ color: 'rgb(var(--fg-subtle))' }}>supportcashiea@gmail.com</a>
               </div>
             </div>
           </div>
-          <div className="mt-12 pt-6" style={{ borderTop: '1px solid #333' }}>
-            <p className="text-xs text-center" style={{ color: '#555' }}>{'\u00a9'} 2026 Cashiea. Made with care for India's small businesses.</p>
+          <div className="mt-12 pt-6" style={{ borderTop: '1px solid rgb(var(--line))' }}>
+            <p className="text-xs text-center" style={{ color: 'rgb(var(--fg-subtle))' }}>{'\u00a9'} 2026 Cashiea. Made with care for India's small businesses.</p>
           </div>
         </div>
       </footer>

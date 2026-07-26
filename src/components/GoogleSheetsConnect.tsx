@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { type AppCatalogEntry, type PermissionMode } from '../lib/app-catalog'
 import { X, Check, Shield, ArrowRight, Loader2 } from 'lucide-react'
 
-const C = { bg: '#fdfbf7', border: '#e8e2d5', blue: '#0099ff', blueDark: '#0066b8', green: '#10b981', text: '#1a1a1a', textBody: '#4b5563', muted: '#9ca3af' }
+const C = { bg: 'rgb(var(--paper))', border: 'rgb(var(--line))', blue: 'rgb(var(--accent))', blueDark: 'rgb(var(--accent-strong))', green: 'rgb(var(--positive))', text: 'rgb(var(--fg))', textBody: 'rgb(var(--fg-muted))', muted: 'rgb(var(--fg-subtle))' }
 
 export default function GoogleSheetsConnect({
   app,
@@ -18,7 +18,7 @@ export default function GoogleSheetsConnect({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
-      <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl animate-fade-in" style={{ background: '#fff' }} onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl animate-fade-in" style={{ background: 'rgb(var(--surface))' }} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="p-6 pb-4" style={{ borderBottom: `1px solid ${C.border}` }}>
           <div className="flex items-center justify-between mb-4">
@@ -61,7 +61,7 @@ export default function GoogleSheetsConnect({
                   onClick={() => setSelected(perm.mode)}
                   className="w-full text-left p-4 rounded-xl transition-all duration-200"
                   style={{
-                    background: isSelected ? C.blue + '08' : '#fff',
+                    background: isSelected ? 'rgb(var(--accent) / 0.05)' : 'rgb(var(--surface))',
                     border: isSelected ? `2px solid ${C.blue}` : `1px solid ${C.border}`,
                   }}
                 >
@@ -106,7 +106,7 @@ export default function GoogleSheetsConnect({
               onClick={() => onStartAuth(selected)}
               disabled={!confirmed}
               className="flex-1 py-3 rounded-xl font-semibold text-white text-sm transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              style={{ background: `linear-gradient(135deg, ${C.blue}, #00d4ff)`, boxShadow: confirmed ? `0 4px 14px ${C.blue}30` : 'none' }}
+              style={{ background: `linear-gradient(135deg, ${C.blue}, rgb(var(--gold)))`, boxShadow: confirmed ? `0 4px 14px rgb(var(--accent) / 0.19)` : 'none' }}
             >
               Continue with Google <ArrowRight className="w-4 h-4" />
             </button>

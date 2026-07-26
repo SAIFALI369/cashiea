@@ -7,7 +7,7 @@ import toast from 'react-hot-toast'
 function Logo({ size = 32 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs><linearGradient id="sg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#0099ff" /><stop offset="100%" stopColor="#00d4ff" /></linearGradient></defs>
+      <defs><linearGradient id="sg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="rgb(var(--accent))" /><stop offset="100%" stopColor="rgb(var(--gold))" /></linearGradient></defs>
       <rect width="100" height="100" rx="24" fill="url(#sg)" />
       <path d="M62 28 A26 26 0 1 0 62 72" fill="none" stroke="white" strokeWidth="9" strokeLinecap="round" />
       <circle cx="55" cy="50" r="5" fill="white" />
@@ -16,7 +16,7 @@ function Logo({ size = 32 }: { size?: number }) {
   )
 }
 
-const C = { bg: '#fdfbf7', bgCard: '#faf6ee', border: '#e8e2d5', blue: '#0099ff', blueDark: '#0066b8', blueLight: '#00d4ff', green: '#10b981', text: '#1a1a1a', textBody: '#4b5563', muted: '#9ca3af', red: '#ef4444', amber: '#f59e0b' }
+const C = { bg: 'rgb(var(--paper))', bgCard: 'rgb(var(--surface))', border: 'rgb(var(--line))', blue: 'rgb(var(--accent))', blueDark: 'rgb(var(--accent-strong))', blueLight: 'rgb(var(--gold))', green: 'rgb(var(--positive))', text: 'rgb(var(--fg))', textBody: 'rgb(var(--fg-muted))', muted: 'rgb(var(--fg-subtle))', red: 'rgb(var(--negative))', amber: 'rgb(var(--warning))' }
 
 // Password strength calculator
 function getStrength(pwd: string): { label: string; color: string; pct: number } {
@@ -85,7 +85,7 @@ export default function Signup() {
       <input
         {...props}
         className="w-full pl-12 pr-4 py-3.5 rounded-xl text-base outline-none transition-all duration-200"
-        style={{ background: '#fff', border: `1px solid ${C.border}`, color: C.text }}
+        style={{ background: 'rgb(var(--surface))', border: `1px solid ${C.border}`, color: C.text }}
         onFocus={(e) => { e.currentTarget.style.borderColor = C.blue; e.currentTarget.style.boxShadow = `0 0 0 3px ${C.blue}15` }}
         onBlur={(e) => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.boxShadow = 'none' }}
       />
@@ -100,8 +100,8 @@ export default function Signup() {
           <div className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center" style={{ background: C.blue + '12' }}><Mail className="w-10 h-10" style={{ color: C.blue }} /></div>
           <h2 className="font-bold text-2xl mb-3" style={{ fontFamily: '"Plus Jakarta Sans"', color: C.text }}>Check your email</h2>
           <p className="mb-6 leading-relaxed" style={{ color: C.textBody }}>We sent a confirmation link to <span className="font-semibold" style={{ color: C.text }}>{email}</span>. Click it to activate your account.</p>
-          <div className="p-4 rounded-xl text-left mb-6" style={{ background: '#fef3c7', border: '1px solid #fde68a' }}>
-            <p className="text-sm" style={{ color: '#92400e' }}><strong>Tip:</strong> To skip this for testing, go to Supabase Dashboard → Authentication → Email → turn off "Confirm email".</p>
+          <div className="p-4 rounded-xl text-left mb-6" style={{ background: 'rgb(var(--warning) / 0.12)', border: '1px solid rgb(var(--warning) / 0.3)' }}>
+            <p className="text-sm" style={{ color: 'rgb(var(--warning))' }}><strong>Tip:</strong> To skip this for testing, go to Supabase Dashboard → Authentication → Email → turn off "Confirm email".</p>
           </div>
           <Link to="/login" className="inline-flex font-semibold text-white px-8 py-3.5 rounded-xl transition-all hover:scale-[1.02]" style={{ background: `linear-gradient(135deg, ${C.blue}, ${C.blueLight})` }}>Go to Sign In</Link>
         </div>
@@ -216,7 +216,7 @@ export default function Signup() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-12 pr-12 py-3.5 rounded-xl text-base outline-none transition-all duration-200"
-                  style={{ background: '#fff', border: `1px solid ${C.border}`, color: C.text }}
+                  style={{ background: 'rgb(var(--surface))', border: `1px solid ${C.border}`, color: C.text }}
                   onFocus={(e) => { e.currentTarget.style.borderColor = C.blue; e.currentTarget.style.boxShadow = `0 0 0 3px ${C.blue}15` }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.boxShadow = 'none' }}
                   placeholder="Min 6 characters"

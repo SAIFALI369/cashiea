@@ -164,7 +164,7 @@ export default function FloatingMeraj() {
 
       {/* Floating AI window */}
       {open && (
-        <div className="fixed z-50 bottom-4 right-4 left-4 sm:left-auto sm:w-[380px] flex flex-col card rounded-2xl border border-slate-700/60 shadow-2xl shadow-black/50 overflow-hidden"
+        <div className="fixed z-50 bottom-4 right-4 left-4 sm:left-auto sm:w-[380px] flex flex-col card rounded-2xl border border-slate-700/60 shadow-2xl shadow-black/50 overflow-hidden animate-scale-in origin-bottom-right"
           style={{ maxHeight: '78vh' }}>
           {/* Header — X is in the UPPER-LEFT corner */}
           <div className="flex items-center gap-2 p-3 border-b border-slate-800 bg-slate-900/60">

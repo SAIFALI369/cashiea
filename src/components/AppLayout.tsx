@@ -1,12 +1,14 @@
 import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import FloatingMeraj from './FloatingMeraj'
 import ThemeToggle from './ThemeToggle'
+import { motion } from './motion'
 import { Menu } from 'lucide-react'
 
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const location = useLocation()
 
   return (
     <div className="min-h-screen flex bg-slate-950">
@@ -26,7 +28,15 @@ export default function AppLayout() {
         </header>
 
         <main className="flex-1 p-4 lg:p-8 max-w-6xl mx-auto w-full">
-          <Outlet />
+          {/* Route transition — gentle fade/slide on every navigation */}
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <Outlet />
+          </motion.div>
         </main>
       </div>
 

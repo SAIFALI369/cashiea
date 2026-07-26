@@ -18,7 +18,7 @@ interface ConnectedApp {
   created_at: string
 }
 
-const C = { bg: '#fdfbf7', border: '#e8e2d5', blue: '#0099ff', green: '#10b981', text: '#1a1a1a', muted: '#9ca3af', amber: '#f59e0b', red: '#ef4444' }
+const C = { bg: 'rgb(var(--paper))', border: 'rgb(var(--line))', blue: 'rgb(var(--accent))', green: 'rgb(var(--positive))', text: 'rgb(var(--fg))', muted: 'rgb(var(--fg-subtle))', amber: 'rgb(var(--warning))', red: 'rgb(var(--negative))' }
 
 const statusInfo: Record<string, { label: string; color: string }> = {
   connected: { label: 'Connected', color: C.green },
@@ -126,7 +126,7 @@ export default function ConnectApps() {
           const isConnected = status === 'connected'
 
           return (
-            <div key={app.slug} className="rounded-2xl p-6 transition-all" style={{ background: '#fff', border: `1px solid ${C.border}` }}>
+            <div key={app.slug} className="rounded-2xl p-6 transition-all" style={{ background: 'rgb(var(--surface))', border: `1px solid ${C.border}` }}>
               {/* Header */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -157,7 +157,7 @@ export default function ConnectApps() {
               {/* Actions */}
               <div className="flex gap-2">
                 {!isConnected ? (
-                  <button onClick={() => setActiveModal(app)} className="flex-1 py-2.5 rounded-xl font-semibold text-white text-sm transition-all hover:scale-[1.02] flex items-center justify-center gap-2" style={{ background: `linear-gradient(135deg, ${C.blue}, #00d4ff)` }}>
+                  <button onClick={() => setActiveModal(app)} className="flex-1 py-2.5 rounded-xl font-semibold text-white text-sm transition-all hover:scale-[1.02] flex items-center justify-center gap-2" style={{ background: `linear-gradient(135deg, ${C.blue}, rgb(var(--gold)))` }}>
                     <Plus className="w-4 h-4" /> Add {app.name}
                   </button>
                 ) : (
@@ -165,7 +165,7 @@ export default function ConnectApps() {
                     <button onClick={() => handleTest(app.slug)} disabled={testing === app.slug} className="px-4 py-2.5 rounded-xl font-medium text-sm transition-all" style={{ background: C.bg, color: C.text, border: `1px solid ${C.border}` }}>
                       {testing === app.slug ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                     </button>
-                    <button onClick={() => handleDisconnect(app.slug)} disabled={disconnecting === app.slug} className="flex-1 py-2.5 rounded-xl font-medium text-sm transition-all" style={{ background: C.red + '10', color: C.red, border: `1px solid ${C.red}20` }}>
+                    <button onClick={() => handleDisconnect(app.slug)} disabled={disconnecting === app.slug} className="flex-1 py-2.5 rounded-xl font-medium text-sm transition-all" style={{ background: C.red + '10', color: C.red, border: `1px solid rgb(var(--negative) / 0.13)` }}>
                       {disconnecting === app.slug ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : <><Trash2 className="w-4 h-4 inline mr-1" /> Disconnect</>}
                     </button>
                   </>
@@ -177,7 +177,7 @@ export default function ConnectApps() {
       </div>
 
       {/* Coming soon section */}
-      <div className="rounded-2xl p-6 text-center" style={{ background: '#fff', border: `1px dashed ${C.border}` }}>
+      <div className="rounded-2xl p-6 text-center" style={{ background: 'rgb(var(--surface))', border: `1px dashed ${C.border}` }}>
         <p className="text-sm font-medium mb-1" style={{ color: C.muted }}>More apps coming soon</p>
         <p className="text-xs" style={{ color: C.muted }}>Gmail, Razorpay, Tally, Shopify, and more</p>
       </div>
