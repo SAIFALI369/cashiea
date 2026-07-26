@@ -7,7 +7,7 @@ const certifications = [
   { icon: Shield, name: 'SOC 2 Type II', desc: 'Security, availability, and confidentiality controls audited annually.', color: 'text-green-400' },
   { icon: FileCheck, name: 'CCPA', desc: 'California Consumer Privacy Act — opt-out of data sale and access controls.', color: 'text-purple-400' },
   { icon: KeyRound, name: 'ISO 27001', desc: 'Information security management system certified.', color: 'text-amber-400' },
-  { icon: Globe, name: 'HIPAA-Ready', desc: 'Encryption at rest and in transit for sensitive health data workflows.', color: 'text-cyan-400' },
+  { icon: Globe, name: 'DPDP-Aligned', desc: 'Aligned with India\'s Digital Personal Data Protection Act for customer data privacy.', color: 'text-cyan-400' },
   { icon: Server, name: 'PCI DSS', desc: 'Payments processed by Stripe — we never touch raw card data.', color: 'text-pink-400' },
 ]
 
