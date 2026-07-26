@@ -40,6 +40,11 @@ const Support = lazy(() => import('./pages/Support'))
 const Privacy = lazy(() => import('./pages/Privacy'))
 const Terms = lazy(() => import('./pages/Terms'))
 const Onboarding = lazy(() => import('./pages/Onboarding'))
+const AccountPage = lazy(() => import('./pages/Account'))
+const AboutPage = lazy(() => import('./pages/About'))
+const SuggestionsPage = lazy(() => import('./pages/Suggestions'))
+const NotificationsPage = lazy(() => import('./pages/Notifications'))
+const PermissionsPage = lazy(() => import('./pages/Permissions'))
 
 /** Full-page fallback for the initial/public route load. */
 function FullPageFallback() {
@@ -53,7 +58,6 @@ function FullPageFallback() {
 function App() {
   const { user } = useAuth()
 
-  // Show a friendly setup screen instead of breaking if env vars are missing.
   if (!supabaseConfigured) {
     return <SetupScreen />
   }
@@ -108,6 +112,11 @@ function App() {
           <Route path="subscription" element={<Subscription />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="support" element={<Support />} />
+          <Route path="account" element={<AccountPage />} />
+          <Route path="about" element={<AboutPage />} />
+          <Route path="suggestions" element={<SuggestionsPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
+          <Route path="permissions" element={<PermissionsPage />} />
         </Route>
 
         {/* Fallback */}

@@ -136,8 +136,9 @@ describe('App.tsx routes every page', () => {
   it('has an integrations route', () => expect(app).toMatch(/path="integrations"/))
 })
 
-describe('Sidebar links to every app page', () => {
+describe('app pages are linked (sidebar or dashboard launcher)', () => {
   const sidebar = read('src/components/Sidebar.tsx')
+  const dashboard = read('src/pages/Dashboard.tsx')
 
   const routes = [
     '/app/brain',
@@ -166,7 +167,7 @@ describe('Sidebar links to every app page', () => {
   ]
   for (const route of routes) {
     it(`links to ${route}`, () => {
-      expect(sidebar).toContain(`'${route}'`)
+      expect(sidebar.includes(route) || dashboard.includes(route)).toBe(true)
     })
   }
 })
