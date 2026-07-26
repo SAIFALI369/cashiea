@@ -25,6 +25,18 @@ function render(md: string) {
   })
 }
 
+function useTypewriter(full: string, typing: boolean) {
+  const [n, setN] = useState(typing ? 0 : full.length)
+  useEffect(() => {
+    if (!typing) { setN(full.length); return }
+    setN(0)
+    const step = Math.max(2, Math.ceil(full.length / 60))
+    const id = setInterval(() => setN((p) => { const nx = p + step; if (nx >= full.length) { clearInterval(id); return full.length } return nx }), 16)
+    return () => clearInterval(id)
+  }, [full, typing])
+  return full.slice(0, n)
+}
+
 export default function AIAssistant() {
   const [params] = useSearchParams()
   const scope = params.get('scope') || undefined
@@ -36,6 +48,11 @@ export default function AIAssistant() {
   const [focused, setFocused] = useState(false)
   const [convos, setConvos] = useState<Convo[]>([])
   const [showHistory, setShowHistory] = useState(false)
+  const [typing, setTyping] = useState(false)
+  const lastIdx = messages.length - 1
+  const lastIsMeraj = lastIdx >= 0 && messages[lastIdx].role === 'meraj'
+  const partial = useTypewriter(lastIsMeraj ? messages[lastIdx].text : '', typing)
+  useEffect(() => { if (typing && lastIsMeraj && partial.length >= messages[lastIdx].text.length) setTyping(false) }, [partial, typing, lastIsMeraj, messages])
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -56,7 +73,7 @@ export default function AIAssistant() {
     try { localStorage.setItem(STORE, JSON.stringify(next.slice(0, 5))) } catch { /* ignore */ }
   }
 
-  const mood: MerajMood = loading ? 'working' : focused || input.trim() ? 'look' : 'idle'
+  const mood: MerajMood = loading || typing ? 'working' : focused || input.trim() ? 'look' : 'idle'
 
   const send = async () => {
     const q = input.trim()
@@ -69,6 +86,7 @@ export default function AIAssistant() {
       const reply = await askAssistant(q, false, scope)
       const done = [...next, { role: 'meraj' as const, text: reply }]
       setMessages(done)
+      setTyping(true)
       // save/refresh conversation in history (cap 5)
       const existingIdx = convos.findIndex((c) => c.msgs === messages || (c.msgs.length === next.length - 1 && c.msgs.every((m, i) => messages[i] && m.text === messages[i].text)))
       const convo: Convo = { id: crypto.randomUUID(), title: q.slice(0, 48), msgs: done, ts: Date.now(), scope }
@@ -142,7 +160,7 @@ export default function AIAssistant() {
             ) : (
               <div key={i} className="flex justify-start">
                 <div className="rounded-xl rounded-bl-sm bg-surface-2 border border-line border-l-2 border-l-accent px-4 py-3 max-w-[88%]">
-                  <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: render(m.text) }} />
+                  <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: render(i === lastIdx && typing ? partial + (typing ? "▌" : "") : m.text) }} />
                 </div>
               </div>
             )

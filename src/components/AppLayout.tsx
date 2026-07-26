@@ -2,6 +2,7 @@ import { Suspense, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import FloatingMeraj from './FloatingMeraj'
+import TouchRipple from './TouchRipple'
 import ThemeToggle from './ThemeToggle'
 import { motion } from './motion'
 import Skeleton from './ui/Skeleton'
@@ -53,6 +54,7 @@ export default function AppLayout() {
       </div>
 
       {/* Floating Meraj AI assistant — draggable launcher, available on every page */}
+      <TouchRipple />
       <FloatingMeraj />
     </div>
   )

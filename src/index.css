@@ -60,7 +60,7 @@
   }
 
   * { @apply box-border; }
-  html { -webkit-text-size-adjust: 100%; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 
   /* ═══ Mobile keyboard fix ═══
      On iOS Safari (and some Android browsers) the on-screen keyboard
@@ -83,6 +83,8 @@
   body {
     @apply font-sans antialiased bg-paper text-fg;
     text-rendering: optimizeLegibility;
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
   h1, h2, h3, h4 { @apply tracking-tight; }
@@ -93,6 +95,12 @@
    SHARED PRIMITIVES — soft elevation, disciplined radii, calm motion.
    ════════════════════════════════════════════════════════════════ */
 @layer components {
+  .scroll-area {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    scroll-behavior: smooth;
+  }
+
   .card {
     @apply bg-surface border border-line rounded-xl shadow-soft
            transition-[transform,box-shadow,border-color] duration-200 ease-out;
