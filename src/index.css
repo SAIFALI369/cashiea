@@ -61,6 +61,25 @@
 
   * { @apply box-border; }
   html { -webkit-text-size-adjust: 100%; }
+
+  /* ═══ Mobile keyboard fix ═══
+     On iOS Safari (and some Android browsers) the on-screen keyboard
+     can dismiss itself after the first character if the focused input
+     ends up off-screen. These rules make sure any focused input keeps
+     comfortable scroll-margin on top and bottom so the browser's
+     auto-scroll lands it inside the visible viewport — not under the
+     keyboard and not flush against the top edge. */
+  .cashiea-focus-scroll:focus,
+  .cashiea-focus-scroll:focus-visible {
+    scroll-margin-top: 80px;
+    scroll-margin-bottom: 120px;
+  }
+  /* Allow the form column to be scrolled all the way to the top on
+     mobile so the focused input is always reachable. */
+  .cashiea-form-scroll {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
   body {
     @apply font-sans antialiased bg-paper text-fg;
     text-rendering: optimizeLegibility;
