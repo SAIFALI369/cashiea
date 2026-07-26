@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { askAssistant } from '../lib/ai'
+import { MerajMark } from '../components/MerajMark'
 import PageHeader from '../components/ui/PageHeader'
 import { Sparkles, Send, Loader2, User } from 'lucide-react'
 import DOMPurify from 'dompurify'
@@ -30,14 +31,12 @@ function renderSafeMarkdown(md: string): string {
 
 function MerajAvatar({ size = 36 }: { size?: number }) {
   return (
-    <img
-      src="/meraj-avatar.png"
-      alt="Meraj"
-      width={size}
-      height={size}
+    <span
+      className="inline-flex items-center justify-center rounded-full bg-accent-soft text-accent ring-1 ring-accent/25 flex-shrink-0"
       style={{ width: size, height: size }}
-      className="rounded-full object-cover ring-2 ring-brand-500/40 bg-slate-800 flex-shrink-0"
-    />
+    >
+      <MerajMark size={Math.round(size * 0.62)} />
+    </span>
   )
 }
 

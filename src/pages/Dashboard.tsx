@@ -9,6 +9,7 @@ import {
 import { PLANS } from '../lib/types'
 import type { ActivityLog, Transaction, Product, Customer } from '../lib/types'
 import { askAssistant } from '../lib/ai'
+import { MerajMark } from '../components/MerajMark'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 
@@ -167,7 +168,7 @@ export default function Dashboard() {
       {/* Meraj — AI assistant on the dashboard */}
       <div className="card p-6 mb-6 bg-gradient-to-br from-brand-600/10 to-transparent border-brand-600/30">
         <div className="flex items-center gap-3 mb-4">
-          <img src="/meraj-avatar.png" alt="Meraj" className="w-11 h-11 rounded-full ring-2 ring-brand-500/40 bg-slate-800 flex-shrink-0" />
+          <span className="w-11 h-11 rounded-full bg-accent-soft text-accent ring-1 ring-accent/25 flex-shrink-0 inline-flex items-center justify-center"><MerajMark size={26} /></span>
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-white flex items-center gap-2">Meraj <span className="text-xs font-normal text-slate-400">— your Cashiea AI assistant</span></h3>
             <p className="text-xs text-slate-400">Ask about today's sales, stock, or customers — or get a quick briefing.</p>

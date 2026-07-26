@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import FloatingMeraj from './FloatingMeraj'
+import ThemeToggle from './ThemeToggle'
 import { Menu } from 'lucide-react'
 
 export default function AppLayout() {
@@ -21,6 +22,7 @@ export default function AppLayout() {
             <Menu className="w-6 h-6" />
           </button>
           <span className="font-bold text-white">Cashiea</span>
+          <div className="ml-auto"><ThemeToggle /></div>
         </header>
 
         <main className="flex-1 p-4 lg:p-8 max-w-6xl mx-auto w-full">

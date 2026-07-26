@@ -1,69 +1,128 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ════════════════════════════════════════════════════════════════
+   THEME TOKENS — light (default) + dark (.dark on <html>)
+   Warm, muted, premium. Never pure #000 / #FFF as a surface.
+   ════════════════════════════════════════════════════════════════ */
 @layer base {
-  * {
-    @apply box-border;
+  :root {
+    --paper: 247 242 233;        /* warm ivory app background */
+    --paper-deep: 238 231 217;
+    --surface: 254 251 245;      /* soft white card */
+    --surface-2: 245 239 228;    /* secondary card / hover */
+    --surface-3: 238 230 215;
+    --line: 226 217 201;         /* warm grey hairline */
+    --line-2: 214 204 185;
+    --fg: 41 37 31;              /* warm near-black text */
+    --fg-muted: 92 84 73;
+    --fg-subtle: 132 123 108;
+    --accent: 161 124 71;        /* bronze / champagne */
+    --accent-strong: 132 99 54;  /* deep bronze */
+    --accent-soft: 233 222 199;  /* tinted wash */
+    --accent-fg: 252 248 240;    /* readable text on accent (dark-on-gold works too) */
+    --gold: 189 156 99;
+    --copper: 167 110 63;
+    --olive: 121 128 92;
+    --positive: 74 118 92;       /* warm emerald */
+    --negative: 165 79 71;       /* muted clay red */
+    --warning: 178 132 58;       /* dusty amber */
+    --info: 92 110 130;
+    --shadow: 60 50 35;          /* warm shadow base */
   }
+
+  .dark {
+    --paper: 22 19 16;           /* espresso */
+    --paper-deep: 16 13 11;
+    --surface: 33 28 23;         /* dark stone card */
+    --surface-2: 43 37 30;
+    --surface-3: 54 46 38;
+    --line: 58 49 40;
+    --line-2: 74 63 51;
+    --fg: 236 229 216;           /* warm off-white */
+    --fg-muted: 170 159 141;
+    --fg-subtle: 128 119 103;
+    --accent: 203 164 94;        /* champagne gold (brighter on dark) */
+    --accent-strong: 214 178 108;
+    --accent-soft: 60 49 32;
+    --accent-fg: 22 19 16;       /* dark text on gold */
+    --gold: 214 178 108;
+    --copper: 196 138 88;
+    --olive: 142 154 110;
+    --positive: 111 166 126;
+    --negative: 199 114 104;
+    --warning: 201 149 80;
+    --info: 130 150 170;
+    --shadow: 0 0 0;
+  }
+
+  * { @apply box-border; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
-    @apply font-sans antialiased;
+    @apply font-sans antialiased bg-paper text-fg;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
+  h1, h2, h3, h4 { @apply tracking-tight; }
+  ::selection { background: rgb(var(--accent) / 0.22); }
 }
 
+/* ════════════════════════════════════════════════════════════════
+   SHARED PRIMITIVES — soft elevation, disciplined radii, calm motion.
+   ════════════════════════════════════════════════════════════════ */
 @layer components {
+  .card {
+    @apply bg-surface border border-line rounded-2xl shadow-soft
+           transition-[transform,box-shadow,border-color] duration-200 ease-out;
+  }
+  .card-hover { @apply hover:-translate-y-0.5 hover:shadow-lift hover:border-line-2; }
+  .card-press { @apply active:translate-y-0 active:shadow-soft; }
+
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-white
-           bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400
-           transition-all duration-200 shadow-lg shadow-brand-900/30 hover:shadow-brand-700/40
-           disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm
+           bg-accent-strong text-accent-fg
+           shadow-soft hover:bg-accent hover:shadow-lift
+           transition-all duration-150 ease-out
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-accent-strong disabled:hover:shadow-soft;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold
-           bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 hover:border-slate-600
-           transition-all duration-200 disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm
+           bg-surface-2 text-fg border border-line hover:bg-surface-3 hover:border-line-2
+           transition-all duration-150 ease-out disabled:opacity-50;
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium
-           text-slate-400 hover:text-white hover:bg-slate-800 transition-all duration-200;
+    @apply inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-medium text-sm
+           text-fg-muted hover:text-fg hover:bg-surface-2 transition-all duration-150 ease-out;
   }
+
   .input-field {
-    @apply w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-100
-           placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500
-           focus:border-transparent transition-all duration-200;
+    @apply w-full px-4 py-3 rounded-xl bg-surface border border-line text-fg text-sm
+           placeholder:text-fg-subtle
+           focus:outline-none focus:ring-4 focus:ring-accent/15 focus:border-accent
+           transition-all duration-150 ease-out;
   }
-  .card {
-    @apply bg-slate-900/60 backdrop-blur border border-slate-800 rounded-2xl;
-  }
-  .label {
-    @apply block text-sm font-medium text-slate-300 mb-1.5;
-  }
+  .label { @apply block text-sm font-medium text-fg-muted mb-1.5; }
+
+  /* Subtle top accent line for primary modules (Linear/Stripe cue). */
+  .module { @apply card relative overflow-hidden; }
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-track {
-  background: #0f172a;
-}
-::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #475569;
-}
+/* Scrollbar — quiet, theme-aware. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgb(var(--line-2) / 0.7); border-radius: 9999px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--fg-subtle) / 0.6); background-clip: padding-box; }
 
-/* Markdown content rendering in reports/summaries */
-.prose-content h1 { @apply text-2xl font-bold text-white mb-3 mt-4; }
-.prose-content h2 { @apply text-xl font-bold text-white mb-2 mt-4; }
-.prose-content h3 { @apply text-lg font-semibold text-slate-100 mb-2 mt-3; }
-.prose-content p { @apply text-slate-300 mb-3 leading-relaxed; }
-.prose-content ul { @apply list-disc list-inside mb-3 text-slate-300 space-y-1; }
-.prose-content ol { @apply list-decimal list-inside mb-3 text-slate-300 space-y-1; }
-.prose-content strong { @apply font-semibold text-white; }
-.prose-content code { @apply bg-slate-800 px-1.5 py-0.5 rounded text-brand-300 text-sm; }
+/* Markdown rendering (reports / summaries / Meraj replies). */
+.prose-content h1 { @apply text-2xl font-bold text-fg mb-3 mt-4; }
+.prose-content h2 { @apply text-xl font-bold text-fg mb-2 mt-4; }
+.prose-content h3 { @apply text-lg font-semibold text-fg mb-2 mt-3; }
+.prose-content p { @apply text-fg-muted mb-3 leading-relaxed; }
+.prose-content ul { @apply list-disc list-inside mb-3 text-fg-muted space-y-1; }
+.prose-content ol { @apply list-decimal list-inside mb-3 text-fg-muted space-y-1; }
+.prose-content strong { @apply font-semibold text-fg; }
+.prose-content code { @apply bg-surface-2 px-1.5 py-0.5 rounded text-accent text-sm font-mono; }
+.prose-content a { @apply text-accent underline underline-offset-2; }

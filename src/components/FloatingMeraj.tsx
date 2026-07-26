@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { askAssistant, runQuickTask, type QuickTaskMode } from '../lib/ai'
+import { MerajMark } from './MerajMark'
 import {
   X, Send, Loader2, AlertTriangle, FileBarChart, MessageCircle, Receipt, Sparkles, ArrowUpRight,
 } from 'lucide-react'
@@ -153,11 +154,11 @@ export default function FloatingMeraj() {
           onPointerUp={onPointerUp}
           aria-label="Open Meraj AI assistant (drag to move)"
           title="Meraj — tap to open, drag to move"
-          className="fixed z-40 w-[60px] h-[60px] rounded-full shadow-xl shadow-brand-900/40 hover:scale-105 transition-transform touch-none select-none ring-2 ring-brand-500/50 bg-slate-900 p-0.5"
+          className="fixed z-40 w-[60px] h-[60px] rounded-full shadow-float hover:scale-105 active:scale-95 transition-transform touch-none select-none bg-gradient-to-br from-accent to-accent-strong text-accent-fg flex items-center justify-center"
           style={{ left: pos.x, top: pos.y }}
         >
-          <img src="/meraj-avatar.png" alt="Meraj" className="w-full h-full rounded-full object-cover pointer-events-none" draggable={false} />
-          <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-400 rounded-full border-2 border-slate-950 animate-pulse" />
+          <MerajMark size={32} className="pointer-events-none" />
+          <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-positive rounded-full border-2 border-paper animate-pulse" />
         </button>
       )}
 
@@ -170,7 +171,7 @@ export default function FloatingMeraj() {
             <button onClick={() => setOpen(false)} aria-label="Close" className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 flex-shrink-0">
               <X className="w-4 h-4" />
             </button>
-            <img src="/meraj-avatar.png" alt="Meraj" className="w-8 h-8 rounded-full ring-2 ring-brand-500/40 bg-slate-800 flex-shrink-0" />
+            <span className="w-8 h-8 rounded-full bg-accent-soft text-accent ring-1 ring-accent/25 flex-shrink-0 inline-flex items-center justify-center"><MerajMark size={20} /></span>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-white text-sm leading-tight">Meraj</p>
               <p className="text-[11px] text-slate-400 leading-tight">Your Cashiea AI assistant</p>
@@ -198,7 +199,7 @@ export default function FloatingMeraj() {
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 min-h-[180px]">
             {messages.length === 0 && (
               <div className="text-center py-6">
-                <img src="/meraj-avatar.png" alt="Meraj" className="w-12 h-12 rounded-full mx-auto ring-2 ring-brand-500/40 bg-slate-800" />
+                <span className="w-12 h-12 rounded-full bg-accent-soft text-accent ring-1 ring-accent/25 mx-auto inline-flex items-center justify-center"><MerajMark size={28} /></span>
                 <p className="text-sm text-slate-300 mt-3 font-medium">Hi, I'm Meraj 👋</p>
                 <p className="text-xs text-slate-500 mt-1 px-2">Ask about sales, stock or customers — or tap a quick action above.</p>
               </div>

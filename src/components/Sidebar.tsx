@@ -35,6 +35,7 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import clsx from 'clsx'
+import ThemeToggle from './ThemeToggle'
 
 interface NavItem {
   to: string
@@ -200,9 +201,12 @@ export default function Sidebar({
               <p className="text-xs text-brand-400">{profile?.company_name || 'AI Platform'}</p>
             </div>
           </div>
-          <button onClick={onClose} className="lg:hidden text-slate-400 hover:text-white">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <button onClick={onClose} className="lg:hidden text-slate-400 hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Nav */}

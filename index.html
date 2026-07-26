@@ -5,8 +5,25 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="Cashiea — POS billing, customer tracking & AI automation for India's small shops. Voice invoicing, WhatsApp reports, daily closing summaries. Built for Tier 2/3 cities." />
-    <meta name="theme-color" content="#2563eb" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f2e9" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#161310" />
     <title>Cashiea — Your Retail Business, Automated</title>
+    <script>
+      // No-flash theme bootstrap — must run before React paints.
+      (function () {
+        try {
+          var k = 'cashiea-theme';
+          var s = localStorage.getItem(k);
+          var t = (s === 'light' || s === 'dark')
+            ? s
+            : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+          if (t === 'dark') document.documentElement.classList.add('dark');
+          document.documentElement.style.colorScheme = t;
+        } catch (e) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
