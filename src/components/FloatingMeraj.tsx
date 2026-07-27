@@ -71,7 +71,7 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
   const confirmAction = async (pending: any) => {
     if (loading) return
     setLoading(true)
-    setMessages((m) => [...m, { role: 'user' as const, text: '✓ ' + (pending?.type === 'create_invoice' ? 'Create it' : 'Add it') }])
+    setMessages((m) => [...m, { role: 'user' as const, text: '✓ ' + (pending?.type === 'create_invoice' ? 'Create it' : pending?.type === 'send_whatsapp' ? 'Send it' : 'Add it') }])
     try {
       const res = await askAssistant('', false, undefined, 'task', pending, pageContext)
       setMessages((m) => [...m, { role: 'meraj' as const, text: res.reply }])
@@ -171,7 +171,7 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
                           {m.pending && (
                             <div className="mt-2.5 flex gap-2">
                               <button onClick={() => confirmAction(m.pending)} disabled={loading} className="btn-primary text-xs flex-1 h-8 px-2">
-                                <Sparkles className="w-3.5 h-3.5" /> {m.pending?.type === 'create_invoice' ? 'Create it' : 'Add it'}
+                                <Sparkles className="w-3.5 h-3.5" /> {m.pending?.type === 'create_invoice' ? 'Create it' : m.pending?.type === 'send_whatsapp' ? 'Send it' : 'Add it'}
                               </button>
                               <button onClick={() => cancelAction(i)} className="btn-secondary text-xs h-8 px-2">Cancel</button>
                             </div>

@@ -47,3 +47,9 @@ verify_jwt = false
 
 [functions.invoice-reminders]
 verify_jwt = false
+
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.canva-oauth]
+verify_jwt = false

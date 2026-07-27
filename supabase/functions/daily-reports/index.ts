@@ -20,14 +20,12 @@
 // ════════════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendWhatsAppText } from "../_shared/whatsapp.ts";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
-
-const WHATSAPP_TOKEN = Deno.env.get("WHATSAPP_TOKEN");
-const WHATSAPP_PHONE_NUMBER_ID = Deno.env.get("WHATSAPP_PHONE_NUMBER_ID");
 
 // ─── Helpers ────────────────────────────────────────────────────
 function istDate(): string {
@@ -122,41 +120,6 @@ function formatMessage(shopName: string, dateStr: string, data: ReturnType<typeo
   return lines.join("\n");
 }
 
-// ─── Send via WhatsApp Cloud API ────────────────────────────────
-async function sendWhatsApp(toPhone: string, message: string): Promise<{ ok: boolean; error?: string }> {
-  if (!WHATSAPP_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
-    return { ok: false, error: "WhatsApp Cloud API not configured (WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID missing)" };
-  }
-  // Normalize: strip non-digits, prefix 91 if 10-digit Indian
-  let num = toPhone.replace(/[^\d]/g, "");
-  if (num.length === 10) num = "91" + num;
-  try {
-    const res = await fetch(
-      `https://graph.facebook.com/v20.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${WHATSAPP_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to: num,
-          type: "text",
-          text: { body: message },
-        }),
-      }
-    );
-    if (!res.ok) {
-      const errBody = await res.text();
-      return { ok: false, error: `WA API ${res.status}: ${errBody.slice(0, 200)}` };
-    }
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: `Network: ${e.message}` };
-  }
-}
-
 // ─── Main ───────────────────────────────────────────────────────
 Deno.serve(async (req) => {
   // Service-role only (cron or manual trigger)
@@ -233,7 +196,7 @@ Deno.serve(async (req) => {
         }
 
         // Attempt send
-        const result = await sendWhatsApp(shop.whatsapp_number!, message);
+        const result = await sendWhatsAppText(shop.whatsapp_number!, message);
         if (result.ok) {
           await supabase.from("daily_reports").update({
             status: "sent", sent_at: new Date().toISOString(), error: null,

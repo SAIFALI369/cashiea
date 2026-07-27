@@ -97,7 +97,7 @@ export default function AIAssistant() {
   const confirmAction = async (pending: any) => {
     if (loading) return
     setLoading(true)
-    setMessages((m) => [...m, { role: 'user' as const, text: '✓ Create it' }])
+    setMessages((m) => [...m, { role: 'user' as const, text: '✓ ' + (pending?.type === 'create_invoice' ? 'Create it' : pending?.type === 'send_whatsapp' ? 'Send it' : 'Add it') }])
     try {
       const res = await askAssistant('', false, scope, 'task', pending)
       setMessages((m) => [...m, { role: 'meraj' as const, text: res.reply }])
@@ -177,7 +177,7 @@ export default function AIAssistant() {
                   </div>
                   {m.pending && (
                     <div className="mt-3 flex gap-2">
-                      <button onClick={() => confirmAction(m.pending)} disabled={loading} className="btn-primary text-sm flex-1 h-9"><Sparkles className="w-4 h-4" /> {m.pending?.type === "create_invoice" ? "Create it" : "Add it"}</button>
+                      <button onClick={() => confirmAction(m.pending)} disabled={loading} className="btn-primary text-sm flex-1 h-9"><Sparkles className="w-4 h-4" /> {m.pending?.type === "create_invoice" ? "Create it" : m.pending?.type === "send_whatsapp" ? "Send it" : "Add it"}</button>
                       <button onClick={() => cancelAction(i)} className="btn-secondary text-sm h-9">Cancel</button>
                     </div>
                   )}

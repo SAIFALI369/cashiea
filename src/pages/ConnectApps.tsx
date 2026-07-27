@@ -75,8 +75,11 @@ export default function ConnectApps() {
 
   const startAuth = (app: AppCatalogEntry, permission: PermissionMode) => {
     setActiveModal(null)
-    const fnUrl = (import.meta.env.VITE_SUPABASE_URL || '').replace('.supabase.co', '.functions.supabase.co') + '/google-oauth'
-    const url = `${fnUrl}?action=authorize&user=${profile!.id}&provider=${oauthProviderForSlug(app.slug)}&permission=${permission}`
+    const base = (import.meta.env.VITE_SUPABASE_URL || '').replace('.supabase.co', '.functions.supabase.co')
+    const fnUrl = app.slug === 'canva' ? `${base}/canva-oauth` : `${base}/google-oauth`
+    const url = app.slug === 'canva'
+      ? `${fnUrl}?action=authorize&user=${profile!.id}`
+      : `${fnUrl}?action=authorize&user=${profile!.id}&provider=${oauthProviderForSlug(app.slug)}&permission=${permission}`
     window.location.href = url
   }
 

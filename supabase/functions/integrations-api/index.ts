@@ -19,6 +19,7 @@ import { corsHeaders, json } from "../_shared/retry.ts";
 import * as SheetsConnector from "../_shared/connectors/google-sheets.ts";
 import { refreshGoogleToken } from "../_shared/google.ts";
 import { getDriveToken, readDriveFile } from "../_shared/connectors/google-drive.ts";
+import { refreshCanvaToken, listDesigns as canvaListDesigns } from "../_shared/canva.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -87,6 +88,15 @@ Deno.serve(async (req) => {
           p_status: ok ? 'success' : 'failed', p_error_message: ok ? null : 'Token expired — reconnect',
         });
         return json({ ok, message: ok ? 'Gmail connection healthy' : 'Token expired — reconnect' });
+      }
+      // Canva uses its own PKCE OAuth tokens — verify via a token refresh.
+      if (app_slug === 'canva') {
+        const ok = !!await refreshCanvaToken(supabase, connection);
+        await supabase.rpc('log_integration_event', {
+          p_user_id: user.id, p_app_slug: 'canva', p_action_type: 'connection_tested',
+          p_status: ok ? 'success' : 'failed', p_error_message: ok ? null : 'Token expired — reconnect',
+        });
+        return json({ ok, message: ok ? 'Canva connection healthy' : 'Token expired — reconnect' });
       }
       const result = await SheetsConnector.testConnection(supabase, connection);
       await supabase.rpc('log_integration_event', {
@@ -228,6 +238,14 @@ Deno.serve(async (req) => {
         ));
         return json({ files: out });
       }
+    }
+
+    // ─── CANVA: list designs ──────────────────────────────────────
+    if (action === 'list_canva_designs' && app_slug === 'canva') {
+      const token = await refreshCanvaToken(supabase, connection);
+      if (!token) return json({ error: 'Token expired — reconnect Canva' }, 401);
+      const designs = await canvaListDesigns(token);
+      return json({ designs });
     }
 
     return json({ error: `Unknown action: ${action}` }, 400);

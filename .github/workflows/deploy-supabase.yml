@@ -65,8 +65,14 @@ jobs:
           echo "  ✅ invoice-reminders"
           supabase functions deploy quickbooks-oauth
           echo "  ✅ quickbooks-oauth"
+          supabase functions deploy whatsapp-webhook
+          echo "  ✅ whatsapp-webhook"
+          supabase functions deploy whatsapp-send
+          echo "  ✅ whatsapp-send"
+          supabase functions deploy canva-oauth
+          echo "  ✅ canva-oauth"
           echo ""
-          echo "🎉 ALL 17 FUNCTIONS DEPLOYED!"
+          echo "🎉 ALL 20 FUNCTIONS DEPLOYED!"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 

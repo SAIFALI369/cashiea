@@ -7,7 +7,7 @@
 
 export type PermissionMode = 'read_only' | 'read_write' | 'full_access'
 export type AuthType = 'oauth2' | 'api_key' | 'manual'
-export type AppCategory = 'spreadsheets' | 'email' | 'payments' | 'crm' | 'ecommerce' | 'accounting' | 'storage'
+export type AppCategory = 'spreadsheets' | 'email' | 'payments' | 'crm' | 'ecommerce' | 'accounting' | 'storage' | 'design'
 
 export interface PermissionOption {
   mode: PermissionMode
@@ -133,11 +133,36 @@ export const GOOGLE_DRIVE: AppCatalogEntry = {
   ],
 }
 
+// ─── Canva (Connect API — OAuth 2.0 + PKCE) ──────────────────────
+export const CANVA: AppCatalogEntry = {
+  slug: 'canva',
+  name: 'Canva',
+  category: 'design',
+  description: 'Connect Canva so Meraj can read your designs and assets — the foundation for generating on-brand posters and offers from your shop data.',
+  authType: 'oauth2',
+  enabled: true,
+  oauthScopes: ['design:meta:read', 'design:content:read', 'asset:read', 'profile', 'openid'],
+  iconBg: '#00c4cc',
+  iconText: '#ffffff',
+  iconLetter: 'C',
+  permissions: [
+    {
+      mode: 'read_only',
+      label: 'Read Designs (Read Only)',
+      description: 'Cashiea can view your Canva designs and assets to help create on-brand content. It cannot edit or delete anything.',
+      scopes: ['design:meta:read', 'design:content:read', 'asset:read'],
+      allows: ['View your designs', 'View your uploaded assets'],
+      blocks: ['Edit or delete designs', 'Access other Canva features'],
+    },
+  ],
+}
+
 // ─── The full catalog (add new apps here) ───────────────────────
 export const APP_CATALOG: AppCatalogEntry[] = [
   GOOGLE_SHEETS,
   GMAIL,
   GOOGLE_DRIVE,
+  CANVA,
   // Future apps — added once their auth/data plan is decided:
   // { slug: 'excel', name: 'Excel / OneDrive', ... },  // needs Microsoft Azure app
 ]

@@ -13,6 +13,7 @@ import { callOpenRouter } from "../_shared/openrouter.ts";
 import { callGateway } from "../_shared/ai-gateway.ts";
 import { refreshGoogleToken } from "../_shared/google.ts";
 import { getDriveToken, readDriveFile } from "../_shared/connectors/google-drive.ts";
+import { sendWhatsAppText } from "../_shared/whatsapp.ts";
 
 async function callAI(provider: string, systemPrompt: string, prompt: string): Promise<string> {
   // OpenRouter — auto-fallback chain: Gemini -> Kimi K3 -> Llama -> any free model
@@ -136,6 +137,18 @@ async function getDriveContext(supabase: any, userId: string): Promise<{ name: s
   }
 }
 
+// Recent inbound WhatsApp messages the owner received (stored by the webhook).
+async function getRecentWhatsApp(supabase: any, userId: string): Promise<{ from: string; body: string; date: string }[]> {
+  try {
+    const { data } = await supabase.from("whatsapp_messages")
+      .select("from_phone,body,created_at").eq("user_id", userId).eq("direction", "inbound")
+      .order("created_at", { ascending: false }).limit(6);
+    return (data || []).map((m: any) => ({ from: m.from_phone, body: (m.body || "").slice(0, 200), date: m.created_at }));
+  } catch {
+    return [];
+  }
+}
+
 // Build a compact business snapshot for the AI to reason over
 async function buildContext(supabase: any, userId: string): Promise<string> {
   const now = new Date();
@@ -175,6 +188,8 @@ async function buildContext(supabase: any, userId: string): Promise<string> {
   const recentEmails = await getRecentEmails(supabase, userId);
   // Live Google Drive context (only if the owner connected Drive + picked files).
   const driveFiles = await getDriveContext(supabase, userId);
+  // Recent inbound WhatsApp messages (only present once the webhook is live).
+  const recentWhatsApp = await getRecentWhatsApp(supabase, userId);
 
   return JSON.stringify({
     date: now.toISOString().split("T")[0],
@@ -189,6 +204,7 @@ async function buildContext(supabase: any, userId: string): Promise<string> {
     suppliersOwed: (suppliers.data || []).filter((s: any) => s.outstanding > 0).map((s: any) => ({ name: s.name, outstanding: s.outstanding })),
     recentEmails,
     driveFiles,
+    recentWhatsApp,
   }, null, 1);
 }
 
@@ -204,6 +220,7 @@ Your only job is to help the owner run THEIR shop: sales and revenue, profit and
 - Suggest proactive actions (reorder stock, follow up dormant customers) when relevant.
 - If a specific record is not in the snapshot, say so plainly rather than guessing.
 - If the snapshot includes a "recentEmails" array, the owner has connected Gmail. Use it ONLY when they ask about emails, replies, or customer/supplier messages — and never invent email content that isn't listed.
+- If the snapshot includes a "recentWhatsApp" array, those are inbound WhatsApp messages the owner received. Use them only when relevant. To SEND a WhatsApp, use the send_whatsapp tool (the owner confirms before sending). Free-text business replies only work within 24h of the customer's last message; outside that window Meta requires an approved template.
 - You remember what the owner has told you before (see the memory section). Use those details naturally.
 
 SCOPE — you are this shop's business assistant, NOT a general chatbot:
@@ -299,6 +316,7 @@ const ALL_TOOLS = [{ function_declarations: [
   ...CREATE_INVOICE_TOOL[0].function_declarations,
   { name: "add_product", description: "Add a new product or inventory item to the shop catalog.", parameters: { type: "OBJECT", properties: { name: { type: "STRING", description: "Product name" }, price: { type: "NUMBER", description: "Selling price in rupees" }, sku: { type: "STRING" }, category: { type: "STRING" }, stock_quantity: { type: "NUMBER", description: "Units in stock" }, low_stock_threshold: { type: "NUMBER", description: "Reorder threshold" }, cost: { type: "NUMBER", description: "Cost price in rupees" } }, required: ["name", "price"] } },
   { name: "add_customer", description: "Add a new customer to the customer list.", parameters: { type: "OBJECT", properties: { name: { type: "STRING", description: "Customer name" }, phone: { type: "STRING" }, email: { type: "STRING" }, company: { type: "STRING" } }, required: ["name"] } },
+  { name: "send_whatsapp", description: "Send a WhatsApp message to a phone number — a staff member, customer, or anyone the owner names. Use when the owner asks to send, message, or WhatsApp someone.", parameters: { type: "OBJECT", properties: { to: { type: "STRING", description: "Recipient phone number with country code, e.g. 919876543210" }, message: { type: "STRING", description: "The message text to send" } }, required: ["to", "message"] } },
 ] }];
 
 function computeInvoiceDraft(args: any) {
@@ -394,6 +412,22 @@ Deno.serve(async (req) => {
         await supabase.rpc("increment_api_usage", { user_uuid: user.id });
         return json({ reply: `Done \u2014 **${i.name}** added to your customers. Find them in your Customers page.`, executed: { type: "customer" } });
       }
+      // ── EXECUTE a confirmed WhatsApp send ──
+      if (confirm && confirm.type === "send_whatsapp" && confirm.input) {
+        const { to, message } = confirm.input;
+        const r = await sendWhatsAppText(String(to), String(message));
+        try {
+          await supabase.from("whatsapp_messages").insert({
+            user_id: user.id, to_phone: String(to), body: String(message),
+            direction: "outbound", status: r.ok ? "sent" : "failed",
+            wa_message_id: r.messageId || null, meta: r.error ? { error: r.error } : {},
+          });
+        } catch { /* best-effort log */ }
+        if (!r.ok) return json({ reply: `I couldn't send the WhatsApp: ${r.error}. (Outside the 24-hour window, free text is blocked by Meta — an approved template is needed.)` });
+        await supabase.from("activity_logs").insert({ user_id: user.id, action_type: "summary", description: `Meraj sent a WhatsApp to ${to}`, time_saved_minutes: 3, money_saved: 1, provider: "meraj-task" });
+        await supabase.rpc("increment_api_usage", { user_uuid: user.id });
+        return json({ reply: `Done — WhatsApp sent to ${to}.`, executed: { type: "whatsapp" } });
+      }
       // PREPARE: model decides tool-call vs text reply
       const [ctx2, mem2] = await Promise.all([ buildContext(supabase, user.id), buildMemory(supabase, user.id) ]);
       const tr = await callGeminiToolCall(TASK_SYSTEM + scopeFocus + pageFocus, `Owner: "${message}"\n\n${mem2.block}\n\nSnapshot:\n${ctx2}`, ALL_TOOLS, { feature: "task-invoice" });
@@ -421,6 +455,10 @@ Deno.serve(async (req) => {
           if (args.email) r += `\n**Email:** ${args.email}`;
           r += `\n\nTap **Add it** to save.`;
           return json({ reply: r, pending: { type: "add_customer", input: args, preview: args } });
+        }
+        if (tn === "send_whatsapp") {
+          if (!args.to || !args.message) return json({ reply: "I need a phone number and a message to send. Could you share those?" });
+          return json({ reply: `I'll send this on WhatsApp:\n\n**To:** ${args.to}\n**Message:** ${args.message}\n\nTap **Send it** to confirm.`, pending: { type: "send_whatsapp", input: { to: String(args.to), message: String(args.message) }, preview: args } });
         }
       }
       return json({ reply: tr.value.text || "How can I help?" });
