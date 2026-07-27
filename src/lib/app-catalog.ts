@@ -105,13 +105,41 @@ export const GMAIL: AppCatalogEntry = {
   ],
 }
 
+// ─── Google Drive (file-picker model — drive.file, no verification) ──
+export const GOOGLE_DRIVE: AppCatalogEntry = {
+  slug: 'google-drive',
+  name: 'Google Drive',
+  category: 'storage',
+  description: 'Pick specific files from your Google Drive for Meraj to read as context. You choose exactly what Cashiea can see — it never browses the rest of your Drive.',
+  authType: 'oauth2',
+  enabled: true,
+  oauthScopes: [
+    'https://www.googleapis.com/auth/drive.file',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'openid',
+  ],
+  iconBg: '#1a73e8',
+  iconText: '#ffffff',
+  iconLetter: 'D',
+  permissions: [
+    {
+      mode: 'read_only',
+      label: 'Selected Files (Read Only)',
+      description: 'Cashiea can read only the files you pick with the Google file picker. It cannot see anything else, and cannot edit or delete any file.',
+      scopes: ['https://www.googleapis.com/auth/drive.file'],
+      allows: ['Read content of files you pick', 'See names of picked files'],
+      blocks: ['Browse all of your Drive', 'Edit or delete files', 'Access other Google services'],
+    },
+  ],
+}
+
 // ─── The full catalog (add new apps here) ───────────────────────
 export const APP_CATALOG: AppCatalogEntry[] = [
   GOOGLE_SHEETS,
   GMAIL,
+  GOOGLE_DRIVE,
   // Future apps — added once their auth/data plan is decided:
-  // { slug: 'google-drive', name: 'Google Drive', ... },   // awaiting scope decision
-  // { slug: 'excel', name: 'Excel / OneDrive', ... },       // needs Microsoft Azure app
+  // { slug: 'excel', name: 'Excel / OneDrive', ... },  // needs Microsoft Azure app
 ]
 
 export function getAppBySlug(slug: string): AppCatalogEntry | undefined {
@@ -124,5 +152,7 @@ export function getPermissionOption(app: AppCatalogEntry, mode: PermissionMode):
 
 /** Map a catalog slug to the OAuth provider key the google-oauth function expects. */
 export function oauthProviderForSlug(slug: string): string {
-  return slug === 'gmail' ? 'gmail' : 'google_sheets'
+  if (slug === 'gmail') return 'gmail'
+  if (slug === 'google-drive') return 'google_drive'
+  return 'google_sheets'
 }

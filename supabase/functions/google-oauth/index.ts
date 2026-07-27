@@ -30,13 +30,13 @@ const CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET");
 const APP_URL = Deno.env.get("APP_URL") || "http://localhost:5173";
 const REDIRECT_URI = `${Deno.env.get("SUPABASE_URL")!.replace(".supabase.co", ".functions.supabase.co")}/google-oauth`;
 
-// Scopes: Gmail read (messages) + Sheets read + user email/profile
-const SCOPES = [
-  "https://www.googleapis.com/auth/gmail.readonly",
-  "https://www.googleapis.com/auth/spreadsheets.readonly",
-  "https://www.googleapis.com/auth/userinfo.email",
-  "openid",
-].join(" ");
+// Per-provider scopes — each consent screen asks only for what that app needs.
+function scopesFor(provider: string): string {
+  const base = ["https://www.googleapis.com/auth/userinfo.email", "openid"];
+  if (provider === "gmail") return [...base, "https://www.googleapis.com/auth/gmail.readonly"].join(" ");
+  if (provider === "google_drive") return [...base, "https://www.googleapis.com/auth/drive.file"].join(" ");
+  return [...base, "https://www.googleapis.com/auth/spreadsheets.readonly"].join(" "); // google_sheets (default)
+}
 
 function cors() {
   return {
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
         client_id: CLIENT_ID,
         redirect_uri: REDIRECT_URI,
         response_type: "code",
-        scope: SCOPES,
+        scope: scopesFor(provider),
         access_type: "offline",      // request a refresh token
         prompt: "consent",           // force consent so refresh token is returned
         state: `${userId}|${provider}|${permission}`,
@@ -160,8 +160,8 @@ Deno.serve(async (req) => {
       }
 
       // Also store in connected_apps (the new, richer data model)
-      const appSlug = provider === "google_sheets" ? "google-sheets" : provider;
-      const appName = provider === "google_sheets" ? "Google Sheets" : "Gmail";
+      const appSlug = provider === "google_sheets" ? "google-sheets" : provider === "google_drive" ? "google-drive" : provider;
+      const appName = provider === "google_sheets" ? "Google Sheets" : provider === "google_drive" ? "Google Drive" : "Gmail";
       await supabase.from("connected_apps").upsert({
         user_id: userId,
         app_slug: appSlug,

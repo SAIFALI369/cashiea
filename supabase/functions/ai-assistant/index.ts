@@ -12,6 +12,7 @@ import { callDefaultGemini, hasDefaultAI, callGeminiToolCall } from "../_shared/
 import { callOpenRouter } from "../_shared/openrouter.ts";
 import { callGateway } from "../_shared/ai-gateway.ts";
 import { refreshGoogleToken } from "../_shared/google.ts";
+import { getDriveToken, readDriveFile } from "../_shared/connectors/google-drive.ts";
 
 async function callAI(provider: string, systemPrompt: string, prompt: string): Promise<string> {
   // OpenRouter — auto-fallback chain: Gemini -> Kimi K3 -> Llama -> any free model
@@ -114,6 +115,27 @@ async function getRecentEmails(supabase: any, userId: string): Promise<{ subject
   }
 }
 
+// Live, best-effort Google Drive context — reads the content of files the owner
+// explicitly picked (drive.file). Concurrent + time-boxed, never blocks the chat.
+async function getDriveContext(supabase: any, userId: string): Promise<{ name: string; excerpt: string }[]> {
+  try {
+    const { data: drive } = await supabase.from("connected_apps")
+      .select("*").eq("user_id", userId).eq("app_slug", "google-drive").maybeSingle();
+    if (!drive || drive.status !== "connected") return [];
+    const sel = (drive.metadata?.selectedFiles as any[]) || [];
+    if (!sel.length) return [];
+    const token = await Promise.race([
+      getDriveToken(supabase, drive),
+      new Promise<null>((r) => setTimeout(() => r(null), 2500)),
+    ]);
+    if (!token) return [];
+    const out = await Promise.all(sel.slice(0, 6).map((f) => readDriveFile(token, f).catch(() => null)));
+    return out.filter(Boolean).map((c: any) => ({ name: c.name, excerpt: c.text.slice(0, 1200) }));
+  } catch {
+    return [];
+  }
+}
+
 // Build a compact business snapshot for the AI to reason over
 async function buildContext(supabase: any, userId: string): Promise<string> {
   const now = new Date();
@@ -151,6 +173,8 @@ async function buildContext(supabase: any, userId: string): Promise<string> {
 
   // Live Gmail context (only if the owner connected Gmail). Best-effort + time-boxed.
   const recentEmails = await getRecentEmails(supabase, userId);
+  // Live Google Drive context (only if the owner connected Drive + picked files).
+  const driveFiles = await getDriveContext(supabase, userId);
 
   return JSON.stringify({
     date: now.toISOString().split("T")[0],
@@ -164,6 +188,7 @@ async function buildContext(supabase: any, userId: string): Promise<string> {
     customers: (customers.data || []).slice(0, 40).map((c: any) => ({ name: c.name, email: c.email, phone: c.phone, spent: +Number(c.total_spent).toFixed(2), orders: c.total_orders, last: c.last_purchase_at })),
     suppliersOwed: (suppliers.data || []).filter((s: any) => s.outstanding > 0).map((s: any) => ({ name: s.name, outstanding: s.outstanding })),
     recentEmails,
+    driveFiles,
   }, null, 1);
 }
 

@@ -18,6 +18,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/retry.ts";
 import * as SheetsConnector from "../_shared/connectors/google-sheets.ts";
 import { refreshGoogleToken } from "../_shared/google.ts";
+import { getDriveToken, readDriveFile } from "../_shared/connectors/google-drive.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -189,6 +190,44 @@ Deno.serve(async (req) => {
         p_user_id: user.id, p_app_slug: app_slug, p_action_type: 'disconnect_completed',
       });
       return json({ ok: true, message: 'Disconnected successfully' });
+    }
+
+    // ─── GOOGLE DRIVE (file-picker model — drive.file) ────────────
+    if (app_slug === 'google-drive') {
+      // Hand the browser a short-lived token to open the Google Picker.
+      if (action === 'get_drive_token') {
+        const token = await getDriveToken(supabase, connection);
+        if (!token) return json({ error: 'Token expired — reconnect Google Drive' }, 401);
+        return json({ token });
+      }
+      // Persist the files the owner picked with the Google Picker.
+      if (action === 'save_drive_files') {
+        const { files } = body;
+        if (!Array.isArray(files)) return json({ error: 'files[] required' }, 400);
+        const selectedFiles = files.map((f: any) => ({ id: String(f.id), name: String(f.name || 'File'), mimeType: String(f.mimeType || '') }));
+        await supabase.from('connected_apps').update({
+          metadata: { ...(connection.metadata || {}), selectedFiles },
+          last_synced_at: new Date().toISOString(),
+        }).eq('id', conn.id);
+        await supabase.rpc('log_integration_event', {
+          p_user_id: user.id, p_app_slug: 'google-drive', p_action_type: 'data_read',
+          p_metadata: { files: selectedFiles.length },
+        });
+        return json({ ok: true, selectedFiles });
+      }
+      // Preview which selected files are readable + their size.
+      if (action === 'list_drive_files') {
+        const selected = (connection.metadata?.selectedFiles as any[]) || [];
+        if (!selected.length) return json({ files: [] });
+        const token = await getDriveToken(supabase, connection);
+        if (!token) return json({ error: 'Token expired — reconnect' }, 401);
+        const out = await Promise.all(selected.slice(0, 6).map((f) =>
+          readDriveFile(token, f)
+            .then((c) => (c ? { name: c.name, mimeType: c.mimeType, chars: c.text.length } : { name: f.name, mimeType: f.mimeType, chars: 0, unreadable: true }))
+            .catch(() => ({ name: f.name, mimeType: f.mimeType, chars: 0, unreadable: true }))
+        ));
+        return json({ files: out });
+      }
     }
 
     return json({ error: `Unknown action: ${action}` }, 400);
