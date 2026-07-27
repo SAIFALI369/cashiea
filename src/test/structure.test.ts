@@ -136,9 +136,10 @@ describe('App.tsx routes every page', () => {
   it('has an integrations route', () => expect(app).toMatch(/path="integrations"/))
 })
 
-describe('app pages are linked (sidebar or dashboard launcher)', () => {
+describe('app pages are linked (sidebar, dashboard, or settings)', () => {
   const sidebar = read('src/components/Sidebar.tsx')
   const dashboard = read('src/pages/Dashboard.tsx')
+  const settings = read('src/pages/Settings.tsx')
 
   const routes = [
     '/app/brain',
@@ -167,7 +168,7 @@ describe('app pages are linked (sidebar or dashboard launcher)', () => {
   ]
   for (const route of routes) {
     it(`links to ${route}`, () => {
-      expect(sidebar.includes(route) || dashboard.includes(route)).toBe(true)
+      expect(sidebar.includes(route) || dashboard.includes(route) || settings.includes(route)).toBe(true)
     })
   }
 })

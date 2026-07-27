@@ -4,17 +4,16 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import clsx from 'clsx'
 import ThemeToggle from './ThemeToggle'
+import { Avatar } from './Avatar'
 import {
   UserCircle, Lightbulb, Bell, ShieldCheck, AlertOctagon, UsersRound, Truck,
-  Plug, Settings as SettingsIcon, ChevronDown, LogOut, Sparkles, X,
-  ShoppingCart, FileSignature, ScrollText, Database, History, Key, Shield,
-  CreditCard, Brain, Mail, LayoutDashboard, LifeBuoy,
+  Plug, Settings as SettingsIcon, LogOut, Sparkles, X, LayoutDashboard,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 interface NavItem { to: string; label: string; icon: LucideIcon; end?: boolean; badge?: boolean }
 
-// Quick Access — the 9 items from the spec.
+// Quick Access — primary navigation. The former "More" items now live in Settings.
 const QUICK_ACCESS: NavItem[] = [
   { to: '/app', label: 'Today', icon: LayoutDashboard, end: true },
   { to: '/app/about', label: 'About Me', icon: UserCircle },
@@ -28,27 +27,10 @@ const QUICK_ACCESS: NavItem[] = [
   { to: '/app/settings', label: 'Settings', icon: SettingsIcon },
 ]
 
-// Remaining existing pages, kept reachable so nothing is hidden.
-const MORE: NavItem[] = [
-  { to: '/app/pos', label: 'New Sale (POS)', icon: ShoppingCart },
-  { to: '/app/assistant', label: 'Ask AI (Meraj)', icon: Brain },
-  { to: '/app/email-assistant', label: 'Email Assistant', icon: Mail },
-  { to: '/app/quotations', label: 'Quotations', icon: FileSignature },
-  { to: '/app/summaries', label: 'Summaries', icon: ScrollText },
-  { to: '/app/data-entry', label: 'Data Entry', icon: Database },
-  { to: '/app/activity', label: 'Activity Logs', icon: History },
-  { to: '/app/api-keys', label: 'API Keys', icon: Key },
-  { to: '/app/compliance', label: 'Compliance', icon: Shield },
-  { to: '/app/subscription', label: 'Subscription', icon: CreditCard },
-  { to: '/app/integrations', label: 'Integrations', icon: Plug },
-  { to: '/app/support', label: 'Support', icon: LifeBuoy },
-]
-
 export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { profile, signOut } = useAuth()
   const navigate = useNavigate()
   const [failedCount, setFailedCount] = useState(0)
-  const [showMore, setShowMore] = useState(false)
 
   useEffect(() => {
     if (!profile) return
@@ -110,20 +92,16 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
           <p className="px-3.5 mb-1 text-[11px] font-semibold tracking-[0.14em] uppercase text-fg-subtle">Quick Access</p>
           {QUICK_ACCESS.map(renderItem)}
-
-          <button onClick={() => setShowMore(!showMore)} className="flex items-center gap-1.5 px-3.5 mt-4 mb-1 text-[11px] font-semibold tracking-[0.14em] uppercase text-fg-subtle hover:text-fg-muted w-full">
-            More
-            <ChevronDown className={clsx('w-3.5 h-3.5 ml-auto transition-transform', showMore && 'rotate-180')} />
-          </button>
-          {showMore && <div className="space-y-1 animate-fade-in">{MORE.map(renderItem)}</div>}
+          <p className="px-3.5 mt-6 mb-1 text-[11px] text-fg-subtle leading-relaxed">
+            More features live in{' '}
+            <NavLink to="/app/settings" onClick={onClose} className="text-accent hover:underline">Settings</NavLink>.
+          </p>
         </nav>
 
         {/* Profile + sign out */}
         <div className="p-3 border-t border-line">
           <NavLink to="/app/account" onClick={onClose} className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-surface-2 transition-colors">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-accent to-accent-strong text-accent-fg flex items-center justify-center text-sm font-bold flex-shrink-0">
-              {profile?.full_name?.charAt(0).toUpperCase() || 'U'}
-            </div>
+            <Avatar url={profile?.avatar_url} name={profile?.full_name} size={36} />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-fg truncate">{profile?.full_name || 'User'}</p>
               <p className="text-[11px] text-fg-subtle truncate">Owner · Edit account</p>

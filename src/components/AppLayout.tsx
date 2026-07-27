@@ -1,15 +1,18 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet, useLocation, Link } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import FloatingMeraj from './FloatingMeraj'
 import TouchRipple from './TouchRipple'
 import { motion } from './motion'
 import Skeleton from './ui/Skeleton'
+import { Avatar } from './Avatar'
+import { useAuth } from '../context/AuthContext'
 import { Menu } from 'lucide-react'
 
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
+  const { profile } = useAuth()
   // The Meraj assistant page is full-bleed and scrolls internally; other pages
   // keep the padded, max-width shell + native body scroll.
   const isAssistant = location.pathname.startsWith("/app/assistant")
@@ -37,13 +40,22 @@ export default function AppLayout() {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Mobile header */}
+        {/* Mobile header — menu + brand (fades) + account avatar (always visible) */}
         {!isAssistant && (
-        <header style={{ opacity: hdrOpacity, transition: "opacity 0.4s ease" }} className="lg:hidden sticky top-0 z-30 bg-slate-900/80 backdrop-blur border-b border-slate-800 px-4 py-3 flex items-center gap-3">
+        <header className="lg:hidden sticky top-0 z-30 bg-slate-900/80 backdrop-blur border-b border-slate-800 px-4 py-3 flex items-center gap-3">
           <button onClick={() => setSidebarOpen(true)} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-muted hover:text-fg">
             <Menu className="w-6 h-6" />
           </button>
-          <span className="font-bold text-white">Cashiea</span>
+          <div style={{ opacity: hdrOpacity, transition: "opacity 0.4s ease" }} className="flex-1">
+            <span className="font-bold text-white">Cashiea</span>
+          </div>
+          <Link
+            to="/app/account"
+            aria-label="Open account"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full"
+          >
+            <Avatar url={profile?.avatar_url} name={profile?.full_name} size={34} />
+          </Link>
         </header>
         )}
 

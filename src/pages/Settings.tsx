@@ -1,9 +1,15 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/ui/PageHeader'
 import ThemeToggle from '../components/ThemeToggle'
-import { Settings as SettingsIcon, User, Building2, Sparkles, Loader2, Save, Check, Mail } from 'lucide-react'
+import {
+  Settings as SettingsIcon, User, Building2, Sparkles, Loader2, Save, Check, Mail,
+  ShoppingCart, Brain, FileSignature, ScrollText, Database, History, Key, Shield,
+  CreditCard, Plug, LifeBuoy, ChevronRight,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { AIProvider } from '../lib/ai'
 
@@ -14,6 +20,51 @@ const providers: { value: AIProvider; label: string; desc: string }[] = [
   { value: 'gemini', label: 'Google Gemini', desc: 'Fast & cost-effective' },
   { value: 'anthropic', label: 'Anthropic Claude', desc: 'Best for writing & reasoning' },
 ]
+
+// Moved here from the sidebar "More" section — every feature is reachable from Settings.
+interface NavLinkItem { to: string; label: string; desc: string; icon: LucideIcon }
+const WORKSPACE: NavLinkItem[] = [
+  { to: '/app/pos', label: 'New Sale (POS)', desc: 'Ring up a sale & take payment', icon: ShoppingCart },
+  { to: '/app/assistant', label: 'Ask AI (Meraj)', desc: 'Chat with your shop assistant', icon: Brain },
+  { to: '/app/email-assistant', label: 'Email Assistant', desc: 'Draft customer & retargeting emails', icon: Mail },
+  { to: '/app/quotations', label: 'Quotations', desc: 'Price quotes & estimates', icon: FileSignature },
+  { to: '/app/summaries', label: 'Summaries', desc: 'Summarize any text', icon: ScrollText },
+  { to: '/app/data-entry', label: 'Data Entry', desc: 'Extract data from text', icon: Database },
+]
+const ACCOUNT_TOOLS: NavLinkItem[] = [
+  { to: '/app/activity', label: 'Activity Logs', desc: 'Your action history', icon: History },
+  { to: '/app/api-keys', label: 'API Keys', desc: 'Keys for integrations', icon: Key },
+  { to: '/app/compliance', label: 'Compliance', desc: 'Data protection & settings', icon: Shield },
+  { to: '/app/subscription', label: 'Subscription', desc: 'Plan & billing', icon: CreditCard },
+  { to: '/app/integrations', label: 'Integrations', desc: 'Connect external tools', icon: Plug },
+  { to: '/app/support', label: 'Support', desc: 'Get help', icon: LifeBuoy },
+]
+
+function NavSection({ title, items }: { title: string; items: NavLinkItem[] }) {
+  return (
+    <div className="card p-4">
+      <h2 className="text-sm font-semibold text-fg mb-3">{title}</h2>
+      <div className="space-y-1.5">
+        {items.map((it) => (
+          <Link
+            key={it.to}
+            to={it.to}
+            className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface-2 transition-colors group"
+          >
+            <span className="w-9 h-9 rounded-xl bg-accent-soft text-accent flex items-center justify-center flex-shrink-0">
+              <it.icon className="w-[18px] h-[18px]" strokeWidth={1.75} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-fg">{it.label}</p>
+              <p className="text-[11px] text-fg-subtle truncate">{it.desc}</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-fg-subtle group-hover:text-fg transition-colors flex-shrink-0" />
+          </Link>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export default function SettingsPage() {
   const { user, profile, refreshProfile } = useAuth()
@@ -71,13 +122,13 @@ export default function SettingsPage() {
     <div className="animate-fade-in">
       <PageHeader
         title="Settings"
-        subtitle="Manage your profile and AI preferences"
+        subtitle="Manage your profile, features, and AI preferences"
         icon={<SettingsIcon className="w-5 h-5" />}
       />
 
       <div className="max-w-2xl space-y-6">
-        {/* Profile */}
-        <div className="card p-4 flex items-center justify-between gap-4 mb-4">
+        {/* Appearance */}
+        <div className="card p-4 flex items-center justify-between gap-4">
           <div>
             <p className="font-semibold text-fg text-sm">Appearance</p>
             <p className="text-xs text-fg-muted mt-0.5">Switch between light and dark theme</p>
@@ -85,6 +136,11 @@ export default function SettingsPage() {
           <ThemeToggle />
         </div>
 
+        {/* All features moved here from the sidebar */}
+        <NavSection title="Workspace" items={WORKSPACE} />
+        <NavSection title="Account & security" items={ACCOUNT_TOOLS} />
+
+        {/* Profile */}
         <div className="card p-4">
           <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
             <User className="w-5 h-5 text-brand-400" /> Profile Information
