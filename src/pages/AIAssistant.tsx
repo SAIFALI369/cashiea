@@ -5,7 +5,7 @@ import { marked } from 'marked'
 import { motion, AnimatePresence } from 'framer-motion'
 import { askAssistant } from '../lib/ai'
 import { MerajCharacter, type MerajCharState } from '../components/MerajCharacter'
-import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft } from 'lucide-react'
+import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft, Plus, MessageCircle, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Msg { role: 'user' | 'meraj'; text: string }
@@ -47,6 +47,8 @@ export default function AIAssistant() {
   const [focused, setFocused] = useState(false)
   const [convos, setConvos] = useState<Convo[]>([])
   const [showHistory, setShowHistory] = useState(false)
+  const [mode, setMode] = useState<'ask' | 'task'>('ask')
+  const [showMode, setShowMode] = useState(false)
 
   const [typing, setTyping] = useState(false)
   const lastIdx = messages.length - 1
@@ -169,8 +171,33 @@ export default function AIAssistant() {
         </div>
       </div>
 
-      {/* Input bar: camera (mobile) · mic · text · send */}
+      {/* Input bar with Task/Ask mode picker (Stage 1: UI + switching only) */}
       <div className="border-t border-line p-3">
+        {/* mode picker + active-mode indicator */}
+        <div className="flex items-center gap-2 mb-2">
+          <div className="relative">
+            <button onClick={() => setShowMode((v) => !v)} className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors" aria-label="Switch mode">
+              <Plus className={`w-5 h-5 transition-transform duration-200 ${showMode ? 'rotate-45' : ''}`} strokeWidth={1.75} />
+            </button>
+            <AnimatePresence>
+              {showMode && (
+                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} className="absolute bottom-12 left-0 card p-1.5 w-52 shadow-float z-10">
+                  <button onClick={() => { setMode('ask'); setShowMode(false) }} className={`w-full flex items-start gap-2.5 px-3 py-2 rounded-xl text-left transition-colors hover:bg-surface-2 ${mode === 'ask' ? 'bg-surface-2' : ''}`}>
+                    <MessageCircle className="w-4 h-4 text-accent mt-0.5" />
+                    <div><p className="text-sm font-medium text-fg">Ask</p><p className="text-[11px] text-fg-subtle">Conversational · advisory</p></div>
+                  </button>
+                  <button onClick={() => { setMode('task'); setShowMode(false) }} className={`w-full flex items-start gap-2.5 px-3 py-2 rounded-xl text-left transition-colors hover:bg-surface-2 ${mode === 'task' ? 'bg-surface-2' : ''}`}>
+                    <Zap className="w-4 h-4 text-accent mt-0.5" />
+                    <div><p className="text-sm font-medium text-fg">Task</p><p className="text-[11px] text-fg-subtle">Create & do real actions</p></div>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${mode === 'task' ? 'bg-accent-soft text-accent' : 'bg-surface-2 text-fg-muted'}`}>{mode === 'task' ? 'Task' : 'Ask'}</span>
+          <span className="text-[11px] text-fg-subtle">{mode === 'task' ? 'takes actions (asks before doing)' : 'conversational'}</span>
+        </div>
+
         <div className="flex items-center gap-2">
           <div className="relative lg:hidden">
             <button onClick={() => setShowCam((s) => !s)} className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors" aria-label="Camera"><Camera className="w-5 h-5" strokeWidth={1.75} /></button>
@@ -195,7 +222,7 @@ export default function AIAssistant() {
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             onKeyDown={(e) => e.key === 'Enter' && send()}
-            placeholder={scopeLabel ? `Ask about ${scopeLabel.toLowerCase()}…` : 'Ask Meraj anything…'}
+            placeholder={mode === 'task' ? (scopeLabel ? `Tell Meraj what to do for ${scopeLabel.toLowerCase()}…` : 'Tell Meraj what to do…') : (scopeLabel ? `Ask about ${scopeLabel.toLowerCase()}…` : 'Ask Meraj anything…')}
             className="input-field flex-1 text-sm"
             disabled={loading}
           />
