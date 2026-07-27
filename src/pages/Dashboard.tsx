@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import DoAnythingBar from '../components/DoAnythingBar'
+import { MerajMark } from '../components/MerajMark'
 import { motion, stagger, fadeUp } from '../components/motion'
 import {
   Camera, Receipt, FileBarChart, Mail, MessageCircle, Wallet, TrendingUp,
@@ -37,8 +38,8 @@ export default function Dashboard() {
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent-soft text-accent text-[11px] font-semibold tracking-wide">
           <Sparkles className="w-3 h-3" /> Mere
         </span>
-        <h1 className="text-xl font-bold text-fg mt-3">{greet}, {profile?.full_name?.split(' ')[0] || 'there'} 👋</h1>
-        <p className="text-sm text-fg-muted mt-1">What would you like to do today?</p>
+        <h1 className="text-xl font-bold text-fg mt-3">Today</h1>
+        <p className="text-sm text-fg-muted mt-1">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
       </div>
 
       <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onPhoto} />
@@ -70,7 +71,7 @@ export default function Dashboard() {
       <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-2.5">
         <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-fg-subtle px-1 mb-1">Features</p>
         {FEATURES.map((f) => (
-          <motion.div key={f.label} variants={fadeUp} className="card card-hover p-4 flex items-center gap-3 group">
+          <motion.div key={f.label} variants={fadeUp} className="card card-hover p-5 flex items-center gap-3 group">
             <Link to={f.to} className="flex items-center gap-4 flex-1 min-w-0">
               <span className="w-9 h-9 rounded-xl bg-accent-soft text-accent inline-flex items-center justify-center flex-shrink-0"><f.icon className="w-5 h-5" /></span>
               <div className="min-w-0">
@@ -85,7 +86,7 @@ export default function Dashboard() {
             >
               <Sparkles className="w-3 h-3" /> AI
             </Link>
-            <ChevronRight className="w-5 h-5 text-fg-subtle group-hover:text-fg group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+            <MerajMark size={20} className="text-fg-subtle flex-shrink-0" />
           </motion.div>
         ))}
       </motion.div>

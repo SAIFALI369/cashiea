@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import PageHeader from '../components/ui/PageHeader'
+import ThemeToggle from '../components/ThemeToggle'
 import { Settings as SettingsIcon, User, Building2, Sparkles, Loader2, Save, Check, Mail } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { AIProvider } from '../lib/ai'
@@ -76,6 +77,14 @@ export default function SettingsPage() {
 
       <div className="max-w-2xl space-y-6">
         {/* Profile */}
+        <div className="card p-4 flex items-center justify-between gap-4 mb-4">
+          <div>
+            <p className="font-semibold text-fg text-sm">Appearance</p>
+            <p className="text-xs text-fg-muted mt-0.5">Switch between light and dark theme</p>
+          </div>
+          <ThemeToggle />
+        </div>
+
         <div className="card p-4">
           <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
             <User className="w-5 h-5 text-brand-400" /> Profile Information

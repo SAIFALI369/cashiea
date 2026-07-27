@@ -1,8 +1,7 @@
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import FloatingMeraj from './FloatingMeraj'
-import ThemeToggle from './ThemeToggle'
 import TouchRipple from './TouchRipple'
 import { motion } from './motion'
 import Skeleton from './ui/Skeleton'
@@ -12,7 +11,19 @@ export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
   // The Meraj assistant page is full-bleed (100% width/height); other pages keep the padded, max-width shell.
-  const isAssistant = location.pathname.startsWith('/app/assistant')
+  const isAssistant = location.pathname.startsWith("/app/assistant")
+
+  const [hdrOpacity, setHdrOpacity] = useState(1)
+  const fadeTimer = useRef<number | undefined>(undefined)
+  useEffect(() => {
+    if (isAssistant) return
+    const reset = () => { setHdrOpacity(1); clearTimeout(fadeTimer.current); fadeTimer.current = window.setTimeout(() => setHdrOpacity(0.15), 2000) }
+    window.addEventListener('scroll', reset, { passive: true })
+    window.addEventListener('touchstart', reset, { passive: true })
+    reset()
+    return () => { window.removeEventListener('scroll', reset); window.removeEventListener('touchstart', reset); clearTimeout(fadeTimer.current) }
+  }, [isAssistant])
+
 
   return (
     <div className="min-h-screen flex bg-slate-950">
@@ -21,12 +32,11 @@ export default function AppLayout() {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile header */}
         {!isAssistant && (
-        <header className="lg:hidden sticky top-0 z-30 bg-slate-900/80 backdrop-blur border-b border-slate-800 px-4 py-3 flex items-center gap-3">
+        <header style={{ opacity: hdrOpacity, transition: "opacity 0.4s ease" }} className="lg:hidden sticky top-0 z-30 bg-slate-900/80 backdrop-blur border-b border-slate-800 px-4 py-3 flex items-center gap-3">
           <button onClick={() => setSidebarOpen(true)} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-muted hover:text-fg">
             <Menu className="w-6 h-6" />
           </button>
           <span className="font-bold text-white">Cashiea</span>
-          <div className="ml-auto"><ThemeToggle /></div>
         </header>
         )}
 

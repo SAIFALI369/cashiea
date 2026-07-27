@@ -4,6 +4,7 @@ import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { motion, AnimatePresence } from 'framer-motion'
 import { askAssistant } from '../lib/ai'
+import { MerajMark } from '../components/MerajMark'
 import { MerajCharacter, type MerajCharState } from '../components/MerajCharacter'
 import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft, Plus, MessageCircle, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -156,20 +157,21 @@ export default function AIAssistant() {
       <div ref={scrollRef} className="flex-1 overflow-y-auto scroll-area">
         {/* Upper-middle: iPhone-style black bar + full-body robot under it */}
         {!messages.length && (
-          <div className="flex flex-col items-center justify-center min-h-[40vh] px-6 text-center">
+          <div className="flex flex-col items-center justify-center min-h-[50vh] px-6 text-center">
             <p className="text-sm text-fg-muted max-w-xs">{scopeLabel ? `Ask me about ${scopeLabel.toLowerCase()} — I'll keep us focused there.` : 'Ask about sales, stock, customers — anything about your business.'}</p>
           </div>
         )}
 
-        <div className="px-4 pb-4 space-y-3 max-w-2xl mx-auto w-full">
+        <div className="px-4 pb-6 space-y-6 max-w-3xl mx-auto w-full">
           {messages.map((m, i) =>
             m.role === 'user' ? (
               <div key={i} className="flex justify-end">
-                <span className="text-sm bg-accent-strong text-accent-fg rounded-xl rounded-br-sm px-3.5 py-2 max-w-[80%]">{m.text}</span>
+                <div className="bg-surface-2/70 rounded-2xl rounded-br-md px-4 py-2.5 max-w-[75%]"><p className="text-sm text-fg whitespace-pre-wrap">{m.text}</p></div>
               </div>
             ) : (
-              <div key={i} className="flex justify-start">
-                <div className="rounded-xl rounded-bl-sm bg-surface-2 border border-line border-l-2 border-l-accent px-4 py-3 max-w-[88%]">
+              <div key={i} className="flex gap-3">
+                <span className="w-8 h-8 rounded-lg bg-accent-soft text-accent flex items-center justify-center flex-shrink-0 mt-0.5"><MerajMark size={18} /></span>
+                <div className="flex-1 min-w-0 pt-0.5">
                   <div className="prose-content text-sm">
                     {typing && i === lastIdx ? <TypewriterMessage text={m.text} onDone={() => setTyping(false)} /> : <span dangerouslySetInnerHTML={{ __html: render(m.text) }} />}
                   </div>
@@ -184,8 +186,9 @@ export default function AIAssistant() {
             )
           )}
           {loading && (
-            <div className="flex justify-start">
-              <div className="flex items-center gap-1.5 bg-surface-2 border border-line rounded-xl rounded-bl-sm px-4 py-3">
+            <div className="flex gap-3">
+              <span className="w-8 h-8 rounded-lg bg-accent-soft text-accent flex items-center justify-center flex-shrink-0 mt-0.5"><MerajMark size={18} /></span>
+              <div className="flex items-center gap-1.5 pt-2">
                 {[0, 1, 2].map((d) => (
                   <motion.span key={d} className="w-1.5 h-1.5 rounded-full bg-accent" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1, repeat: Infinity, delay: d * 0.15 }} />
                 ))}

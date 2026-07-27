@@ -20,10 +20,10 @@
     --fg: 41 37 31;              /* warm near-black text */
     --fg-muted: 92 84 73;
     --fg-subtle: 132 123 108;
-    --accent: 161 124 71;        /* bronze / champagne */
-    --accent-strong: 132 99 54;  /* deep bronze */
-    --accent-soft: 233 222 199;  /* tinted wash */
-    --accent-fg: 252 248 240;    /* readable text on accent (dark-on-gold works too) */
+    --accent: 16 185 129;        /* light emerald */
+    --accent-strong: 5 150 105;  /* emerald-600 */
+    --accent-soft: 209 250 229;  /* emerald-100 tint */
+    --accent-fg: 255 255 255;    /* readable text on accent (dark-on-gold works too) */
     --gold: 189 156 99;
     --copper: 167 110 63;
     --olive: 121 128 92;
