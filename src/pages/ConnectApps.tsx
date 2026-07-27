@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import { APP_CATALOG, type AppCatalogEntry, type PermissionMode } from '../lib/app-catalog'
+import { APP_CATALOG, oauthProviderForSlug, type AppCatalogEntry, type PermissionMode } from '../lib/app-catalog'
 import PageHeader from '../components/ui/PageHeader'
-import GoogleSheetsConnect from '../components/GoogleSheetsConnect'
-import { Plus, Check, Loader2, Trash2, RefreshCw, Zap, X, AlertCircle, ExternalLink } from 'lucide-react'
+import ConnectAppModal from '../components/ConnectAppModal'
+import { Plus, Check, Loader2, Trash2, RefreshCw, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface ConnectedApp {
@@ -50,7 +50,7 @@ export default function ConnectApps() {
 
   useEffect(() => { loadConnections() }, [loadConnections])
 
-  // Check for OAuth callback (?connected=google-sheets or ?error=...)
+  // Check for OAuth callback (?connected=slug or ?error=...)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const connected = params.get('connected')
@@ -68,9 +68,9 @@ export default function ConnectApps() {
 
   const startAuth = (app: AppCatalogEntry, permission: PermissionMode) => {
     setActiveModal(null)
-    // Build OAuth URL via the google-oauth edge function
+    // Build OAuth URL via the google-oauth edge function (same Google client for all Google apps)
     const fnUrl = (import.meta.env.VITE_SUPABASE_URL || '').replace('.supabase.co', '.functions.supabase.co') + '/google-oauth'
-    const url = `${fnUrl}?action=authorize&user=${profile!.id}&provider=google_sheets&permission=${permission}`
+    const url = `${fnUrl}?action=authorize&user=${profile!.id}&provider=${oauthProviderForSlug(app.slug)}&permission=${permission}`
     window.location.href = url
   }
 
@@ -165,7 +165,7 @@ export default function ConnectApps() {
                     <button onClick={() => handleTest(app.slug)} disabled={testing === app.slug} className="px-4 py-2.5 rounded-xl font-medium text-sm transition-all" style={{ background: C.bg, color: C.text, border: `1px solid ${C.border}` }}>
                       {testing === app.slug ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                     </button>
-                    <button onClick={() => handleDisconnect(app.slug)} disabled={disconnecting === app.slug} className="flex-1 py-2.5 rounded-xl font-medium text-sm transition-all" style={{ background: C.red + '10', color: C.red, border: `1px solid rgb(var(--negative) / 0.13)` }}>
+                    <button onClick={() => handleDisconnect(app.slug)} disabled={disconnecting === app.slug} className="flex-1 py-2.5 rounded-xl font-medium text-sm transition-all" style={{ background: C.red + '10', color: C.red, border: '1px solid rgb(var(--negative) / 0.13)' }}>
                       {disconnecting === app.slug ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : <><Trash2 className="w-4 h-4 inline mr-1" /> Disconnect</>}
                     </button>
                   </>
@@ -176,15 +176,19 @@ export default function ConnectApps() {
         })}
       </div>
 
-      {/* Coming soon section */}
-      <div className="rounded-xl p-4 text-center" style={{ background: 'rgb(var(--surface))', border: `1px dashed ${C.border}` }}>
-        <p className="text-sm font-medium mb-1" style={{ color: C.muted }}>More apps coming soon</p>
-        <p className="text-xs" style={{ color: C.muted }}>Gmail, Razorpay, Tally, Shopify, and more</p>
+      {/* Roadmap — accurate status of the apps investigated */}
+      <div className="rounded-xl p-5" style={{ background: 'rgb(var(--surface))', border: `1px dashed ${C.border}` }}>
+        <p className="text-sm font-semibold mb-3" style={{ color: C.text }}>More apps — honest status</p>
+        <ul className="text-xs space-y-1.5" style={{ color: C.muted }}>
+          <li>• <span style={{ color: C.text }}>Google Drive</span> — reuses Google sign-in; needs a scope choice (pick folders vs. search) before we build.</li>
+          <li>• <span style={{ color: C.text }}>Excel / OneDrive</span> — needs a separate Microsoft Azure app registration (different from Google).</li>
+          <li>• <span style={{ color: C.text }}>WhatsApp, Tally, Paytm/BharatPe/PhonePe</span> — these platforms don't expose a simple "read your history" API. See the report for what's actually possible.</li>
+        </ul>
       </div>
 
       {/* Verification modal */}
       {activeModal && (
-        <GoogleSheetsConnect
+        <ConnectAppModal
           app={activeModal}
           onClose={() => setActiveModal(null)}
           onStartAuth={(permission) => startAuth(activeModal, permission)}

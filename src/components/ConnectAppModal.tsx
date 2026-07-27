@@ -1,10 +1,15 @@
 import { useState } from 'react'
 import { type AppCatalogEntry, type PermissionMode } from '../lib/app-catalog'
-import { X, Check, Shield, ArrowRight, Loader2 } from 'lucide-react'
+import { X, Check, Shield, ArrowRight } from 'lucide-react'
 
 const C = { bg: 'rgb(var(--paper))', border: 'rgb(var(--line))', blue: 'rgb(var(--accent))', blueDark: 'rgb(var(--accent-strong))', green: 'rgb(var(--positive))', text: 'rgb(var(--fg))', textBody: 'rgb(var(--fg-muted))', muted: 'rgb(var(--fg-subtle))' }
 
-export default function GoogleSheetsConnect({
+/**
+ * Generic connect modal — driven entirely by the app-catalog entry, so it
+ * works for any Google OAuth app (Sheets, Gmail, …). The user picks a
+ * permission level, confirms, then we hand off to the OAuth flow.
+ */
+export default function ConnectAppModal({
   app,
   onClose,
   onStartAuth,
@@ -13,7 +18,7 @@ export default function GoogleSheetsConnect({
   onClose: () => void
   onStartAuth: (permission: PermissionMode) => void
 }) {
-  const [selected, setSelected] = useState<PermissionMode>('read_only')
+  const [selected, setSelected] = useState<PermissionMode>(app.permissions[0]?.mode || 'read_only')
   const [confirmed, setConfirmed] = useState(false)
 
   return (
@@ -25,7 +30,7 @@ export default function GoogleSheetsConnect({
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold" style={{ background: app.iconBg, color: app.iconText }}>{app.iconLetter}</div>
               <div>
-                <h3 className="font-bold text-lg" style={{ color: C.text, fontFamily: '"Plus Jakarta Sans"' }}>{app.name}</h3>
+                <h3 className="font-bold text-lg" style={{ color: C.text }}>{app.name}</h3>
                 <p className="text-xs" style={{ color: C.muted }}>Connect your account securely</p>
               </div>
             </div>
@@ -93,7 +98,7 @@ export default function GoogleSheetsConnect({
               </div>
             </div>
             <span className="text-xs leading-relaxed" style={{ color: C.textBody }}>
-              I understand Cashiea will access my Google Sheets with the selected permissions. I can disconnect anytime in Settings.
+              I understand Cashiea will access my {app.name} with the selected permissions. I can disconnect anytime in Settings.
             </span>
           </label>
 

@@ -17,6 +17,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/retry.ts";
 import * as SheetsConnector from "../_shared/connectors/google-sheets.ts";
+import { refreshGoogleToken } from "../_shared/google.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -70,6 +71,22 @@ Deno.serve(async (req) => {
 
     // ─── TEST ───────────────────────────────────────────────────
     if (action === 'test') {
+      // Gmail uses the same Google OAuth tokens as Sheets — verify via a token refresh.
+      if (app_slug === 'gmail') {
+        const ok = !!await refreshGoogleToken(supabase, {
+          user_id: conn.user_id, provider: 'gmail',
+          metadata: {
+            access_token: conn.access_token,
+            refresh_token: conn.refresh_token,
+            expires_at: conn.token_expires_at ? new Date(conn.token_expires_at).getTime() : null,
+          },
+        });
+        await supabase.rpc('log_integration_event', {
+          p_user_id: user.id, p_app_slug: app_slug, p_action_type: 'connection_tested',
+          p_status: ok ? 'success' : 'failed', p_error_message: ok ? null : 'Token expired — reconnect',
+        });
+        return json({ ok, message: ok ? 'Gmail connection healthy' : 'Token expired — reconnect' });
+      }
       const result = await SheetsConnector.testConnection(supabase, connection);
       await supabase.rpc('log_integration_event', {
         p_user_id: user.id, p_app_slug: app_slug, p_action_type: 'connection_tested',
@@ -77,6 +94,11 @@ Deno.serve(async (req) => {
         p_error_message: result.ok ? null : result.message,
       });
       return json(result);
+    }
+
+    // Sheets-only data actions (Gmail has no spreadsheet picker)
+    if (['list_sheets', 'read', 'write', 'sync'].includes(action) && app_slug !== 'google-sheets') {
+      return json({ error: 'This action is only available for Google Sheets' }, 400);
     }
 
     // ─── LIST SHEETS ────────────────────────────────────────────

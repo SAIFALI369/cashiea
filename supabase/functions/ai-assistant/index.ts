@@ -11,6 +11,7 @@ import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
 import { callDefaultGemini, hasDefaultAI, callGeminiToolCall } from "../_shared/ai-default.ts";
 import { callOpenRouter } from "../_shared/openrouter.ts";
 import { callGateway } from "../_shared/ai-gateway.ts";
+import { refreshGoogleToken } from "../_shared/google.ts";
 
 async function callAI(provider: string, systemPrompt: string, prompt: string): Promise<string> {
   // OpenRouter — auto-fallback chain: Gemini -> Kimi K3 -> Llama -> any free model
@@ -72,6 +73,47 @@ async function callAIWithFallback(provider: string, systemPrompt: string, prompt
   }
 }
 
+// Live, best-effort recent-Gmail summary for the snapshot. Only fetches when
+// the owner has a connected Gmail integration. Concurrent + time-boxed so a
+// slow Gmail API can never stall the chat.
+async function getRecentEmails(supabase: any, userId: string): Promise<{ subject: string; from: string; snippet: string; date: string }[]> {
+  try {
+    const { data: gmail } = await supabase.from("integrations")
+      .select("status,metadata").eq("user_id", userId).eq("provider", "gmail").maybeSingle();
+    if (!gmail || gmail.status !== "connected") return [];
+
+    const token = await Promise.race([
+      refreshGoogleToken(supabase, { user_id: userId, provider: "gmail", metadata: gmail.metadata || {} }),
+      new Promise<null>((r) => setTimeout(() => r(null), 2500)),
+    ]);
+    if (!token) return [];
+
+    const listRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=6`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!listRes.ok) return [];
+    const { messages = [] } = await listRes.json();
+
+    const msgs = await Promise.all(messages.map((m: any) =>
+      fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+    ));
+
+    return msgs.filter(Boolean).map((msg: any) => {
+      const h = msg.payload?.headers || [];
+      return {
+        subject: h.find((x: any) => x.name === "Subject")?.value || "(no subject)",
+        from: h.find((x: any) => x.name === "From")?.value || "",
+        snippet: (msg.snippet || "").slice(0, 160),
+        date: msg.internalDate ? new Date(Number(msg.internalDate)).toISOString() : "",
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
 // Build a compact business snapshot for the AI to reason over
 async function buildContext(supabase: any, userId: string): Promise<string> {
   const now = new Date();
@@ -107,6 +149,9 @@ async function buildContext(supabase: any, userId: string): Promise<string> {
   const monthExpenses = (expenses.data || []).filter((e: any) => e.type === "expense").reduce((s: number, e: any) => s + Number(e.amount), 0);
   const monthIncome = (expenses.data || []).filter((e: any) => e.type === "income").reduce((s: number, e: any) => s + Number(e.amount), 0);
 
+  // Live Gmail context (only if the owner connected Gmail). Best-effort + time-boxed.
+  const recentEmails = await getRecentEmails(supabase, userId);
+
   return JSON.stringify({
     date: now.toISOString().split("T")[0],
     today: { revenue: +todayRevenue.toFixed(2), orders: today.length, payment_methods: today.reduce((m: any, t: any) => { m[t.payment_method] = (m[t.payment_method] || 0) + 1; return m; }, {}) },
@@ -118,6 +163,7 @@ async function buildContext(supabase: any, userId: string): Promise<string> {
     productCatalog: (products.data || []).slice(0, 40).map((p: any) => ({ name: p.name, sku: p.sku, category: p.category, price: p.price, stock: p.stock_quantity })),
     customers: (customers.data || []).slice(0, 40).map((c: any) => ({ name: c.name, email: c.email, phone: c.phone, spent: +Number(c.total_spent).toFixed(2), orders: c.total_orders, last: c.last_purchase_at })),
     suppliersOwed: (suppliers.data || []).filter((s: any) => s.outstanding > 0).map((s: any) => ({ name: s.name, outstanding: s.outstanding })),
+    recentEmails,
   }, null, 1);
 }
 
@@ -132,6 +178,7 @@ Your only job is to help the owner run THEIR shop: sales and revenue, profit and
 - When asked who bought a product, scan productCatalog + customers + topProducts.
 - Suggest proactive actions (reorder stock, follow up dormant customers) when relevant.
 - If a specific record is not in the snapshot, say so plainly rather than guessing.
+- If the snapshot includes a "recentEmails" array, the owner has connected Gmail. Use it ONLY when they ask about emails, replies, or customer/supplier messages — and never invent email content that isn't listed.
 - You remember what the owner has told you before (see the memory section). Use those details naturally.
 
 SCOPE — you are this shop's business assistant, NOT a general chatbot:

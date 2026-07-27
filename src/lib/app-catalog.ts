@@ -7,7 +7,7 @@
 
 export type PermissionMode = 'read_only' | 'read_write' | 'full_access'
 export type AuthType = 'oauth2' | 'api_key' | 'manual'
-export type AppCategory = 'spreadsheets' | 'email' | 'payments' | 'crm' | 'ecommerce' | 'accounting'
+export type AppCategory = 'spreadsheets' | 'email' | 'payments' | 'crm' | 'ecommerce' | 'accounting' | 'storage'
 
 export interface PermissionOption {
   mode: PermissionMode
@@ -77,12 +77,41 @@ export const GOOGLE_SHEETS: AppCatalogEntry = {
   ],
 }
 
+// ─── Gmail (reuses the same Google OAuth client as Sheets) ───────
+export const GMAIL: AppCatalogEntry = {
+  slug: 'gmail',
+  name: 'Gmail',
+  category: 'email',
+  description: 'Let Meraj read your recent emails so it can answer questions, draft replies, and surface customer & supplier messages.',
+  authType: 'oauth2',
+  enabled: true,
+  oauthScopes: [
+    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'openid',
+  ],
+  iconBg: '#ea4335',
+  iconText: '#ffffff',
+  iconLetter: 'G',
+  permissions: [
+    {
+      mode: 'read_only',
+      label: 'Read Only',
+      description: 'Meraj can read your recent email subjects and snippets to help answer questions. It cannot send, delete, or modify any email.',
+      scopes: ['https://www.googleapis.com/auth/gmail.readonly'],
+      allows: ['Read recent email subjects & snippets', 'Summarize your inbox', 'Draft replies (you send them yourself)'],
+      blocks: ['Send or delete emails', 'Modify labels or folders', 'Access other Google services'],
+    },
+  ],
+}
+
 // ─── The full catalog (add new apps here) ───────────────────────
 export const APP_CATALOG: AppCatalogEntry[] = [
   GOOGLE_SHEETS,
-  // Future apps — just add entries here:
-  // { slug: 'gmail', name: 'Gmail', ... },
-  // { slug: 'razorpay', name: 'Razorpay', ... },
+  GMAIL,
+  // Future apps — added once their auth/data plan is decided:
+  // { slug: 'google-drive', name: 'Google Drive', ... },   // awaiting scope decision
+  // { slug: 'excel', name: 'Excel / OneDrive', ... },       // needs Microsoft Azure app
 ]
 
 export function getAppBySlug(slug: string): AppCatalogEntry | undefined {
@@ -91,4 +120,9 @@ export function getAppBySlug(slug: string): AppCatalogEntry | undefined {
 
 export function getPermissionOption(app: AppCatalogEntry, mode: PermissionMode): PermissionOption | undefined {
   return app.permissions.find((p) => p.mode === mode)
+}
+
+/** Map a catalog slug to the OAuth provider key the google-oauth function expects. */
+export function oauthProviderForSlug(slug: string): string {
+  return slug === 'gmail' ? 'gmail' : 'google_sheets'
 }
