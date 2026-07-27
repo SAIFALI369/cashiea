@@ -4,7 +4,6 @@ import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { motion, AnimatePresence } from 'framer-motion'
 import { askAssistant } from '../lib/ai'
-import { MerajMark } from '../components/MerajMark'
 import { MerajCharacter, type MerajCharState } from '../components/MerajCharacter'
 import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -125,9 +124,12 @@ export default function AIAssistant() {
           <History className="w-5 h-5" strokeWidth={1.75} />
           {convos.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />}
         </button>
-        <div className="flex-1 text-center">
-          <MerajMark size={26} className="text-accent" />
-          {scopeLabel ? <p className="text-[11px] text-accent leading-tight">Focused on {scopeLabel}</p> : <p className="text-[11px] text-fg-subtle leading-tight">Your shop assistant</p>}
+        <div className="flex-1 flex items-center justify-center gap-2">
+          <MerajCharacter state={charState} width={68} />
+          <div className="text-left leading-tight">
+            <p className="font-semibold text-fg text-sm">Meraj</p>
+            {scopeLabel ? <p className="text-[10px] text-accent">Focused · {scopeLabel}</p> : <p className="text-[10px] text-fg-subtle">Your shop assistant</p>}
+          </div>
         </div>
         <Link to="/app" className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2"><ArrowLeft className="w-5 h-5" strokeWidth={1.75} /></Link>
       </div>
@@ -135,10 +137,11 @@ export default function AIAssistant() {
       {/* Character + messages (full-height scroll) */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto scroll-area">
         {/* Upper-middle: iPhone-style black bar + full-body robot under it */}
-        <div className={`flex flex-col items-center justify-center ${messages.length ? 'pt-4 pb-3' : 'min-h-[54vh]'}`}>
-          <MerajCharacter state={charState} width={168} />
-          {!messages.length && <p className="text-xs text-fg-muted mt-4 max-w-xs text-center px-6">{scopeLabel ? `Ask me about ${scopeLabel.toLowerCase()} — I'll keep us focused there.` : 'Ask about sales, stock, customers — anything about your business.'}</p>}
-        </div>
+        {!messages.length && (
+          <div className="flex flex-col items-center justify-center min-h-[40vh] px-6 text-center">
+            <p className="text-sm text-fg-muted max-w-xs">{scopeLabel ? `Ask me about ${scopeLabel.toLowerCase()} — I'll keep us focused there.` : 'Ask about sales, stock, customers — anything about your business.'}</p>
+          </div>
+        )}
 
         <div className="px-4 pb-4 space-y-3 max-w-2xl mx-auto w-full">
           {messages.map((m, i) =>
