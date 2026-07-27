@@ -8,7 +8,7 @@ import { MerajCharacter, type MerajCharState } from '../components/MerajCharacte
 import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft, Plus, MessageCircle, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-interface Msg { role: 'user' | 'meraj'; text: string }
+interface Msg { role: 'user' | 'meraj'; text: string; pending?: { type: string; input: any; preview: any } }
 interface Convo { id: string; title: string; msgs: Msg[]; ts: number; scope?: string }
 
 const STORE = 'cashiea_meraj_convos'
@@ -81,10 +81,10 @@ export default function AIAssistant() {
     setMessages(next)
     setLoading(true)
     try {
-      const reply = await askAssistant(q, false, scope)
-      const done = [...next, { role: 'meraj' as const, text: reply }]
+      const res = await askAssistant(q, false, scope, mode)
+      const done = [...next, { role: 'meraj' as const, text: res.reply, pending: res.pending }]
       setMessages(done)
-      setTyping(true)
+      if (res.reply) setTyping(true)
       const convo: Convo = { id: crypto.randomUUID(), title: q.slice(0, 48), msgs: done, ts: Date.now(), scope }
       persist([convo, ...convos].slice(0, 5))
     } catch (e) {
@@ -94,7 +94,24 @@ export default function AIAssistant() {
     }
   }
 
-  const openConvo = (c: Convo) => { setMessages(c.msgs); setShowHistory(false) }
+  const confirmAction = async (pending: any) => {
+    if (loading) return
+    setLoading(true)
+    setMessages((m) => [...m, { role: 'user' as const, text: '✓ Create it' }])
+    try {
+      const res = await askAssistant('', false, scope, 'task', pending)
+      setMessages((m) => [...m, { role: 'meraj' as const, text: res.reply }])
+      if (res.reply) setTyping(true)
+    } catch (e) {
+      setMessages((m) => [...m, { role: 'meraj' as const, text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.') }])
+    } finally { setLoading(false) }
+  }
+  const cancelAction = (idx: number) => {
+    setMessages((m) => m.map((msg, i) => (i === idx ? { ...msg, pending: undefined } : msg)))
+    setMessages((m) => [...m, { role: 'meraj' as const, text: 'No problem — cancelled. What else can I do?' }])
+  }
+
+  const openConvo = (c: Convo) =>  { setMessages(c.msgs); setShowHistory(false) }
   const newChat = () => { setMessages([]); setShowHistory(false); inputRef.current?.focus() }
 
   const startListen = () => {
@@ -155,6 +172,12 @@ export default function AIAssistant() {
               <div key={i} className="flex justify-start">
                 <div className="rounded-xl rounded-bl-sm bg-surface-2 border border-line border-l-2 border-l-accent px-4 py-3 max-w-[88%]">
                   <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: render(i === lastIdx && typing ? partial + '▌' : m.text) }} />
+                  {m.pending && (
+                    <div className="mt-3 flex gap-2">
+                      <button onClick={() => confirmAction(m.pending)} disabled={loading} className="btn-primary text-sm flex-1 h-9"><Sparkles className="w-4 h-4" /> Create it</button>
+                      <button onClick={() => cancelAction(i)} className="btn-secondary text-sm h-9">Cancel</button>
+                    </div>
+                  )}
                 </div>
               </div>
             )

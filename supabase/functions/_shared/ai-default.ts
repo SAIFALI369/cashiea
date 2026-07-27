@@ -15,7 +15,7 @@
 //   supabase secrets set GEMINI_STOCK_API_KEY=AIza...     # fallback/stock key
 // ════════════════════════════════════════════════════════════════
 
-export const DEFAULT_MODEL = "gemini-flash-latest";
+export const DEFAULT_MODEL = "gemini-3.6-flash";
 
 // Build the key pool (default first, then stock). Filtered to set values,
 // then de-duplicated (e.g. if DEFAULT and GEMINI_API_KEY are the same).
@@ -126,4 +126,42 @@ export async function callDefaultGemini(
 
   // Every key is cooling down or just returned 429.
   return lastResult || { ok: false, status: 429, value: "All Gemini keys are rate-limited right now. Please try again in a minute." };
+}
+
+
+// ── Function-calling (tool use) with the key pool ──────────────────
+export async function callGeminiToolCall(
+  systemPrompt: string, prompt: string, tools: any[],
+  opts: { feature?: string; maxTokens?: number } = {}
+): Promise<{ ok: boolean; status: number; value: any }> {
+  const now = Date.now();
+  const ordered = [...GEMINI_KEYS].sort((a, b) => (cooldownUntil.get(a) || 0) - (cooldownUntil.get(b) || 0));
+  for (const key of ordered) {
+    if ((cooldownUntil.get(key) || 0) > now) continue;
+    console.log(`[gemini-tool] outbound feature=${opts.feature || "unknown"} key=#${GEMINI_KEYS.indexOf(key) + 1}/${GEMINI_KEYS.length}`);
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_MODEL}:generateContent`, {
+        method: "POST", headers: { "Content-Type": "application/json", "X-goog-api-key": key },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ parts: [{ text: prompt }] }],
+          tools, toolConfig: { function_calling_config: { mode: "AUTO" } },
+          generationConfig: { temperature: 0, maxOutputTokens: opts.maxTokens ?? 800 },
+        }),
+      });
+      if (!res.ok) {
+        if (res.status === 429) { cooldownUntil.set(key, Date.now() + COOLDOWN_MS); continue; }
+        const e = await res.text(); let d = e.slice(0, 300);
+        try { const p2 = JSON.parse(e); if (p2?.error?.message) d = p2.error.message.slice(0, 300); } catch { /* raw */ }
+        return { ok: false, status: res.status, value: d };
+      }
+      const data = await res.json();
+      const parts = data?.candidates?.[0]?.content?.parts || [];
+      const fc = parts.find((p: any) => p.functionCall);
+      if (fc) return { ok: true, status: 200, value: { kind: "tool", name: fc.functionCall.name, args: fc.functionCall.args || {} } };
+      const tp = parts.find((p: any) => p.text);
+      return { ok: true, status: 200, value: { kind: "text", text: tp?.text || "" } };
+    } catch { continue; }
+  }
+  return { ok: false, status: 429, value: "All Gemini keys rate-limited. Try again in a minute." };
 }

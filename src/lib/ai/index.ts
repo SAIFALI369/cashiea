@@ -92,7 +92,7 @@ export async function callAI(params: AICallParams): Promise<AICallResult> {
  * Ask the AI Assistant a natural-language business question.
  * Uses the /functions/v1/ai-assistant edge function.
  */
-export async function askAssistant(message: string, briefing = false, scope?: string): Promise<string> {
+export async function askAssistant(message = '', briefing = false, scope?: string, mode: 'ask' | 'task' = 'ask', confirm?: any): Promise<{ reply: string; pending?: any; executed?: any }> {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('You must be logged in.')
 
@@ -103,11 +103,11 @@ export async function askAssistant(message: string, briefing = false, scope?: st
       Authorization: `Bearer ${session.access_token}`,
       apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
     },
-    body: JSON.stringify({ message, briefing, scope }),
+    body: JSON.stringify({ message, briefing, scope, mode, confirm }),
   })
   const data = await res.json().catch(() => ({ error: 'Invalid response from server' }))
   if (!res.ok) throw new Error(data?.error || `Request failed (HTTP ${res.status})`)
-  return data.reply as string
+  return data as { reply: string; pending?: any; executed?: any }
 }
 
 /**

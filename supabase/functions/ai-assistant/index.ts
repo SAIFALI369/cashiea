@@ -8,7 +8,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
-import { callDefaultGemini, hasDefaultAI } from "../_shared/ai-default.ts";
+import { callDefaultGemini, hasDefaultAI, callGeminiToolCall } from "../_shared/ai-default.ts";
 import { callOpenRouter } from "../_shared/openrouter.ts";
 import { callGateway } from "../_shared/ai-gateway.ts";
 
@@ -60,7 +60,7 @@ async function callAI(provider: string, systemPrompt: string, prompt: string): P
 // Fallback: if the selected provider has no key, use the built-in default Gemini
 async function callAIWithFallback(provider: string, systemPrompt: string, prompt: string, maxTokens = 1200, feature = "unknown"): Promise<string> {
   try {
-    return await callAI(provider, systemPrompt, prompt, maxTokens);
+    return await callAI(provider, systemPrompt, prompt);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (hasDefaultAI() && (msg.includes("not configured") || msg.includes("OPENROUTER_API_KEY") || msg.includes("OPENAI_API_KEY") || msg.includes("GEMINI_API_KEY") || msg.includes("ANTHROPIC_API_KEY") || msg.includes("AI_GATEWAY_API_KEY"))) {
@@ -217,6 +217,33 @@ async function tryExtract(
   }
 }
 
+
+// ── Task mode: function-calling for real actions ──────────────────
+const TASK_SYSTEM = `You are Meraj in TASK mode — a capable staff member who prepares and executes real actions in the shop, but ONLY after the owner confirms. Speak briefly, like a good employee following instructions. When the owner asks to create an invoice or bill, call create_invoice with all details. If any essential detail is missing or ambiguous (customer name, item, quantity, or price), DO NOT call the tool — ask the owner in plain text. Never guess a price, phone number, or discount percentage. For team roles, subscriptions, API keys, or account/login changes, tell the owner those must be done directly in Settings — do not attempt them.`;
+
+const CREATE_INVOICE_TOOL = [{ function_declarations: [{ name: "create_invoice", description: "Create a GST invoice/bill for a customer. Use when the owner asks to make, create, or generate an invoice or bill.", parameters: { type: "OBJECT", properties: { customer_name: { type: "STRING", description: "Customer name" }, customer_phone: { type: "STRING", description: "Customer phone (optional)" }, items: { type: "ARRAY", description: "Line items", items: { type: "OBJECT", properties: { name: { type: "STRING" }, qty: { type: "NUMBER" }, unit_price: { type: "NUMBER", description: "Price per unit in rupees" } }, required: ["name", "qty", "unit_price"] } }, discount_pct: { type: "NUMBER", description: "Discount % (optional, 0-100)" }, tax_rate: { type: "NUMBER", description: "GST/tax % (optional, default 0)" }, notes: { type: "STRING" } }, required: ["customer_name", "items"] } }] }];
+
+function computeInvoiceDraft(args: any) {
+  const items = (args.items || []).map((it: any) => ({ description: String(it.name || "Item"), quantity: Number(it.qty || 1), unit_price: Number(it.unit_price || 0) }));
+  const line = items.reduce((s: number, it: any) => s + it.quantity * it.unit_price, 0);
+  const discountPct = Math.max(0, Math.min(100, Number(args.discount_pct || 0)));
+  const discountAmount = +(line * discountPct / 100).toFixed(2);
+  const subtotal = +(line - discountAmount).toFixed(2);
+  const taxRate = Number(args.tax_rate || 0);
+  const taxAmount = +(subtotal * taxRate / 100).toFixed(2);
+  const total = +(subtotal + taxAmount).toFixed(2);
+  return { items, line: +line.toFixed(2), discountPct, discountAmount, subtotal, taxRate, taxAmount, total, invoice_number: "INV-" + Date.now().toString(36).toUpperCase() };
+}
+
+function formatDraftReply(name: string, d: any) {
+  const lines = d.items.map((it: any) => `- ${it.description} \u00d7 ${it.quantity} @ \u20b9${it.unit_price} = \u20b9${(it.quantity * it.unit_price).toFixed(2)}`);
+  let r = `I've prepared this invoice \u2014 ready to create it, or want to change anything?\n\n**Customer:** ${name}\n**Items:**\n${lines.join("\n")}\n**Subtotal:** \u20b9${d.line}`;
+  if (d.discountPct) r += `\n**Discount (${d.discountPct}%):** \u2212\u20b9${d.discountAmount}`;
+  if (d.taxRate) r += `\n**Tax (${d.taxRate}%):** +\u20b9${d.taxAmount}`;
+  r += `\n**Total: \u20b9${d.total}**\n\nTap **Create it** to save this invoice.`;
+  return r;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
@@ -229,7 +256,7 @@ Deno.serve(async (req) => {
     const limit = onTrial ? Math.max(profile.api_usage_limit, 500) : profile?.api_usage_limit || 50;
     if (profile && profile.api_usage_count >= limit) return json({ error: "Usage limit reached" }, 429);
 
-    const { message, briefing, scope } = await req.json();
+    const { message, briefing, scope, mode, confirm } = await req.json();
     // Task-scoped conversations (e.g. Meraj opened from "Expenses"). Empty for general chat.
     const SCOPE_AREAS: Record<string, string> = {
       receipts: "bills, receipts, and GST invoices",
@@ -245,6 +272,41 @@ Deno.serve(async (req) => {
       ? "\n\nTASK FOCUS: In this conversation you are helping ONLY with " + SCOPE_AREAS[scope] + ". Stay on this topic; if the owner asks something unrelated, acknowledge briefly and gently steer back to " + SCOPE_AREAS[scope] + ".\n"
       : "";
     const provider = profile?.ai_provider || "openai";
+
+    // ── TASK MODE: function-calling + confirm/execute ──
+    if (mode === "task") {
+      // EXECUTE a confirmed action
+      if (confirm && confirm.type === "create_invoice" && confirm.input) {
+        try {
+          const d = computeInvoiceDraft(confirm.input);
+          const { data, error: ie } = await supabase.from("invoices").insert({
+            user_id: user.id, invoice_number: d.invoice_number,
+            client_name: String(confirm.input.customer_name || "Customer"),
+            client_email: confirm.input.customer_email || null,
+            client_address: confirm.input.customer_phone ? `Phone: ${confirm.input.customer_phone}` : null,
+            items: d.items, subtotal: d.subtotal, tax_rate: d.taxRate, tax_amount: d.taxAmount, total: d.total, status: "draft",
+            notes: confirm.input.notes || (d.discountPct ? `Discount: ${d.discountPct}%` : null),
+          }).select().single();
+          if (ie) return json({ reply: `I couldn't create the invoice: ${ie.message}. Want to try again?` });
+          await supabase.from("activity_logs").insert({ user_id: user.id, action_type: "invoice", description: `Meraj created invoice ${d.invoice_number} for ${confirm.input.customer_name} — \u20b9${d.total}`, time_saved_minutes: 15, money_saved: 7.5, provider: "meraj-task" });
+          await supabase.rpc("increment_api_usage", { user_uuid: user.id });
+          return json({ reply: `Done \u2014 invoice **${d.invoice_number}** created for **${confirm.input.customer_name}**, \u20b9${d.total} total${d.discountPct ? ` (${d.discountPct}% discount applied)` : ""}. Find it in your Invoices page.`, executed: { invoice_number: d.invoice_number, total: d.total } });
+        } catch (ex) { return json({ reply: `Something went wrong creating the invoice: ${(ex as Error)?.message}. Please try again.` }); }
+      }
+      // PREPARE: model decides tool-call vs text reply
+      const [ctx2, mem2] = await Promise.all([ buildContext(supabase, user.id), buildMemory(supabase, user.id) ]);
+      const tr = await callGeminiToolCall(TASK_SYSTEM + scopeFocus, `Owner: "${message}"\n\n${mem2.block}\n\nSnapshot:\n${ctx2}`, CREATE_INVOICE_TOOL, { feature: "task-invoice" });
+      if (!tr.ok) return json({ error: tr.value }, 500);
+      if (tr.value.kind === "tool" && tr.value.name === "create_invoice") {
+        const args = tr.value.args || {};
+        if (!args.customer_name || !Array.isArray(args.items) || args.items.length === 0)
+          return json({ reply: "I need a couple more details to prepare that invoice \u2014 the customer name and at least one item with quantity and price. Could you share those?" });
+        const draft = computeInvoiceDraft(args);
+        return json({ reply: formatDraftReply(args.customer_name, draft), pending: { type: "create_invoice", input: args, preview: draft } });
+      }
+      return json({ reply: tr.value.text || "How can I help?" });
+    }
+
     const [context, mem] = await Promise.all([
       buildContext(supabase, user.id),
       buildMemory(supabase, user.id),

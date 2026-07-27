@@ -104,7 +104,7 @@ export default function FloatingMeraj() {
     setLoading(true)
     push({ role: 'user', text: "Today's briefing" })
     try {
-      const reply = await askAssistant('', true)
+      const reply = (await askAssistant('', true)).reply
       push({ role: 'meraj', text: reply })
     } catch (e) {
       push({ role: 'meraj', text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.') })
@@ -142,7 +142,7 @@ export default function FloatingMeraj() {
     }
     setLoading(true)
     try {
-      const reply = await askAssistant(q)
+      const reply = (await askAssistant(q)).reply
       push({ role: 'meraj', text: reply })
     } catch (e) {
       push({ role: 'meraj', text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.') })
