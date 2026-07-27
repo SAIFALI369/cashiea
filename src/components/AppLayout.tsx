@@ -20,6 +20,7 @@ export default function AppLayout() {
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile header */}
+        {!isAssistant && (
         <header className="lg:hidden sticky top-0 z-30 bg-slate-900/80 backdrop-blur border-b border-slate-800 px-4 py-3 flex items-center gap-3">
           <button onClick={() => setSidebarOpen(true)} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-muted hover:text-fg">
             <Menu className="w-6 h-6" />
@@ -27,6 +28,7 @@ export default function AppLayout() {
           <span className="font-bold text-white">Cashiea</span>
           <div className="ml-auto"><ThemeToggle /></div>
         </header>
+        )}
 
         <main className={isAssistant ? 'flex-1 min-w-0 flex flex-col' : 'flex-1 p-4 sm:p-5 lg:p-8 max-w-7xl mx-auto w-full'}>
           {/* Route transition — gentle fade/slide on every navigation */}
@@ -55,7 +57,7 @@ export default function AppLayout() {
 
       {/* Global tap ripple + floating Meraj launcher */}
       <TouchRipple />
-      <FloatingMeraj />
+      {!isAssistant && <FloatingMeraj />}
     </div>
   )
 }

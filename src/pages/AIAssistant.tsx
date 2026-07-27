@@ -24,16 +24,18 @@ function render(md: string) {
   })
 }
 
-function useTypewriter(full: string, typing: boolean) {
-  const [n, setN] = useState(typing ? 0 : full.length)
+function TypewriterMessage({ text, onDone }: { text: string; onDone: () => void }) {
+  const [count, setCount] = useState(0)
+  const cb = useRef(onDone); cb.current = onDone
   useEffect(() => {
-    if (!typing) { setN(full.length); return }
-    setN(0)
-    const step = Math.max(2, Math.ceil(full.length / 60))
-    const id = setInterval(() => setN((p) => { const nx = p + step; if (nx >= full.length) { clearInterval(id); return full.length } return nx }), 16)
+    setCount(0)
+    const step = Math.max(2, Math.ceil(text.length / 45))
+    const id = setInterval(() => {
+      setCount((c) => { const nc = c + step; if (nc >= text.length) { clearInterval(id); setTimeout(() => cb.current(), 0); return text.length } return nc })
+    }, 30)
     return () => clearInterval(id)
-  }, [full, typing])
-  return full.slice(0, n)
+  }, [text])
+  return <span dangerouslySetInnerHTML={{ __html: render(text.slice(0, count)) + '\u258c' }} />
 }
 
 export default function AIAssistant() {
@@ -52,9 +54,6 @@ export default function AIAssistant() {
 
   const [typing, setTyping] = useState(false)
   const lastIdx = messages.length - 1
-  const lastIsMeraj = lastIdx >= 0 && messages[lastIdx].role === 'meraj'
-  const partial = useTypewriter(lastIsMeraj ? messages[lastIdx].text : '', typing)
-  useEffect(() => { if (typing && lastIsMeraj && partial.length >= messages[lastIdx].text.length) setTyping(false) }, [partial, typing, lastIsMeraj, messages])
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -171,7 +170,9 @@ export default function AIAssistant() {
             ) : (
               <div key={i} className="flex justify-start">
                 <div className="rounded-xl rounded-bl-sm bg-surface-2 border border-line border-l-2 border-l-accent px-4 py-3 max-w-[88%]">
-                  <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: render(i === lastIdx && typing ? partial + '▌' : m.text) }} />
+                  <div className="prose-content text-sm">
+                    {typing && i === lastIdx ? <TypewriterMessage text={m.text} onDone={() => setTyping(false)} /> : <span dangerouslySetInnerHTML={{ __html: render(m.text) }} />}
+                  </div>
                   {m.pending && (
                     <div className="mt-3 flex gap-2">
                       <button onClick={() => confirmAction(m.pending)} disabled={loading} className="btn-primary text-sm flex-1 h-9"><Sparkles className="w-4 h-4" /> {m.pending?.type === "create_invoice" ? "Create it" : "Add it"}</button>
