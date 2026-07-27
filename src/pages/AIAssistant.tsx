@@ -5,7 +5,7 @@ import { marked } from 'marked'
 import { motion, AnimatePresence } from 'framer-motion'
 import { askAssistant } from '../lib/ai'
 import { MerajMark } from '../components/MerajMark'
-import { MerajCharacter, type MerajMood } from '../components/MerajCharacter'
+import { MerajCharacter, type MerajCharState } from '../components/MerajCharacter'
 import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -48,6 +48,7 @@ export default function AIAssistant() {
   const [focused, setFocused] = useState(false)
   const [convos, setConvos] = useState<Convo[]>([])
   const [showHistory, setShowHistory] = useState(false)
+
   const [typing, setTyping] = useState(false)
   const lastIdx = messages.length - 1
   const lastIsMeraj = lastIdx >= 0 && messages[lastIdx].role === 'meraj'
@@ -63,17 +64,14 @@ export default function AIAssistant() {
   const [listening, setListening] = useState(false)
 
   useEffect(() => { try { setConvos(JSON.parse(localStorage.getItem(STORE) || '[]')) } catch { /* ignore */ } }, [])
+  useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }) }, [messages, loading, typing, partial])
 
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-  }, [messages, loading])
+  const persist = (next: Convo[]) => { setConvos(next); try { localStorage.setItem(STORE, JSON.stringify(next.slice(0, 5))) } catch { /* ignore */ } }
 
-  const persist = (next: Convo[]) => {
-    setConvos(next)
-    try { localStorage.setItem(STORE, JSON.stringify(next.slice(0, 5))) } catch { /* ignore */ }
-  }
-
-  const mood: MerajMood = loading || typing ? 'working' : focused || input.trim() ? 'look' : 'idle'
+  const replying = loading || typing
+  const userTyping = !replying && (focused || input.trim().length > 0)
+  const charState: MerajCharState = replying ? 'replying' : userTyping ? 'userTyping' : 'idle'
+  const caption = replying ? 'Typing your reply…' : userTyping ? 'Reading your message…' : 'Looking at you'
 
   const send = async () => {
     const q = input.trim()
@@ -87,10 +85,8 @@ export default function AIAssistant() {
       const done = [...next, { role: 'meraj' as const, text: reply }]
       setMessages(done)
       setTyping(true)
-      // save/refresh conversation in history (cap 5)
-      const existingIdx = convos.findIndex((c) => c.msgs === messages || (c.msgs.length === next.length - 1 && c.msgs.every((m, i) => messages[i] && m.text === messages[i].text)))
       const convo: Convo = { id: crypto.randomUUID(), title: q.slice(0, 48), msgs: done, ts: Date.now(), scope }
-      persist(existingIdx >= 0 ? [convo, ...convos.filter((_, i) => i !== existingIdx)] : [convo, ...convos].slice(0, 5))
+      persist([convo, ...convos].slice(0, 5))
     } catch (e) {
       setMessages([...next, { role: 'meraj' as const, text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.') }])
     } finally {
@@ -101,7 +97,6 @@ export default function AIAssistant() {
   const openConvo = (c: Convo) => { setMessages(c.msgs); setShowHistory(false) }
   const newChat = () => { setMessages([]); setShowHistory(false); inputRef.current?.focus() }
 
-  // ── Voice input ──
   const startListen = () => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SR) { toast.error('Voice input not supported on this browser.'); return }
@@ -117,12 +112,11 @@ export default function AIAssistant() {
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) toast.success('Image attached — visual understanding is coming soon.')
-    setShowCam(false)
-    e.target.value = ''
+    setShowCam(false); e.target.value = ''
   }
 
   return (
-    <div className="animate-fade-in flex flex-col h-[calc(100vh-7rem)] card overflow-hidden">
+    <div className="animate-fade-in flex flex-col min-h-0 flex-1 bg-surface">
       <input ref={galleryRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFile} />
 
@@ -130,25 +124,27 @@ export default function AIAssistant() {
       <div className="flex items-center gap-3 px-4 py-3 border-b border-line">
         <button onClick={() => setShowHistory(true)} className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors relative" aria-label="Conversation history">
           <History className="w-5 h-5" strokeWidth={1.75} />
-          {convos.length > 0 && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-accent" />}
+          {convos.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />}
         </button>
         <div className="flex-1 text-center">
           <p className="font-semibold text-fg leading-tight">Meraj</p>
-          {scopeLabel
-            ? <p className="text-[11px] text-accent leading-tight">Focused on {scopeLabel}</p>
-            : <p className="text-[11px] text-fg-subtle leading-tight">Your shop assistant</p>}
+          {scopeLabel ? <p className="text-[11px] text-accent leading-tight">Focused on {scopeLabel}</p> : <p className="text-[11px] text-fg-subtle leading-tight">Your shop assistant</p>}
         </div>
-        <span className="w-9 h-9 rounded-lg flex items-center justify-center bg-accent-soft text-accent"><MerajMark size={22} /></span>
+        <span className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center bg-accent-soft text-accent"><MerajMark size={22} /></span>
       </div>
 
-      {/* Character + messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
-        <div className="flex flex-col items-center pt-8 pb-4">
-          <MerajCharacter mood={mood} />
-          <p className="text-sm font-semibold text-fg mt-3">
-            {loading ? 'Meraj is working on it…' : scopeLabel ? `Let's handle your ${scopeLabel.toLowerCase()}` : 'Hi, I’m Meraj'}
-          </p>
-          {!messages.length && <p className="text-xs text-fg-subtle mt-1 max-w-xs text-center px-4">{scopeLabel ? `Ask me anything about ${scopeLabel.toLowerCase()} — I'll keep us focused there.` : 'Ask about sales, stock, customers, or anything about your business.'}</p>}
+      {/* Character + messages (full-height scroll) */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto scroll-area">
+        {/* Upper-middle: iPhone-style black bar + full-body robot under it */}
+        <div className="flex flex-col items-center pt-6 pb-3">
+          <div className="flex items-center gap-2 bg-black text-white rounded-full pl-2.5 pr-3.5 py-1.5 mb-4 shadow-soft">
+            <span className={`w-2 h-2 rounded-full ${replying ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
+            <span className="text-[11px] font-medium tracking-wide">Meraj</span>
+            <span className="text-[10px] text-white/55">{replying ? '· typing' : '· online'}</span>
+          </div>
+          <MerajCharacter state={charState} width={196} />
+          <p className="text-xs text-fg-subtle mt-2">{caption}</p>
+          {!messages.length && <p className="text-xs text-fg-muted mt-3 max-w-xs text-center px-6">{scopeLabel ? `Ask me about ${scopeLabel.toLowerCase()} — I'll keep us focused there.` : 'Ask about sales, stock, customers — anything about your business.'}</p>}
         </div>
 
         <div className="px-4 pb-4 space-y-3 max-w-2xl mx-auto w-full">
@@ -160,7 +156,7 @@ export default function AIAssistant() {
             ) : (
               <div key={i} className="flex justify-start">
                 <div className="rounded-xl rounded-bl-sm bg-surface-2 border border-line border-l-2 border-l-accent px-4 py-3 max-w-[88%]">
-                  <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: render(i === lastIdx && typing ? partial + (typing ? "▌" : "") : m.text) }} />
+                  <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: render(i === lastIdx && typing ? partial + '▌' : m.text) }} />
                 </div>
               </div>
             )
@@ -180,20 +176,18 @@ export default function AIAssistant() {
       {/* Input bar: camera (mobile) · mic · text · send */}
       <div className="border-t border-line p-3">
         <div className="flex items-center gap-2">
-          {/* Camera — mobile only, offers gallery or camera */}
           <div className="relative lg:hidden">
             <button onClick={() => setShowCam((s) => !s)} className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors" aria-label="Camera"><Camera className="w-5 h-5" strokeWidth={1.75} /></button>
             <AnimatePresence>
               {showCam && (
                 <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} className="absolute bottom-12 left-0 card p-1.5 w-40 shadow-float z-10">
-                  <button onClick={() => galleryRef.current?.click()} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-fg hover:bg-surface-2"><ImageIcon className="w-4 h-4" /> Gallery</button>
-                  <button onClick={() => cameraRef.current?.click()} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-fg hover:bg-surface-2"><Camera className="w-4 h-4" /> Camera</button>
+                  <button onClick={() => galleryRef.current?.click()} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-fg hover:bg-surface-2"><ImageIcon className="w-4 h-4" /> Gallery</button>
+                  <button onClick={() => cameraRef.current?.click()} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-fg hover:bg-surface-2"><Camera className="w-4 h-4" /> Camera</button>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* Mic */}
           <button onClick={listening ? stopListen : startListen} className={`min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center transition-colors ${listening ? 'text-negative bg-negative/10' : 'text-fg-muted hover:text-fg hover:bg-surface-2'}`} aria-label="Voice input">
             {listening ? <Square className="w-4 h-4" /> : <Mic className="w-5 h-5" strokeWidth={1.75} />}
           </button>
@@ -226,7 +220,7 @@ export default function AIAssistant() {
                 <button onClick={() => setShowHistory(false)} className="text-fg-muted hover:text-fg"><X className="w-5 h-5" /></button>
               </div>
               <button onClick={newChat} className="m-3 btn-secondary text-sm"><Sparkles className="w-4 h-4" /> New chat</button>
-              <div className="flex-1 overflow-y-auto px-3 space-y-1.5">
+              <div className="flex-1 overflow-y-auto scroll-area px-3 space-y-1.5">
                 {convos.length === 0 && <p className="text-xs text-fg-subtle text-center py-6">No conversations yet.</p>}
                 {convos.map((c) => (
                   <button key={c.id} onClick={() => openConvo(c)} className="w-full text-left p-3 rounded-xl border border-line bg-surface hover:bg-surface-2 transition-colors">
