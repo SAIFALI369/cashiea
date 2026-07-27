@@ -219,9 +219,15 @@ async function tryExtract(
 
 
 // ── Task mode: function-calling for real actions ──────────────────
-const TASK_SYSTEM = `You are Meraj in TASK mode — a capable staff member who prepares and executes real actions in the shop, but ONLY after the owner confirms. Speak briefly, like a good employee following instructions. When the owner asks to create an invoice or bill, call create_invoice with all details. If any essential detail is missing or ambiguous (customer name, item, quantity, or price), DO NOT call the tool — ask the owner in plain text. Never guess a price, phone number, or discount percentage. For team roles, subscriptions, API keys, or account/login changes, tell the owner those must be done directly in Settings — do not attempt them.`;
+const TASK_SYSTEM = `You are Meraj in TASK mode — a capable staff member who prepares and executes real actions in the shop, but ONLY after the owner confirms. Speak briefly, like a good employee following instructions. When the owner asks to create an invoice/bill, add a product/item, or add a customer/client, call the appropriate tool (create_invoice, add_product, or add_customer) with all details. If any essential detail is missing or ambiguous (customer name, item, quantity, or price), DO NOT call the tool — ask the owner in plain text. Never guess a price, phone number, or discount percentage. For team roles, subscriptions, API keys, or account/login changes, tell the owner those must be done directly in Settings — do not attempt them.`;
 
 const CREATE_INVOICE_TOOL = [{ function_declarations: [{ name: "create_invoice", description: "Create a GST invoice/bill for a customer. Use when the owner asks to make, create, or generate an invoice or bill.", parameters: { type: "OBJECT", properties: { customer_name: { type: "STRING", description: "Customer name" }, customer_phone: { type: "STRING", description: "Customer phone (optional)" }, items: { type: "ARRAY", description: "Line items", items: { type: "OBJECT", properties: { name: { type: "STRING" }, qty: { type: "NUMBER" }, unit_price: { type: "NUMBER", description: "Price per unit in rupees" } }, required: ["name", "qty", "unit_price"] } }, discount_pct: { type: "NUMBER", description: "Discount % (optional, 0-100)" }, tax_rate: { type: "NUMBER", description: "GST/tax % (optional, default 0)" }, notes: { type: "STRING" } }, required: ["customer_name", "items"] } }] }];
+
+const ALL_TOOLS = [{ function_declarations: [
+  ...CREATE_INVOICE_TOOL[0].function_declarations,
+  { name: "add_product", description: "Add a new product or inventory item to the shop catalog.", parameters: { type: "OBJECT", properties: { name: { type: "STRING", description: "Product name" }, price: { type: "NUMBER", description: "Selling price in rupees" }, sku: { type: "STRING" }, category: { type: "STRING" }, stock_quantity: { type: "NUMBER", description: "Units in stock" }, low_stock_threshold: { type: "NUMBER", description: "Reorder threshold" }, cost: { type: "NUMBER", description: "Cost price in rupees" } }, required: ["name", "price"] } },
+  { name: "add_customer", description: "Add a new customer to the customer list.", parameters: { type: "OBJECT", properties: { name: { type: "STRING", description: "Customer name" }, phone: { type: "STRING" }, email: { type: "STRING" }, company: { type: "STRING" } }, required: ["name"] } },
+] }];
 
 function computeInvoiceDraft(args: any) {
   const items = (args.items || []).map((it: any) => ({ description: String(it.name || "Item"), quantity: Number(it.qty || 1), unit_price: Number(it.unit_price || 0) }));
@@ -293,16 +299,50 @@ Deno.serve(async (req) => {
           return json({ reply: `Done \u2014 invoice **${d.invoice_number}** created for **${confirm.input.customer_name}**, \u20b9${d.total} total${d.discountPct ? ` (${d.discountPct}% discount applied)` : ""}. Find it in your Invoices page.`, executed: { invoice_number: d.invoice_number, total: d.total } });
         } catch (ex) { return json({ reply: `Something went wrong creating the invoice: ${(ex as Error)?.message}. Please try again.` }); }
       }
+      if (confirm && confirm.type === "add_product" && confirm.input) {
+        const i = confirm.input;
+        const { error: pe } = await supabase.from("products").insert({ user_id: user.id, name: String(i.name), price: Number(i.price || 0), sku: i.sku || null, category: i.category || null, stock_quantity: Number(i.stock_quantity || 0), low_stock_threshold: Number(i.low_stock_threshold || 5), cost: Number(i.cost || 0) }).select().single();
+        if (pe) return json({ reply: `I couldn't add the product: ${pe.message}.` });
+        await supabase.from("activity_logs").insert({ user_id: user.id, action_type: "summary", description: `Meraj added product: ${i.name}`, time_saved_minutes: 5, money_saved: 2, provider: "meraj-task" });
+        await supabase.rpc("increment_api_usage", { user_uuid: user.id });
+        return json({ reply: `Done \u2014 **${i.name}** added to your products${i.stock_quantity !== undefined ? ` (${i.stock_quantity} in stock)` : ""}. Find it in your Stock page.`, executed: { type: "product" } });
+      }
+      if (confirm && confirm.type === "add_customer" && confirm.input) {
+        const i = confirm.input;
+        const { error: ce } = await supabase.from("customers").insert({ user_id: user.id, name: String(i.name), phone: i.phone || null, email: i.email || null, company: i.company || null }).select().single();
+        if (ce) return json({ reply: `I couldn't add the customer: ${ce.message}.` });
+        await supabase.from("activity_logs").insert({ user_id: user.id, action_type: "summary", description: `Meraj added customer: ${i.name}`, time_saved_minutes: 5, money_saved: 2, provider: "meraj-task" });
+        await supabase.rpc("increment_api_usage", { user_uuid: user.id });
+        return json({ reply: `Done \u2014 **${i.name}** added to your customers. Find them in your Customers page.`, executed: { type: "customer" } });
+      }
       // PREPARE: model decides tool-call vs text reply
       const [ctx2, mem2] = await Promise.all([ buildContext(supabase, user.id), buildMemory(supabase, user.id) ]);
-      const tr = await callGeminiToolCall(TASK_SYSTEM + scopeFocus, `Owner: "${message}"\n\n${mem2.block}\n\nSnapshot:\n${ctx2}`, CREATE_INVOICE_TOOL, { feature: "task-invoice" });
+      const tr = await callGeminiToolCall(TASK_SYSTEM + scopeFocus, `Owner: "${message}"\n\n${mem2.block}\n\nSnapshot:\n${ctx2}`, ALL_TOOLS, { feature: "task-invoice" });
       if (!tr.ok) return json({ error: tr.value }, 500);
-      if (tr.value.kind === "tool" && tr.value.name === "create_invoice") {
-        const args = tr.value.args || {};
-        if (!args.customer_name || !Array.isArray(args.items) || args.items.length === 0)
-          return json({ reply: "I need a couple more details to prepare that invoice \u2014 the customer name and at least one item with quantity and price. Could you share those?" });
-        const draft = computeInvoiceDraft(args);
-        return json({ reply: formatDraftReply(args.customer_name, draft), pending: { type: "create_invoice", input: args, preview: draft } });
+      if (tr.value.kind === "tool") {
+        const tn = tr.value.name; const args = tr.value.args || {};
+        if (tn === "create_invoice") {
+          if (!args.customer_name || !Array.isArray(args.items) || args.items.length === 0)
+            return json({ reply: "I need a couple more details \u2014 the customer name and at least one item with quantity and price. Could you share those?" });
+          const d = computeInvoiceDraft(args);
+          return json({ reply: formatDraftReply(args.customer_name, d), pending: { type: "create_invoice", input: args, preview: d } });
+        }
+        if (tn === "add_product") {
+          if (!args.name || args.price === undefined) return json({ reply: "I need the product name and price to add it. Could you share those?" });
+          let r = `I've prepared this product \u2014 ready to add it?\n\n**Name:** ${args.name}\n**Price:** \u20b9${args.price}`;
+          if (args.stock_quantity !== undefined) r += `\n**Stock:** ${args.stock_quantity} units`;
+          if (args.category) r += `\n**Category:** ${args.category}`;
+          r += `\n\nTap **Add it** to save.`;
+          return json({ reply: r, pending: { type: "add_product", input: args, preview: args } });
+        }
+        if (tn === "add_customer") {
+          if (!args.name) return json({ reply: "I need at least the customer's name to add them. Could you share it?" });
+          let r = `I've prepared this customer \u2014 ready to add?\n\n**Name:** ${args.name}`;
+          if (args.phone) r += `\n**Phone:** ${args.phone}`;
+          if (args.email) r += `\n**Email:** ${args.email}`;
+          r += `\n\nTap **Add it** to save.`;
+          return json({ reply: r, pending: { type: "add_customer", input: args, preview: args } });
+        }
       }
       return json({ reply: tr.value.text || "How can I help?" });
     }

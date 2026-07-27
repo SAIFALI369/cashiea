@@ -174,7 +174,7 @@ export default function AIAssistant() {
                   <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: render(i === lastIdx && typing ? partial + '▌' : m.text) }} />
                   {m.pending && (
                     <div className="mt-3 flex gap-2">
-                      <button onClick={() => confirmAction(m.pending)} disabled={loading} className="btn-primary text-sm flex-1 h-9"><Sparkles className="w-4 h-4" /> Create it</button>
+                      <button onClick={() => confirmAction(m.pending)} disabled={loading} className="btn-primary text-sm flex-1 h-9"><Sparkles className="w-4 h-4" /> {m.pending?.type === "create_invoice" ? "Create it" : "Add it"}</button>
                       <button onClick={() => cancelAction(i)} className="btn-secondary text-sm h-9">Cancel</button>
                     </div>
                   )}
