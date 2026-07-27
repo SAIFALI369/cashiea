@@ -61,7 +61,8 @@ function App() {
 
   // App-wide smooth (momentum) scrolling.
   useEffect(() => {
-    const lenis = new Lenis({ duration: 1.1, smoothWheel: true, touchMultiplier: 1.5 })
+    if (window.matchMedia('(pointer: coarse)').matches) return // native scroll on touch (smoother on mobile)
+    const lenis = new Lenis({ duration: 1.1, smoothWheel: true })
     let raf = 0
     const loop = (t: number) => { lenis.raf(t); raf = requestAnimationFrame(loop) }
     raf = requestAnimationFrame(loop)
