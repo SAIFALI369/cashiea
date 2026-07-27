@@ -10,8 +10,13 @@ import { Menu } from 'lucide-react'
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
-  // The Meraj assistant page is full-bleed (100% width/height); other pages keep the padded, max-width shell.
+  // The Meraj assistant page is full-bleed and scrolls internally; other pages
+  // keep the padded, max-width shell + native body scroll.
   const isAssistant = location.pathname.startsWith("/app/assistant")
+  // The floating mini-assistant is hidden on the assistant page and the
+  // dashboard — both already have their own entry point to Meraj.
+  const isDashboard = location.pathname === '/app'
+  const showFloatingMeraj = !isAssistant && !isDashboard
 
   const [hdrOpacity, setHdrOpacity] = useState(1)
   const fadeTimer = useRef<number | undefined>(undefined)
@@ -26,7 +31,9 @@ export default function AppLayout() {
 
 
   return (
-    <div className="min-h-screen flex bg-slate-950">
+    // Assistant gets a definite viewport height so its inner message list can
+    // scroll on mobile (min-h-screen left the flex chain unbounded → no scroll).
+    <div className={isAssistant ? "h-dvh flex overflow-hidden bg-slate-950" : "min-h-screen flex bg-slate-950"}>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0">
@@ -40,7 +47,7 @@ export default function AppLayout() {
         </header>
         )}
 
-        <main className={isAssistant ? 'flex-1 min-w-0 flex flex-col' : 'flex-1 p-4 sm:p-5 lg:p-8 max-w-7xl mx-auto w-full'}>
+        <main className={isAssistant ? 'flex-1 min-w-0 flex flex-col min-h-0' : 'flex-1 p-4 sm:p-5 lg:p-8 max-w-7xl mx-auto w-full'}>
           {/* Route transition — gentle fade/slide on every navigation */}
           <motion.div
             key={location.pathname}
@@ -65,9 +72,9 @@ export default function AppLayout() {
         </main>
       </div>
 
-      {/* Global tap ripple + floating Meraj launcher */}
+      {/* Global tap ripple + floating Meraj launcher (hidden on Dashboard & AI page) */}
       <TouchRipple />
-      {!isAssistant && <FloatingMeraj />}
+      {showFloatingMeraj && <FloatingMeraj pathname={location.pathname} />}
     </div>
   )
 }

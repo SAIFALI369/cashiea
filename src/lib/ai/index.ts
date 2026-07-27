@@ -92,7 +92,15 @@ export async function callAI(params: AICallParams): Promise<AICallResult> {
  * Ask the AI Assistant a natural-language business question.
  * Uses the /functions/v1/ai-assistant edge function.
  */
-export async function askAssistant(message = '', briefing = false, scope?: string, mode: 'ask' | 'task' = 'ask', confirm?: any): Promise<{ reply: string; pending?: any; executed?: any }> {
+export async function askAssistant(
+  message = '',
+  briefing = false,
+  scope?: string,
+  mode: 'ask' | 'task' = 'ask',
+  confirm?: any,
+  /** Which screen the owner is on — lets Meraj answer "this page" questions. */
+  pageContext?: { name: string; description: string }
+): Promise<{ reply: string; pending?: any; executed?: any }> {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('You must be logged in.')
 

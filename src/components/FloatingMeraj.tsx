@@ -2,273 +2,248 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
-import { askAssistant, runQuickTask, type QuickTaskMode } from '../lib/ai'
+import { motion, AnimatePresence } from 'framer-motion'
+import { askAssistant } from '../lib/ai'
+import { getPageContext } from '../lib/pageContext'
 import { MerajMark } from './MerajMark'
 import {
-  X, Send, Loader2, AlertTriangle, FileBarChart, MessageCircle, Receipt, Sparkles, ArrowUpRight,
+  X, Send, Loader2, Sparkles, ArrowUpRight, Plus, Zap, MessageCircle,
 } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
 
-// ── Priority quick actions ──
-interface QTask { id: QuickTaskMode; label: string; desc: string; icon: LucideIcon; needsText?: boolean }
-const TASKS: QTask[] = [
-  { id: 'daily_closing', label: 'Daily closing', desc: "Today's sales summary", icon: FileBarChart },
-  { id: 'low_stock_alert', label: 'Low stock', desc: 'Reorder list', icon: AlertTriangle },
-  { id: 'gst_invoice_voice', label: 'GST invoice', desc: 'Speak a sale', icon: Receipt, needsText: true },
-  { id: 'hindi_bot', label: 'Hinglish reply', desc: 'Customer message', icon: MessageCircle, needsText: true },
-  { id: 'custom', label: 'Custom', desc: 'Ask anything', icon: Sparkles, needsText: true },
-]
+// FloatingMeraj — a small, professional mini-assistant.
+// Hidden on the Dashboard and the full AI page (they have their own Meraj
+// entry points). On every other page it reads WHICH page the owner is on and
+// passes that context to Meraj, so "this", "here", or "this page" questions
+// are answered against the screen the owner is actually looking at.
 
-interface Msg { role: 'user' | 'meraj'; text: string }
+interface Msg {
+  role: 'user' | 'meraj'
+  text: string
+  pending?: { type: string; input: any; preview: any }
+}
 
-const POS_KEY = 'cashiea_meraj_fab_pos'
-const DEFAULT_MARGIN = 20
-
-function renderSafeMarkdown(md: string): string {
-  const rawHtml = marked.parse(md, { async: false }) as string
-  return DOMPurify.sanitize(rawHtml, {
-    ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'p', 'strong', 'em', 'b', 'i', 'ul', 'ol', 'li', 'br', 'hr', 'code', 'blockquote', 'a'],
-    ALLOWED_ATTR: ['href', 'target', 'rel'],
+function render(md: string) {
+  return DOMPurify.sanitize(marked.parse(md, { async: false }) as string, {
+    ALLOWED_TAGS: ['h1', 'h2', 'h3', 'p', 'strong', 'em', 'b', 'i', 'ul', 'ol', 'li', 'br', 'code', 'a'],
+    ALLOWED_ATTR: ['href'],
   })
 }
 
-function greeting(): string {
-  const h = new Date().getHours()
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
-}
+export default function FloatingMeraj({ pathname }: { pathname: string }) {
+  const ctx = getPageContext(pathname)
+  const pageContext = ctx ? { name: ctx.name, description: ctx.description } : undefined
 
-export default function FloatingMeraj() {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [pendingTask, setPendingTask] = useState<QuickTaskMode | null>(null)
+  const [mode, setMode] = useState<'ask' | 'task'>('ask')
+  const [showMode, setShowMode] = useState(false)
 
-  const [pos, setPos] = useState<{ x: number; y: number }>(() => {
-    try {
-      const saved = localStorage.getItem(POS_KEY)
-      if (saved) return JSON.parse(saved)
-    } catch { /* ignore */ }
-    return { x: -1, y: -1 }
-  })
-  const drag = useRef({ active: false, startX: 0, startY: 0, origX: 0, origY: 0, moved: false })
-  const inputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (pos.x === -1) setPos({ x: window.innerWidth - 76, y: window.innerHeight - 76 - DEFAULT_MARGIN })
-  }, [pos.x])
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, loading])
 
-  const onPointerDown = (e: React.PointerEvent) => {
-    drag.current = { active: true, startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y, moved: false }
-    ;(e.currentTarget as Element).setPointerCapture?.(e.pointerId)
-  }
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!drag.current.active) return
-    const dx = e.clientX - drag.current.startX
-    const dy = e.clientY - drag.current.startY
-    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) drag.current.moved = true
-    const size = 60
-    const nx = Math.max(DEFAULT_MARGIN, Math.min(window.innerWidth - size - DEFAULT_MARGIN, drag.current.origX + dx))
-    const ny = Math.max(DEFAULT_MARGIN, Math.min(window.innerHeight - size - DEFAULT_MARGIN, drag.current.origY + dy))
-    setPos({ x: nx, y: ny })
-  }
-  const onPointerUp = () => {
-    if (!drag.current.active) return
-    const wasDrag = drag.current.moved
-    drag.current.active = false
-    if (!wasDrag) setOpen(true)
-    else { try { localStorage.setItem(POS_KEY, JSON.stringify(pos)) } catch { /* ignore */ } }
-  }
-
-  const push = (m: Msg) => setMessages((prev) => [...prev, m])
-
-  const runTaskNow = async (mode: QuickTaskMode, text?: string) => {
-    setLoading(true)
-    try {
-      const r = await runQuickTask(mode, text)
-      push({ role: 'meraj', text: r.result + (r.meta?.invoice ? `\n\n✅ Invoice **${r.meta.invoice.invoice_number}** created — ₹${r.meta.invoice.total}` : '') })
-    } catch (e) {
-      push({ role: 'meraj', text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.') })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const briefing = async () => {
-    if (loading) return
-    setLoading(true)
-    push({ role: 'user', text: "Today's briefing" })
-    try {
-      const reply = (await askAssistant('', true)).reply
-      push({ role: 'meraj', text: reply })
-    } catch (e) {
-      push({ role: 'meraj', text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.') })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const onPickTask = (t: QTask) => {
-    if (t.needsText) {
-      setPendingTask(t.id)
-      const hints: Record<string, string> = {
-        hindi_bot: 'Type the customer’s message and I’ll reply in Hinglish.',
-        gst_invoice_voice: 'Describe the sale (e.g. “Ramesh — 5 cement bags ₹400 each”) and I’ll make the GST invoice.',
-        custom: 'What do you need? Ask in Hinglish or English.',
-      }
-      push({ role: 'meraj', text: hints[t.id] || 'Go ahead — type below.' })
-      setTimeout(() => inputRef.current?.focus(), 50)
-    } else {
-      push({ role: 'user', text: t.label })
-      runTaskNow(t.id)
-    }
-  }
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 120)
+  }, [open])
 
   const send = async () => {
     const q = input.trim()
     if (!q || loading) return
     setInput('')
-    push({ role: 'user', text: q })
-    if (pendingTask) {
-      const mode = pendingTask
-      setPendingTask(null)
-      await runTaskNow(mode, q)
-      return
-    }
+    const next = [...messages, { role: 'user' as const, text: q }]
+    setMessages(next)
     setLoading(true)
     try {
-      const reply = (await askAssistant(q)).reply
-      push({ role: 'meraj', text: reply })
+      const res = await askAssistant(q, false, undefined, mode, undefined, pageContext)
+      setMessages([...next, { role: 'meraj' as const, text: res.reply, pending: res.pending }])
     } catch (e) {
-      push({ role: 'meraj', text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.') })
+      setMessages([...next, { role: 'meraj' as const, text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.') }])
     } finally {
       setLoading(false)
     }
   }
 
-  const placeholder = pendingTask
-    ? `${TASKS.find((t) => t.id === pendingTask)?.label} — type details…`
-    : 'Ask Meraj about sales, stock, customers…'
+  const confirmAction = async (pending: any) => {
+    if (loading) return
+    setLoading(true)
+    setMessages((m) => [...m, { role: 'user' as const, text: '✓ ' + (pending?.type === 'create_invoice' ? 'Create it' : 'Add it') }])
+    try {
+      const res = await askAssistant('', false, undefined, 'task', pending, pageContext)
+      setMessages((m) => [...m, { role: 'meraj' as const, text: res.reply }])
+    } catch (e) {
+      setMessages((m) => [...m, { role: 'meraj' as const, text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.') }])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const cancelAction = (idx: number) => {
+    setMessages((m) => m.map((msg, i) => (i === idx ? { ...msg, pending: undefined } : msg)))
+    setMessages((m) => [...m, { role: 'meraj' as const, text: 'No problem — cancelled.' }])
+  }
 
   return (
     <>
-      {/* Draggable launcher (hidden while panel open) */}
-      {!open && pos.x !== -1 && (
-        <button
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          aria-label="Open Meraj executive briefing (drag to move)"
-          title="Meraj — tap to open, drag to move"
-          className="fixed z-40 w-[60px] h-[60px] rounded-full shadow-float hover:scale-105 active:scale-95 transition-transform touch-none select-none bg-gradient-to-br from-accent to-accent-strong text-accent-fg flex items-center justify-center"
-          style={{ left: pos.x, top: pos.y }}
-        >
-          <MerajMark size={32} className="pointer-events-none" />
-          <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-positive rounded-full border-2 border-paper animate-pulse" />
-        </button>
-      )}
+      {/* Small professional launcher */}
+      <button
+        onClick={() => setOpen(true)}
+        aria-label="Open Meraj"
+        className="fixed z-40 bottom-5 right-5 w-12 h-12 rounded-full bg-accent-strong text-accent-fg shadow-float ring-1 ring-accent/30 hover:bg-accent hover:shadow-lift active:scale-95 transition-all flex items-center justify-center"
+      >
+        <MerajMark size={22} className="pointer-events-none" />
+        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-positive rounded-full border-2 border-paper" />
+      </button>
 
-      {/* Executive Briefing panel */}
-      {open && (
-        <div
-          className="fixed z-50 bottom-4 right-4 left-4 sm:left-auto sm:w-[400px] flex flex-col card rounded-xl overflow-hidden animate-scale-in origin-bottom-right shadow-float"
-          style={{ maxHeight: '80vh' }}
-        >
-          {/* Header — X in upper-left */}
-          <div className="flex items-center gap-2.5 px-3.5 py-3 border-b border-line">
-            <button onClick={() => setOpen(false)} aria-label="Close" className="w-7 h-7 rounded-lg flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 flex-shrink-0">
-              <X className="w-4 h-4" />
-            </button>
-            <span className="w-8 h-8 rounded-xl bg-accent-soft text-accent ring-1 ring-accent/20 flex-shrink-0 inline-flex items-center justify-center"><MerajMark size={20} /></span>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-fg text-sm leading-tight">Meraj</p>
-              <p className="text-[11px] text-fg-subtle leading-tight">Executive Briefing</p>
-            </div>
-            <Link to="/app/assistant" onClick={() => setOpen(false)} className="w-7 h-7 rounded-lg flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 flex-shrink-0" title="Open full view" aria-label="Open full view">
-              <ArrowUpRight className="w-4 h-4" />
-            </Link>
-          </div>
-
-          {/* Body */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-[220px]">
-            {messages.length === 0 ? (
-              /* Briefing hero (empty state) */
-              <div className="p-4">
-                <div className="rounded-xl border border-line bg-gradient-to-br from-accent-soft to-surface p-4">
-                  <span className="text-[10px] font-semibold tracking-[0.14em] uppercase text-accent">Daily Briefing</span>
-                  <p className="text-sm text-fg leading-relaxed mt-2">{greeting()}. Get your snapshot of today's sales, stock alerts, and follow-ups in one tap.</p>
-                  <button onClick={briefing} disabled={loading} className="btn-primary w-full mt-3.5 text-sm">
-                    {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Preparing…</> : <><Sparkles className="w-4 h-4" /> Generate briefing</>}
-                  </button>
-                </div>
-                <p className="text-center text-[11px] text-fg-subtle mt-3">or pick a priority action below</p>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className="fixed z-50 bottom-4 right-4 left-4 sm:left-auto sm:w-[392px] flex flex-col card rounded-2xl overflow-hidden shadow-float"
+            style={{ height: '78vh', maxHeight: '78vh' }}
+          >
+            {/* Header — mark · title · page it's reading · expand · close */}
+            <div className="flex items-center gap-2.5 px-3.5 py-3 border-b border-line bg-surface">
+              <span className="w-8 h-8 rounded-xl bg-accent-soft text-accent ring-1 ring-accent/20 flex items-center justify-center flex-shrink-0">
+                <MerajMark size={18} />
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-fg text-sm leading-tight">Meraj</p>
+                <p className="text-[11px] text-accent leading-tight truncate">
+                  {ctx ? `Reading · ${ctx.name}` : 'Your shop assistant'}
+                </p>
               </div>
-            ) : (
-              <div className="p-4 space-y-3">
-                {messages.map((m, i) =>
-                  m.role === 'user' ? (
-                    <div key={i} className="flex justify-end">
-                      <span className="text-xs text-fg-muted bg-surface-2 border border-line rounded-full px-3 py-1 max-w-[80%]">{m.text}</span>
-                    </div>
-                  ) : (
-                    <div key={i} className="rounded-xl border border-line border-l-2 border-l-accent bg-surface-2 p-3.5">
-                      <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(m.text) }} />
-                    </div>
-                  )
-                )}
-                {loading && (
-                  <div className="rounded-xl border border-line bg-surface-2 p-3.5 space-y-2">
-                    <div className="h-3 w-1/3 rounded bg-surface-3 animate-pulse" />
-                    <div className="h-3 w-full rounded bg-surface-3 animate-pulse" />
-                    <div className="h-3 w-5/6 rounded bg-surface-3 animate-pulse" />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Priority actions */}
-          <div className="px-3 py-2 border-t border-line">
-            <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-fg-subtle px-1 mb-1.5">Priority actions</p>
-            <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-              {TASKS.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => onPickTask(t)}
-                  disabled={loading}
-                  title={t.desc}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-medium whitespace-nowrap border transition-all flex-shrink-0 disabled:opacity-50 ${pendingTask === t.id ? 'border-accent bg-accent-soft text-accent' : 'border-line bg-surface text-fg-muted hover:border-line-2 hover:text-fg'}`}
-                >
-                  <t.icon className="w-3.5 h-3.5" /> {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Ask input */}
-          <div className="p-3 border-t border-line">
-            <div className="flex gap-2 items-center">
-              <input
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && send()}
-                placeholder={placeholder}
-                className="input-field flex-1 text-sm"
-                disabled={loading}
-              />
-              <button onClick={send} disabled={loading || !input.trim()} className="btn-primary px-3 h-[42px] flex items-center justify-center" aria-label="Send">
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              <Link
+                to="/app/assistant"
+                onClick={() => setOpen(false)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 flex-shrink-0"
+                title="Open full view"
+                aria-label="Open full view"
+              >
+                <ArrowUpRight className="w-4 h-4" />
+              </Link>
+              <button
+                onClick={() => setOpen(false)}
+                aria-label="Close"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 flex-shrink-0"
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
-          </div>
-        </div>
-      )}
+
+            {/* Messages (Claude-style, no suggestions) */}
+            <div ref={scrollRef} className="flex-1 overflow-y-auto scroll-area px-3.5 py-3">
+              {messages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center px-4">
+                  <span className="w-11 h-11 rounded-2xl bg-accent-soft text-accent flex items-center justify-center mb-3">
+                    <MerajMark size={24} />
+                  </span>
+                  <p className="text-sm text-fg font-medium">{ctx ? `Ask about ${ctx.name}` : 'Ask me anything'}</p>
+                  <p className="text-xs text-fg-subtle mt-1 leading-relaxed max-w-[260px]">
+                    {ctx
+                      ? `I can see you're on the ${ctx.name} page. Ask me anything about what's here or your business — I'll keep it relevant to this page.`
+                      : 'Ask about sales, stock, customers — anything about your business.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {messages.map((m, i) =>
+                    m.role === 'user' ? (
+                      <div key={i} className="flex justify-end">
+                        <div className="bg-surface-2/70 rounded-2xl rounded-br-md px-3 py-2 max-w-[80%]">
+                          <p className="text-sm text-fg whitespace-pre-wrap">{m.text}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div key={i} className="flex gap-2.5">
+                        <span className="w-7 h-7 rounded-lg bg-accent-soft text-accent flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <MerajMark size={15} />
+                        </span>
+                        <div className="flex-1 min-w-0 pt-0.5">
+                          <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: render(m.text) }} />
+                          {m.pending && (
+                            <div className="mt-2.5 flex gap-2">
+                              <button onClick={() => confirmAction(m.pending)} disabled={loading} className="btn-primary text-xs flex-1 h-8 px-2">
+                                <Sparkles className="w-3.5 h-3.5" /> {m.pending?.type === 'create_invoice' ? 'Create it' : 'Add it'}
+                              </button>
+                              <button onClick={() => cancelAction(i)} className="btn-secondary text-xs h-8 px-2">Cancel</button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  )}
+                  {loading && (
+                    <div className="flex gap-2.5">
+                      <span className="w-7 h-7 rounded-lg bg-accent-soft text-accent flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <MerajMark size={15} />
+                      </span>
+                      <div className="flex items-center gap-1 pt-2">
+                        {[0, 1, 2].map((d) => (
+                          <motion.span key={d} className="w-1.5 h-1.5 rounded-full bg-accent" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1, repeat: Infinity, delay: d * 0.15 }} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Compact Task/Ask mode + input */}
+            <div className="border-t border-line p-2.5 bg-surface">
+              <div className="flex items-center gap-1.5 mb-2 px-0.5">
+                <div className="relative">
+                  <button
+                    onClick={() => setShowMode((v) => !v)}
+                    className="w-8 h-8 rounded-lg flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors"
+                    aria-label="Switch mode"
+                  >
+                    <Plus className={`w-4 h-4 transition-transform ${showMode ? 'rotate-45' : ''}`} />
+                  </button>
+                  <AnimatePresence>
+                    {showMode && (
+                      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} className="absolute bottom-9 left-0 card p-1 w-48 shadow-float z-10">
+                        <button onClick={() => { setMode('ask'); setShowMode(false) }} className={`w-full flex items-start gap-2 px-2.5 py-1.5 rounded-lg text-left hover:bg-surface-2 ${mode === 'ask' ? 'bg-surface-2' : ''}`}>
+                          <MessageCircle className="w-3.5 h-3.5 text-accent mt-0.5" />
+                          <div><p className="text-xs font-medium text-fg">Ask</p><p className="text-[10px] text-fg-subtle leading-tight">Conversational</p></div>
+                        </button>
+                        <button onClick={() => { setMode('task'); setShowMode(false) }} className={`w-full flex items-start gap-2 px-2.5 py-1.5 rounded-lg text-left hover:bg-surface-2 ${mode === 'task' ? 'bg-surface-2' : ''}`}>
+                          <Zap className="w-3.5 h-3.5 text-accent mt-0.5" />
+                          <div><p className="text-xs font-medium text-fg">Task</p><p className="text-[10px] text-fg-subtle leading-tight">Takes actions</p></div>
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${mode === 'task' ? 'bg-accent-soft text-accent' : 'bg-surface-2 text-fg-muted'}`}>
+                  {mode === 'task' ? 'Task' : 'Ask'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && send()}
+                  placeholder={mode === 'task' ? 'Do anything…' : 'Ask anything…'}
+                  className="input-field flex-1 text-sm"
+                  disabled={loading}
+                />
+                <button onClick={send} disabled={loading || !input.trim()} className="btn-primary px-3 h-[42px] flex items-center justify-center" aria-label="Send">
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   )
 }

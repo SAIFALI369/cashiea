@@ -262,7 +262,7 @@ Deno.serve(async (req) => {
     const limit = onTrial ? Math.max(profile.api_usage_limit, 500) : profile?.api_usage_limit || 50;
     if (profile && profile.api_usage_count >= limit) return json({ error: "Usage limit reached" }, 429);
 
-    const { message, briefing, scope, mode, confirm } = await req.json();
+    const { message, briefing, scope, mode, confirm, pageContext } = await req.json();
     // Task-scoped conversations (e.g. Meraj opened from "Expenses"). Empty for general chat.
     const SCOPE_AREAS: Record<string, string> = {
       receipts: "bills, receipts, and GST invoices",
@@ -278,6 +278,13 @@ Deno.serve(async (req) => {
       ? "\n\nTASK FOCUS: In this conversation you are helping ONLY with " + SCOPE_AREAS[scope] + ". Stay on this topic; if the owner asks something unrelated, acknowledge briefly and gently steer back to " + SCOPE_AREAS[scope] + ".\n"
       : "";
     const provider = profile?.ai_provider || "openai";
+
+    // PAGE CONTEXT — the floating mini-assistant tells us which screen the
+    // owner is looking at, so "this", "here", or "this page" questions are
+    // answered against the page they're actually on.
+    const pageFocus = pageContext && pageContext.name
+      ? "\n\nPAGE CONTEXT: The owner currently has the \"" + pageContext.name + "\" page open on their screen \u2014 it shows " + pageContext.description + ". When they say \"this\", \"here\", \"this page\", or point at something visible, they mean the " + pageContext.name + " page. Tailor your answer to what they're looking at and pull the matching data from the snapshot (e.g. stock for the Products page, customers for the Customers page, expenses for the Accounts page, invoices for the Invoices page). Do not describe the page layout unless explicitly asked.\n"
+      : "";
 
     // ── TASK MODE: function-calling + confirm/execute ──
     if (mode === "task") {
@@ -317,7 +324,7 @@ Deno.serve(async (req) => {
       }
       // PREPARE: model decides tool-call vs text reply
       const [ctx2, mem2] = await Promise.all([ buildContext(supabase, user.id), buildMemory(supabase, user.id) ]);
-      const tr = await callGeminiToolCall(TASK_SYSTEM + scopeFocus, `Owner: "${message}"\n\n${mem2.block}\n\nSnapshot:\n${ctx2}`, ALL_TOOLS, { feature: "task-invoice" });
+      const tr = await callGeminiToolCall(TASK_SYSTEM + scopeFocus + pageFocus, `Owner: "${message}"\n\n${mem2.block}\n\nSnapshot:\n${ctx2}`, ALL_TOOLS, { feature: "task-invoice" });
       if (!tr.ok) return json({ error: tr.value }, 500);
       if (tr.value.kind === "tool") {
         const tn = tr.value.name; const args = tr.value.args || {};
@@ -356,7 +363,7 @@ Deno.serve(async (req) => {
       ? `Generate a concise MORNING BRIEFING for today based on this business snapshot. Greet the owner by name, list today's tasks (follow-ups, stock, payments due), and give a quick status.\n\n${mem.block}\n\nSnapshot:\n${context}`
       : `Business owner asks: "${message}"\n\n${mem.block}\n\nHere is the current business data snapshot:\n${context}\n\nAnswer the owner's question based on this data and what you already know about them.`;
 
-    const result = await callAIWithFallback(provider, SYSTEM + scopeFocus, userPrompt, 1200, "assistant");
+    const result = await callAIWithFallback(provider, SYSTEM + scopeFocus + pageFocus, userPrompt, 1200, "assistant");
 
     // ── Persist memory (single upsert): append this turn to the transcript,
     //    and (if memory-worthy) extract durable facts to remember. ──

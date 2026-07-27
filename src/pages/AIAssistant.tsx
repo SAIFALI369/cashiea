@@ -249,7 +249,7 @@ export default function AIAssistant() {
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             onKeyDown={(e) => e.key === 'Enter' && send()}
-            placeholder={mode === 'task' ? (scopeLabel ? `Tell Meraj what to do for ${scopeLabel.toLowerCase()}…` : 'Tell Meraj what to do…') : (scopeLabel ? `Ask about ${scopeLabel.toLowerCase()}…` : 'Ask Meraj anything…')}
+            placeholder={mode === 'task' ? 'Do anything…' : 'Ask anything…'}
             className="input-field flex-1 text-sm"
             disabled={loading}
           />
