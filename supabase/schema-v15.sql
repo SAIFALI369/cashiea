@@ -9,10 +9,9 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 values ('avatars', 'avatars', true, 3145728, array['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 on conflict (id) do nothing;
 
--- Anyone (including signed-out landing pages if ever needed) can read avatars.
-create policy "avatars public read"
-  on storage.objects for select
-  using (bucket_id = 'avatars');
+-- NOTE: the public 'avatars' bucket does NOT need a SELECT policy — objects are
+-- served by the public URL regardless, and a broad SELECT policy would let
+-- anyone list the bucket (linter: public_bucket_allows_listing). Omit it.
 
 -- An authenticated owner can manage only objects inside their own folder
 -- (avatars/<user_id>/...). (storage.foldername(name))[1] is the top path segment.
