@@ -18,11 +18,13 @@ create table if not exists public.whatsapp_messages (
   created_at timestamptz not null default now()
 );
 create index if not exists whatsapp_messages_user_idx on public.whatsapp_messages(user_id, created_at desc);
-create index if not exists whatsapp_messages_from_idx on public.whatsapp_messages(from_phone);
 alter table public.whatsapp_messages enable row level security;
 drop policy if exists "Owner can read own messages" on public.whatsapp_messages;
 create policy "Owner can read own messages" on public.whatsapp_messages
-  for select using (auth.uid() = user_id);
+  for select using ((select auth.uid()) = user_id);
+drop policy if exists "Owner can insert own messages" on public.whatsapp_messages;
+create policy "Owner can insert own messages" on public.whatsapp_messages
+  for insert to authenticated with check ((select auth.uid()) = user_id);
 
 -- PKCE verifier store for OAuth flows with PKCE (e.g. Canva Connect).
 -- Service-role only (no public RLS policy); rows are short-lived.
