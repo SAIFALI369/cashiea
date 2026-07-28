@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, ArrowRight, Check, Store, Phone, User, MapPin, Zap, TrendingUp, Shield } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { friendlyAuthError } from '../../lib/auth-errors'
 import { useInputFocus, FOCUS_SCROLL_CLASS } from '../../lib/useInputFocus'
 
 function Logo({ size = 32 }: { size?: number }) {
@@ -76,7 +77,7 @@ export default function Signup() {
       if (err instanceof Error && err.message === 'EMAIL_CONFIRMATION_REQUIRED') {
         setNeedsConfirmation(true)
       } else {
-        setError(err instanceof Error ? err.message : 'Failed to create account')
+        setError(friendlyAuthError(err, 'Could not create account. Please try again.'))
       }
     } finally {
       setLoading(false)

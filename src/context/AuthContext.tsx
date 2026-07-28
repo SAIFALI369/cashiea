@@ -86,7 +86,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     })
 
-    if (error) throw error
+    if (error) {
+      // eslint-disable-next-line no-console
+      console.error('[cashiea:auth] signUp error →', error)
+      throw error
+    }
     // Profile + trial + onboarding_step=1 are all auto-created by the
     // handle_new_user trigger (schema-v11) — nothing client-side to skip.
     if (data.user) {
@@ -106,7 +110,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
     })
-    if (error) throw error
+    if (error) {
+      // eslint-disable-next-line no-console
+      console.error('[cashiea:auth] signIn error →', error)
+      throw error
+    }
   }
 
   const signOut = async () => {

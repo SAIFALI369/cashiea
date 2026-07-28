@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, ArrowRight, Check, Shield, Zap, TrendingUp } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { friendlyAuthError } from '../../lib/auth-errors'
 import { useInputFocus, FOCUS_SCROLL_CLASS } from '../../lib/useInputFocus'
 
 // ═══ Logo (same as landing) ═══
@@ -48,8 +49,7 @@ export default function Login() {
       toast.success('Welcome back!')
       navigate(from, { replace: true })
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to sign in'
-      setError(msg.includes('Invalid login') ? 'Wrong email or password. Try again or sign up.' : msg)
+      setError(friendlyAuthError(err))
     } finally {
       setLoading(false)
     }
@@ -63,7 +63,7 @@ export default function Login() {
       if (error) throw error
       toast.success('Password reset link sent! Check your email.')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Reset failed')
+      toast.error(friendlyAuthError(err, 'Could not send reset email'))
     } finally {
       setResetting(false)
     }
