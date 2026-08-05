@@ -2,7 +2,9 @@ import { Suspense, useEffect, useRef, useState } from 'react'
 import { Outlet, useLocation, Link } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import FloatingMeraj from './FloatingMeraj'
+import BottomNav from './BottomNav'
 import TouchRipple from './TouchRipple'
+import { SyncIndicator } from './SyncIndicator'
 import { motion } from './motion'
 import Skeleton from './ui/Skeleton'
 import { Avatar } from './Avatar'
@@ -15,11 +17,9 @@ export default function AppLayout() {
   const { profile } = useAuth()
   // The Meraj assistant page is full-bleed and scrolls internally; other pages
   // keep the padded, max-width shell + native body scroll.
-  const isAssistant = location.pathname.startsWith("/app/assistant")
-  // The floating mini-assistant is hidden on the assistant page and the
-  // dashboard — both already have their own entry point to Meraj.
-  const isDashboard = location.pathname === '/app'
-  const showFloatingMeraj = !isAssistant && !isDashboard
+  const isAssistant = location.pathname.startsWith('/app/assistant')
+  // Persistent AI access on every non-assistant screen (desktop FAB / mobile bottom-nav center).
+  const showFloatingMeraj = !isAssistant
 
   const [hdrOpacity, setHdrOpacity] = useState(1)
   const fadeTimer = useRef<number | undefined>(undefined)
@@ -32,35 +32,32 @@ export default function AppLayout() {
     return () => { window.removeEventListener('scroll', reset); window.removeEventListener('touchstart', reset); clearTimeout(fadeTimer.current) }
   }, [isAssistant])
 
-
   return (
-    // Assistant gets a definite viewport height so its inner message list can
-    // scroll on mobile (min-h-screen left the flex chain unbounded → no scroll).
-    <div className={isAssistant ? "h-dvh flex overflow-hidden bg-slate-950" : "min-h-screen flex bg-slate-950"}>
+    // Assistant: definite viewport height so its message list scrolls on mobile.
+    <div className={isAssistant ? 'h-dvh flex overflow-hidden bg-slate-950' : 'min-h-screen flex bg-slate-950'}>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Mobile header — menu + brand (fades) + account avatar (always visible) */}
+        {/* Mobile header — menu · brand (fades) · sync state · account */}
         {!isAssistant && (
         <header className="lg:hidden sticky top-0 z-30 bg-slate-900/80 backdrop-blur border-b border-slate-800 px-4 py-3 flex items-center gap-3">
           <button onClick={() => setSidebarOpen(true)} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-muted hover:text-fg">
             <Menu className="w-6 h-6" />
           </button>
-          <div style={{ opacity: hdrOpacity, transition: "opacity 0.4s ease" }} className="flex-1">
+          <div style={{ opacity: hdrOpacity, transition: 'opacity 0.4s ease' }} className="flex-1 min-w-0">
             <span className="font-bold text-white">Cashiea</span>
           </div>
-          <Link
-            to="/app/account"
-            aria-label="Open account"
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full"
-          >
+          <SyncIndicator />
+          <Link to="/app/account" aria-label="Open account" className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full">
             <Avatar url={profile?.avatar_url} name={profile?.full_name} size={34} />
           </Link>
         </header>
         )}
 
-        <main className={isAssistant ? 'flex-1 min-w-0 flex flex-col min-h-0' : 'flex-1 p-4 sm:p-5 lg:p-8 max-w-7xl mx-auto w-full'}>
-          {/* Route transition — gentle fade/slide on every navigation */}
+        {/* Content — extra bottom padding on mobile so the bottom nav never covers it */}
+        <main className={isAssistant
+          ? 'flex-1 min-w-0 flex flex-col min-h-0'
+          : 'flex-1 px-4 pt-4 pb-28 sm:px-5 sm:pt-5 lg:p-8 lg:pb-8 max-w-7xl mx-auto w-full'}>
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 8 }}
@@ -84,7 +81,10 @@ export default function AppLayout() {
         </main>
       </div>
 
-      {/* Global tap ripple + floating Meraj launcher (hidden on Dashboard & AI page) */}
+      {/* Mobile bottom nav (persistent; "More" opens the grouped drawer) */}
+      {!isAssistant && <BottomNav onMore={() => setSidebarOpen(true)} />}
+
+      {/* Global tap ripple + persistent Meraj launcher (desktop FAB; mobile uses bottom-nav center) */}
       <TouchRipple />
       {showFloatingMeraj && <FloatingMeraj pathname={location.pathname} />}
     </div>

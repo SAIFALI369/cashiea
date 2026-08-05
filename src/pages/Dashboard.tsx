@@ -1,95 +1,95 @@
-import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import DoAnythingBar from '../components/DoAnythingBar'
 import { MerajMark } from '../components/MerajMark'
 import { motion, stagger, fadeUp } from '../components/motion'
 import {
-  Camera, Receipt, FileBarChart, Mail, MessageCircle, Wallet, TrendingUp,
-  Package, ListChecks, ChevronRight, Sparkles, Users,
+  ShoppingCart, Receipt, Users, Package, FileBarChart, Sparkles, ArrowRight,
 } from 'lucide-react'
-import toast from 'react-hot-toast'
+import type { LucideIcon } from 'lucide-react'
 
-const FEATURES = [
-  { label: 'Receipts', desc: 'Create bills & GST invoices', to: '/app/invoices', icon: Receipt, scope: 'receipts' },
-  { label: 'Business Report', desc: 'AI sales & insight reports', to: '/app/reports', icon: FileBarChart, scope: 'reports' },
-  { label: 'E-mails', desc: 'Draft customer & retargeting emails', to: '/app/email-assistant', icon: Mail, scope: 'emails' },
-  { label: 'WhatsApp', desc: 'Win-back & broadcast campaigns', to: '/app/campaigns', icon: MessageCircle, scope: 'whatsapp' },
-  { label: 'Expenses', desc: 'Track spending & payouts', to: '/app/accounts', icon: Wallet, scope: 'expenses' },
-  { label: 'Profits', desc: 'Profit & loss overview', to: '/app/accounts', icon: TrendingUp, scope: 'profits' },
-  { label: 'Stocks', desc: 'Inventory & low-stock alerts', to: '/app/products', icon: Package, scope: 'stocks' },
-  { label: 'Tasks', desc: 'AI-predicted actions & follow-ups', to: '/app/brain', icon: ListChecks, scope: 'tasks' },
+// Supporting actions — ordered by business priority, NOT equal weight.
+interface Action { to: string; label: string; desc: string; icon: LucideIcon }
+const PRIMARY: Action = { to: '/app/pos', label: 'New Sale', desc: 'Ring up a sale', icon: ShoppingCart }
+const ACTIONS: Action[] = [
+  { to: '/app/invoices', label: 'Quick Bill', desc: 'Create a GST invoice', icon: Receipt },
+  { to: '/app/customers', label: 'Customers', desc: 'View & add contacts', icon: Users },
+  { to: '/app/products', label: 'Stock', desc: 'Inventory & low-stock', icon: Package },
+  { to: '/app/reports', label: 'Reports', desc: 'Sales & insights', icon: FileBarChart },
 ]
 
 export default function Dashboard() {
   const { profile } = useAuth()
-  const fileRef = useRef<HTMLInputElement>(null)
   const hour = new Date().getHours()
   const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
-
-  const onPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) toast.success('Photo captured — this feature is coming soon.')
-  }
+  const firstName = (profile?.full_name || 'Owner').split(' ')[0]
+  const datestr = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
 
   return (
-    <div className="animate-fade-in">
-      {/* Header — "Mere" reserved label + greeting */}
-      <div className="mb-7">
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent-soft text-accent text-[11px] font-semibold tracking-wide">
-          <Sparkles className="w-3 h-3" /> Mere
-        </span>
-        <h1 className="text-xl font-bold text-fg mt-3">Today</h1>
-        <p className="text-sm text-fg-muted mt-1">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
-      </div>
+    <div className="animate-fade-in space-y-6">
+      {/* ══ HERO — one clear primary action ══ */}
+      <motion.section
+        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        className="card relative overflow-hidden p-6 sm:p-8"
+      >
+        <div className="absolute -top-16 -right-10 w-64 h-64 rounded-full opacity-60" style={{ background: 'radial-gradient(circle, rgb(var(--accent) / 0.14) 0%, transparent 70%)' }} />
+        <div className="relative">
+          <p className="text-[11px] font-bold tracking-[0.12em] uppercase text-accent">{greet}, {firstName}</p>
+          <h1 className="mt-2 text-fg font-bold leading-tight" style={{ fontSize: '1.75rem', letterSpacing: '-0.02em' }}>
+            Run your shop today.
+          </h1>
+          <p className="text-sm text-fg-muted mt-1.5">{datestr} · {profile?.company_name || 'Your business'}</p>
 
-      <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onPhoto} />
+          <div className="flex flex-col sm:flex-row gap-3 mt-6">
+            <Link to={PRIMARY.to} className="btn-primary text-base px-6 py-3.5 h-auto flex-1 sm:flex-none">
+              <PRIMARY.icon className="w-5 h-5" /> {PRIMARY.label}
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link to="/app/assistant" className="btn-secondary text-base px-6 py-3.5 h-auto flex-1 sm:flex-none">
+              <Sparkles className="w-5 h-5 text-accent" /> Ask Meraj
+            </Link>
+          </div>
+        </div>
+      </motion.section>
 
-      {/* 4-icon row (camera is mobile-only) */}
-      <div className="grid grid-cols-4 lg:grid-cols-3 gap-3 sm:gap-4 mb-7">
-        <button onClick={() => fileRef.current?.click()} className="lg:hidden card card-hover p-3 sm:p-4 flex flex-col items-center gap-2 group">
-          <span className="w-9 h-9 rounded-xl bg-surface-2 text-fg inline-flex items-center justify-center group-hover:bg-accent-soft group-hover:text-accent transition-colors"><Camera className="w-5 h-5" /></span>
-          <span className="text-[11px] font-medium text-fg-muted">Camera</span>
-        </button>
-        <Link to="/app/invoices" className="card card-hover p-3 sm:p-4 flex flex-col items-center gap-2 group">
-          <span className="w-9 h-9 rounded-xl bg-surface-2 text-fg inline-flex items-center justify-center group-hover:bg-accent-soft group-hover:text-accent transition-colors"><Receipt className="w-5 h-5" /></span>
-          <span className="text-[11px] font-medium text-fg-muted">Quick Bill</span>
-        </Link>
-        <Link to="/app/products" className="card card-hover p-3 sm:p-4 flex flex-col items-center gap-2 group">
-          <span className="w-9 h-9 rounded-xl bg-surface-2 text-fg inline-flex items-center justify-center group-hover:bg-accent-soft group-hover:text-accent transition-colors"><Package className="w-5 h-5" /></span>
-          <span className="text-[11px] font-medium text-fg-muted">Products</span>
-        </Link>
-        <Link to="/app/customers" className="card card-hover p-3 sm:p-4 flex flex-col items-center gap-2 group">
-          <span className="w-9 h-9 rounded-xl bg-surface-2 text-fg inline-flex items-center justify-center group-hover:bg-accent-soft group-hover:text-accent transition-colors"><Users className="w-5 h-5" /></span>
-          <span className="text-[11px] font-medium text-fg-muted">Customers</span>
-        </Link>
-      </div>
+      {/* ══ COMMAND CENTER — the smart action launcher ══ */}
+      <DoAnythingBar />
 
-      {/* Do Anything — docked launcher into the full Meraj page */}
-      <div className="mb-8"><DoAnythingBar /></div>
-
-      {/* Feature rows (each with a scoped AI badge) */}
-      <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-2.5">
-        <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-fg-subtle px-1 mb-1">Features</p>
-        {FEATURES.map((f) => (
-          <motion.div key={f.label} variants={fadeUp} className="card card-hover p-5 flex items-center gap-3 group">
-            <Link to={f.to} className="flex items-center gap-4 flex-1 min-w-0">
-              <span className="w-9 h-9 rounded-xl bg-accent-soft text-accent inline-flex items-center justify-center flex-shrink-0"><f.icon className="w-5 h-5" /></span>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-fg">{f.label}</p>
-                <p className="text-xs text-fg-muted mt-0.5 truncate">{f.desc}</p>
+      {/* ══ PRIORITISED ACTIONS — varied prominence, consistent padding ══ */}
+      <motion.section variants={stagger} initial="hidden" animate="show" className="grid grid-cols-2 gap-4">
+        {ACTIONS.map((a, i) => (
+          <motion.div key={a.to} variants={fadeUp}>
+            <Link to={a.to} className={`card card-hover card-press block h-full ${i === 0 ? 'col-span-2' : ''}`}>
+              <div className={`flex items-center gap-4 ${i === 0 ? 'p-5' : 'p-4'}`}>
+                <span className={`rounded-control bg-accent-soft text-accent flex items-center justify-center flex-shrink-0 ${i === 0 ? 'w-12 h-12' : 'w-10 h-10'}`}>
+                  <a.icon className={i === 0 ? 'w-6 h-6' : 'w-5 h-5'} strokeWidth={1.75} />
+                </span>
+                <div className="min-w-0">
+                  <p className={`font-semibold text-fg ${i === 0 ? 'text-base' : 'text-sm'}`}>{a.label}</p>
+                  <p className="text-xs text-fg-subtle truncate">{a.desc}</p>
+                </div>
+                {i === 0 && <ArrowRight className="w-5 h-5 text-fg-subtle ml-auto" />}
               </div>
             </Link>
-            <Link
-              to={`/app/assistant?scope=${f.scope}`}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-accent-soft text-accent text-[10px] font-semibold hover:bg-accent hover:text-accent-fg transition-colors flex-shrink-0"
-              title={`Ask Meraj about ${f.label}`}
-            >
-              <Sparkles className="w-3 h-3" /> AI
-            </Link>
-            <MerajMark size={20} className="text-fg-subtle flex-shrink-0" />
           </motion.div>
         ))}
-      </motion.div>
+      </motion.section>
+
+      {/* ══ MERAJ nudge — the AI as a calm, persistent invite ══ */}
+      <Link
+        to="/app/assistant"
+        className="card card-hover block p-5 flex items-center gap-4"
+      >
+        <span className="w-11 h-11 rounded-control bg-gradient-to-br from-accent to-accent-strong text-accent-fg flex items-center justify-center flex-shrink-0">
+          <MerajMark size={22} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-fg text-sm">Ask Meraj anything</p>
+          <p className="text-xs text-fg-subtle">Billing, stock, follow-ups — or “how was business today?”</p>
+        </div>
+        <span className="text-[10px] font-bold tracking-wide px-2 py-1 rounded-full bg-accent-soft text-accent">AI</span>
+      </Link>
     </div>
   )
 }

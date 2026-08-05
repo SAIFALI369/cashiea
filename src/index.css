@@ -31,6 +31,9 @@
     --negative: 165 79 71;       /* muted clay red */
     --warning: 178 132 58;       /* dusty amber */
     --info: 92 110 130;
+    --disabled: 189 185 178;     /* muted grey for disabled surfaces/text */
+    --radius-card: 16;           /* px — cards/panels/sheets */
+    --radius-control: 12;        /* px — buttons/inputs/chips */
     --shadow: 60 50 35;          /* warm shadow base */
   }
 
@@ -56,6 +59,7 @@
     --negative: 199 114 104;
     --warning: 201 149 80;
     --info: 130 150 170;
+    --disabled: 70 64 56;
     --shadow: 0 0 0;
   }
 
@@ -102,7 +106,7 @@
   }
 
   .card {
-    @apply bg-surface border border-line rounded-xl shadow-soft
+    @apply bg-surface border border-line rounded-card shadow-soft
            transition-[transform,box-shadow,border-color] duration-200 ease-out;
   }
   .card-hover { @apply hover:-translate-y-0.5 hover:shadow-lift hover:border-line-2; }

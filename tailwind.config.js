@@ -34,6 +34,9 @@ export default {
         negative: 'rgb(var(--negative) / <alpha-value>)',
         warning: 'rgb(var(--warning) / <alpha-value>)',
         info: 'rgb(var(--info) / <alpha-value>)',
+        success: 'rgb(var(--positive) / <alpha-value>)',
+        error: 'rgb(var(--negative) / <alpha-value>)',
+        disabled: 'rgb(var(--disabled) / <alpha-value>)',
 
         // ── Legacy remap (existing pages keep working + become themed) ──
         white: 'rgb(var(--fg) / <alpha-value>)',
@@ -97,6 +100,8 @@ export default {
       },
       borderRadius: {
         // One disciplined radius scale.
+        card: '1rem',            // cards / panels / sheets (16px)
+        control: '0.75rem',      // buttons / inputs / chips (12px)
         xl: '0.75rem',
         '2xl': '1rem',
         '3xl': '1.25rem',

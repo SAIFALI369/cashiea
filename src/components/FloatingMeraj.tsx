@@ -93,7 +93,7 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
       <button
         onClick={() => setOpen(true)}
         aria-label="Open Meraj"
-        className="fixed z-40 bottom-5 right-5 w-12 h-12 rounded-full bg-accent-strong text-accent-fg shadow-float ring-1 ring-accent/30 hover:bg-accent hover:shadow-lift active:scale-95 transition-all flex items-center justify-center"
+        className="fixed z-40 bottom-6 right-6 w-12 h-12 rounded-full bg-accent-strong text-accent-fg shadow-float ring-1 ring-accent/30 hover:bg-accent hover:shadow-lift active:scale-95 transition-all hidden lg:flex items-center justify-center"
       >
         <MerajMark size={22} className="pointer-events-none" />
         <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-positive rounded-full border-2 border-paper" />

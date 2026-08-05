@@ -6,25 +6,61 @@ import clsx from 'clsx'
 import ThemeToggle from './ThemeToggle'
 import { Avatar } from './Avatar'
 import {
-  UserCircle, Lightbulb, Bell, ShieldCheck, AlertOctagon, UsersRound, Truck,
-  Plug, Settings as SettingsIcon, LogOut, Sparkles, X, LayoutDashboard,
+  LayoutDashboard, ShoppingCart, Receipt, FileSignature, Users, Truck,
+  Sparkles, ListChecks, FileBarChart, MessageCircle, Mail, ScrollText, Database,
+  Package, Wallet, History, AlertOctagon, UsersRound,
+  Settings as SettingsIcon, Plug, Key, CreditCard, Network, Shield, LifeBuoy,
+  UserCircle, Bell, ShieldCheck, Lightbulb, X, LogOut,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-interface NavItem { to: string; label: string; icon: LucideIcon; end?: boolean; badge?: boolean }
+interface Item { to: string; label: string; icon: LucideIcon; end?: boolean; badge?: boolean; ai?: boolean }
+interface Section { label: string; items: Item[] }
 
-// Quick Access — primary navigation. The former "More" items now live in Settings.
-const QUICK_ACCESS: NavItem[] = [
-  { to: '/app', label: 'Today', icon: LayoutDashboard, end: true },
-  { to: '/app/about', label: 'About Me', icon: UserCircle },
-  { to: '/app/suggestions', label: 'Suggestions', icon: Lightbulb },
-  { to: '/app/notifications', label: 'Notifications', icon: Bell },
-  { to: '/app/permissions', label: 'Permissions', icon: ShieldCheck },
-  { to: '/app/failed-jobs', label: 'Pending', icon: AlertOctagon, badge: true },
-  { to: '/app/team', label: 'Staff', icon: UsersRound },
-  { to: '/app/suppliers', label: 'Suppliers', icon: Truck },
-  { to: '/app/connect-apps', label: 'Connections', icon: Plug },
-  { to: '/app/settings', label: 'Settings', icon: SettingsIcon },
+// Grouped nav — clear sections instead of one flat list.
+const SECTIONS: Section[] = [
+  { label: 'Today', items: [{ to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true }] },
+  { label: 'Sales', items: [
+    { to: '/app/pos', label: 'New Sale', icon: ShoppingCart },
+    { to: '/app/invoices', label: 'Bills', icon: Receipt },
+    { to: '/app/quotations', label: 'Quotations', icon: FileSignature },
+  ]},
+  { label: 'Customers', items: [
+    { to: '/app/customers', label: 'Customers', icon: Users },
+    { to: '/app/suppliers', label: 'Suppliers', icon: Truck },
+  ]},
+  { label: 'AI Tools', items: [
+    { to: '/app/assistant', label: 'Meraj', icon: Sparkles, ai: true },
+    { to: '/app/brain', label: 'Tasks', icon: ListChecks },
+    { to: '/app/reports', label: 'Reports', icon: FileBarChart },
+    { to: '/app/campaigns', label: 'Campaigns', icon: MessageCircle },
+    { to: '/app/email-assistant', label: 'Email', icon: Mail },
+    { to: '/app/summaries', label: 'Summaries', icon: ScrollText },
+    { to: '/app/data-entry', label: 'Data Entry', icon: Database },
+  ]},
+  { label: 'Business', items: [
+    { to: '/app/products', label: 'Stock', icon: Package },
+    { to: '/app/accounts', label: 'Accounts', icon: Wallet },
+    { to: '/app/activity', label: 'Activity', icon: History },
+    { to: '/app/failed-jobs', label: 'Pending', icon: AlertOctagon, badge: true },
+  ]},
+  { label: 'Team', items: [{ to: '/app/team', label: 'Staff', icon: UsersRound }] },
+  { label: 'Settings', items: [
+    { to: '/app/settings', label: 'Settings', icon: SettingsIcon },
+    { to: '/app/connect-apps', label: 'Connections', icon: Plug },
+    { to: '/app/api-keys', label: 'API Keys', icon: Key },
+    { to: '/app/subscription', label: 'Subscription', icon: CreditCard },
+    { to: '/app/integrations', label: 'Integrations', icon: Network },
+    { to: '/app/compliance', label: 'Compliance', icon: Shield },
+    { to: '/app/support', label: 'Support', icon: LifeBuoy },
+  ]},
+  { label: 'Account', items: [
+    { to: '/app/account', label: 'Account', icon: UserCircle },
+    { to: '/app/notifications', label: 'Notifications', icon: Bell },
+    { to: '/app/permissions', label: 'Permissions', icon: ShieldCheck },
+    { to: '/app/suggestions', label: 'Suggestions', icon: Lightbulb },
+    { to: '/app/about', label: 'About', icon: UserCircle },
+  ]},
 ]
 
 export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
@@ -45,19 +81,24 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
 
   const handleSignOut = async () => { await signOut(); navigate('/') }
 
-  const renderItem = (item: NavItem) => (
+  const renderItem = (item: Item) => (
     <NavLink
       key={item.to}
       to={item.to}
       end={item.end}
       onClick={onClose}
       className={({ isActive }) => clsx(
-        'flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all',
-        isActive ? 'bg-accent-soft text-accent' : 'text-fg-muted hover:text-fg hover:bg-surface-2'
+        'group flex items-center gap-3 rounded-control font-medium text-sm transition-colors min-h-[40px] px-3 py-2',
+        isActive
+          ? 'bg-accent-soft text-accent'
+          : item.ai
+            ? 'text-accent hover:bg-surface-2'
+            : 'text-fg-muted hover:text-fg hover:bg-surface-2'
       )}
     >
-      <item.icon className={clsx('w-[18px] h-[18px]', item.badge && failedCount > 0 && 'text-negative')} strokeWidth={1.75} />
-      <span className="flex-1">{item.label}</span>
+      <item.icon className="w-[18px] h-[18px] flex-shrink-0" strokeWidth={1.75} />
+      <span className="flex-1 truncate">{item.label}</span>
+      {item.ai && <span className="text-[9px] font-bold tracking-wide px-1.5 py-0.5 rounded-full bg-accent text-accent-fg">AI</span>}
       {item.badge && failedCount > 0 && (
         <span className="bg-negative text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{failedCount > 9 ? '9+' : failedCount}</span>
       )}
@@ -71,43 +112,40 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         'fixed lg:sticky top-0 left-0 z-50 h-screen w-72 bg-paper border-r border-line flex flex-col transition-transform duration-300',
         isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       )}>
-        {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-line">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent to-accent-strong text-accent-fg flex items-center justify-center">
+            <div className="w-9 h-9 rounded-control bg-gradient-to-br from-accent to-accent-strong text-accent-fg flex items-center justify-center">
               <Sparkles className="w-5 h-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h1 className="font-bold text-fg text-lg leading-none">Cashiea</h1>
-              <p className="text-xs text-fg-subtle mt-0.5">{profile?.company_name || 'AI Platform'}</p>
+              <p className="text-xs text-fg-subtle mt-0.5 truncate max-w-[140px]">{profile?.company_name || 'AI Platform'}</p>
             </div>
           </div>
           <div className="flex items-center gap-1">
             <ThemeToggle />
-            <button onClick={onClose} className="lg:hidden text-fg-muted hover:text-fg"><X className="w-5 h-5" /></button>
+            <button onClick={onClose} className="lg:hidden icon-btn" aria-label="Close menu"><X className="w-5 h-5" /></button>
           </div>
         </div>
 
-        {/* Quick Access */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-          <p className="px-3.5 mb-1 text-[11px] font-semibold tracking-[0.14em] uppercase text-fg-subtle">Quick Access</p>
-          {QUICK_ACCESS.map(renderItem)}
-          <p className="px-3.5 mt-6 mb-1 text-[11px] text-fg-subtle leading-relaxed">
-            More features live in{' '}
-            <NavLink to="/app/settings" onClick={onClose} className="text-accent hover:underline">Settings</NavLink>.
-          </p>
+        <nav className="flex-1 overflow-y-auto scroll-area px-3 py-4 space-y-5">
+          {SECTIONS.map((section) => (
+            <div key={section.label}>
+              <p className="px-3 mb-1.5 text-[10px] font-bold tracking-[0.12em] uppercase text-fg-subtle">{section.label}</p>
+              <div className="space-y-0.5">{section.items.map(renderItem)}</div>
+            </div>
+          ))}
         </nav>
 
-        {/* Profile + sign out */}
         <div className="p-3 border-t border-line">
-          <NavLink to="/app/account" onClick={onClose} className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-surface-2 transition-colors">
+          <NavLink to="/app/account" onClick={onClose} className="flex items-center gap-2.5 p-2 rounded-control hover:bg-surface-2 transition-colors">
             <Avatar url={profile?.avatar_url} name={profile?.full_name} size={36} />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-fg truncate">{profile?.full_name || 'User'}</p>
               <p className="text-[11px] text-fg-subtle truncate">Owner · Edit account</p>
             </div>
           </NavLink>
-          <button onClick={handleSignOut} className="w-full mt-1 flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-fg-muted hover:text-negative hover:bg-surface-2 transition-colors">
+          <button onClick={handleSignOut} className="w-full mt-1 flex items-center gap-2 px-3 py-2 rounded-control text-sm text-fg-muted hover:text-negative hover:bg-surface-2 transition-colors">
             <LogOut className="w-4 h-4" /> Sign out
           </button>
         </div>
