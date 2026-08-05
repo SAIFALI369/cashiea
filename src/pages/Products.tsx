@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useCan } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import type { Product } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
-import { Package, Plus, Loader2, Trash2, X, AlertTriangle, Search } from 'lucide-react'
+import { Package, Plus, Loader2, Trash2, X, AlertTriangle, Search, Shield } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const empty = { name: '', description: '', sku: '', category: 'general', price: '', cost: '', stock_quantity: '', low_stock_threshold: '5' }
 
 export default function Products() {
   const { profile } = useAuth()
+  const { can } = useCan()
+  const canManage = can('products:manage')
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -78,7 +81,11 @@ export default function Products() {
         title="Products & Inventory"
         subtitle="Manage what you sell — catalog, pricing, and stock levels"
         icon={<Package className="w-5 h-5" />}
-        action={<button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showForm ? 'Close' : 'Add Product'}</button>}
+        action={canManage ? (
+          <button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showForm ? 'Close' : 'Add Product'}</button>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-fg-subtle px-3 py-2 rounded-control border border-line"><Shield className="w-3.5 h-3.5" /> Owner only</span>
+        )}
       />
 
       {/* Quick stats */}
@@ -137,11 +144,11 @@ export default function Products() {
                   </div>
                   <div className="flex items-center gap-1.5">
                     {low && <span className="flex items-center gap-1 text-xs text-amber-400 mr-1"><AlertTriangle className="w-3.5 h-3.5" /></span>}
-                    <button onClick={() => restock(p, -1)} className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300">−</button>
+                    {canManage && <button onClick={() => restock(p, -1)} className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300">−</button>}
                     <span className={`w-12 text-center text-sm font-semibold ${low ? 'text-amber-400' : 'text-white'}`}>{p.stock_quantity}</span>
-                    <button onClick={() => restock(p, 1)} className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300">+</button>
+                    {canManage && <button onClick={() => restock(p, 1)} className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300">+</button>}
                   </div>
-                  <button onClick={() => handleDelete(p.id)} className="text-slate-500 hover:text-red-400 ml-2"><Trash2 className="w-4 h-4" /></button>
+                  {canManage && <button onClick={() => handleDelete(p.id)} className="text-slate-500 hover:text-red-400 ml-2"><Trash2 className="w-4 h-4" /></button>}
                 </div>
               )
             })}

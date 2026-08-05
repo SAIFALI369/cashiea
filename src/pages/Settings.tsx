@@ -5,63 +5,54 @@ import { supabase } from '../lib/supabase'
 import PageHeader from '../components/ui/PageHeader'
 import ThemeToggle from '../components/ThemeToggle'
 import {
-  Settings as SettingsIcon, User, Building2, Sparkles, Loader2, Save, Check, Mail,
-  ShoppingCart, Brain, FileSignature, ScrollText, Database, History, Key, Shield,
-  CreditCard, Plug, LifeBuoy, ChevronRight,
+  Settings as SettingsIcon, Loader2, Save, Check,
+  ShoppingCart, Brain, Mail, FileSignature, ScrollText, Database, History, Key,
+  Shield, CreditCard, Network, LifeBuoy, ChevronRight, Sun,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { AIProvider } from '../lib/ai'
 
 const providers: { value: AIProvider; label: string; desc: string }[] = [
-  { value: 'openrouter', label: 'OpenRouter', desc: 'Gemini → Kimi → Llama auto-fallback. One key, 300+ models' },
-  { value: 'vercel_gateway', label: 'Vercel AI Gateway', desc: '302 models (GPT-5.5, Claude, Gemini) — one key' },
-  { value: 'openai', label: 'OpenAI', desc: 'GPT-4o — most versatile' },
+  { value: 'openrouter', label: 'OpenRouter', desc: 'Gemini → Kimi → Llama auto-fallback' },
   { value: 'gemini', label: 'Google Gemini', desc: 'Fast & cost-effective' },
+  { value: 'openai', label: 'OpenAI', desc: 'GPT-4o — most versatile' },
   { value: 'anthropic', label: 'Anthropic Claude', desc: 'Best for writing & reasoning' },
 ]
 
-// Moved here from the sidebar "More" section — every feature is reachable from Settings.
 interface NavLinkItem { to: string; label: string; desc: string; icon: LucideIcon }
 const WORKSPACE: NavLinkItem[] = [
-  { to: '/app/pos', label: 'New Sale (POS)', desc: 'Ring up a sale & take payment', icon: ShoppingCart },
-  { to: '/app/assistant', label: 'Ask AI (Meraj)', desc: 'Chat with your shop assistant', icon: Brain },
-  { to: '/app/email-assistant', label: 'Email Assistant', desc: 'Draft customer & retargeting emails', icon: Mail },
-  { to: '/app/quotations', label: 'Quotations', desc: 'Price quotes & estimates', icon: FileSignature },
-  { to: '/app/summaries', label: 'Summaries', desc: 'Summarize any text', icon: ScrollText },
-  { to: '/app/data-entry', label: 'Data Entry', desc: 'Extract data from text', icon: Database },
+  { to: '/app/pos', label: 'New Sale (POS)', desc: 'Ring up a sale', icon: ShoppingCart },
+  { to: '/app/assistant', label: 'Ask AI (Meraj)', desc: 'Chat with Meraj', icon: Brain },
+  { to: '/app/email-assistant', label: 'Email Assistant', desc: 'Draft customer emails', icon: Mail },
+  { to: '/app/quotations', label: 'Quotations', desc: 'Price quotes', icon: FileSignature },
+  { to: '/app/summaries', label: 'Summaries', desc: 'Summarize text', icon: ScrollText },
+  { to: '/app/data-entry', label: 'Data Entry', desc: 'Extract data', icon: Database },
+  { to: '/app/activity', label: 'Activity Logs', desc: 'Your history', icon: History },
 ]
 const ACCOUNT_TOOLS: NavLinkItem[] = [
-  { to: '/app/activity', label: 'Activity Logs', desc: 'Your action history', icon: History },
   { to: '/app/api-keys', label: 'API Keys', desc: 'Keys for integrations', icon: Key },
-  { to: '/app/compliance', label: 'Compliance', desc: 'Data protection & settings', icon: Shield },
+  { to: '/app/compliance', label: 'Compliance', desc: 'Data protection', icon: Shield },
   { to: '/app/subscription', label: 'Subscription', desc: 'Plan & billing', icon: CreditCard },
-  { to: '/app/integrations', label: 'Integrations', desc: 'Connect external tools', icon: Plug },
+  { to: '/app/integrations', label: 'Integrations', desc: 'Connect tools', icon: Network },
   { to: '/app/support', label: 'Support', desc: 'Get help', icon: LifeBuoy },
 ]
 
-function NavSection({ title, items }: { title: string; items: NavLinkItem[] }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="card p-4">
-      <h2 className="text-sm font-semibold text-fg mb-3">{title}</h2>
-      <div className="space-y-1.5">
-        {items.map((it) => (
-          <Link
-            key={it.to}
-            to={it.to}
-            className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface-2 transition-colors group"
-          >
-            <span className="w-9 h-9 rounded-xl bg-accent-soft text-accent flex items-center justify-center flex-shrink-0">
-              <it.icon className="w-[18px] h-[18px]" strokeWidth={1.75} />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-fg">{it.label}</p>
-              <p className="text-[11px] text-fg-subtle truncate">{it.desc}</p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-fg-subtle group-hover:text-fg transition-colors flex-shrink-0" />
-          </Link>
-        ))}
-      </div>
+    <section>
+      <h2 className="px-1 mb-2 text-[11px] font-bold tracking-[0.12em] uppercase text-fg-subtle">{title}</h2>
+      <div className="card p-4 sm:p-5 space-y-4">{children}</div>
+    </section>
+  )
+}
+
+function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
+  return (
+    <div>
+      <label className="label">{label}</label>
+      {children}
+      {hint && <p className="text-[11px] text-fg-subtle mt-1">{hint}</p>}
     </div>
   )
 }
@@ -76,7 +67,6 @@ export default function SettingsPage() {
   const [upiId, setUpiId] = useState(profile?.upi_id || '')
   const [dailyBriefing, setDailyBriefing] = useState(profile?.daily_briefing !== false)
   const [reportTime, setReportTime] = useState(() => {
-    // Convert stored UTC HH:MM to IST for display
     if (!profile?.report_time_utc) return '22:30'
     const [h, m] = profile.report_time_utc.split(':').map(Number)
     let istMin = (h * 60 + m) + (5 * 60 + 30)
@@ -92,13 +82,9 @@ export default function SettingsPage() {
       const { error } = await supabase
         .from('profiles')
         .update({
-          full_name: fullName,
-          company_name: companyName,
-          gstin: gstin || null,
-          business_address: businessAddress || null,
-          business_state: businessState || null,
-          upi_id: upiId || null,
-          daily_briefing: dailyBriefing,
+          full_name: fullName, company_name: companyName, gstin: gstin || null,
+          business_address: businessAddress || null, business_state: businessState || null,
+          upi_id: upiId || null, daily_briefing: dailyBriefing,
           report_time_utc: (() => {
             const [h, m] = reportTime.split(':').map(Number)
             let u = (h * 60 + m) - (5 * 60 + 30); if (u < 0) u += 24 * 60
@@ -107,7 +93,6 @@ export default function SettingsPage() {
           ai_provider: aiProvider,
         })
         .eq('id', profile!.id)
-
       if (error) throw error
       await refreshProfile()
       toast.success('Settings saved ✅')
@@ -120,183 +105,111 @@ export default function SettingsPage() {
 
   return (
     <div className="animate-fade-in">
-      <PageHeader
-        title="Settings"
-        subtitle="Manage your profile, features, and AI preferences"
-        icon={<SettingsIcon className="w-5 h-5" />}
-      />
+      <PageHeader title="Settings" subtitle="Preferences, business profile, and AI" icon={<SettingsIcon className="w-5 h-5" />} />
 
       <div className="max-w-2xl space-y-6">
-        {/* Appearance */}
-        <div className="card p-4 flex items-center justify-between gap-4">
-          <div>
-            <p className="font-semibold text-fg text-sm">Appearance</p>
-            <p className="text-xs text-fg-muted mt-0.5">Switch between light and dark theme</p>
+        {/* Preferences */}
+        <Section title="Preferences">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="w-9 h-9 rounded-control bg-accent-soft text-accent flex items-center justify-center"><Sun className="w-[18px] h-[18px]" /></span>
+              <div>
+                <p className="text-sm font-semibold text-fg">Appearance</p>
+                <p className="text-xs text-fg-subtle">Light or dark theme</p>
+              </div>
+            </div>
+            <ThemeToggle />
           </div>
-          <ThemeToggle />
-        </div>
+        </Section>
 
-        {/* All features moved here from the sidebar */}
-        <NavSection title="Workspace" items={WORKSPACE} />
-        <NavSection title="Account & security" items={ACCOUNT_TOOLS} />
-
-        {/* Profile */}
-        <div className="card p-4">
-          <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
-            <User className="w-5 h-5 text-brand-400" /> Profile Information
-          </h2>
-          <div className="space-y-4">
-            <div>
-              <label className="label">Full Name</label>
-              <input
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="input-field"
-                placeholder="Jane Doe"
-              />
-            </div>
-            <div>
-              <label className="label">Company Name</label>
-              <input
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                className="input-field"
-                placeholder="Acme Inc"
-              />
-            </div>
-            <div>
-              <label className="label">GSTIN (for GST invoices)</label>
-              <input
-                value={gstin}
-                onChange={(e) => setGstin(e.target.value)}
-                className="input-field font-mono"
-                placeholder="22AAAAA0000A1Z5"
-              />
-            </div>
-            <div>
-              <label className="label">Business Address</label>
-              <input
-                value={businessAddress}
-                onChange={(e) => setBusinessAddress(e.target.value)}
-                className="input-field"
-                placeholder="123 Main St, City"
-              />
-            </div>
-            <div>
-              <label className="label">State</label>
-              <input
-                value={businessState}
-                onChange={(e) => setBusinessState(e.target.value)}
-                className="input-field"
-                placeholder="Bihar"
-              />
-            </div>
-            <div>
-              <label className="label">UPI ID (for instant invoice payments)</label>
-              <input
-                value={upiId}
-                onChange={(e) => setUpiId(e.target.value)}
-                className="input-field font-mono"
-                placeholder="myshop@okhdfcbank"
-              />
-              <p className="text-xs text-slate-500 mt-1">Customers can pay any invoice by scanning a QR or tapping a link — works with PhonePe, GPay, Paytm, BHIM.</p>
-            </div>
-            <div>
-              <label className="label">Daily WhatsApp report time (IST)</label>
-              <input
-                type="time"
-                value={reportTime}
-                onChange={(e) => setReportTime(e.target.value)}
-                className="input-field"
-              />
-              <p className="text-xs text-slate-500 mt-1">When your daily sales report arrives on WhatsApp. Default 10:30 PM IST.</p>
-            </div>
+        {/* Business profile */}
+        <Section title="Business profile">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Field label="Full name"><input value={fullName} onChange={(e) => setFullName(e.target.value)} className="input-field" placeholder="Jane Doe" /></Field>
+            <Field label="Business name"><input value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="input-field" placeholder="Sharma General Store" /></Field>
+            <Field label="GSTIN"><input value={gstin} onChange={(e) => setGstin(e.target.value)} className="input-field font-mono" placeholder="22AAAAA0000A1Z5" /></Field>
+            <Field label="State"><input value={businessState} onChange={(e) => setBusinessState(e.target.value)} className="input-field" placeholder="Bihar" /></Field>
+            <Field label="Business address"><input value={businessAddress} onChange={(e) => setBusinessAddress(e.target.value)} className="input-field" placeholder="123 Main St, City" /></Field>
+            <Field label="UPI ID" hint="For instant invoice payments"><input value={upiId} onChange={(e) => setUpiId(e.target.value)} className="input-field font-mono" placeholder="myshop@okhdfcbank" /></Field>
+            <Field label="Daily report time (IST)" hint="When your WhatsApp sales report arrives"><input type="time" value={reportTime} onChange={(e) => setReportTime(e.target.value)} className="input-field" /></Field>
           </div>
-        </div>
+        </Section>
 
-        {/* AI Provider */}
-        <div className="card p-4">
-          <h2 className="font-semibold text-white mb-1 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-brand-400" /> AI Provider
-          </h2>
-          <p className="text-sm text-slate-400 mb-4">
-            Choose which AI model powers your automations. Switch anytime.
-          </p>
-          <div className="space-y-3">
-            {providers.map((p) => (
-              <button
-                key={p.value}
-                onClick={() => setAiProvider(p.value)}
-                className={`w-full p-4 rounded-xl border text-left transition-all flex items-center justify-between ${
-                  aiProvider === p.value
-                    ? 'border-brand-600 bg-brand-600/10'
-                    : 'border-slate-700 bg-slate-900/50 hover:border-slate-600'
-                }`}
-              >
-                <div>
-                  <p className="font-semibold text-white">{p.label}</p>
-                  <p className="text-sm text-slate-400">{p.desc}</p>
-                </div>
-                <div
-                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                    aiProvider === p.value ? 'border-brand-500 bg-brand-500' : 'border-slate-600'
-                  }`}
-                >
-                  {aiProvider === p.value && <Check className="w-3 h-3 text-white" />}
-                </div>
-              </button>
-            ))}
+        {/* AI */}
+        <Section title="AI">
+          <div className="space-y-2.5">
+            {providers.map((p) => {
+              const selected = aiProvider === p.value
+              return (
+                <button key={p.value} onClick={() => setAiProvider(p.value)}
+                  className={`w-full flex items-center gap-3 p-3.5 rounded-control border text-left transition-all ${selected ? 'border-accent bg-accent-soft/40' : 'border-line hover:bg-surface-2'}`}>
+                  <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${selected ? 'border-accent bg-accent' : 'border-line-2'}`}>
+                    {selected && <Check className="w-3 h-3 text-accent-fg" />}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-fg">{p.label}</p>
+                    <p className="text-xs text-fg-subtle">{p.desc}</p>
+                  </div>
+                </button>
+              )
+            })}
           </div>
-
-          {/* Daily briefing opt-in */}
-          <div className="mt-6 p-4 rounded-xl border border-slate-700 bg-slate-900/50 flex items-center justify-between">
-            <div className="flex-1 pr-4">
-              <p className="font-semibold text-white flex items-center gap-2"><Mail className="w-4 h-4 text-brand-400" /> Daily AI Briefing</p>
-              <p className="text-sm text-slate-400 mt-0.5">Every morning the AI scans your business, predicts tasks, and emails you a briefing with what needs attention.</p>
+          <div className="flex items-center justify-between pt-2 border-t border-line">
+            <div className="flex items-center gap-2.5">
+              <Mail className="w-4 h-4 text-accent" />
+              <div>
+                <p className="text-sm font-semibold text-fg">Daily AI briefing</p>
+                <p className="text-xs text-fg-subtle">Morning tasks & what needs attention</p>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setDailyBriefing(!dailyBriefing)}
-              className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${dailyBriefing ? 'bg-brand-500' : 'bg-slate-700'}`}
-            >
+            <button type="button" onClick={() => setDailyBriefing(!dailyBriefing)}
+              className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${dailyBriefing ? 'bg-accent' : 'bg-line-2'}`}>
               <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${dailyBriefing ? 'translate-x-6' : 'translate-x-0.5'}`} />
             </button>
           </div>
-        </div>
+        </Section>
 
-        {/* Usage info */}
-        <div className="card p-4">
-          <h2 className="font-semibold text-white mb-3 flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-brand-400" /> Account Details
-          </h2>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between py-1.5 border-b border-slate-800">
-              <span className="text-slate-400">Email</span>
-              <span className="text-slate-200">{user?.email || '—'}</span>
-            </div>
-            <div className="flex justify-between py-1.5 border-b border-slate-800">
-              <span className="text-slate-400">Plan</span>
-              <span className="text-slate-200 capitalize">{profile?.plan}</span>
-            </div>
-            <div className="flex justify-between py-1.5 border-b border-slate-800">
-              <span className="text-slate-400">Actions Used</span>
-              <span className="text-slate-200">{profile?.api_usage_count} / {profile?.api_usage_limit}</span>
-            </div>
-            <div className="flex justify-between py-1.5">
-              <span className="text-slate-400">Member Since</span>
-              <span className="text-slate-200">
-                {profile ? new Date(profile.created_at).toLocaleDateString() : '—'}
-              </span>
-            </div>
+        {/* Plan & usage */}
+        <Section title="Plan & usage">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2.5 text-sm">
+            <div className="flex justify-between"><span className="text-fg-subtle">Email</span><span className="text-fg truncate ml-2">{user?.email || '—'}</span></div>
+            <div className="flex justify-between"><span className="text-fg-subtle">Plan</span><span className="text-fg capitalize">{profile?.plan}</span></div>
+            <div className="flex justify-between"><span className="text-fg-subtle">Actions used</span><span className="text-fg">{profile?.api_usage_count} / {profile?.api_usage_limit}</span></div>
+            <div className="flex justify-between"><span className="text-fg-subtle">Member since</span><span className="text-fg">{profile ? new Date(profile.created_at).toLocaleDateString() : '—'}</span></div>
           </div>
-        </div>
+        </Section>
 
-        {/* Save button */}
+        {/* Workspace + account nav */}
+        <Section title="Workspace">
+          <div className="-mx-1">
+            {WORKSPACE.map((it) => <NavRow key={it.to} {...it} />)}
+          </div>
+        </Section>
+        <Section title="Account & security">
+          <div className="-mx-1">
+            {ACCOUNT_TOOLS.map((it) => <NavRow key={it.to} {...it} />)}
+          </div>
+        </Section>
+
         <button onClick={handleSave} disabled={saving} className="btn-primary w-full py-3">
-          {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-          Save Changes
+          {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />} Save changes
         </button>
       </div>
     </div>
+  )
+}
+
+function NavRow({ to, label, desc, icon: Icon }: NavLinkItem) {
+  return (
+    <Link to={to} className="flex items-center gap-3 p-2.5 rounded-control hover:bg-surface-2 transition-colors group">
+      <span className="w-9 h-9 rounded-control bg-surface-2 text-fg-muted group-hover:bg-accent-soft group-hover:text-accent flex items-center justify-center flex-shrink-0 transition-colors">
+        <Icon className="w-[18px] h-[18px]" strokeWidth={1.75} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-fg">{label}</p>
+        <p className="text-[11px] text-fg-subtle truncate">{desc}</p>
+      </div>
+      <ChevronRight className="w-4 h-4 text-fg-subtle group-hover:text-fg" />
+    </Link>
   )
 }
