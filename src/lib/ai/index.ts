@@ -99,7 +99,9 @@ export async function askAssistant(
   mode: 'ask' | 'task' = 'ask',
   confirm?: any,
   /** Which screen the owner is on — lets Meraj answer "this page" questions. */
-  pageContext?: { name: string; description: string }
+  pageContext?: { name: string; description: string },
+  /** Recent turns from the CURRENT chat, so Meraj remembers the ongoing conversation. */
+  history?: { role: 'user' | 'meraj'; text: string }[]
 ): Promise<{ reply: string; pending?: any; executed?: any }> {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('You must be logged in.')
@@ -111,7 +113,7 @@ export async function askAssistant(
       Authorization: `Bearer ${session.access_token}`,
       apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
     },
-    body: JSON.stringify({ message, briefing, scope, mode, confirm }),
+    body: JSON.stringify({ message, briefing, scope, mode, confirm, pageContext, history }),
   })
   const data = await res.json().catch(() => ({ error: 'Invalid response from server' }))
   if (!res.ok) throw new Error(data?.error || `Request failed (HTTP ${res.status})`)

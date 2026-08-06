@@ -71,8 +71,10 @@ jobs:
           echo "  ✅ whatsapp-send"
           supabase functions deploy canva-oauth
           echo "  ✅ canva-oauth"
+          supabase functions deploy request-action
+          echo "  ✅ request-action"
           echo ""
-          echo "🎉 ALL 20 FUNCTIONS DEPLOYED!"
+          echo "🎉 ALL 21 FUNCTIONS DEPLOYED!"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 

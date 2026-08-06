@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import clsx from 'clsx'
 import ThemeToggle from './ThemeToggle'
 import { Avatar } from './Avatar'
+import { usePendingApprovals } from '../lib/approvals'
 import {
   LayoutDashboard, ShoppingCart, Receipt, FileSignature, Users, Truck,
   Sparkles, ListChecks, FileBarChart, MessageCircle, Mail, ScrollText, Database,
@@ -67,6 +68,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
   const { profile, signOut } = useAuth()
   const navigate = useNavigate()
   const [failedCount, setFailedCount] = useState(0)
+  const { count: pendingApprovals } = usePendingApprovals()
 
   useEffect(() => {
     if (!profile) return
@@ -101,6 +103,9 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
       {item.ai && <span className="text-[9px] font-bold tracking-wide px-1.5 py-0.5 rounded-full bg-accent text-accent-fg">AI</span>}
       {item.badge && failedCount > 0 && (
         <span className="bg-negative text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{failedCount > 9 ? '9+' : failedCount}</span>
+      )}
+      {item.to === '/app/notifications' && pendingApprovals > 0 && (
+        <span className="bg-accent text-accent-fg text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{pendingApprovals > 9 ? '9+' : pendingApprovals}</span>
       )}
     </NavLink>
   )

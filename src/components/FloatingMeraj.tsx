@@ -58,8 +58,9 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
     const next = [...messages, { role: 'user' as const, text: q }]
     setMessages(next)
     setLoading(true)
+    const history = messages.slice(-10).map((m) => ({ role: m.role, text: m.text }))
     try {
-      const res = await askAssistant(q, false, undefined, mode, undefined, pageContext)
+      const res = await askAssistant(q, false, undefined, mode, undefined, pageContext, history)
       setMessages([...next, { role: 'meraj' as const, text: res.reply, pending: res.pending }])
     } catch (e) {
       setMessages([...next, { role: 'meraj' as const, text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.') }])

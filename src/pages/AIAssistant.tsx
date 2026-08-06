@@ -80,8 +80,9 @@ export default function AIAssistant() {
     const next = [...messages, { role: 'user' as const, text: q }]
     setMessages(next)
     setLoading(true)
+    const history = messages.slice(-10).map((m) => ({ role: m.role, text: m.text }))
     try {
-      const res = await askAssistant(q, false, scope, mode)
+      const res = await askAssistant(q, false, scope, mode, undefined, undefined, history)
       const done = [...next, { role: 'meraj' as const, text: res.reply, pending: res.pending }]
       setMessages(done)
       if (res.reply) setTyping(true)
