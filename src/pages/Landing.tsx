@@ -1,370 +1,356 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import { MerajCharacter } from '../components/MerajCharacter'
+import { MerajMark } from '../components/MerajMark'
 import {
-  ArrowRight, Play, Clock, Brain, AlertCircle,
-  Receipt, Users, Zap, ChevronDown, Check, Menu, X,
-  TrendingUp, MessageCircle, Shield,
+  ArrowRight, ChevronDown, Check, Menu, X, Receipt, Package, Users, Wallet,
+  MessageCircle, FileBarChart, TrendingDown, AlertTriangle, Send, Sparkles,
 } from 'lucide-react'
 
-// ═══ Cashiea Logo Component ═══
-function Logo({ size = 32 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="rgb(var(--accent))" />
-          <stop offset="100%" stopColor="rgb(var(--gold))" />
-        </linearGradient>
-      </defs>
-      <rect width="100" height="100" rx="24" fill="url(#logoGrad)" />
-      <path d="M62 28 A26 26 0 1 0 62 72" fill="none" stroke="white" strokeWidth="9" strokeLinecap="round" />
-      <circle cx="55" cy="50" r="5" fill="white" />
-      <path d="M55 30 L55 42 M55 58 L55 70 M35 50 L47 50 M63 50 L75 50" stroke="white" strokeWidth="3.5" strokeLinecap="round" opacity="0.45" />
-    </svg>
-  )
-}
-
-// ═══ Scroll progress bar ═══
-function ScrollProgress() {
-  const [width, setWidth] = useState(0)
-  useEffect(() => {
-    const onScroll = () => {
-      const h = document.documentElement
-      const scrolled = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100
-      setWidth(scrolled)
-    }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-  return (
-    <div className="fixed top-0 left-0 right-0 z-[60] h-[3px] bg-transparent pointer-events-none">
-      <div className="h-full transition-[width] duration-150 ease-out" style={{ width: `${width}%`, background: 'linear-gradient(90deg, rgb(var(--accent)), rgb(var(--gold)))' }} />
-    </div>
-  )
-}
-
-// ═══ Reveal component (premium staggered scroll animation) ═══
-type RevealDir = 'up' | 'left' | 'right' | 'scale'
-function Reveal({ children, delay = 0, dir = 'up', className = '' }: { children: React.ReactNode; delay?: number; dir?: RevealDir; className?: string }) {
+// ── Reveal (scroll-triggered entrance, once) ──────────────────────
+function Reveal({ children, delay = 0, className = '' }: { children: React.ReactNode; delay?: number; className?: string }) {
   const ref = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(false)
   useEffect(() => {
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect() } }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' })
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect() } }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' })
     if (ref.current) obs.observe(ref.current)
     return () => obs.disconnect()
   }, [])
-  const hidden: Record<RevealDir, string> = {
-    up: 'opacity-0 translate-y-10',
-    left: 'opacity-0 -translate-x-10',
-    right: 'opacity-0 translate-x-10',
-    scale: 'opacity-0 scale-95',
-  }
   return (
-    <div ref={ref} style={{ transitionDelay: `${delay}ms` }} className={`transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${visible ? 'opacity-100 translate-x-0 translate-y-0 scale-100' : hidden[dir]} ${className}`}>
+    <div ref={ref} style={{ transitionDelay: `${delay}ms` }} className={`transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'} ${className}`}>
       {children}
     </div>
   )
 }
 
-const NAV_LINKS = [{ label: 'Features', href: '#features' }, { label: 'Pricing', href: '#pricing' }, { label: 'FAQ', href: '#faq' }]
-
-const TESTIMONIALS = [
-  { initials: 'SM', name: 'Suresh Mallick', shop: 'Electronics Store', city: 'Gaya, Bihar', quote: 'I used to spend 3 hours every evening on invoices. Now it takes 30 minutes. I use the extra time to talk to customers.', stat: '6 hours', metric: 'saved per week' },
-  { initials: 'RV', name: 'Ramesh Verma', shop: 'General Store', city: 'Patna, Bihar', quote: 'The daily WhatsApp report changed everything. I know exactly how much I made before I even close the shop.', stat: '\u20b912,000', metric: 'extra revenue/month' },
-  { initials: 'AK', name: 'Amit Kumar', shop: 'Pharmacy', city: 'Siwan, Bihar', quote: 'Voice invoicing in Hindi is brilliant. My staff just speaks the sale and the bill is ready. Customers are impressed.', stat: '90%', metric: 'faster billing' },
-]
-
-const FAQS = [
-  { q: 'Do I need technical knowledge to set up Cashiea?', a: 'Not at all. Setup takes 5 minutes. Enter your shop name, add a few products, and you are ready to bill. The AI learns your business automatically as you use it.' },
-  { q: 'What if I am already using a POS or billing app?', a: 'Cashiea works alongside your existing setup. You can import your product list, and the AI tools (WhatsApp reports, voice invoicing, customer tracking) add value on top. No need to replace anything overnight.' },
-  { q: 'Is my data safe?', a: 'Absolutely. Your data is encrypted, stored securely, and protected by row-level security. Each shop can only see their own data. We never sell or share your information.' },
-  { q: 'Can I scale to multiple shops?', a: 'Yes. One account can manage multiple locations. This is coming in a future update — you will be the first to know when it launches.' },
-  { q: 'What if my internet goes down?', a: 'Cashiea queues your transactions locally and syncs automatically when you are back online. You never lose a sale because of connectivity.' },
-]
-
-export default function Landing() {
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 10)
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
-  const scrollTo = (href: string) => { setMenuOpen(false); document.querySelector(href)?.scrollIntoView({ behavior: 'smooth' }) }
-  const C = { bg: 'rgb(var(--paper))', bgAlt: 'rgb(var(--surface))', bgCard: 'rgb(var(--surface-2))', border: 'rgb(var(--line))', blue: 'rgb(var(--accent))', blueDark: 'rgb(var(--accent-strong))', blueLight: 'rgb(var(--gold))', green: 'rgb(var(--positive))', text: 'rgb(var(--fg))', textBody: 'rgb(var(--fg-muted))', textMuted: 'rgb(var(--fg-subtle))', dark: 'rgb(var(--fg))' }
-
+// ── Logo ──
+function Logo({ size = 32 }: { size?: number }) {
   return (
-    <div style={{ background: C.bg, color: C.text }} className="min-h-screen font-sans">
-      <ScrollProgress />
+    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="rgb(var(--accent))" /><stop offset="100%" stopColor="rgb(var(--gold))" /></linearGradient></defs>
+      <rect width="100" height="100" rx="24" fill="url(#lg)" />
+      <path d="M62 28 A26 26 0 1 0 62 72" fill="none" stroke="white" strokeWidth="9" strokeLinecap="round" />
+      <circle cx="55" cy="50" r="5" fill="white" />
+      <path d="M55 30L55 42M55 58L55 70M35 50L47 50M63 50L75 50" stroke="white" strokeWidth="3.5" strokeLinecap="round" opacity="0.45" />
+    </svg>
+  )
+}
 
-      {/* ═══ 1. NAV ═══ */}
-      <nav className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? 'py-2' : 'py-3'}`} style={{ background: scrolled ? 'rgba(253,251,247,0.85)' : 'transparent', backdropFilter: scrolled ? 'blur(12px)' : 'none', borderBottom: scrolled ? `1px solid ${C.border}` : '1px solid transparent' }}>
-        <div className="max-w-[1200px] mx-auto px-6 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <Logo size={scrolled ? 28 : 32} />
-            <span className="font-bold tracking-tight transition-all" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontSize: scrolled ? '18px' : '20px' }}>Cashiea</span>
-          </div>
-          <div className="hidden md:flex items-center gap-8">
-            {NAV_LINKS.map((l) => <button key={l.href} onClick={() => scrollTo(l.href)} className="text-sm font-medium transition-colors" style={{ color: C.textBody }} onMouseEnter={e => e.currentTarget.style.color = C.blue} onMouseLeave={e => e.currentTarget.style.color = C.textBody}>{l.label}</button>)}
-          </div>
-          <div className="flex items-center gap-3">
-            <Link to="/login" className="text-sm font-medium transition-colors hidden sm:block" style={{ color: C.textBody }}>Login</Link>
-            <Link to="/signup" className="text-sm font-semibold text-white px-5 py-2.5 rounded-xl transition-all hover:scale-[1.03] hover:shadow-lg" style={{ background: `linear-gradient(135deg, ${C.blue}, ${C.blueLight})`, boxShadow: `0 4px 14px rgb(var(--accent) / 0.25)` }}>Start Free</Link>
-            <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden" style={{ color: C.textBody }}>{menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}</button>
-          </div>
-        </div>
-        {menuOpen && (
-          <div className="md:hidden px-6 py-4 space-y-3 animate-fade-in" style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
-            {NAV_LINKS.map((l) => <button key={l.href} onClick={() => scrollTo(l.href)} className="block text-sm font-medium" style={{ color: C.textBody }}>{l.label}</button>)}
-            <Link to="/login" className="block text-sm font-medium" style={{ color: C.textBody }}>Login</Link>
-          </div>
-        )}
-      </nav>
-
-      {/* ═══ 2. HERO ═══ */}
-      <section className="relative overflow-hidden" style={{ paddingTop: '60px', paddingBottom: '80px' }}>
-        {/* Glow background */}
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgb(var(--accent) / 0.03) 0%, transparent 70%)` }} />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgb(var(--gold) / 0.02) 0%, transparent 70%)` }} />
-
-        <div className="relative max-w-[1200px] mx-auto px-6">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div>
-              <Reveal dir="up">
-                <h1 className="font-bold tracking-tight" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif', fontSize: 'clamp(34px, 5.5vw, 56px)', lineHeight: 1.15, color: C.text }}>
-                  Your Retail Business,<br />
-                  <span style={{ background: `linear-gradient(135deg, ${C.blue}, ${C.blueLight})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Automated.</span>
-                </h1>
-              </Reveal>
-              <Reveal dir="up" delay={100}>
-                <p className="mt-6 leading-relaxed" style={{ fontSize: '18px', color: C.textBody }}>
-                  POS billing + customer insights + AI shortcuts. Built for India's small shops. No complex training, no monthly CFO needed.
-                </p>
-              </Reveal>
-              <Reveal dir="up" delay={200}>
-                <div className="mt-4 flex items-center gap-2 font-medium" style={{ fontSize: '16px', color: C.green }}>
-                  <Check className="w-5 h-5" /> Replace your 30-hour/month assistant — at half the cost
-                </div>
-              </Reveal>
-              <Reveal dir="up" delay={300}>
-                <div className="mt-8 flex flex-col sm:flex-row gap-3">
-                  <Link to="/signup" className="inline-flex items-center justify-center gap-2 font-semibold text-white px-8 py-4 rounded-xl transition-all hover:scale-[1.03] hover:shadow-xl" style={{ fontSize: '16px', background: `linear-gradient(135deg, ${C.blue}, ${C.blueLight})`, boxShadow: `0 6px 20px rgb(var(--accent) / 0.19)` }}>
-                    Start 14-Day Free Trial <ArrowRight className="w-5 h-5" />
-                  </Link>
-                  <button onClick={() => scrollTo('#features')} className="inline-flex items-center justify-center gap-2 font-medium text-sm transition-colors" style={{ color: C.blue }} onMouseEnter={e => e.currentTarget.style.color = C.blueDark}>
-                    <Play className="w-4 h-4" /> Watch Demo
-                  </button>
-                </div>
-              </Reveal>
-              <Reveal dir="up" delay={400}>
-                <p className="mt-6 text-sm" style={{ color: C.textMuted }}>Used by 47 shops in Bihar, Gujarat, Maharashtra. No credit card required.</p>
-              </Reveal>
+// ══ SIGNAL WIDGET (hero interactive demo) ══
+const SIGNALS = [
+  { icon: Users, label: 'Customers', signal: 'Ramesh hasn’t ordered in 47 days', reasoning: 'He used to buy weekly. A call now could bring him back.', action: 'Draft message', color: 'var(--accent)' },
+  { icon: Package, label: 'Stock', signal: 'Cooking oil at 3 units', reasoning: 'Below your reorder level of 10. Runs out by tomorrow at current pace.', action: 'Approve reorder', color: 'var(--warning)' },
+  { icon: TrendingDown, label: 'Sales', signal: 'Tuesday revenue down 34%', reasoning: 'Same weekday last week was ₹12,400. Today only ₹8,100 so far.', action: 'See breakdown', color: 'var(--negative)' },
+  { icon: Wallet, label: 'Cash', signal: 'Invoice #1047 unpaid 12 days', reasoning: '₹3,200 outstanding. This customer usually pays within a week.', action: 'Send reminder', color: 'var(--info)' },
+]
+function SignalWidget() {
+  const [active, setActive] = useState<number | null>(null)
+  return (
+    <div className="w-full max-w-lg mx-auto">
+      <div className="grid grid-cols-2 gap-3">
+        {SIGNALS.map((s, i) => (
+          <button key={i} onClick={() => setActive(active === i ? null : i)} onMouseEnter={() => setActive(i)} onMouseLeave={() => setActive(null)}
+            className="text-left p-4 rounded-card border transition-all duration-200"
+            style={{ background: 'rgb(var(--surface))', borderColor: active === i ? `rgb(${s.color})` : 'rgb(var(--line))', transform: active === i ? 'scale(1.02)' : 'scale(1)' }}>
+            <div className="flex items-center gap-2 mb-1.5">
+              <s.icon className="w-4 h-4" style={{ color: `rgb(${s.color})` }} strokeWidth={1.75} />
+              <span className="text-[10px] font-bold tracking-wide uppercase" style={{ color: 'rgb(var(--fg-subtle))' }}>{s.label}</span>
             </div>
-
-            {/* Phone mockup */}
-            <Reveal dir="right" delay={300} className="hidden md:block">
-              <div className="relative mx-auto animate-float" style={{ maxWidth: '320px' }}>
-                <div className="absolute inset-0 rounded-[3rem] blur-2xl opacity-30" style={{ background: `linear-gradient(135deg, ${C.blue}, ${C.blueLight})` }} />
-                <div className="relative bg-gray-900 rounded-[2.5rem] p-3 shadow-2xl">
-                  <div className="bg-white rounded-[2rem] overflow-hidden">
-                    <div className="p-5 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2"><Logo size={24} /><span className="font-bold text-base" style={{ fontFamily: '"Plus Jakarta Sans"' }}>Cashiea</span></div>
-                        <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                      </div>
-                      <div className="rounded-xl p-4" style={{ background: C.bgCard }}>
-                        <div className="flex items-center justify-between mb-1"><span className="text-xs font-semibold text-gray-500">TODAY'S SALES</span><TrendingUp className="w-4 h-4 text-green-500" /></div>
-                        <p className="text-3xl font-bold" style={{ color: C.text }}>{'\u20b9'}14,250</p>
-                        <p className="text-xs text-green-600 mt-1 font-medium">{'\u2191'} 23% vs yesterday</p>
-                      </div>
-                      <div className="rounded-xl p-3 flex items-center gap-3" style={{ background: 'rgb(var(--accent) / 0.1)', border: `1px solid rgb(var(--accent) / 0.13)` }}>
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.blue + '20' }}><MessageCircle className="w-4 h-4" style={{ color: C.blue }} /></div>
-                        <div className="min-w-0"><p className="text-xs font-medium text-gray-900 truncate">Daily report sent to WhatsApp</p><p className="text-xs text-gray-500">23 bills {'\u00b7'} {'\u20b9'}14,250 total</p></div>
-                      </div>
-                      <div className="rounded-xl p-3 flex items-center gap-3" style={{ background: 'rgb(var(--positive) / 0.1)', border: '1px solid rgb(var(--positive) / 0.13)' }}>
-                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0"><Zap className="w-4 h-4 text-green-600" /></div>
-                        <div className="min-w-0"><p className="text-xs font-medium text-gray-900 truncate">AI: 3 items low on stock</p><p className="text-xs text-gray-500">Tap to reorder {'\u2192'}</p></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ 3. PROBLEM ═══ */}
-      <section style={{ paddingTop: '72px', paddingBottom: '72px', background: C.bgAlt }}>
-        <div className="max-w-[1200px] mx-auto px-6">
-          <Reveal><h2 className="text-center font-semibold mb-14" style={{ fontFamily: '"Plus Jakarta Sans"', fontSize: 'clamp(28px, 4vw, 38px)', lineHeight: 1.3, color: C.text }}>Small shops run on spreadsheets and stress.</h2></Reveal>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { icon: Clock, stat: '2 hours/day', problem: 'Manual invoicing + stock tracking', fix: 'Billed in 60 seconds via AI' },
-              { icon: Brain, stat: '\u20b915,000/month', problem: "Assistant salary you can't afford", fix: 'AI does the follow-ups, you sell' },
-              { icon: AlertCircle, stat: 'Zero visibility', problem: "You don't know what's selling", fix: 'Daily reports, WhatsApp alerts, no login needed' },
-            ].map((item, i) => (
-              <Reveal key={i} delay={i * 120} dir="scale">
-                <div className="rounded-xl p-5 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-lg" style={{ background: C.bg, border: `1px solid ${C.border}` }}>
-                  <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-5" style={{ background: C.blue + '12' }}><item.icon className="w-7 h-7" style={{ color: C.blue }} /></div>
-                  <p className="text-xl font-bold mb-2" style={{ color: C.text }}>{item.stat}</p>
-                  <p className="text-sm mb-3" style={{ color: C.textMuted }}>{item.problem}</p>
-                  <p className="text-sm font-semibold" style={{ color: C.green }}>{item.fix}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ 4. FEATURES ═══ */}
-      <section id="features" style={{ paddingTop: '80px', paddingBottom: '80px' }}>
-        <div className="max-w-[1200px] mx-auto px-6">
-          <Reveal><h2 className="text-center font-semibold mb-3" style={{ fontFamily: '"Plus Jakarta Sans"', fontSize: 'clamp(28px, 4vw, 38px)', color: C.text }}>Everything You Actually Need<br />(Nothing You Don't)</h2></Reveal>
-          <div className="grid md:grid-cols-3 gap-6 mt-14">
-            {[
-              { icon: Receipt, title: 'Billing in 60 Seconds', desc: 'Voice-to-invoice, customer memory, auto-PDF sharing. Customers get WhatsApp receipts instantly.', emoji: '\u26a1' },
-              { icon: Users, title: 'Smart Customer Tracking', desc: "Auto-capture phone numbers, purchase history, loyalty math. Send WhatsApp reminders when they're likely to buy again.", emoji: '\ud83e\udde0' },
-              { icon: Zap, title: 'AI Does the Admin Work', desc: 'Daily closing reports. Low-stock alerts. Hinglish customer replies. Voice commands in Hindi.', emoji: '\u2699\ufe0f' },
-            ].map((card, i) => (
-              <Reveal key={i} delay={i * 120} dir={i === 1 ? 'up' : i === 0 ? 'left' : 'right'}>
-                <div className="rounded-xl p-9 transition-all duration-400 group relative overflow-hidden hover:-translate-y-2 hover:shadow-2xl" style={{ background: C.bgAlt, border: `1px solid ${C.border}` }}>
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-5 transition-transform group-hover:scale-110" style={{ background: 'rgb(var(--positive) / 0.1)' }}><card.icon className="w-5.5 h-5.5" style={{ color: C.green }} /></div>
-                  <h3 className="font-semibold text-xl mb-3" style={{ fontFamily: '"Plus Jakarta Sans"', color: C.text }}>{card.emoji} {card.title}</h3>
-                  <p className="leading-relaxed mb-5" style={{ fontSize: '16px', color: C.textBody }}>{card.desc}</p>
-                  <button className="text-sm font-medium transition-colors flex items-center gap-1" style={{ color: C.blue }} onMouseEnter={e => e.currentTarget.style.color = C.blueDark} onMouseLeave={e => e.currentTarget.style.color = C.blue}>See how <ArrowRight className="w-3.5 h-3.5" /></button>
-                  <div className="absolute bottom-0 left-0 right-0 h-1 origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-400" style={{ background: `linear-gradient(90deg, ${C.blue}, ${C.blueLight})` }} />
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ 5. TESTIMONIALS ═══ */}
-      <section style={{ paddingTop: '72px', paddingBottom: '72px', background: C.bgAlt }}>
-        <div className="max-w-[1200px] mx-auto px-6">
-          <Reveal><h2 className="text-center font-semibold mb-14" style={{ fontFamily: '"Plus Jakarta Sans"', fontSize: 'clamp(28px, 4vw, 38px)', color: C.text }}>Shop Owners Are Saving Time<br />(And Making More)</h2></Reveal>
-          <div className="grid md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t, i) => (
-              <Reveal key={i} delay={i * 120} dir="up">
-                <div className="rounded-xl p-7" style={{ background: C.bg, border: `1px solid ${C.border}` }}>
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className="w-9 h-9 rounded-full text-white flex items-center justify-center font-bold text-sm flex-shrink-0" style={{ background: `linear-gradient(135deg, ${C.blue}, ${C.blueLight})` }}>{t.initials}</div>
-                    <div className="min-w-0"><p className="font-semibold text-sm" style={{ color: C.text }}>{t.name}</p><p className="text-xs" style={{ color: C.textMuted }}>{t.shop} {'\u00b7'} {t.city}</p></div>
-                  </div>
-                  <p className="text-base italic leading-relaxed mb-5" style={{ color: C.text }}>"{t.quote}"</p>
-                  <div className="pt-4" style={{ borderTop: `1px solid ${C.border}` }}>
-                    <span className="text-3xl font-bold" style={{ color: C.green }}>{t.stat}</span>
-                    <span className="text-sm ml-2" style={{ color: C.textMuted }}>{t.metric}</span>
-                  </div>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ 6. PRICING ═══ */}
-      <section id="pricing" style={{ paddingTop: '80px', paddingBottom: '80px' }}>
-        <div className="max-w-[1200px] mx-auto px-6">
-          <Reveal><h2 className="text-center font-semibold mb-3" style={{ fontFamily: '"Plus Jakarta Sans"', fontSize: 'clamp(28px, 4vw, 38px)', color: C.text }}>One Plan. Transparent Pricing.</h2></Reveal>
-          <Reveal delay={100}><p className="text-center mb-14" style={{ fontSize: '16px', color: C.textMuted }}>No tiers, no upsells, no confusion.</p></Reveal>
-          <Reveal delay={200} dir="scale">
-            <div className="max-w-md mx-auto rounded-xl p-12 text-center relative" style={{ background: C.bgAlt, border: `2px solid ${C.blue}` }}>
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-semibold text-white px-4 py-1.5 rounded-full whitespace-nowrap" style={{ background: C.green }}>14 days free. No card required.</div>
-              <h3 className="font-bold text-lg mb-3" style={{ fontFamily: '"Plus Jakarta Sans"', color: C.text }}>Cashiea Pro</h3>
-              <div className="mb-8"><span className="text-5xl font-bold" style={{ color: C.blue }}>{'\u20b9'}7,500</span><span className="text-sm ml-1" style={{ color: C.textMuted }}>/month</span></div>
-              <ul className="text-left space-y-3.5 mb-10">
-                {['Unlimited invoices & customers', 'AI quick tasks (4 per day free)', 'WhatsApp integration & auto-replies', 'Daily reports & low-stock alerts', 'Voice invoicing in Hinglish', 'Email + WhatsApp support (replies in 2 hours)'].map((f) => (
-                  <li key={f} className="flex items-start gap-2.5" style={{ fontSize: '16px', color: C.textBody }}><Check className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: C.green }} /> {f}</li>
-                ))}
-              </ul>
-              <Link to="/signup" className="inline-flex items-center justify-center gap-2 font-semibold text-white px-8 py-4 rounded-xl transition-all hover:scale-[1.03] hover:shadow-xl w-full" style={{ background: `linear-gradient(135deg, ${C.blue}, ${C.blueLight})`, boxShadow: `0 6px 20px rgb(var(--accent) / 0.19)` }}>Start Free Trial</Link>
-              <p className="text-xs mt-5" style={{ color: C.textMuted }}>Cancel anytime. No hidden fees. We don't lock you in.</p>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ═══ 7. FAQ ═══ */}
-      <section id="faq" style={{ paddingTop: '72px', paddingBottom: '72px', background: C.bgAlt }}>
-        <div className="max-w-[640px] mx-auto px-6">
-          <Reveal><h2 className="text-center font-semibold mb-12" style={{ fontFamily: '"Plus Jakarta Sans"', fontSize: 'clamp(28px, 4vw, 38px)', color: C.text }}>Questions? We Have Answers.</h2></Reveal>
-          <div className="space-y-3">
-            {FAQS.map((faq, i) => <Reveal key={i} delay={i * 60}><FAQItem faq={faq} colors={C} /></Reveal>)}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ 8. FINAL CTA ═══ */}
-      <section className="relative overflow-hidden" style={{ paddingTop: '90px', paddingBottom: '90px', background: `linear-gradient(135deg, ${C.blue} 0%, ${C.blueDark} 100%)` }}>
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] rounded-full pointer-events-none" style={{ background: `radial-gradient(circle, rgb(var(--gold) / 0.19) 0%, transparent 70%)` }} />
-        <div className="relative max-w-[1200px] mx-auto px-6 text-center">
-          <Reveal dir="scale">
-            <h2 className="font-bold text-white mb-5" style={{ fontFamily: '"Plus Jakarta Sans"', fontSize: 'clamp(32px, 5vw, 50px)', lineHeight: 1.2 }}>Your Retail Business Deserves Better.</h2>
-            <p className="mb-10 mx-auto" style={{ fontSize: '18px', color: 'rgba(255,255,255,0.75)', maxWidth: '480px' }}>Try Cashiea free for 14 days. No credit card. No commitment. See what {'\u20b9'}7,500 can do.</p>
-            <Link to="/signup" className="inline-flex items-center justify-center gap-2 font-semibold px-10 py-4 rounded-xl transition-all hover:scale-[1.04]" style={{ border: '2px solid white', color: C.blue, backgroundColor: 'white', boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }} onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'white' }} onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'white'; e.currentTarget.style.color = C.blue }}>
-              Start Free Trial Now <ArrowRight className="w-5 h-5" />
-            </Link>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ═══ 9. FOOTER ═══ */}
-      <footer style={{ background: C.dark, paddingTop: '56px', paddingBottom: '56px' }}>
-        <div className="max-w-[1200px] mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div className="col-span-2 md:col-span-1">
-              <div className="flex items-center gap-2 mb-3"><Logo size={32} /><span className="font-bold text-lg text-white">Cashiea</span></div>
-              <p className="text-sm" style={{ color: 'rgb(var(--fg-subtle))' }}>POS + CRM + AI for Indian retail</p>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-white mb-4">Product</p>
-              <div className="space-y-2.5">
-                <button onClick={() => scrollTo('#features')} className="block text-sm transition-colors hover:text-white" style={{ color: 'rgb(var(--fg-subtle))' }}>Features</button>
-                <button onClick={() => scrollTo('#pricing')} className="block text-sm transition-colors hover:text-white" style={{ color: 'rgb(var(--fg-subtle))' }}>Pricing</button>
-                <button onClick={() => scrollTo('#faq')} className="block text-sm transition-colors hover:text-white" style={{ color: 'rgb(var(--fg-subtle))' }}>FAQ</button>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-white mb-4">Company</p>
-              <div className="space-y-2.5">
-                <Link to="/privacy" className="block text-sm transition-colors hover:text-white" style={{ color: 'rgb(var(--fg-subtle))' }}>Privacy</Link>
-                <Link to="/terms" className="block text-sm transition-colors hover:text-white" style={{ color: 'rgb(var(--fg-subtle))' }}>Terms</Link>
-                <Link to="/case-study" className="block text-sm transition-colors hover:text-white" style={{ color: 'rgb(var(--fg-subtle))' }}>Case Study</Link>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-white mb-4">Support</p>
-              <div className="space-y-2.5">
-                <Link to="/app/support" className="block text-sm transition-colors hover:text-white" style={{ color: 'rgb(var(--fg-subtle))' }}>Help Center</Link>
-                <a href="mailto:supportcashiea@gmail.com" className="block text-sm transition-colors hover:text-white" style={{ color: 'rgb(var(--fg-subtle))' }}>supportcashiea@gmail.com</a>
-              </div>
-            </div>
-          </div>
-          <div className="mt-12 pt-6" style={{ borderTop: '1px solid rgb(var(--line))' }}>
-            <p className="text-xs text-center" style={{ color: 'rgb(var(--fg-subtle))' }}>{'\u00a9'} 2026 Cashiea. Made with care for India's small businesses.</p>
-          </div>
-        </div>
-      </footer>
+            <p className="text-xs font-medium" style={{ color: 'rgb(var(--fg))' }}>{s.signal}</p>
+            <AnimatePresence>
+              {active === i && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                  <p className="text-[11px] mt-2 leading-relaxed" style={{ color: 'rgb(var(--fg-muted))' }}>{s.reasoning}</p>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold mt-2 px-2 py-1 rounded-control" style={{ background: `rgb(${s.color} / 0.12)`, color: `rgb(${s.color})` }}>
+                    <Sparkles className="w-3 h-3" /> {s.action}
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
 
-function FAQItem({ faq, colors: C }: { faq: { q: string; a: string }; colors: Record<string, string> }) {
-  const [open, setOpen] = useState(false)
+// ══ THINKING ROOM (interactive demo) ══
+const CONCERNS = [
+  { key: 'slowing', label: 'Sales are slowing', diagnosis: 'Your weekday average dropped 22% this week. Three products that usually sell daily haven’t moved since Monday.', steps: ['Check if those 3 products are still in stock', 'Send a quick offer to your top 5 weekday customers', 'Compare today’s foot traffic with last week'] },
+  { key: 'regular', label: 'A regular hasn’t come back', diagnosis: 'Ramesh bought every week for 8 months, then stopped 47 days ago. No messages, no follow-up was sent.', steps: ['Draft a personal WhatsApp message to Ramesh', 'Offer a small returning-customer discount', 'Set a reminder to check in again next week'] },
+  { key: 'cash', label: 'Cash feels tight', diagnosis: '₹18,400 in invoices are overdue across 4 customers. Two are more than 10 days late.', steps: ['Send reminders to the 2 overdue customers', 'Offer early-payment discount on the largest invoice', 'Review which customers habitually pay late'] },
+  { key: 'stock', label: 'Stock keeps running out', diagnosis: 'Cooking oil, rice, and sugar all hit zero this week. None had reorder alerts turned on.', steps: ['Turn on low-stock alerts for these 3 items', 'Set reorder levels based on last month’s sales', 'Approve a restocking order now'] },
+]
+function ThinkingRoom() {
+  const [selected, setSelected] = useState<number | null>(null)
+  const concern = selected !== null ? CONCERNS[selected] : null
   return (
-    <div className="rounded-xl overflow-hidden transition-all" style={{ background: C.bg, border: `1px solid ${C.border}` }}>
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between p-4 text-left">
-        <span className="font-semibold text-base" style={{ color: C.text }}>{faq.q}</span>
-        <ChevronDown className={`w-5 h-5 flex-shrink-0 ml-4 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} style={{ color: C.blue }} />
-      </button>
-      <div className={`overflow-hidden transition-all duration-300 ${open ? 'max-h-96' : 'max-h-0'}`}>
-        <p className="px-6 pb-6 leading-relaxed" style={{ fontSize: '16px', color: C.textBody }}>{faq.a}</p>
+    <div className="max-w-xl mx-auto">
+      <div className="flex flex-wrap gap-2 justify-center mb-6">
+        {CONCERNS.map((c, i) => (
+          <button key={c.key} onClick={() => setSelected(i)}
+            className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200"
+            style={{ background: selected === i ? 'rgb(var(--accent))' : 'rgb(var(--surface))', color: selected === i ? 'rgb(var(--accent-fg))' : 'rgb(var(--fg-muted))', border: `1px solid rgb(var(--${selected === i ? 'accent' : 'line'}))` }}>
+            {c.label}
+          </button>
+        ))}
       </div>
+      <AnimatePresence mode="wait">
+        {concern && (
+          <motion.div key={concern.key} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}
+            className="card p-5">
+            <div className="flex items-start gap-3 mb-4">
+              <span className="w-8 h-8 rounded-control bg-accent-soft text-accent flex items-center justify-center flex-shrink-0"><MerajMark size={18} /></span>
+              <p className="text-sm text-fg leading-relaxed">{concern.diagnosis}</p>
+            </div>
+            <div className="space-y-2">
+              {concern.steps.map((step, si) => (
+                <motion.div key={si} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 + si * 0.09 }}
+                  className="flex items-center gap-3 p-2.5 rounded-control" style={{ background: 'rgb(var(--surface-2))' }}>
+                  <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style={{ background: 'rgb(var(--accent-soft))', color: 'rgb(var(--accent))' }}>{si + 1}</span>
+                  <span className="text-sm text-fg-muted">{step}</span>
+                </motion.div>
+              ))}
+            </div>
+            <Link to="/signup" className="btn-primary w-full mt-4"><Sparkles className="w-4 h-4" /> Try this with your data</Link>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// ══ HUB NODES ══
+const HUB_NODES = [
+  { label: 'Billing', risks: ['Slow checkout', 'Missed customers', 'Manual entry'] },
+  { label: 'Inventory', risks: ['Stockouts', 'Overstock', 'No reorder alerts'] },
+  { label: 'Customers', risks: ['Lost regulars', 'No follow-up', 'No purchase history'] },
+  { label: 'Cash', risks: ['Late payments', 'No reminders', 'Manual chasing'] },
+  { label: 'WhatsApp', risks: ['Unanswered questions', 'No automation', 'Missed orders'] },
+  { label: 'Reports', risks: ['No daily visibility', 'Manual tallying', 'Late insights'] },
+]
+
+const FAQS = [
+  { q: 'Do I need technical knowledge?', a: 'No. Setup takes 5 minutes — enter your shop name, add a few products, and you are ready to bill. Meraj learns your business as you use it.' },
+  { q: 'Is my data safe?', a: 'Your data is encrypted and stored with row-level security — a database rule that ensures each shop can only access its own records. Your AI conversations are processed by Google Gemini, and your data is never sold or shared.' },
+  { q: 'Does Cashiea work offline?', a: 'Cashiea currently requires an internet connection. If your connection drops mid-action, the app shows your sync status and lets you retry. Full offline billing is on the roadmap but not available yet.' },
+  { q: 'Which languages does Meraj understand?', a: 'Meraj understands English and Hinglish (Hindi written in Roman script). You can ask questions, create invoices, and send messages in either language.' },
+  { q: 'What if I already use a POS or billing app?', a: 'Cashiea works alongside your existing setup. You can import your product list, and Meraj’s tools (WhatsApp reports, customer tracking, daily briefings) add value on top. No need to switch everything overnight.' },
+  { q: 'Can I cancel anytime?', a: 'Yes. There are no lock-in contracts, no setup fees, and no hidden charges. Cancel from your dashboard and your data stays yours.' },
+]
+
+export default function Landing() {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [faqOpen, setFaqOpen] = useState<number | null>(null)
+
+  return (
+    <div className="min-h-screen bg-paper text-fg">
+      {/* ══ 1. NAV ══ */}
+      <nav className="sticky top-0 z-50 backdrop-blur-md border-b border-line" style={{ background: 'rgb(var(--paper) / 0.85)' }}>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2"><Logo size={32} /><span className="font-bold text-lg">Cashiea</span></Link>
+          <div className="hidden md:flex items-center gap-7 text-sm font-medium text-fg-muted">
+            <a href="#thinking" className="hover:text-fg transition-colors">How Meraj thinks</a>
+            <a href="#system" className="hover:text-fg transition-colors">One system</a>
+            <a href="#pricing" className="hover:text-fg transition-colors">Pricing</a>
+            <a href="#faq" className="hover:text-fg transition-colors">FAQ</a>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link to="/login" className="hidden sm:inline-flex btn-ghost text-sm">Login</Link>
+            <Link to="/signup" className="btn-primary text-sm">Start free trial</Link>
+            <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden icon-btn">{menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}</button>
+          </div>
+        </div>
+        {menuOpen && (
+          <div className="md:hidden border-t border-line px-4 py-3 space-y-2">
+            <a href="#thinking" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-fg-muted">How Meraj thinks</a>
+            <a href="#system" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-fg-muted">One system</a>
+            <a href="#pricing" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-fg-muted">Pricing</a>
+            <a href="#faq" onClick={() => setMenuOpen(false)} className="block py-2 text-sm text-fg-muted">FAQ</a>
+          </div>
+        )}
+      </nav>
+
+      {/* ══ 2. HERO ══ */}
+      <section className="relative overflow-hidden px-4 sm:px-6 pt-16 pb-20">
+        <div className="absolute inset-0 opacity-50" style={{ background: 'radial-gradient(ellipse at top, rgb(var(--accent) / 0.08), transparent 60%)' }} />
+        <div className="relative max-w-4xl mx-auto text-center">
+          <Reveal>
+            <div className="flex justify-center mb-6">
+              <motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}>
+                <MerajCharacter state="idle" width={96} />
+              </motion.div>
+            </div>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight tracking-tight text-fg">
+              I’m Meraj. I watch your shop<br className="hidden sm:block" /> so you can run it.
+            </h1>
+            <p className="mt-4 text-base sm:text-lg text-fg-muted max-w-xl mx-auto leading-relaxed">
+              Invoices, stock, customers, payments. I check them every day.<br className="hidden sm:block" /> When something needs you, I tell you first.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
+              <Link to="/signup" className="btn-primary text-base px-6 py-3.5 h-auto">Start free trial <ArrowRight className="w-4 h-4" /></Link>
+              <a href="#thinking" className="btn-secondary text-base px-6 py-3.5 h-auto">See how Meraj thinks</a>
+            </div>
+          </Reveal>
+          <Reveal delay={300}>
+            <div className="mt-12">
+              <p className="text-[11px] font-bold tracking-wide uppercase text-fg-subtle mb-4">Tap a signal to see what Meraj catches</p>
+              <SignalWidget />
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ══ MARQUEE ══ */}
+      <div className="overflow-hidden border-y border-line py-3" style={{ background: 'rgb(var(--surface))' }}>
+        <motion.div animate={{ x: ['0%', '-50%'] }} transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
+          className="flex gap-8 whitespace-nowrap text-sm text-fg-subtle">
+          {Array(2).fill(null).map((_, i) => (
+            <span key={i} className="flex gap-8">
+              <span>Invoices</span><span>·</span><span>Stock alerts</span><span>·</span><span>Customer follow-ups</span><span>·</span><span>Payment reminders</span><span>·</span><span>Daily sales reports</span><span>·</span><span>WhatsApp broadcasts</span><span>·</span><span>GST billing</span><span>·</span>
+            </span>
+          ))}
+        </motion.div>
+      </div>
+
+      {/* ══ 4. POSITIONING STATEMENT ══ */}
+      <section className="py-20 px-4">
+        <Reveal className="max-w-2xl mx-auto text-center">
+          <p className="text-xl sm:text-2xl font-semibold text-fg leading-relaxed">
+            Most software tells you what happened.<br />
+            <span className="text-accent">Meraj tells you what to do next.</span>
+          </p>
+        </Reveal>
+      </section>
+
+      {/* ══ 5. HUB DIAGRAM ══ */}
+      <section id="system" className="py-16 px-4" style={{ background: 'rgb(var(--surface))' }}>
+        <div className="max-w-4xl mx-auto">
+          <Reveal className="text-center mb-10">
+            <h2 className="text-2xl sm:text-3xl font-bold text-fg">One shop. One thinking system.</h2>
+          </Reveal>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {HUB_NODES.map((node, i) => (
+              <Reveal key={node.label} delay={i * 60}>
+                <div className="card p-4 h-full">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                    <h3 className="font-semibold text-fg text-sm">{node.label}</h3>
+                  </div>
+                  <ul className="space-y-1">
+                    {node.risks.map((r) => <li key={r} className="text-xs text-fg-subtle flex items-center gap-1.5"><span className="w-1 h-1 rounded-full bg-fg-subtle" /> {r}</li>)}
+                  </ul>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+          <Reveal delay={200} className="text-center mt-8">
+            <p className="text-sm text-fg-muted max-w-lg mx-auto">Meraj connects every part of the shop into one system, catching problems before they cost a sale.</p>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ══ 6. THREE-STEP FRAMEWORK ══ */}
+      <section className="py-20 px-4">
+        <div className="max-w-4xl mx-auto grid sm:grid-cols-3 gap-8">
+          {[
+            { num: '01', label: 'Spots', text: 'Meraj watches invoices, stock, and payments as they happen.' },
+            { num: '02', label: 'Understands', text: 'Meraj checks which problems are connected and which can wait.' },
+            { num: '03', label: 'Guides', text: 'One clear action, ready to send. You approve before it goes out.' },
+          ].map((s, i) => (
+            <Reveal key={s.num} delay={i * 100}>
+              <div className="text-center sm:text-left">
+                <p className="text-4xl font-bold text-accent mb-2">{s.num}</p>
+                <h3 className="font-bold text-fg text-lg mb-1">{s.label}</h3>
+                <p className="text-sm text-fg-muted leading-relaxed">{s.text}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ══ 8. THINKING ROOM ══ */}
+      <section id="thinking" className="py-20 px-4" style={{ background: 'rgb(var(--surface))' }}>
+        <Reveal className="text-center mb-10">
+          <h2 className="text-2xl sm:text-3xl font-bold text-fg mb-2">What needs attention?</h2>
+          <p className="text-sm text-fg-muted">Pick a concern. Meraj will diagnose it and build a plan.</p>
+        </Reveal>
+        <Reveal delay={150}><ThinkingRoom /></Reveal>
+      </section>
+
+      {/* ══ 9. WHO IT'S FOR (replaces fabricated testimonials) ══ */}
+      <section className="py-16 px-4">
+        <Reveal className="max-w-xl mx-auto text-center">
+          <p className="text-sm text-fg-muted leading-relaxed">
+            Cashiea is built for Indian retail shops — kirana stores, electronics, pharmacies, hardware, restaurants. If you sell from a counter and want to know what needs your attention today, Meraj is your shop’s digital manager.
+          </p>
+        </Reveal>
+      </section>
+
+      {/* ══ 10. PRICING ══ */}
+      <section id="pricing" className="py-20 px-4" style={{ background: 'rgb(var(--surface))' }}>
+        <Reveal className="max-w-md mx-auto text-center">
+          <div className="card p-8">
+            <p className="text-sm font-semibold text-fg-subtle uppercase tracking-wide mb-2">Cashiea</p>
+            <p className="text-4xl font-bold text-fg">₹7,500<span className="text-lg font-medium text-fg-muted">/month</span></p>
+            <p className="text-sm text-fg-muted mt-1">Everything included. No tiers, no upsells.</p>
+            <div className="mt-6 space-y-2.5 text-left">
+              {['Meraj AI — spots, understands, guides', 'GST invoicing and billing', 'Stock alerts and reordering', 'Customer tracking and follow-ups', 'Daily WhatsApp sales reports', 'Payment reminders', '14-day free trial, no card required'].map((f) => (
+                <div key={f} className="flex items-center gap-2 text-sm text-fg-muted"><Check className="w-4 h-4 text-positive flex-shrink-0" /> {f}</div>
+              ))}
+            </div>
+            <Link to="/signup" className="btn-primary w-full mt-6">Start free trial</Link>
+            <p className="text-xs text-fg-subtle mt-3">No setup fee. No hidden charges. Cancel anytime.</p>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ══ 11. FAQ ══ */}
+      <section id="faq" className="py-20 px-4">
+        <div className="max-w-2xl mx-auto">
+          <Reveal><h2 className="text-2xl font-bold text-fg mb-8 text-center">Questions</h2></Reveal>
+          <div className="space-y-3">
+            {FAQS.map((item, i) => (
+              <Reveal key={i} delay={i * 40}>
+                <button onClick={() => setFaqOpen(faqOpen === i ? null : i)} className="w-full text-left card p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-fg">{item.q}</p>
+                    <ChevronDown className={`w-4 h-4 text-fg-subtle transition-transform flex-shrink-0 ${faqOpen === i ? 'rotate-180' : ''}`} />
+                  </div>
+                  <AnimatePresence>
+                    {faqOpen === i && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden"><p className="text-sm text-fg-muted mt-2 leading-relaxed">{item.a}</p></motion.div>}
+                  </AnimatePresence>
+                </button>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══ 12. FINAL CTA ══ */}
+      <section className="py-24 px-4 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-40" style={{ background: 'radial-gradient(ellipse at center, rgb(var(--accent) / 0.1), transparent 60%)' }} />
+        <Reveal className="relative max-w-xl mx-auto text-center">
+          <div className="flex justify-center mb-6"><motion.div animate={{ y: [0, -4, 0] }} transition={{ duration: 3, repeat: Infinity }}><MerajCharacter state="idle" width={72} /></motion.div></div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-fg leading-tight">You already know your shop.<br />Meraj makes sure nothing slips through.</h2>
+          <p className="text-sm text-fg-muted mt-3">14-day free trial. No card required.</p>
+          <Link to="/signup" className="btn-primary text-base px-6 py-3.5 h-auto mt-6 inline-flex">Start free trial <ArrowRight className="w-4 h-4" /></Link>
+        </Reveal>
+      </section>
+
+      {/* ══ FOOTER ══ */}
+      <footer className="border-t border-line py-8 px-4">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2"><Logo size={24} /><span className="font-semibold text-sm">Cashiea</span></div>
+          <div className="flex items-center gap-4 text-xs text-fg-subtle">
+            <Link to="/privacy" className="hover:text-fg">Privacy</Link>
+            <Link to="/terms" className="hover:text-fg">Terms</Link>
+            <a href="#faq" className="hover:text-fg">FAQ</a>
+          </div>
+          <p className="text-xs text-fg-subtle">Built for Indian retail.</p>
+        </div>
+      </footer>
     </div>
   )
 }
