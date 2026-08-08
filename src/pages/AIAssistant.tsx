@@ -13,6 +13,7 @@ interface Msg { role: 'user' | 'meraj'; text: string; pending?: { type: string; 
 interface Convo { id: string; title: string; msgs: Msg[]; ts: number; scope?: string }
 
 const STORE = 'cashiea_meraj_convos'
+const CURRENT_KEY = 'cashiea_meraj_current'
 const SCOPE_LABELS: Record<string, string> = {
   receipts: 'Receipts', reports: 'Reports', emails: 'Emails', whatsapp: 'WhatsApp',
   expenses: 'Expenses', profits: 'Profits', stocks: 'Stocks', tasks: 'Tasks',
@@ -65,6 +66,10 @@ export default function AIAssistant() {
   const [listening, setListening] = useState(false)
 
   useEffect(() => { try { setConvos(JSON.parse(localStorage.getItem(STORE) || '[]')) } catch { /* ignore */ } }, [])
+  // Restore the in-progress conversation on open — closing the page mid-task no longer loses it.
+  useEffect(() => { try { const s = localStorage.getItem(CURRENT_KEY); if (s) setMessages(JSON.parse(s)) } catch { /* ignore */ } }, [])
+  // Persist the current conversation continuously.
+  useEffect(() => { try { localStorage.setItem(CURRENT_KEY, JSON.stringify(messages)) } catch { /* ignore */ } }, [messages])
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }) }, [messages, loading, typing])
 
   const persist = (next: Convo[]) => { setConvos(next); try { localStorage.setItem(STORE, JSON.stringify(next.slice(0, 5))) } catch { /* ignore */ } }
@@ -113,7 +118,7 @@ export default function AIAssistant() {
   }
 
   const openConvo = (c: Convo) =>  { setMessages(c.msgs); setShowHistory(false) }
-  const newChat = () => { setMessages([]); setShowHistory(false); inputRef.current?.focus() }
+  const newChat = () => { setMessages([]); setShowHistory(false); try { localStorage.removeItem(CURRENT_KEY) } catch { /* ignore */ } inputRef.current?.focus() }
 
   const startListen = () => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition

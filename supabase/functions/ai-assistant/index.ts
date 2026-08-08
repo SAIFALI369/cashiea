@@ -150,7 +150,7 @@ async function getRecentWhatsApp(supabase: any, userId: string): Promise<{ from:
 }
 
 // Build a compact business snapshot for the AI to reason over
-async function buildContext(supabase: any, userId: string): Promise<string> {
+async function buildContext(supabase: any, userId: string, message = "", briefing = false): Promise<string> {
   const now = new Date();
   const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   const startMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
@@ -163,7 +163,7 @@ async function buildContext(supabase: any, userId: string): Promise<string> {
     supabase.from("customers").select("name,email,phone,total_spent,total_orders,last_purchase_at").eq("user_id", userId).limit(100),
     supabase.from("expenses").select("*").eq("user_id", userId).gte("date", startMonth),
     supabase.from("products").select("name,stock_quantity,low_stock_threshold").eq("user_id", userId).limit(50),
-    supabase.from("customers").select("name,email,total_orders,last_purchase_at").eq("user_id", userId).lt("last_purchase_at", sixtyDaysAgo).limit(50),
+    supabase.from("customers").select("name,email,total_orders,last_purchase_at").eq("user_id", userId).lt("last_purchase_at", sixtyDaysAgo).limit(12),
     supabase.from("suppliers").select("name,outstanding").eq("user_id", userId).limit(30),
   ]);
 
@@ -178,18 +178,22 @@ async function buildContext(supabase: any, userId: string): Promise<string> {
     if (!prodMap[k]) prodMap[k] = { name: it.name, qty: 0, rev: 0 };
     prodMap[k].qty += it.quantity; prodMap[k].rev += it.quantity * it.unit_price;
   }));
-  const topProducts = Object.values(prodMap).sort((a, b) => b.rev - a.rev).slice(0, 10);
+  const topProducts = Object.values(prodMap).sort((a, b) => b.rev - a.rev).slice(0, 5);
 
-  const lowStockItems = (lowStock.data || []).filter((p: any) => p.stock_quantity <= p.low_stock_threshold).slice(0, 15);
+  const lowStockItems = (lowStock.data || []).filter((p: any) => p.stock_quantity <= p.low_stock_threshold).slice(0, 8);
   const monthExpenses = (expenses.data || []).filter((e: any) => e.type === "expense").reduce((s: number, e: any) => s + Number(e.amount), 0);
   const monthIncome = (expenses.data || []).filter((e: any) => e.type === "income").reduce((s: number, e: any) => s + Number(e.amount), 0);
 
-  // Live Gmail context (only if the owner connected Gmail). Best-effort + time-boxed.
-  const recentEmails = await getRecentEmails(supabase, userId);
-  // Live Google Drive context (only if the owner connected Drive + picked files).
-  const driveFiles = await getDriveContext(supabase, userId);
-  // Recent inbound WhatsApp messages (only present once the webhook is live).
-  const recentWhatsApp = await getRecentWhatsApp(supabase, userId);
+  // Live context is fetched ONLY when relevant to this question (or for a
+  // briefing) — skips Gmail/Drive/WhatsApp network calls + tokens otherwise.
+  const wantEmails = briefing || /\b(mail|email|gmail|inbox|reply|sent (me|to))\b/i.test(message);
+  const wantDrive = briefing || /\b(drive|file|document|sheet|doc\b|pdf|spreadsheet|folder)\b/i.test(message);
+  const wantWa = briefing || /\b(whatsapp|message|customer (wrote|sent|asked))\b/i.test(message);
+  const [recentEmails, driveFiles, recentWhatsApp] = await Promise.all([
+    wantEmails ? getRecentEmails(supabase, userId) : Promise.resolve([]),
+    wantDrive ? getDriveContext(supabase, userId) : Promise.resolve([]),
+    wantWa ? getRecentWhatsApp(supabase, userId) : Promise.resolve([]),
+  ]);
 
   return JSON.stringify({
     date: now.toISOString().split("T")[0],
@@ -199,8 +203,8 @@ async function buildContext(supabase: any, userId: string): Promise<string> {
     topProducts: topProducts.map((p) => ({ name: p.name, qty: p.qty, revenue: +p.rev.toFixed(2) })),
     lowStock: lowStockItems.map((p: any) => ({ name: p.name, stock: p.stock_quantity, reorderAt: p.low_stock_threshold })),
     dormantCustomers: (dormant.data || []).map((c: any) => ({ name: c.name, email: c.email, orders: c.total_orders, lastPurchase: c.last_purchase_at })),
-    productCatalog: (products.data || []).slice(0, 40).map((p: any) => ({ name: p.name, sku: p.sku, category: p.category, price: p.price, stock: p.stock_quantity })),
-    customers: (customers.data || []).slice(0, 40).map((c: any) => ({ name: c.name, email: c.email, phone: c.phone, spent: +Number(c.total_spent).toFixed(2), orders: c.total_orders, last: c.last_purchase_at })),
+    productCatalog: (products.data || []).slice(0, 12).map((p: any) => ({ name: p.name, sku: p.sku, category: p.category, price: p.price, stock: p.stock_quantity })),
+    customers: (customers.data || []).slice(0, 12).map((c: any) => ({ name: c.name, email: c.email, phone: c.phone, spent: +Number(c.total_spent).toFixed(2), orders: c.total_orders, last: c.last_purchase_at })),
     suppliersOwed: (suppliers.data || []).filter((s: any) => s.outstanding > 0).map((s: any) => ({ name: s.name, outstanding: s.outstanding })),
     recentEmails,
     driveFiles,
@@ -209,11 +213,11 @@ async function buildContext(supabase: any, userId: string): Promise<string> {
 }
 
 // ── Meraj persona + scope ─────────────────────────────────────────
-const SYSTEM = `You are Meraj — the AI assistant inside Cashiea, built for a shop owner's retail business. You receive (a) what you already know about this owner and their business, and (b) a JSON snapshot of their current business data.
+const SYSTEM = `You are Meraj — the owner's digital manager and right-hand inside Cashiea, built for a shop owner's retail business. You are not a chatbot or a "feature" — you are the owner's most capable staff member and friend: energetic, sharp, and genuinely invested in THIS shop's success. You receive (a) what you already know about this owner and their business, and (b) a JSON snapshot of their current business data.
 
-Your only job is to help the owner run THEIR shop: sales and revenue, profit and expenses, top and slow products, inventory and low stock, customer history, dormant customers to follow up, suppliers they owe, daily summaries, and trends.
+You handle everything about running the shop: sales and revenue, profit and margins, top and slow products, inventory and low stock, customer history, dormant customers to follow up, suppliers they owe, daily summaries, and trends. Beyond answering, you actively run the business WITH the owner — you consistently look for ways to expand and earn more: upsells, faster-moving stock, follow-ups that bring customers back, cost cuts, new product opportunities, smarter pricing, and peak-hour staffing. When you spot a real chance to make more money or save time, say it plainly and suggest one concrete next step.
 
-- Address the owner by name when you know it, and refer to their shop by name. Be polite, proactive, and genuinely helpful — like a capable friend who gets things done. Keep replies SHORT and conversational by default; give a longer, detailed answer only when the task truly needs depth. Never robotic or forceful.
+- Address the owner by name when you know it, and refer to their shop by name. Be warm, energetic, and proactive — like a trusted senior staff member and friend who genuinely cares. Keep replies SHORT and conversational by default; give a longer, detailed answer only when the task truly needs depth. Never robotic, never pushy.
 - Use short bullet points and real numbers from the snapshot. Never invent figures.
 - When asked "how was business", give a quick daily briefing: revenue, orders, top items, and anything needing attention (low stock, overdue follow-ups).
 - When asked who bought a product, scan productCatalog + customers + topProducts.
@@ -434,7 +438,7 @@ Deno.serve(async (req) => {
         return json({ reply: `Done — WhatsApp sent to ${to}.`, executed: { type: "whatsapp" } });
       }
       // PREPARE: model decides tool-call vs text reply
-      const [ctx2, mem2] = await Promise.all([ buildContext(supabase, user.id), buildMemory(supabase, user.id) ]);
+      const [ctx2, mem2] = await Promise.all([ buildContext(supabase, user.id, String(message || ""), false), buildMemory(supabase, user.id) ]);
       const tr = await callGeminiToolCall(TASK_SYSTEM + scopeFocus + pageFocus, `Owner: "${message}"\n\n${mem2.block}${historyBlock}\n\nSnapshot:\n${ctx2}`, ALL_TOOLS, { feature: "task-invoice" });
       if (!tr.ok) return json({ error: tr.value }, 500);
       if (tr.value.kind === "tool") {
@@ -470,7 +474,7 @@ Deno.serve(async (req) => {
     }
 
     const [context, mem] = await Promise.all([
-      buildContext(supabase, user.id),
+      buildContext(supabase, user.id, String(message || ""), briefing),
       buildMemory(supabase, user.id),
     ]);
 
