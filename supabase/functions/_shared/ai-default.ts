@@ -58,7 +58,7 @@ async function callWithKey(
         body: JSON.stringify({
           system_instruction: { parts: [{ text: systemPrompt }] },
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: opts.temperature ?? 0.7, maxOutputTokens: opts.maxTokens ?? 1500, thinkingConfig: { thinkingBudget: 0 } },
+          generationConfig: { temperature: opts.temperature ?? 0.7, maxOutputTokens: opts.maxTokens ?? 1500 },
         }),
       }
     );
@@ -146,7 +146,7 @@ export async function callGeminiToolCall(
           system_instruction: { parts: [{ text: systemPrompt }] },
           contents: [{ parts: [{ text: prompt }] }],
           tools, toolConfig: { function_calling_config: { mode: "AUTO" } },
-          generationConfig: { temperature: 0, maxOutputTokens: opts.maxTokens ?? 800, thinkingConfig: { thinkingBudget: 0 } },
+          generationConfig: { temperature: 0, maxOutputTokens: opts.maxTokens ?? 800 },
         }),
       });
       if (!res.ok) {
@@ -195,7 +195,7 @@ export async function callGeminiWithImage(
             { text: prompt },
             { inline_data: { mime_type: image.mimeType, data: image.data } },
           ] }],
-          generationConfig: { temperature: 0.4, maxOutputTokens: opts.maxTokens ?? 1500, thinkingConfig: { thinkingBudget: 0 } },
+          generationConfig: { temperature: 0.4, maxOutputTokens: opts.maxTokens ?? 1500 },
         }),
       });
       if (!res.ok) {
