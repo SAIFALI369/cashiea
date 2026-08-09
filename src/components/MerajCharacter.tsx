@@ -1,206 +1,619 @@
-import { motion } from 'framer-motion'
-
-export type MerajCharState = 'idle' | 'userTyping' | 'replying' | 'listening' | 'speaking'
+import { useId } from 'react'
+import { motion, type Transition } from 'framer-motion'
 
 /**
- * Meraj — 3D-styled chibi fox mascot (Anthropic/Pixar aesthetic).
- * Rust-orange fur, cream muzzle/belly, ice-blue eyes, tech goggles pushed up,
- * black hoodie with glowing cyan piping + chevron logo, fluffy white-tipped tail.
+ * ╔══════════════════════════════════════════════════════════════════╗
+ * ║  MERAJ — full-body chibi fox mascot (Anthropic/Pixar aesthetic)   ║
+ * ╚══════════════════════════════════════════════════════════════════╝
  *
- * States:
- *   idle        → calm breathing, gentle blink, tail sway
- *   userTyping  → head tilts, curious
- *   replying    → typing on laptop, focused
- *   listening   → ears perk UP, alert, sound-wave glow
- *   speaking    → mouth animates, eyebrows move, head bobs
+ *  Identity
+ *  ────────  anthropomorphic fox · ~1:1.3 head-to-body · stylised 3D render
+ *  Fur     rust-orange #E8793F · cream-white #FFF8EE muzzle/belly/inner-ear/tail-tip
+ *  Eyes    ice-blue #5FB8E8 · single catchlight · black pupil
+ *  Nose    small black triangle
+ *  Gear    blue-lens tech goggles pushed up on forehead · black/ink-navy zip
+ *          hoodie with glowing cyan piping (#2FD6FF) + chest chevron logo ·
+ *          navy joggers · black sneakers with cyan LED sole · left-hip pouch
+ *  Tail    oversized, fluffy, white-tipped — grounding shape in every pose
  *
- * SVG with 3D-like gradients, drop shadows, and depth layering.
- * All motion is transform-based (GPU) for mobile smoothness.
+ *  Driven by three independent axes (plus a legacy `state` shortcut):
+ *    • expression  → face (neutral · happy · wink · thinking · surprised · confident)
+ *    • pose        → arms/body (idle · wave · peace · arms-crossed · presenting)
+ *    • action      → motion (idle · walk · turn)  · turn animates front→back→front
+ *    • view        → static framing (front · back · side-left · side-right)
+ *
+ *  `state` (idle/userTyping/replying/listening/speaking) maps to sensible
+ *  expression+pose+action combinations and is kept for backward compatibility
+ *  with BottomNav / FloatingMeraj / AIAssistant / Landing.
  */
 
-// ── Reusable gradient/shadow defs ──
-function Defs() {
+// ─────────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────────
+export type MerajView = 'front' | 'back' | 'side-left' | 'side-right'
+export type MerajExpression = 'neutral' | 'happy' | 'wink' | 'thinking' | 'surprised' | 'confident'
+export type MerajPose = 'idle' | 'wave' | 'peace' | 'arms-crossed' | 'presenting'
+export type MerajAction = 'idle' | 'walk' | 'turn'
+export type MerajCharState = 'idle' | 'userTyping' | 'replying' | 'listening' | 'speaking'
+export type MerajMode = 'idle' | 'listening' | 'thinking' | 'speaking'
+
+export interface MerajCharacterProps {
+  /** Legacy functional state — maps to expression+pose+action+mode. */
+  state?: MerajCharState
+  /** Face. Overrides the expression implied by `state`. */
+  expression?: MerajExpression
+  /** Arms/body arrangement. Overrides the pose implied by `state`. */
+  pose?: MerajPose
+  /** Motion: idle / walk (legs+arms) / turn (front→back→front). */
+  action?: MerajAction
+  /** Static view when not turning. */
+  view?: MerajView
+  /** Render width in px. Height auto-scales to the mascot's portrait ratio. */
+  width?: number
+  /** Crop to head+chest (good under ~60px). Defaults to auto when width<60. */
+  bust?: boolean
+  /** Soft elliptical ground shadow under the feet. */
+  showGround?: boolean
+  className?: string
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Palette
+// ─────────────────────────────────────────────────────────────────────
+const C = {
+  fur: '#E8793F', furHi: '#F5975A', furLo: '#C96532',
+  cream: '#FFF8EE', creamLo: '#F0E4D0',
+  navy: '#12141F', navyHi: '#1E2235',
+  cyan: '#2FD6FF', cyanSoft: '#7FE6FF',
+  eye: '#5FB8E8', eyeHi: '#9FD6F2', goggle: '#2FA8E8',
+  ink: '#0B0D16', brown: '#8B5A2B',
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// State resolution
+// ─────────────────────────────────────────────────────────────────────
+interface Resolved {
+  expression: MerajExpression
+  pose: MerajPose
+  action: MerajAction
+  mode: MerajMode
+}
+function resolveState(state: MerajCharState | undefined): Resolved {
+  switch (state) {
+    case 'userTyping': return { expression: 'thinking', pose: 'idle', action: 'idle', mode: 'thinking' }
+    case 'replying':   return { expression: 'confident', pose: 'presenting', action: 'idle', mode: 'speaking' }
+    case 'listening':  return { expression: 'neutral', pose: 'idle', action: 'idle', mode: 'listening' }
+    case 'speaking':   return { expression: 'happy', pose: 'idle', action: 'idle', mode: 'speaking' }
+    default:           return { expression: 'neutral', pose: 'idle', action: 'idle', mode: 'idle' }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Shared defs (gradients + filters), unique per instance via useId
+// ─────────────────────────────────────────────────────────────────────
+function Defs({ id }: { id: string }) {
   return (
     <defs>
-      {/* Rust-orange body fur */}
-      <radialGradient id="meraj-fur" cx="40%" cy="35%" r="65%">
-        <stop offset="0%" stopColor="#F08A4A" />
-        <stop offset="60%" stopColor="#E8793F" />
-        <stop offset="100%" stopColor="#C96532" />
+      <radialGradient id={`${id}-fur`} cx="42%" cy="32%" r="70%">
+        <stop offset="0%" stopColor={C.furHi} />
+        <stop offset="58%" stopColor={C.fur} />
+        <stop offset="100%" stopColor={C.furLo} />
       </radialGradient>
-      {/* Cream belly/muzzle */}
-      <radialGradient id="meraj-cream" cx="45%" cy="40%" r="60%">
-        <stop offset="0%" stopColor="#FFF8EE" />
-        <stop offset="100%" stopColor="#F0E4D0" />
+      <radialGradient id={`${id}-cream`} cx="45%" cy="38%" r="65%">
+        <stop offset="0%" stopColor={C.cream} />
+        <stop offset="100%" stopColor={C.creamLo} />
       </radialGradient>
-      {/* Hoodie navy */}
-      <linearGradient id="meraj-hoodie" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#1A1D2E" />
-        <stop offset="100%" stopColor="#12141F" />
+      <linearGradient id={`${id}-navy`} x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor={C.navyHi} />
+        <stop offset="100%" stopColor={C.navy} />
       </linearGradient>
-      {/* Goggle lens blue */}
-      <radialGradient id="meraj-goggle" cx="50%" cy="40%" r="60%">
-        <stop offset="0%" stopColor="#7FD0FF" />
-        <stop offset="100%" stopColor="#2FA8E8" />
-      </radialGradient>
-      {/* Eye ice-blue */}
-      <radialGradient id="meraj-eye" cx="40%" cy="35%" r="60%">
-        <stop offset="0%" stopColor="#8FD0F0" />
-        <stop offset="70%" stopColor="#5FB8E8" />
+      <radialGradient id={`${id}-eye`} cx="40%" cy="34%" r="62%">
+        <stop offset="0%" stopColor={C.eyeHi} />
+        <stop offset="68%" stopColor={C.eye} />
         <stop offset="100%" stopColor="#3A9ED0" />
       </radialGradient>
-      {/* Glow for cyan elements */}
-      <filter id="meraj-glow" x="-50%" y="-50%" width="200%" height="200%">
-        <feGaussianBlur stdDeviation="2" result="blur" />
-        <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+      <radialGradient id={`${id}-goggle`} cx="50%" cy="38%" r="62%">
+        <stop offset="0%" stopColor="#8FD8FF" />
+        <stop offset="100%" stopColor={C.goggle} />
+      </radialGradient>
+      <radialGradient id={`${id}-glow`} cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stopColor={C.cyan} stopOpacity="0.55" />
+        <stop offset="60%" stopColor={C.cyan} stopOpacity="0.14" />
+        <stop offset="100%" stopColor={C.cyan} stopOpacity="0" />
+      </radialGradient>
+      <filter id={`${id}-soft`} x="-40%" y="-40%" width="180%" height="180%">
+        <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor={C.navy} floodOpacity="0.32" />
       </filter>
-      {/* Drop shadow for depth */}
-      <filter id="meraj-shadow" x="-30%" y="-30%" width="160%" height="160%">
-        <feDropShadow dx="0" dy="2.5" stdDeviation="2" floodColor="#12141F" floodOpacity="0.35" />
+      <filter id={`${id}-glowf`} x="-60%" y="-60%" width="220%" height="220%">
+        <feGaussianBlur stdDeviation="2.2" result="b" />
+        <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
       </filter>
     </defs>
   )
 }
 
-export function MerajCharacter({ state = 'idle', width = 76 }: { state?: MerajCharState; width?: number }) {
-  const s = state
-  const replying = s === 'replying'
-  const userTyping = s === 'userTyping'
-  const listening = s === 'listening'
-  const speaking = s === 'speaking'
+// Reusable transitions
+const T_BREATHE: Transition = { duration: 3.1, repeat: Infinity, ease: 'easeInOut' }
+const T_TAIL: Transition = { duration: 3.6, repeat: Infinity, ease: 'easeInOut' }
+const T_BLINK: Transition = { duration: 4.2, repeat: Infinity, ease: 'easeInOut' }
+const T_WALK_LEG: Transition = { duration: 0.52, repeat: Infinity, ease: 'easeInOut' }
+const T_WALK_ARM: Transition = { duration: 0.52, repeat: Infinity, ease: 'easeInOut' }
+const T_BOB: Transition = { duration: 0.52, repeat: Infinity, ease: 'easeInOut' }
+const T_TURN: Transition = { duration: 3.6, repeat: Infinity, ease: 'easeInOut' }
+const T_PULSE: Transition = { duration: 1.5, repeat: Infinity, ease: 'easeInOut' }
 
-  // Head motion
-  const headRotate = userTyping ? 6 : replying ? -5 : speaking ? [0, -3, 0, 2, 0] : 0
-  const headRotDur = speaking ? 0.7 : 0.45
-  // Body breathing
-  const breatheY = replying ? [0, -0.6, 0] : speaking ? [0, -0.8, 0] : [0, -1.2, 0]
-  const breatheDur = replying ? 0.8 : speaking ? 0.5 : 3.0
-  // Ear perk (listening = tall, speaking = slight bounce)
-  const earScale = listening ? [1, 1.15, 1] : speaking ? [1, 1.05, 1] : 1
-  const earDur = listening ? 0.7 : 0.4
-  // Tail sway
-  const tailRotate = listening ? [-3, 3, -3] : [0, 4, 0]
-  const tailDur = listening ? 0.6 : 4.0
-  // Pupils
-  const pupilY = userTyping ? 1.5 : listening ? -0.8 : 0
-  const pupilR = listening ? 2.6 : 2.0
-  // Blink
-  const blinkDur = speaking ? 1.5 : listening ? 5 : 3.5
-  // Glow visibility
-  const showGlow = listening || speaking
-  const cyanGlowOpacity = listening ? [0.2, 0.5, 0.2] : speaking ? [0.15, 0.35, 0.15] : 0.15
+// ─────────────────────────────────────────────────────────────────────
+// FACE — eyes / brows / nose / mouth vary by expression + mode
+// ─────────────────────────────────────────────────────────────────────
+function Face({ id, expression, mode }: { id: string; expression: MerajExpression; mode: MerajMode }) {
+  const speaking = mode === 'speaking'
+  const alert = mode === 'listening'
+  const think = mode === 'thinking'
+
+  // pupil offset
+  let px = 0, py = 0
+  if (think) { px = 3; py = -3 }            // looking up-right (thinking)
+  else if (alert) { py = 1.2 }              // listening — gaze dips slightly
+  const eyeR = expression === 'surprised' ? 13 : 11
+  const pupilR = 4.6
+  const wink = expression === 'wink'
+  const halfLid = expression === 'confident'
+
+  const Eyes = (
+    <motion.g
+      animate={{ scaleY: [1, 1, 0.08, 1] }}
+      transition={{ ...T_BLINK, times: [0, 0.9, 0.945, 1] }}
+      style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+    >
+      {/* left eye (always open-ish) */}
+      <g>
+        <ellipse cx={96} cy={106} rx={eyeR} ry={halfLid ? 6.5 : eyeR} fill={`url(#${id}-eye)`} />
+        <motion.g animate={{ x: px, y: py }} transition={{ duration: 0.4 }}>
+          <circle cx={96} cy={106.5} r={pupilR} fill={C.ink} />
+          <circle cx={98} cy={104} r={1.7} fill="#fff" opacity={0.95} />
+        </motion.g>
+      </g>
+      {/* right eye — winks in 'wink', half-lidded in 'confident', else mirror */}
+      {wink ? (
+        // closed happy eye — downward arc
+        <path d="M133 106 Q142 112 151 106" stroke={C.ink} strokeWidth={2.6} strokeLinecap="round" fill="none" />
+      ) : (
+        <g>
+          <ellipse cx={144} cy={106} rx={eyeR} ry={halfLid ? 6.5 : eyeR} fill={`url(#${id}-eye)`} />
+          <motion.g animate={{ x: px, y: py }} transition={{ duration: 0.4 }}>
+            <circle cx={144} cy={106.5} r={pupilR} fill={C.ink} />
+            <circle cx={146} cy={104} r={1.7} fill="#fff" opacity={0.95} />
+          </motion.g>
+        </g>
+      )}
+    </motion.g>
+  )
+
+  // brows
+  let browL: JSX.Element, browR: JSX.Element
+  const browBase = 88
+  if (expression === 'thinking') {
+    browL = <rect x={87} y={browBase} width={16} height={3.2} rx={1.6} fill={C.furLo} transform="rotate(-10 95 89)" opacity={0.7} />
+    browR = <rect x={137} y={browBase - 4} width={16} height={3.2} rx={1.6} fill={C.furLo} transform="rotate(12 145 86)" opacity={0.7} />
+  } else if (expression === 'surprised') {
+    browL = <rect x={86} y={browBase - 5} width={16} height={3.2} rx={1.6} fill={C.furLo} transform="rotate(-6 94 84)" opacity={0.6} />
+    browR = <rect x={138} y={browBase - 5} width={16} height={3.2} rx={1.6} fill={C.furLo} transform="rotate(6 146 84)" opacity={0.6} />
+  } else if (expression === 'happy' || expression === 'wink') {
+    browL = <rect x={88} y={browBase - 2} width={15} height={3} rx={1.5} fill={C.furLo} transform="rotate(-4 95 87)" opacity={0.55} />
+    browR = <rect x={137} y={browBase - 2} width={15} height={3} rx={1.5} fill={C.furLo} transform="rotate(4 144 87)" opacity={0.55} />
+  } else if (expression === 'confident') {
+    browL = <rect x={87} y={browBase + 2} width={16} height={3.2} rx={1.6} fill={C.furLo} transform="rotate(6 95 91)" opacity={0.7} />
+    browR = <rect x={137} y={browBase + 2} width={16} height={3.2} rx={1.6} fill={C.furLo} transform="rotate(-6 145 91)" opacity={0.7} />
+  } else {
+    browL = <rect x={88} y={browBase} width={15} height={3} rx={1.5} fill={C.furLo} transform="rotate(-3 95 89)" opacity={0.5} />
+    browR = <rect x={137} y={browBase} width={15} height={3} rx={1.5} fill={C.furLo} transform="rotate(3 144 89)" opacity={0.5} />
+  }
+
+  // mouth
+  let Mouth: JSX.Element
+  if (speaking) {
+    Mouth = (
+      <motion.ellipse cx={120} cy={136} rx={6} ry={5} fill={C.ink}
+        animate={{ ry: [2, 6, 3, 5, 2], rx: [5, 6.5, 5.5, 6, 5] }}
+        transition={{ duration: 0.32, repeat: Infinity, ease: 'easeInOut' }} />
+    )
+  } else if (expression === 'happy') {
+    Mouth = (
+      <g>
+        <path d="M104 130 Q120 148 136 130 Q120 138 104 130 Z" fill={C.ink} />
+        <path d="M108 131 Q120 136 132 131" stroke="#fff" strokeWidth={2} strokeLinecap="round" fill="none" />
+        <path d="M116 138 Q120 142 124 138" fill="#E8793F" opacity={0.8} />
+      </g>
+    )
+  } else if (expression === 'wink' || expression === 'confident') {
+    // smirk — asymmetric
+    Mouth = <path d="M112 135 Q122 140 132 132" stroke={C.brown} strokeWidth={2.6} strokeLinecap="round" fill="none" />
+  } else if (expression === 'surprised') {
+    Mouth = <ellipse cx={120} cy={137} rx={5.5} ry={7} fill={C.ink} />
+  } else if (expression === 'thinking') {
+    Mouth = <path d="M114 137 L126 134" stroke={C.brown} strokeWidth={2.6} strokeLinecap="round" fill="none" />
+  } else {
+    // neutral — soft smile
+    Mouth = <path d="M110 134 Q120 142 130 134" stroke={C.brown} strokeWidth={2.6} strokeLinecap="round" fill="none" />
+  }
 
   return (
-    <motion.svg width={width} height={width * 0.72} viewBox="0 0 150 108" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <Defs />
+    <g>
+      {/* cheeks */}
+      <circle cx={82} cy={124} r={6} fill={C.fur} opacity={0.22} />
+      <circle cx={158} cy={124} r={6} fill={C.fur} opacity={0.22} />
+      {Eyes}
+      {browL}{browR}
+      {/* nose */}
+      <path d="M112 116 L128 116 L120 125 Z" fill={C.ink} />
+      <ellipse cx={117} cy={119} rx={2.4} ry={1.6} fill="#3a3a44" opacity={0.6} />
+      {Mouth}
+    </g>
+  )
+}
 
-      {/* Ambient glow (listening/speaking) */}
-      {showGlow && (
-        <motion.circle cx="75" cy="48" r="52" fill="#2FD6FF"
-          animate={{ opacity: cyanGlowOpacity as any, scale: [0.9, 1.08, 0.9] }}
-          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-          style={{ transformOrigin: '75px 48px' }}
-        />
+// ─────────────────────────────────────────────────────────────────────
+// ARMS — by pose (rendered in front of torso)
+// ─────────────────────────────────────────────────────────────────────
+function Arms({ id, pose, walking }: { id: string; pose: MerajPose; walking: boolean }) {
+  const Sleeve = (x: number) => (
+    <>
+      <rect x={x} y={158} width={17} height={62} rx={8.5} fill={`url(#${id}-navy)`} stroke={C.ink} strokeWidth={0.8} />
+      <line x1={x + 8.5} y1={164} x2={x + 8.5} y2={214} stroke={C.cyan} strokeWidth={1.1} opacity={0.55} />
+    </>
+  )
+  const Hand = (x: number) => (
+    <g>
+      <ellipse cx={x} cy={224} rx={8.5} ry={9} fill={`url(#${id}-fur)`} />
+      <path d={`M${x - 3} 217 L${x - 3} 213 M${x} 216 L${x} 212 M${x + 3} 217 L${x + 3} 213`} stroke={C.furLo} strokeWidth={1.4} strokeLinecap="round" />
+    </g>
+  )
+
+  if (pose === 'arms-crossed') {
+    return (
+      <g>
+        <rect x={78} y={176} width={68} height={17} rx={8.5} fill={`url(#${id}-navy)`} stroke={C.ink} strokeWidth={0.8} transform="rotate(-12 112 184)" />
+        <rect x={94} y={188} width={68} height={17} rx={8.5} fill={`url(#${id}-navy)`} stroke={C.ink} strokeWidth={0.8} transform="rotate(12 128 196)" />
+        <ellipse cx={150} cy={184} rx={9} ry={8.5} fill={`url(#${id}-fur)`} />
+        <ellipse cx={90} cy={196} rx={9} ry={8.5} fill={`url(#${id}-fur)`} />
+      </g>
+    )
+  }
+
+  if (pose === 'presenting') {
+    return (
+      <g>
+        {/* tablet */}
+        <rect x={86} y={178} width={68} height={44} rx={7} fill={`url(#${id}-navy)`} stroke={C.ink} strokeWidth={1} />
+        <rect x={92} y={184} width={56} height={32} rx={3} fill="#0c1622" />
+        <motion.rect x={97} y={189} width={30} height={3.4} rx={1.7} fill={C.cyan}
+          animate={{ opacity: [0.4, 1, 0.4] }} transition={T_PULSE} filter={`url(#${id}-glowf)`} />
+        <rect x={97} y={197} width={42} height={2.6} rx={1.3} fill={C.cyanSoft} opacity={0.5} />
+        <rect x={97} y={203} width={34} height={2.6} rx={1.3} fill={C.cyanSoft} opacity={0.4} />
+        <rect x={97} y={209} width={24} height={2.6} rx={1.3} fill={C.cyanSoft} opacity={0.35} />
+        {/* hands holding */}
+        <ellipse cx={84} cy={196} rx={8} ry={8.5} fill={`url(#${id}-fur)`} />
+        <ellipse cx={156} cy={196} rx={8} ry={8.5} fill={`url(#${id}-fur)`} />
+      </g>
+    )
+  }
+
+  // idle / wave / peace — left arm hangs, right arm pose-dependent
+  const wave = pose === 'wave' || pose === 'peace'
+
+  return (
+    <g>
+      {/* LEFT arm — hangs (swings when walking) */}
+      <motion.g
+        animate={walking ? { rotate: [-7, 7, -7] } : { rotate: 0 }}
+        transition={walking ? T_WALK_ARM : { duration: 0 }}
+        style={{ transformOrigin: '96px 160px' }}
+      >
+        {Sleeve(88)}
+        {Hand(96)}
+      </motion.g>
+
+      {/* RIGHT arm */}
+      {wave ? (
+        <motion.g
+          animate={{ rotate: [-128, -116, -128] }}
+          transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut' }}
+          style={{ transformOrigin: '144px 160px' }}
+        >
+          {Sleeve(135)}
+          <g>
+            <ellipse cx={144} cy={96} rx={9} ry={9} fill={`url(#${id}-fur)`} />
+            {pose === 'peace' ? (
+              <>
+                <path d="M141 88 L140 78" stroke={C.furLo} strokeWidth={3} strokeLinecap="round" />
+                <path d="M148 88 L150 78" stroke={C.furLo} strokeWidth={3} strokeLinecap="round" />
+              </>
+            ) : (
+              <path d="M138 90 Q144 84 150 90" stroke={C.furLo} strokeWidth={1.6} fill="none" strokeLinecap="round" />
+            )}
+          </g>
+        </motion.g>
+      ) : (
+        <motion.g
+          animate={walking ? { rotate: [7, -7, 7] } : { rotate: 0 }}
+          transition={walking ? T_WALK_ARM : { duration: 0 }}
+          style={{ transformOrigin: '144px 160px' }}
+        >
+          {Sleeve(135)}
+          {Hand(144)}
+        </motion.g>
+      )}
+    </g>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// HEAD — front (with face) and back (hood) variants
+// ─────────────────────────────────────────────────────────────────────
+function Ears({ id, alert }: { id: string; alert: boolean }) {
+  return (
+    <motion.g
+      animate={alert ? { scale: [1, 1.14, 1] } : { scale: 1 }}
+      transition={alert ? { duration: 0.8, repeat: Infinity, ease: 'easeInOut' } : { duration: 0 }}
+      style={{ transformOrigin: '120px 52px' }}
+    >
+      {/* left ear */}
+      <path d="M70 60 L52 6 L88 48 Z" fill={`url(#${id}-fur)`} stroke={C.furLo} strokeWidth={0.7} />
+      <path d="M74 56 L62 18 L84 47 Z" fill={C.cream} opacity={0.92} />
+      {/* right ear */}
+      <path d="M170 60 L188 6 L152 48 Z" fill={`url(#${id}-fur)`} stroke={C.furLo} strokeWidth={0.7} />
+      <path d="M166 56 L178 18 L156 47 Z" fill={C.cream} opacity={0.92} />
+    </motion.g>
+  )
+}
+
+function FrontHead({ id, expression, mode }: { id: string; expression: MerajExpression; mode: MerajMode }) {
+  const alert = mode === 'listening'
+  const glow = mode === 'listening' || mode === 'thinking' || mode === 'speaking'
+  return (
+    <g>
+      <Ears id={id} alert={alert} />
+      {/* head */}
+      <ellipse cx={120} cy={96} rx={60} ry={54} fill={`url(#${id}-fur)`} />
+      {/* goggle strap wrap (sides) */}
+      <rect x={62} y={66} width={116} height={3} fill={C.navy} opacity={0.5} />
+      {/* goggles pushed up on forehead */}
+      <rect x={70} y={66} width={100} height={14} rx={7} fill={`url(#${id}-navy)`} stroke={C.ink} strokeWidth={0.9} />
+      <ellipse cx={92} cy={73} rx={12} ry={7} fill={`url(#${id}-goggle)`} opacity={0.85} />
+      <ellipse cx={148} cy={73} rx={12} ry={7} fill={`url(#${id}-goggle)`} opacity={0.85} />
+      <ellipse cx={89} cy={71} rx={3.5} ry={2} fill="#BFEAFF" opacity={0.8} />
+      <motion.path d="M115 73 L120 67 L125 73" stroke={C.cyan} strokeWidth={1.4} fill="none"
+        strokeLinecap="round" filter={`url(#${id}-glowf)`}
+        animate={glow ? { opacity: [0.5, 1, 0.5] } : { opacity: 0.8 }} transition={glow ? T_PULSE : { duration: 0 }} />
+      {/* muzzle */}
+      <ellipse cx={120} cy={124} rx={34} ry={26} fill={`url(#${id}-cream)`} />
+      <Face id={id} expression={expression} mode={mode} />
+    </g>
+  )
+}
+
+function BackHead({ id }: { id: string }) {
+  return (
+    <g>
+      <Ears id={id} alert={false} />
+      {/* hood covering back of head */}
+      <ellipse cx={120} cy={96} rx={62} ry={56} fill={`url(#${id}-navy)`} stroke={C.ink} strokeWidth={0.8} />
+      {/* a hint of fur peeking at the bottom (neck) */}
+      <ellipse cx={120} cy={140} rx={30} ry={14} fill={`url(#${id}-fur)`} />
+      {/* goggle strap wrapping around */}
+      <rect x={60} y={70} width={120} height={9} rx={4.5} fill={C.navy} stroke={C.ink} strokeWidth={0.8} />
+      <path d="M115 74 L120 68 L125 74" stroke={C.cyan} strokeWidth={1.4} fill="none"
+        strokeLinecap="round" filter={`url(#${id}-glowf)`} opacity={0.9} />
+      {/* hood seam */}
+      <path d="M120 40 Q120 96 120 150" stroke={C.navyHi} strokeWidth={2} fill="none" opacity={0.7} />
+    </g>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// TORSO + LEGS + TAIL (shared across front/back)
+// ─────────────────────────────────────────────────────────────────────
+function Tail({ id, alert }: { id: string; alert: boolean }) {
+  return (
+    <motion.g
+      animate={alert ? { rotate: [-4, 6, -4] } : { rotate: [0, 5, 0] }}
+      transition={alert ? { duration: 0.7, repeat: Infinity, ease: 'easeInOut' } : T_TAIL}
+      style={{ transformOrigin: '158px 236px' }}
+    >
+      <path d="M150 240 C202 248 232 198 220 148 C215 126 198 120 190 136 C197 156 180 184 168 204 C161 217 156 230 150 240 Z"
+        fill={`url(#${id}-fur)`} stroke={C.furLo} strokeWidth={0.7} />
+      <path d="M168 204 C176 196 188 178 192 158" stroke={C.furLo} strokeWidth={1} fill="none" opacity={0.4} />
+      {/* white fluffy tip */}
+      <path d="M220 148 C225 132 212 120 202 130 C208 140 213 150 210 160 C217 159 223 154 220 148 Z" fill={C.cream} />
+      <circle cx="214" cy="140" r="3" fill="#fff" opacity={0.7} />
+    </motion.g>
+  )
+}
+
+function Legs({ id, walking }: { id: string; walking: boolean }) {
+  const Leg = (x: number, footX: number, rot: number[], pivot: string) => (
+    <motion.g
+      animate={walking ? { rotate: rot } : { rotate: 0 }}
+      transition={walking ? T_WALK_LEG : { duration: 0 }}
+      style={{ transformOrigin: pivot }}
+    >
+      <rect x={x} y={236} width={22} height={64} rx={11} fill={`url(#${id}-navy)`} stroke={C.ink} strokeWidth={0.8} />
+      {/* shoe */}
+      <path d={`M${footX - 16} 296 Q${footX - 18} 312 ${footX - 6} 312 L${footX + 18} 312 Q${footX + 22} 312 ${footX + 20} 304 L${footX + 16} 298 Z`} fill="#0c0d14" stroke={C.ink} strokeWidth={0.7} />
+      <rect x={footX - 16} y={308} width={38} height={4} rx={2} fill={C.cyan} filter={`url(#${id}-glowf)`} opacity={0.85} />
+    </motion.g>
+  )
+  return (
+    <g>
+      {Leg(98, 109, [8, -8, 8], '109px 240px')}
+      {Leg(120, 131, [-8, 8, -8], '131px 240px')}
+    </g>
+  )
+}
+
+function Torso({ id }: { id: string }) {
+  return (
+    <g>
+      {/* hood collar behind neck */}
+      <path d="M94 150 Q120 138 146 150 Q152 164 144 168 Q120 158 96 168 Q88 164 94 150 Z" fill={`url(#${id}-navy)`} stroke={C.ink} strokeWidth={0.8} />
+      {/* body */}
+      <path d="M88 156 Q83 200 86 240 Q86 250 98 250 L142 250 Q154 250 154 240 Q157 200 152 156 Q146 148 120 148 Q94 148 88 156 Z"
+        fill={`url(#${id}-navy)`} stroke={C.ink} strokeWidth={0.9} />
+      {/* left-hip pouch */}
+      <rect x={90} y={214} width={24} height={17} rx={4} fill="#0c0d14" stroke={C.ink} strokeWidth={0.6} />
+      <line x1={96} y1={222} x2={108} y2={222} stroke={C.navyHi} strokeWidth={1.4} />
+    </g>
+  )
+}
+
+// front-only torso overlays (zip, chest chevron, collar piping)
+function FrontTorsoFx({ id }: { id: string }) {
+  return (
+    <g>
+      {/* collar piping */}
+      <path d="M97 153 Q120 145 143 153" stroke={C.cyan} strokeWidth={1.3} fill="none" filter={`url(#${id}-glowf)`} opacity={0.8} />
+      {/* zip line */}
+      <motion.line x1={120} y1={156} x2={120} y2={244} stroke={C.cyan} strokeWidth={1.4}
+        filter={`url(#${id}-glowf)`}
+        animate={{ opacity: [0.55, 1, 0.55] }} transition={T_PULSE} />
+      {/* cuff piping */}
+      <line x1={91} y1={210} x2={102} y2={210} stroke={C.cyan} strokeWidth={1} filter={`url(#${id}-glowf)`} opacity={0.5} />
+      <line x1={138} y1={210} x2={149} y2={210} stroke={C.cyan} strokeWidth={1} filter={`url(#${id}-glowf)`} opacity={0.5} />
+      {/* chest chevron logo */}
+      <motion.path d="M108 198 L120 182 L132 198" stroke={C.cyan} strokeWidth={2.4} fill="none"
+        strokeLinecap="round" strokeLinejoin="round" filter={`url(#${id}-glowf)`}
+        animate={{ opacity: [0.55, 1, 0.55] }} transition={T_PULSE} />
+    </g>
+  )
+}
+
+// back-only torso overlays (big back chevron + seam)
+function BackTorsoFx({ id }: { id: string }) {
+  return (
+    <g>
+      <path d="M86 156 Q90 200 92 240" stroke={C.navyHi} strokeWidth={1.6} fill="none" opacity={0.6} />
+      <path d="M154 156 Q150 200 148 240" stroke={C.navyHi} strokeWidth={1.6} fill="none" opacity={0.6} />
+      {/* back chevron (bigger) */}
+      <motion.path d="M104 206 L120 182 L136 206 M112 206 L120 194 L128 206" stroke={C.cyan} strokeWidth={2.6} fill="none"
+        strokeLinecap="round" strokeLinejoin="round" filter={`url(#${id}-glowf)`}
+        animate={{ opacity: [0.5, 1, 0.5] }} transition={T_PULSE} />
+      {/* hood seam piping */}
+      <path d="M97 153 Q120 145 143 153" stroke={C.cyan} strokeWidth={1.2} fill="none" filter={`url(#${id}-glowf)`} opacity={0.6} />
+    </g>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Main component
+// ─────────────────────────────────────────────────────────────────────
+export function MerajCharacter({
+  state, expression, pose, action, view = 'front',
+  width = 120, bust, showGround = true, className,
+}: MerajCharacterProps) {
+  const uid = useId().replace(/:/g, '')
+  const r = state !== undefined ? resolveState(state) : null
+  const expressionF = expression ?? r?.expression ?? 'neutral'
+  const poseF = pose ?? r?.pose ?? 'idle'
+  const actionF = action ?? r?.action ?? 'idle'
+  const mode: MerajMode = r?.mode ?? 'idle'
+
+  const turning = actionF === 'turn'
+  const walking = actionF === 'walk'
+  const alert = mode === 'listening' || expressionF === 'surprised'
+  const glow = mode === 'listening' || mode === 'thinking' || mode === 'speaking'
+
+  const isBust = bust ?? width < 60
+  const ratio = 360 / 240 // portrait
+  const height = width * ratio
+  // bust crops to head + chest
+  const viewBox = isBust ? '42 -6 156 168' : '0 0 240 360'
+
+  // static back view (no turn)
+  const staticBack = view === 'back' && !turning
+  const sideMirror = view === 'side-left' ? -1 : view === 'side-right' ? 1 : 1
+
+  return (
+    <motion.svg
+      width={width}
+      height={isBust ? width * (168 / 156) : height}
+      viewBox={viewBox}
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      role="img"
+      aria-label="Meraj"
+    >
+      <Defs id={uid} />
+
+      {/* ambient glow */}
+      {glow && !isBust && (
+        <motion.circle cx={120} cy={150} r={120} fill={`url(#${uid}-glow)`}
+          animate={{ opacity: [0.35, 0.7, 0.35], scale: [0.92, 1.04, 0.92] }}
+          transition={T_PULSE} style={{ transformOrigin: '120px 150px' }} />
       )}
 
-      <motion.g animate={{ y: breatheY }} transition={{ duration: breatheDur, repeat: Infinity, ease: 'easeInOut' }} filter="url(#meraj-shadow)">
+      {/* TURN WRAPPER — scaleX squeeze + crossfade front/back */}
+      <motion.g
+        animate={turning ? {
+          scaleX: [1, 0.05, 0.04, 0.05, 1],
+        } : { scaleX: sideMirror }}
+        transition={turning ? {
+          ...T_TURN,
+          times: [0, 0.32, 0.5, 0.68, 1],
+        } : { duration: 0 }}
+        style={{ transformOrigin: '120px 180px' }}
+      >
+        <motion.g
+          animate={turning ? {
+            y: walking ? [-2, 2, -2] : [0, -1.5, 0],
+            rotate: walking ? [-1.5, 1.5, -1.5] : 0,
+          } : {
+            y: walking ? [-2, 2, -2] : [0, -1.6, 0],
+            rotate: 0,
+          }}
+          transition={turning ? T_TURN : walking ? T_BOB : T_BREATHE}
+          style={{ transformOrigin: '120px 200px' }}
+          filter={`url(#${uid}-soft)`}
+        >
+          {/* ground shadow */}
+          {showGround && !isBust && (
+            <motion.ellipse cx={120} cy={322} rx={70} ry={10} fill={C.ink} opacity={0.18}
+              animate={walking ? { rx: [64, 74, 64] } : { rx: 70 }}
+              transition={walking ? T_BOB : { duration: 0 }} />
+          )}
 
-        {/* ── TAIL (behind body, fluffy white-tipped) ── */}
-        <motion.g animate={{ rotate: tailRotate }} transition={{ duration: tailDur, repeat: Infinity, ease: 'easeInOut' }} style={{ transformOrigin: '108px 70px' }}>
-          <path d="M104 72 Q126 58 130 38 Q132 26 124 22 Q118 20 116 28 Q114 44 104 58 Z" fill="url(#meraj-fur)" />
-          <path d="M124 22 Q132 20 134 28 Q132 34 126 34 Q120 32 122 26 Z" fill="#FFF8EE" />
-        </motion.g>
+          {/* shared body stack */}
+          <Tail id={uid} alert={alert} />
+          <Legs id={uid} walking={walking} />
+          <Torso id={uid} />
 
-        {/* ── BODY / TORSO (hoodie) ── */}
-        <path d="M57 52 Q55 62 56 78 L94 78 Q95 62 93 52 Q86 47 75 47 Q64 47 57 52 Z" fill="url(#meraj-hoodie)" stroke="#0E1018" strokeWidth="0.8" />
+          {/* ARMS */}
+          <Arms id={uid} pose={poseF} walking={walking} />
 
-        {/* Cyan hoodie piping — zip line */}
-        <motion.line x1="75" y1="50" x2="75" y2="76" stroke="#2FD6FF" strokeWidth="1.2" filter="url(#meraj-glow)"
-          animate={{ opacity: [0.6, 1, 0.6] }} transition={{ duration: 2, repeat: Infinity }} />
-        {/* Collar piping */}
-        <path d="M60 52 Q67 49 75 49 Q83 49 90 52" stroke="#2FD6FF" strokeWidth="1" fill="none" filter="url(#meraj-glow)" opacity="0.7" />
-        {/* Cuff piping L+R */}
-        <line x1="57" y1="66" x2="61" y2="66" stroke="#2FD6FF" strokeWidth="0.8" filter="url(#meraj-glow)" opacity="0.5" />
-        <line x1="89" y1="66" x2="93" y2="66" stroke="#2FD6FF" strokeWidth="0.8" filter="url(#meraj-glow)" opacity="0.5" />
-
-        {/* Chevron logo on chest (^ shape, cyan glow) */}
-        <motion.path d="M70 62 L75 57 L80 62" stroke="#2FD6FF" strokeWidth="1.5" fill="none" strokeLinecap="round" filter="url(#meraj-glow)"
-          animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 2.5, repeat: Infinity }} />
-
-        {/* ── HANDS (on keyboard when replying, relaxed otherwise) ── */}
-        <motion.g animate={{ y: replying ? [0, 1.4, 0] : 0 }} transition={{ duration: 0.22, repeat: replying ? Infinity : 0, ease: 'easeInOut' }}>
-          <ellipse cx="60" cy="72" rx="4.5" ry="3.5" fill="url(#meraj-fur)" />
-          <ellipse cx="90" cy="72" rx="4.5" ry="3.5" fill="url(#meraj-fur)" />
-        </motion.g>
-
-        {/* ── DESK + LAPTOP ── */}
-        <rect x="48" y="76" width="54" height="6" rx="3" fill="#1A1D2E" />
-        <rect x="48" y="81" width="54" height="12" rx="2" fill="#12141F" opacity="0.5" />
-        <rect x="56" y="69" width="38" height="8" rx="2" fill="#1A1D2E" stroke="#0E1018" strokeWidth="0.5" />
-        <rect x="59" y="55" width="32" height="15" rx="2" fill="#1A1D2E" stroke="#0E1018" strokeWidth="0.5" />
-        {replying
-          ? <motion.rect x="62" y="58" width="20" height="2.2" rx="1.1" fill="#2FD6FF" filter="url(#meraj-glow)"
-              animate={{ opacity: [0.3, 1, 0.3], width: [12, 26, 12] }} transition={{ duration: 0.6, repeat: Infinity }} />
-          : <rect x="62" y="58" width="16" height="2.2" rx="1.1" fill="#2FD6FF" opacity={listening ? 0.6 : 0.3} filter="url(#meraj-glow)" />}
-
-        {/* ── HEAD ── */}
-        <motion.g animate={{ rotate: headRotate }} transition={{ duration: headRotDur, repeat: speaking ? Infinity : 0, ease: 'easeInOut' }} style={{ transformOrigin: '75px 32px' }}>
-
-          {/* EARS (fox — triangular, rust outside, cream inside) */}
-          <motion.g animate={{ scale: earScale }} transition={{ duration: earDur, repeat: (listening || speaking) ? Infinity : 0, ease: 'easeInOut' }} style={{ transformOrigin: '75px 18px' }}>
-            {/* Left ear */}
-            <path d="M56 26 L53 8 L66 18 Z" fill="url(#meraj-fur)" stroke="#C96532" strokeWidth="0.6" />
-            <path d="M57 24 L56 14 L63 19 Z" fill="#FFF8EE" opacity="0.85" />
-            {/* Right ear */}
-            <path d="M94 26 L97 8 L84 18 Z" fill="url(#meraj-fur)" stroke="#C96532" strokeWidth="0.6" />
-            <path d="M93 24 L94 14 L87 19 Z" fill="#FFF8EE" opacity="0.85" />
-          </motion.g>
-
-          {/* Head shape (rounded fox head) */}
-          <ellipse cx="75" cy="32" rx="20" ry="18" fill="url(#meraj-fur)" />
-
-          {/* Muzzle (cream) */}
-          <ellipse cx="75" cy="38" rx="11" ry="8" fill="url(#meraj-cream)" />
-
-          {/* GOGGLES (pushed up on forehead, dark frame, blue lens, chevron) */}
-          <rect x="58" y="19" width="34" height="7" rx="3.5" fill="#1A1D2E" stroke="#0E1018" strokeWidth="0.6" />
-          <ellipse cx="66" cy="22.5" rx="5.5" ry="2.8" fill="url(#meraj-goggle)" opacity="0.8" />
-          <ellipse cx="84" cy="22.5" rx="5.5" ry="2.8" fill="url(#meraj-goggle)" opacity="0.8" />
-          {/* Goggle strap chevron */}
-          <path d="M72 22 L75 19.5 L78 22" stroke="#2FD6FF" strokeWidth="1" fill="none" filter="url(#meraj-glow)" strokeLinecap="round" />
-
-          {/* NOSE (small black triangle) */}
-          <path d="M73 35 L77 35 L75 37.5 Z" fill="#1A1A1A" />
-
-          {/* EYES (ice-blue, round, catchlight) */}
-          <motion.g animate={{ scaleY: [1, 1, 0.1, 1] }} transition={{ duration: blinkDur, times: [0, 0.92, 0.96, 1], repeat: Infinity }} style={{ transformOrigin: '75px 31px' }}>
-            <circle cx="68" cy="31" r={listening ? 5 : 4.5} fill="url(#meraj-eye)" />
-            <circle cx="82" cy="31" r={listening ? 5 : 4.5} fill="url(#meraj-eye)" />
-            <motion.g animate={{ y: pupilY }} transition={{ duration: 0.3, ease: 'easeOut' }}>
-              <circle cx="68" cy="31.5" r={pupilR} fill="#1A1A1A" />
-              <circle cx="82" cy="31.5" r={pupilR} fill="#1A1A1A" />
-              <circle cx="69.2" cy="30.2" r="1.2" fill="#FFFFFF" opacity="0.9" />
-              <circle cx="83.2" cy="30.2" r="1.2" fill="#FFFFFF" opacity="0.9" />
+          {/* FRONT layer (face + front fx) */}
+          <motion.g
+            animate={{ opacity: staticBack ? 0 : (turning ? [1, 0, 0, 0, 1] : 1) }}
+            transition={turning ? { ...T_TURN, times: [0, 0.32, 0.5, 0.68, 1] } : { duration: 0 }}
+          >
+            <FrontTorsoFx id={uid} />
+            {/* head */}
+            <motion.g
+              animate={{ rotate: alert ? [0, 5, 0] : mode === 'speaking' ? [0, -3, 0, 2, 0] : 0 }}
+              transition={alert ? { duration: 1.1, repeat: Infinity, ease: 'easeInOut' } : mode === 'speaking' ? { duration: 0.8, repeat: Infinity, ease: 'easeInOut' } : { duration: 0 }}
+              style={{ transformOrigin: '120px 96px' }}
+            >
+              <FrontHead id={uid} expression={expressionF} mode={mode} />
             </motion.g>
           </motion.g>
 
-          {/* EYEBROWS (subtle, animate when speaking) */}
-          <motion.g animate={{ y: speaking ? [0, -1.2, 0] : listening ? -0.8 : 0 }} transition={{ duration: 0.35, repeat: speaking ? Infinity : 0, ease: 'easeInOut' }}>
-            <rect x="65" y="25.5" width="6" height="1.4" rx="0.7" fill="#C96532" opacity="0.6" transform="rotate(-8 68 26)" />
-            <rect x="79" y="25.5" width="6" height="1.4" rx="0.7" fill="#C96532" opacity="0.6" transform="rotate(8 82 26)" />
+          {/* BACK layer (hood + back fx) */}
+          <motion.g
+            animate={{ opacity: staticBack ? 1 : (turning ? [0, 1, 1, 1, 0] : 0) }}
+            transition={turning ? { ...T_TURN, times: [0, 0.32, 0.5, 0.68, 1] } : { duration: 0 }}
+          >
+            <BackTorsoFx id={uid} />
+            <BackHead id={uid} />
           </motion.g>
-
-          {/* MOUTH — smile (idle) or animated talking (speaking) */}
-          {speaking ? (
-            <motion.ellipse cx="75" cy="40" rx="3.5" fill="#1A1A1A"
-              animate={{ ry: [0.6, 2.5, 1, 2, 0.6] }} transition={{ duration: 0.3, repeat: Infinity, ease: 'easeInOut' }} />
-          ) : (
-            <path d={listening ? 'M71 39 Q75 42 79 39' : 'M72 39.5 Q75 42 78 39.5'} stroke="#8B5A2B" strokeWidth="1.4" strokeLinecap="round" fill="none" />
-          )}
-
-          {/* Cheek blush */}
-          <circle cx="65" cy="37" r="2.5" fill="#E8793F" opacity="0.25" />
-          <circle cx="85" cy="37" r="2.5" fill="#E8793F" opacity="0.25" />
         </motion.g>
       </motion.g>
     </motion.svg>

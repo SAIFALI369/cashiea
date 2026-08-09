@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>Meraj — Character Showcase · Cashiea</title>
+<style>
+  :root{
+    --bg0:#060912; --bg1:#0c1322; --panel:rgba(255,255,255,.035); --line:rgba(255,255,255,.09);
+    --fg:#EAF0FB; --mut:#8a93a6; --cyan:#2FD6FF; --cyan2:#7FE6FF; --fur:#E8793F;
+    --r:18px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--fg); background:
+      radial-gradient(120% 90% at 50% -10%, rgba(47,214,255,.10), transparent 55%),
+      radial-gradient(100% 60% at 50% 120%, rgba(232,121,63,.08), transparent 60%),
+      linear-gradient(180deg,var(--bg0),var(--bg1));
+    min-height:100vh; -webkit-font-smoothing:antialiased;
+  }
+  .streak{position:fixed;inset:0;pointer-events:none;background:
+    linear-gradient(180deg,transparent,rgba(255,255,255,.045) 40%,transparent 60%);
+    background-size:100% 220%; animation:streak 9s ease-in-out infinite;mix-blend-mode:screen}
+  @keyframes streak{0%,100%{background-position:50% -40%}50%{background-position:50% 140%}}
+  .wrap{max-width:1080px;margin:0 auto;padding:40px 18px 80px}
+  header{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+  .pill{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);
+    border:1px solid rgba(47,214,255,.35);padding:5px 10px;border-radius:999px;background:rgba(47,214,255,.07)}
+  h1{font-size:clamp(26px,6vw,40px);margin:14px 0 4px;letter-spacing:-.02em;line-height:1.05}
+  .lede{color:var(--mut);max-width:620px;margin:0 0 30px;font-size:15px;line-height:1.6}
+  section{margin:38px 0 0}
+  h2{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--mut);margin:0 0 4px;font-weight:700}
+  .sub{color:var(--mut);font-size:13px;margin:0 0 16px}
+  .grid{display:grid;gap:14px}
+  .cards{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    padding:18px 14px 14px;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;overflow:hidden}
+  .card .lbl{font-size:12px;font-weight:600;color:var(--fg);text-align:center}
+  .card .cap{font-size:10.5px;color:var(--mut);text-align:center;line-height:1.4}
+  .stage{display:flex;align-items:center;justify-content:center;min-height:150px}
+  .hero{background:linear-gradient(180deg,rgba(47,214,255,.06),rgba(255,255,255,.02));
+    border:1px solid var(--line);border-radius:24px;padding:26px 18px 22px;display:flex;flex-direction:column;
+    align-items:center;gap:6px;position:relative;overflow:hidden}
+  .hero .ring{position:absolute;width:260px;height:260px;border-radius:50%;
+    background:radial-gradient(circle,rgba(47,214,255,.16),transparent 62%);top:-40px;filter:blur(2px)}
+  .chip{position:absolute;top:14px;right:14px}
+  .floor{height:2px;width:64%;border-radius:2px;background:linear-gradient(90deg,transparent,rgba(47,214,255,.5),transparent)}
+  svg{display:block;overflow:visible}
+  .note{font-size:12px;color:var(--mut);border-left:2px solid rgba(47,214,255,.4);padding:4px 12px;margin-top:14px;line-height:1.55}
+  code{background:rgba(255,255,255,.07);padding:1px 6px;border-radius:6px;font-size:12px;color:var(--cyan2)}
+  .twocol{display:grid;gap:14px;grid-template-columns:1fr}
+  @media(min-width:760px){.twocol{grid-template-columns:1fr 1fr}}
+  /* ---- chat mock ---- */
+  .chat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+  .chat-top{display:flex;gap:12px;align-items:flex-start}
+  .bubble{background:rgba(47,214,255,.10);border:1px solid rgba(47,214,255,.22);border-radius:14px 14px 14px 4px;
+    padding:10px 12px;font-size:13px;line-height:1.5;color:var(--fg);flex:1}
+  .checklist{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+  .step{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--mut)}
+  .step .dot{width:18px;height:18px;border-radius:50%;border:1.5px solid rgba(47,214,255,.4);display:grid;place-items:center;flex:none}
+  .step.done .dot{background:var(--cyan);border-color:var(--cyan)}
+  .step.done{color:var(--fg)}
+  .step.active .dot{border-color:var(--cyan);box-shadow:0 0 0 4px rgba(47,214,255,.15)}
+  .step.active{color:var(--cyan2)}
+  .bar-ctrl{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+  .mic{width:42px;height:42px;border-radius:50%;background:var(--cyan);display:grid;place-items:center;color:#04121a;box-shadow:0 6px 18px rgba(47,214,255,.35)}
+  .wave{display:flex;align-items:center;gap:3px;height:24px}
+  .wave i{width:3px;border-radius:2px;background:var(--cyan2);height:8px}
+  .wave i:nth-child(1){animation:bars .7s ease-in-out infinite}
+  .wave i:nth-child(2){animation:bars .7s .12s ease-in-out infinite;height:16px}
+  .wave i:nth-child(3){animation:bars .7s .24s ease-in-out infinite;height:20px}
+  .wave i:nth-child(4){animation:bars .7s .18s ease-in-out infinite;height:12px}
+  .wave i:nth-child(5){animation:bars .7s .3s ease-in-out infinite}
+  @keyframes bars{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1.4)}}
+  /* ---- widget ---- */
+  .widgets{display:flex;gap:22px;align-items:flex-end;justify-content:center;flex-wrap:wrap;padding:10px 0}
+  .widget{position:relative;display:flex;align-items:center;gap:10px;background:rgba(8,12,20,.85);border:1px solid var(--line);
+    border-radius:16px;padding:8px 14px 8px 8px;box-shadow:0 10px 30px rgba(0,0,0,.4);backdrop-filter:blur(8px)}
+  .widget.collapsed{padding:6px}
+  .greet{font-size:12.5px;color:var(--fg)}
+  .greet small{display:block;color:var(--cyan2);font-size:10.5px}
+  /* ===== Meraj motion (transform-box:fill-box for SVG groups) ===== */
+  .fx-body,.fx-tail,.fx-leg-l,.fx-leg-r,.fx-arm-l,.fx-arm-r,.fx-ears,.fx-eyes,.fx-glow,.fx-chev,
+  .fx-turn,.fx-front,.fx-back,.fx-mouth,.fx-wave{transform-box:fill-box}
+  .fx-body{transform-origin:50% 88%;animation:breathe 3.1s ease-in-out infinite}
+  .fx-tail{transform-origin:0% 100%;animation:tail 3.6s ease-in-out infinite}
+  .fx-ears{transform-origin:50% 100%}
+  .fx-eyes{transform-origin:center;animation:blink 4.2s ease-in-out infinite}
+  .fx-glow{transform-origin:center;animation:glow 1.5s ease-in-out infinite}
+  .fx-chev{animation:chev 1.5s ease-in-out infinite}
+  @keyframes breathe{0%,100%{transform:translateY(0)}50%{transform:translateY(-1.6px)}}
+  @keyframes tail{0%,100%{transform:rotate(0)}50%{transform:rotate(5deg)}}
+  @keyframes blink{0%,90%{transform:scaleY(1)}94%{transform:scaleY(.1)}100%{transform:scaleY(1)}}
+  @keyframes glow{0%,100%{opacity:.4;transform:scale(.94)}50%{opacity:.75;transform:scale(1.04)}}
+  @keyframes chev{0%,100%{opacity:.55}50%{opacity:1}}
+  /* walk */
+  .is-walk .fx-body{animation:walk-bob .52s ease-in-out infinite}
+  .is-walk .fx-tail{animation:tail .8s ease-in-out infinite}
+  .is-walk .fx-leg-l{transform-origin:50% 0%;animation:legl .52s ease-in-out infinite}
+  .is-walk .fx-leg-r{transform-origin:50% 0%;animation:legr .52s ease-in-out infinite}
+  .is-walk .fx-arm-l{transform-origin:50% 0%;animation:arml .52s ease-in-out infinite}
+  .is-walk .fx-arm-r{transform-origin:50% 0%;animation:armr .52s ease-in-out infinite}
+  @keyframes walk-bob{0%,100%{transform:translateY(-2px) rotate(-1.5deg)}50%{transform:translateY(2px) rotate(1.5deg)}}
+  @keyframes legl{0%,100%{transform:rotate(8deg)}50%{transform:rotate(-8deg)}}
+  @keyframes legr{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
+  @keyframes arml{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+  @keyframes armr{0%,100%{transform:rotate(7deg)}50%{transform:rotate(-7deg)}}
+  /* listen */
+  .is-listen .fx-ears{animation:perk .8s ease-in-out infinite}
+  .is-listen .fx-tail{animation:tailalt .7s ease-in-out infinite}
+  @keyframes perk{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
+  @keyframes tailalt{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(6deg)}}
+  /* speak */
+  .is-speak .fx-mouth{transform-origin:center;animation:speakm .3s ease-in-out infinite}
+  @keyframes speakm{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
+  /* wave pose */
+  .fx-wave{transform-origin:50% 6%;animation:wave .9s ease-in-out infinite}
+  @keyframes wave{0%,100%{transform:rotate(-128deg)}50%{transform:rotate(-114deg)}}
+  /* turn (turnaround) */
+  .is-turn .fx-turn{transform-origin:50% 55%;animation:turnsx 3.6s ease-in-out infinite}
+  .is-turn .fx-front{animation:frontop 3.6s ease-in-out infinite}
+  .is-turn .fx-back{animation:backop 3.6s ease-in-out infinite}
+  @keyframes turnsx{0%{transform:scaleX(1)}32%{transform:scaleX(.05)}50%{transform:scaleX(.04)}68%{transform:scaleX(.05)}100%{transform:scaleX(1)}}
+  @keyframes frontop{0%{opacity:1}32%{opacity:0}50%{opacity:0}68%{opacity:0}100%{opacity:1}}
+  @keyframes backop{0%{opacity:0}32%{opacity:1}50%{opacity:1}68%{opacity:1}100%{opacity:0}}
+  /* state icons */
+  .si-glow{transform-box:fill-box;transform-origin:center;animation:glow 1.1s ease-in-out infinite}
+  .si-ears{transform-box:fill-box;transform-origin:50% 100%}
+  .si-eyes{transform-box:fill-box;transform-origin:center;animation:blink 3.6s ease-in-out infinite}
+  .si-listen .si-ears{animation:perk 1.1s ease-in-out infinite}
+  .si-bars{transform-box:fill-box;transform-origin:center;animation:bars .8s ease-in-out infinite}
+  .si-mouth{transform-box:fill-box;transform-origin:center;animation:speakm .3s ease-in-out infinite}
+  .si-think{transform-box:fill-box;transform-origin:center;animation:chev 1.1s ease-in-out infinite}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--mut)}
+  .legend b{color:var(--fg)}
+</style>
+</head>
+<body>
+<div class="streak"></div>
+
+<!-- ===== shared gradient/filter defs (global ids) ===== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <radialGradient id="fur" cx="42%" cy="32%" r="70%"><stop offset="0%" stop-color="#F5975A"/><stop offset="58%" stop-color="#E8793F"/><stop offset="100%" stop-color="#C96532"/></radialGradient>
+    <radialGradient id="cream" cx="45%" cy="38%" r="65%"><stop offset="0%" stop-color="#FFF8EE"/><stop offset="100%" stop-color="#F0E4D0"/></radialGradient>
+    <linearGradient id="navy" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1E2235"/><stop offset="100%" stop-color="#12141F"/></linearGradient>
+    <radialGradient id="eye" cx="40%" cy="34%" r="62%"><stop offset="0%" stop-color="#9FD6F2"/><stop offset="68%" stop-color="#5FB8E8"/><stop offset="100%" stop-color="#3A9ED0"/></radialGradient>
+    <radialGradient id="goggle" cx="50%" cy="38%" r="62%"><stop offset="0%" stop-color="#8FD8FF"/><stop offset="100%" stop-color="#2FA8E8"/></radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#2FD6FF" stop-opacity=".55"/><stop offset="60%" stop-color="#2FD6FF" stop-opacity=".14"/><stop offset="100%" stop-color="#2FD6FF" stop-opacity="0"/></radialGradient>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#12141F" flood-opacity=".32"/></filter>
+    <filter id="glowf" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header><span class="pill">Character Spec · v2</span></header>
+  <h1>Meraj — full-body fox mascot</h1>
+  <p class="lede">Anthropic-style chibi fox. Rust-orange fur, ice-blue eyes, tech goggles pushed up, ink-navy zip hoodie with glowing cyan piping + chest chevron, oversized white-tipped tail. Fully articulated — walks, turns around (front&nbsp;→&nbsp;back&nbsp;→&nbsp;front), six expressions, four poses, and circular UI state icons.</p>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="ring"></div>
+    <span class="chip pill">Idle</span>
+    <div id="hero-stage" class="stage" style="min-height:330px"></div>
+    <div class="floor"></div>
+    <p class="cap" style="text-align:center;color:var(--mut);font-size:12px;margin:6px 0 0">1:1.3 head-to-body · breathing · tail sway · blink · cyan glow</p>
+  </div>
+
+  <!-- MOTION -->
+  <section>
+    <h2>Motion · walk &amp; turnaround</h2>
+    <p class="sub">Left: legs + arms swing with a body bob. Right: full turnaround — faces you, spins to show the back (hood, back chevron, prominent tail), spins back.</p>
+    <div class="cards">
+      <div class="card"><div id="walk-stage" class="stage" style="min-height:280px"></div><span class="lbl">Walking</span><span class="cap">legs/arms swing · bob · tail</span></div>
+      <div class="card"><div id="turn-stage" class="stage" style="min-height:280px"></div><span class="lbl">Turning around</span><span class="cap">front → back → front</span></div>
+    </div>
+  </section>
+
+  <!-- EXPRESSIONS -->
+  <section>
+    <h2>Expression library</h2>
+    <p class="sub">Fixed set — reuse, don't reinterpret. Neutral · Happy · Wink · Thinking · Surprised · Confident.</p>
+    <div id="expressions" class="grid cards"></div>
+  </section>
+
+  <!-- POSES -->
+  <section>
+    <h2>Gesture / pose library</h2>
+    <p class="sub">All shot ¾ front, same eye-line height.</p>
+    <div id="poses" class="grid cards"></div>
+  </section>
+
+  <!-- STATE ICONS -->
+  <section>
+    <h2>UI state icons</h2>
+    <p class="sub">Circular, map 1:1 to Meraj's functional states.</p>
+    <div id="states" class="grid cards"></div>
+  </section>
+
+  <!-- CHAT MODE -->
+  <section>
+    <h2>Expanded chat mode</h2>
+    <p class="sub">Fox waist-up, left-aligned · speech bubble right · live task checklist · waveform + mic.</p>
+    <div class="chat">
+      <div class="chat-top">
+        <div id="chat-bust" style="flex:none"></div>
+        <div class="bubble">Done! I created <b>Invoice #1042</b> for ₹2,450, sent it to Priya on WhatsApp, and logged it to your ledger. Stock for "Cotton Saree" updated: 8&nbsp;left.</div>
+      </div>
+      <div class="checklist">
+        <div class="step done"><span class="dot">✓</span> Analyzing request</div>
+        <div class="step done"><span class="dot">✓</span> Updating stock</div>
+        <div class="step done"><span class="dot">✓</span> Sending invoice on WhatsApp</div>
+        <div class="step active"><span class="dot"></span> Completed</div>
+      </div>
+      <div class="bar-ctrl">
+        <div class="wave"><i></i><i></i><i></i><i></i><i></i></div>
+        <button class="mic" aria-label="Mic">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- WIDGET -->
+  <section>
+    <h2>Floating dashboard widget</h2>
+    <p class="sub">Collapses to icon-only · expands to icon + greeting + "Listening…" pill.</p>
+    <div class="widgets">
+      <div class="widget collapsed" id="widget-icon"></div>
+      <div class="widget" id="widget-open"></div>
+    </div>
+  </section>
+
+  <!-- TURNAROUND NOTE -->
+  <section>
+    <h2>Turnaround</h2>
+    <p class="sub">Front · Side · Back · Side — locked proportions for rigging.</p>
+    <div class="cards">
+      <div class="card"><div id="tr-front" class="stage" style="min-height:240px"></div><span class="lbl">Front</span></div>
+      <div class="card"><div id="tr-side" class="stage" style="min-height:240px"></div><span class="lbl">Side</span></div>
+      <div class="card"><div id="tr-back" class="stage" style="min-height:240px"></div><span class="lbl">Back</span></div>
+    </div>
+    <p class="note">Front &amp; back are genuinely distinct art (back shows the hood, a large back-chevron, and a more prominent tail). Side is rendered as a mirrored profile cut via <code>scaleX</code> — enough to read as a ¾ turn in-app. Full Pixar-grade multi-angle turnaround needs a 3D rig; this SVG system is rigged for live UI motion (walk/turn/express) instead.</p>
+  </section>
+
+  <div class="legend" style="margin-top:34px;border-top:1px solid var(--line);padding-top:18px">
+    <span><b>Rust</b> #E8793F</span><span><b>Cream</b> #FFF8EE</span><span><b>Navy</b> #12141F</span><span><b>Cyan</b> #2FD6FF</span><span><b>Eye</b> #5FB8E8</span>
+  </div>
+</div>
+
+<script>
+const C={fur:'#E8793F',furHi:'#F5975A',furLo:'#C96532',cream:'#FFF8EE',creamLo:'#F0E4D0',navy:'#12141F',navyHi:'#1E2235',cyan:'#2FD6FF',cyan2:'#7FE6FF',eye:'#5FB8E8',eyeHi:'#9FD6F2',goggle:'#2FA8E8',ink:'#0B0D16',brown:'#8B5A2B'};
+
+function ears(){return `<g class="fx-ears"><path d="M70 60 L52 6 L88 48 Z" fill="url(#fur)" stroke="${C.furLo}" stroke-width=".7"/><path d="M74 56 L62 18 L84 47 Z" fill="${C.cream}" opacity=".92"/><path d="M170 60 L188 6 L152 48 Z" fill="url(#fur)" stroke="${C.furLo}" stroke-width=".7"/><path d="M166 56 L178 18 L156 47 Z" fill="${C.cream}" opacity=".92"/></g>`}
+
+function face(ex){
+  // brows
+  const brow={
+    neutral:['<rect x="88" y="88" width="15" height="3" rx="1.5" fill="'+C.furLo+'" transform="rotate(-3 95 89)" opacity=".5"/>','<rect x="137" y="88" width="15" height="3" rx="1.5" fill="'+C.furLo+'" transform="rotate(3 144 89)" opacity=".5"/>'],
+    happy:['<rect x="88" y="86" width="15" height="3" rx="1.5" fill="'+C.furLo+'" transform="rotate(-4 95 87)" opacity=".55"/>','<rect x="137" y="86" width="15" height="3" rx="1.5" fill="'+C.furLo+'" transform="rotate(4 144 87)" opacity=".55"/>'],
+    wink:['<rect x="88" y="86" width="15" height="3" rx="1.5" fill="'+C.furLo+'" transform="rotate(-4 95 87)" opacity=".55"/>','<rect x="137" y="86" width="15" height="3" rx="1.5" fill="'+C.furLo+'" transform="rotate(4 144 87)" opacity=".55"/>'],
+    thinking:['<rect x="87" y="88" width="16" height="3.2" rx="1.6" fill="'+C.furLo+'" transform="rotate(-10 95 89)" opacity=".7"/>','<rect x="137" y="84" width="16" height="3.2" rx="1.6" fill="'+C.furLo+'" transform="rotate(12 145 86)" opacity=".7"/>'],
+    surprised:['<rect x="86" y="83" width="16" height="3.2" rx="1.6" fill="'+C.furLo+'" transform="rotate(-6 94 84)" opacity=".6"/>','<rect x="138" y="83" width="16" height="3.2" rx="1.6" fill="'+C.furLo+'" transform="rotate(6 146 84)" opacity=".6"/>'],
+    confident:['<rect x="87" y="90" width="16" height="3.2" rx="1.6" fill="'+C.furLo+'" transform="rotate(6 95 91)" opacity=".7"/>','<rect x="137" y="90" width="16" height="3.2" rx="1.6" fill="'+C.furLo+'" transform="rotate(-6 145 91)" opacity=".7"/>']
+  }[ex]||[];
+  const eyeR = ex==='surprised'?13:11, halfLid = ex==='confident';
+  const px = ex==='thinking'?3:0, py = ex==='thinking'?-3:0;
+  const wink = ex==='wink';
+  let eyes;
+  if(wink){
+    eyes=`<g class="fx-eyes"><ellipse cx="96" cy="106" rx="${eyeR}" ry="${eyeR}" fill="url(#eye)"/><circle cx="${96+px}" cy="${106.5+py}" r="4.6" fill="${C.ink}"/><circle cx="${98+px}" cy="${104+py}" r="1.7" fill="#fff" opacity=".95"/><path d="M133 106 Q142 112 151 106" stroke="${C.ink}" stroke-width="2.6" stroke-linecap="round" fill="none"/></g>`;
+  }else{
+    eyes=`<g class="fx-eyes"><ellipse cx="96" cy="106" rx="${eyeR}" ry="${halfLid?6.5:eyeR}" fill="url(#eye)"/><ellipse cx="144" cy="106" rx="${eyeR}" ry="${halfLid?6.5:eyeR}" fill="url(#eye)"/><circle cx="${96+px}" cy="${106.5+py}" r="4.6" fill="${C.ink}"/><circle cx="${144+px}" cy="${106.5+py}" r="4.6" fill="${C.ink}"/><circle cx="${98+px}" cy="${104+py}" r="1.7" fill="#fff" opacity=".95"/><circle cx="${146+px}" cy="${104+py}" r="1.7" fill="#fff" opacity=".95"/></g>`;
+  }
+  let mouth;
+  if(ex==='happy') mouth=`<path d="M104 130 Q120 148 136 130 Q120 138 104 130 Z" fill="${C.ink}"/><path d="M108 131 Q120 136 132 131" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M116 138 Q120 142 124 138" fill="${C.fur}" opacity=".8"/>`;
+  else if(ex==='wink'||ex==='confident') mouth=`<path d="M112 135 Q122 140 132 132" stroke="${C.brown}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
+  else if(ex==='surprised') mouth=`<ellipse cx="120" cy="137" rx="5.5" ry="7" fill="${C.ink}"/>`;
+  else if(ex==='thinking') mouth=`<path d="M114 137 L126 134" stroke="${C.brown}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
+  else mouth=`<path d="M110 134 Q120 142 130 134" stroke="${C.brown}" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
+  return `<ellipse cx="82" cy="124" r="6" fill="${C.fur}" opacity=".22"/><ellipse cx="158" cy="124" r="6" fill="${C.fur}" opacity=".22"/>${eyes}${brow[0]||''}${brow[1]||''}<path d="M112 116 L128 116 L120 125 Z" fill="${C.ink}"/>${mouth}`;
+}
+
+function head(ex,mode){
+  const glow = mode==='listening'||mode==='thinking'||mode==='speaking';
+  let mouth='';
+  return `<g>${ears(mode==='listening')}<ellipse cx="120" cy="96" rx="60" ry="54" fill="url(#fur)"/><rect x="62" y="66" width="116" height="3" fill="${C.navy}" opacity=".5"/><rect x="70" y="66" width="100" height="14" rx="7" fill="url(#navy)" stroke="${C.ink}" stroke-width=".9"/><ellipse cx="92" cy="73" rx="12" ry="7" fill="url(#goggle)" opacity=".85"/><ellipse cx="148" cy="73" rx="12" ry="7" fill="url(#goggle)" opacity=".85"/><ellipse cx="89" cy="71" rx="3.5" ry="2" fill="#BFEAFF" opacity=".8"/><path class="fx-chev" d="M115 73 L120 67 L125 73" stroke="${C.cyan}" stroke-width="1.4" fill="none" stroke-linecap="round" filter="url(#glowf)" opacity="${glow?1:.8}"/><ellipse cx="120" cy="124" rx="34" ry="26" fill="url(#cream)"/>${face(ex)}</g>`;
+}
+
+function backHead(){return `<g>${ears(false)}<ellipse cx="120" cy="96" rx="62" ry="56" fill="url(#navy)" stroke="${C.ink}" stroke-width=".8"/><ellipse cx="120" cy="140" rx="30" ry="14" fill="url(#fur)"/><rect x="60" y="70" width="120" height="9" rx="4.5" fill="${C.navy}" stroke="${C.ink}" stroke-width=".8"/><path d="M115 74 L120 68 L125 74" stroke="${C.cyan}" stroke-width="1.4" fill="none" stroke-linecap="round" filter="url(#glowf)" opacity=".9"/><path d="M120 40 Q120 96 120 150" stroke="${C.navyHi}" stroke-width="2" fill="none" opacity=".7"/></g>`}
+
+function tail(){return `<g class="fx-tail"><path d="M150 240 C202 248 232 198 220 148 C215 126 198 120 190 136 C197 156 180 184 168 204 C161 217 156 230 150 240 Z" fill="url(#fur)" stroke="${C.furLo}" stroke-width=".7"/><path d="M168 204 C176 196 188 178 192 158" stroke="${C.furLo}" stroke-width="1" fill="none" opacity=".4"/><path d="M220 148 C225 132 212 120 202 130 C208 140 213 150 210 160 C217 159 223 154 220 148 Z" fill="${C.cream}"/><circle cx="214" cy="140" r="3" fill="#fff" opacity=".7"/></g>`}
+
+function legs(){return `<g class="fx-leg-l"><rect x="98" y="236" width="22" height="64" rx="11" fill="url(#navy)" stroke="${C.ink}" stroke-width=".8"/><path d="M93 296 Q91 312 103 312 L127 312 Q131 312 129 304 L125 298 Z" fill="#0c0d14" stroke="${C.ink}" stroke-width=".7"/><rect x="93" y="308" width="38" height="4" rx="2" fill="${C.cyan}" filter="url(#glowf)" opacity=".85"/></g><g class="fx-leg-r"><rect x="120" y="236" width="22" height="64" rx="11" fill="url(#navy)" stroke="${C.ink}" stroke-width=".8"/><path d="M115 296 Q113 312 125 312 L149 312 Q153 312 151 304 L147 298 Z" fill="#0c0d14" stroke="${C.ink}" stroke-width=".7"/><rect x="115" y="308" width="38" height="4" rx="2" fill="${C.cyan}" filter="url(#glowf)" opacity=".85"/></g>`}
+
+function torso(){return `<g><path d="M94 150 Q120 138 146 150 Q152 164 144 168 Q120 158 96 168 Q88 164 94 150 Z" fill="url(#navy)" stroke="${C.ink}" stroke-width=".8"/><path d="M88 156 Q83 200 86 240 Q86 250 98 250 L142 250 Q154 250 154 240 Q157 200 152 156 Q146 148 120 148 Q94 148 88 156 Z" fill="url(#navy)" stroke="${C.ink}" stroke-width=".9"/><rect x="90" y="214" width="24" height="17" rx="4" fill="#0c0d14" stroke="${C.ink}" stroke-width=".6"/><line x1="96" y1="222" x2="108" y2="222" stroke="${C.navyHi}" stroke-width="1.4"/></g>`}
+
+function sleeve(x){return `<rect x="${x}" y="158" width="17" height="62" rx="8.5" fill="url(#navy)" stroke="${C.ink}" stroke-width=".8"/><line x1="${x+8.5}" y1="164" x2="${x+8.5}" y2="214" stroke="${C.cyan}" stroke-width="1.1" opacity=".55"/>`}
+function hand(x){return `<ellipse cx="${x}" cy="224" rx="8.5" ry="9" fill="url(#fur)"/><path d="M${x-3} 217 L${x-3} 213 M${x} 216 L${x} 212 M${x+3} 217 L${x+3} 213" stroke="${C.furLo}" stroke-width="1.4" stroke-linecap="round"/>`}
+
+function arms(pose){
+  if(pose==='arms-crossed') return `<g><rect x="78" y="176" width="68" height="17" rx="8.5" fill="url(#navy)" stroke="${C.ink}" stroke-width=".8" transform="rotate(-12 112 184)"/><rect x="94" y="188" width="68" height="17" rx="8.5" fill="url(#navy)" stroke="${C.ink}" stroke-width=".8" transform="rotate(12 128 196)"/><ellipse cx="150" cy="184" rx="9" ry="8.5" fill="url(#fur)"/><ellipse cx="90" cy="196" rx="9" ry="8.5" fill="url(#fur)"/></g>`;
+  if(pose==='presenting') return `<g><rect x="86" y="178" width="68" height="44" rx="7" fill="url(#navy)" stroke="${C.ink}" stroke-width="1"/><rect x="92" y="184" width="56" height="32" rx="3" fill="#0c1622"/><rect class="fx-chev" x="97" y="189" width="30" height="3.4" rx="1.7" fill="${C.cyan}" filter="url(#glowf)"/><rect x="97" y="197" width="42" height="2.6" rx="1.3" fill="${C.cyan2}" opacity=".5"/><rect x="97" y="203" width="34" height="2.6" rx="1.3" fill="${C.cyan2}" opacity=".4"/><rect x="97" y="209" width="24" height="2.6" rx="1.3" fill="${C.cyan2}" opacity=".35"/><ellipse cx="84" cy="196" rx="8" ry="8.5" fill="url(#fur)"/><ellipse cx="156" cy="196" rx="8" ry="8.5" fill="url(#fur)"/></g>`;
+  const wave = pose==='wave'||pose==='peace';
+  let left=`<g class="fx-arm-l">${sleeve(88)}${hand(96)}</g>`;
+  let right;
+  if(wave){
+    const fingers = pose==='peace'
+      ? `<path d="M141 88 L140 78" stroke="${C.furLo}" stroke-width="3" stroke-linecap="round"/><path d="M148 88 L150 78" stroke="${C.furLo}" stroke-width="3" stroke-linecap="round"/>`
+      : `<path d="M138 90 Q144 84 150 90" stroke="${C.furLo}" stroke-width="1.6" fill="none" stroke-linecap="round"/>`;
+    right=`<g class="fx-wave">${sleeve(135)}<ellipse cx="144" cy="96" rx="9" ry="9" fill="url(#fur)"/>${fingers}</g>`;
+  }else{
+    right=`<g class="fx-arm-r">${sleeve(135)}${hand(144)}</g>`;
+  }
+  return `<g>${left}${right}</g>`;
+}
+
+function frontFx(){return `<g><path d="M97 153 Q120 145 143 153" stroke="${C.cyan}" stroke-width="1.3" fill="none" filter="url(#glowf)" opacity=".8"/><line class="fx-chev" x1="120" y1="156" x2="120" y2="244" stroke="${C.cyan}" stroke-width="1.4" filter="url(#glowf)"/><line x1="91" y1="210" x2="102" y2="210" stroke="${C.cyan}" stroke-width="1" filter="url(#glowf)" opacity=".5"/><line x1="138" y1="210" x2="149" y2="210" stroke="${C.cyan}" stroke-width="1" filter="url(#glowf)" opacity=".5"/><path class="fx-chev" d="M108 198 L120 182 L132 198" stroke="${C.cyan}" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#glowf)"/></g>`}
+function backFx(){return `<g><path d="M86 156 Q90 200 92 240" stroke="${C.navyHi}" stroke-width="1.6" fill="none" opacity=".6"/><path d="M154 156 Q150 200 148 240" stroke="${C.navyHi}" stroke-width="1.6" fill="none" opacity=".6"/><path class="fx-chev" d="M104 206 L120 182 L136 206 M112 206 L120 194 L128 206" stroke="${C.cyan}" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#glowf)"/><path d="M97 153 Q120 145 143 153" stroke="${C.cyan}" stroke-width="1.2" fill="none" filter="url(#glowf)" opacity=".6"/></g>`}
+
+// full fox builder
+function fox({pose='idle',ex='neutral',mode='idle',variant='idle'}={}){
+  const root = variant==='walk'?'is-walk':variant==='turn'?'is-turn':mode==='listening'?'is-listen':mode==='speaking'?'is-speak':'';
+  const glow = (mode==='listening'||mode==='thinking'||mode==='speaking')?'<circle class="fx-glow" cx="120" cy="150" r="120" fill="url(#glow)"/>':'';
+  const frontOp = variant==='turn'?'':(variant==='back'?'opacity:0':'');
+  const backOp = variant==='turn'?'':(variant==='back'?'':'opacity:0');
+  return `<svg class="${root}" width="100%" height="100%" viewBox="0 0 240 360" preserveAspectRatio="xMidYMax meet" style="max-height:100%">
+    ${glow}
+    <g class="fx-turn" ${variant!=='turn'?'style="transform:scaleX('+(variant==='side'?-1:1)+')"':''}>
+      <g class="fx-body" filter="url(#soft)">
+        <ellipse cx="120" cy="322" rx="70" ry="10" fill="${C.ink}" opacity=".18"/>
+        ${tail()}${legs()}${torso()}${arms(pose)}
+        <g class="fx-front" style="${frontOp}">${frontFx()}${head(ex,mode)}</g>
+        <g class="fx-back" style="${backOp}">${backFx()}${backHead()}</g>
+      </g>
+    </g>
+  </svg>`;
+}
+
+// head-only card (cropped)
+function headCard(ex){return `<svg width="120" height="120" viewBox="40 0 160 160"><g>${head(ex,'idle')}</g></svg>`}
+
+// waist-up bust (head + chest + presenting arms), for chat mode
+function bustFox(ex,mode){
+  const speaking = mode==='speaking';
+  return `<svg class="${speaking?'is-speak':''}" width="120" height="150" viewBox="40 6 160 200" style="overflow:visible">
+    <path d="M94 150 Q120 138 146 150 Q152 164 144 168 Q120 158 96 168 Q88 164 94 150 Z" fill="url(#navy)" stroke="${C.ink}" stroke-width=".8"/>
+    <path d="M88 156 Q83 200 86 240 Q86 250 98 250 L142 250 Q154 250 154 240 Q157 200 152 156 Q146 148 120 148 Q94 148 88 156 Z" fill="url(#navy)" stroke="${C.ink}" stroke-width=".9"/>
+    <g>${arms('presenting')}</g>
+    ${frontFx()}
+    ${head(ex,mode)}
+  </svg>`;
+}
+
+// circular UI state icon
+function stateIcon(state){
+  const listening=state==='listening',thinking=state==='thinking',speaking=state==='speaking',active=listening||speaking;
+  const ring = active?`<circle class="si-glow" cx="40" cy="40" r="37" fill="none" stroke="${C.cyan}" stroke-width="2"/>`:'';
+  const thinkGlow = thinking?`<circle class="si-glow" cx="40" cy="40" r="34" fill="${C.cyan}" opacity=".16"/>`:'';
+  let mouth = speaking
+    ? `<ellipse class="si-mouth" cx="40" cy="52" rx="3" ry="3" fill="${C.navy}"/>`
+    : `<path d="M36 50 Q40 54 44 50" stroke="${C.brown}" stroke-width="1.6" fill="none" stroke-linecap="round"/>`;
+  let earsCls = listening?'si-listen':'';
+  const dots = thinking?`<g class="si-think"><circle cx="58" cy="20" r="2.4" fill="${C.cyan}"/><circle cx="64" cy="15" r="1.8" fill="${C.cyan}" opacity=".7"/><circle cx="68" cy="10" r="1.3" fill="${C.cyan}" opacity=".5"/></g>`:'';
+  const bars = (listening||speaking)
+    ? `<g class="si-bars" style="transform-origin:9px 40px"><rect x="6" y="34" width="3.2" height="12" rx="1.6" fill="${C.cyan}"/></g><g class="si-bars" style="transform-origin:66px 40px"><rect x="64.4" y="34" width="3.2" height="12" rx="1.6" fill="${C.cyan}"/></g>`
+    : '';
+  return `<svg width="64" height="64" viewBox="0 0 80 80">${ring}${thinkGlow}<circle cx="40" cy="40" r="34" fill="${C.navy}" opacity=".92"/>
+    <g class="${earsCls}"><g class="si-ears"><path d="M24 30 L20 12 L34 24 Z" fill="${C.fur}"/><path d="M56 30 L60 12 L46 24 Z" fill="${C.fur}"/><path d="M26 28 L24 16 L32 24 Z" fill="${C.cream}" opacity=".85"/><path d="M54 28 L56 16 L48 24 Z" fill="${C.cream}" opacity=".85"/></g></g>
+    <ellipse cx="40" cy="38" rx="20" ry="18" fill="${C.fur}"/><rect x="22" y="28" width="36" height="5" rx="2.5" fill="${C.navy}"/><ellipse cx="40" cy="46" rx="12" ry="9" fill="${C.cream}"/>
+    <g class="si-eyes"><circle cx="32" cy="40" r="3.6" fill="${C.eye}"/><circle cx="48" cy="40" r="3.6" fill="${C.eye}"/><circle cx="32" cy="40.6" r="1.6" fill="${C.navy}"/><circle cx="48" cy="40.6" r="1.6" fill="${C.navy}"/></g>
+    <path d="M37 44 L43 44 L40 48 Z" fill="${C.navy}"/>${mouth}${dots}${bars}</svg>`;
+}
+
+// ===== render =====
+document.getElementById('hero-stage').innerHTML = fox({pose:'idle',ex:'neutral',mode:'idle'});
+document.getElementById('walk-stage').innerHTML = fox({pose:'idle',ex:'happy',mode:'idle',variant:'walk'});
+document.getElementById('turn-stage').innerHTML = fox({pose:'idle',ex:'neutral',mode:'idle',variant:'turn'});
+
+const EX=[['neutral','Neutral'],['happy','Happy'],['wink','Wink'],['thinking','Thinking'],['surprised','Surprised'],['confident','Confident']];
+document.getElementById('expressions').innerHTML = EX.map(([k,l])=>`<div class="card">${headCard(k)}<span class="lbl">${l}</span></div>`).join('');
+
+const PO=[['wave','Wave','one-arm raised'],['peace','Peace','finger-point + peace'],['arms-crossed','Arms crossed','confident'],['presenting','Presenting','tablet / data card']];
+document.getElementById('poses').innerHTML = PO.map(([k,l,c])=>`<div class="card"><div class="stage" style="min-height:200px">${fox({pose:k,ex:k==='arms-crossed'?'confident':'happy',mode:'idle'})}</div><span class="lbl">${l}</span><span class="cap">${c}</span></div>`).join('');
+
+const ST=[['idle','Idle','calm'],['listening','Listening','alert ears + waveform'],['thinking','Thinking','glow pulse + dots'],['speaking','Speaking','open mouth + waveform']];
+document.getElementById('states').innerHTML = ST.map(([k,l,c])=>`<div class="card">${stateIcon(k)}<span class="lbl">${l}</span><span class="cap">${c}</span></div>`).join('');
+
+document.getElementById('chat-bust').innerHTML = bustFox('happy','speaking');
+
+document.getElementById('widget-icon').innerHTML = stateIcon('idle');
+document.getElementById('widget-open').innerHTML = stateIcon('listening')+`<div class="greet">Hey Saif 👋<small>Listening…</small></div>`;
+
+document.getElementById('tr-front').innerHTML = fox({pose:'idle',ex:'neutral',mode:'idle'});
+document.getElementById('tr-side').innerHTML = fox({pose:'idle',ex:'neutral',mode:'idle',variant:'side'});
+document.getElementById('tr-back').innerHTML = fox({pose:'idle',ex:'neutral',mode:'idle',variant:'back'});
+</script>
+</body>
+</html>
