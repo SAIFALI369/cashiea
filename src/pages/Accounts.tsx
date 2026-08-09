@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import type { Expense } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
 import { exportToCSV } from '../lib/export'
-import { Wallet, Plus, Loader2, Trash2, TrendingDown, TrendingUp, Download } from 'lucide-react'
+import { Wallet, Plus, Loader2, Trash2, TrendingDown, TrendingUp, Download, Camera } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const categories = ['Rent', 'Salaries', 'Inventory', 'Utilities', 'Marketing', 'Transport', 'Maintenance', 'Sales', 'Other']
@@ -16,6 +16,31 @@ export default function Accounts() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ type: 'expense', category: 'Inventory', description: '', amount: '', payment_method: 'cash', date: new Date().toISOString().split('T')[0], notes: '' })
+  const [scanning, setScanning] = useState(false)
+  const scanRef = useRef<HTMLInputElement>(null)
+
+  const scanReceipt = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; e.target.value = ''
+    if (!file || !file.type.startsWith('image/')) { toast.error('Please choose an image.'); return }
+    setScanning(true)
+    try {
+      const dataUrl = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = rej; r.readAsDataURL(file) })
+      const img = await new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataUrl })
+      const scale = Math.min(1, 1024 / Math.max(img.width, img.height))
+      const canvas = document.createElement('canvas'); canvas.width = img.width * scale; canvas.height = img.height * scale
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+      const imageData = canvas.toDataURL('image/jpeg', 0.8).split(',')[1]
+      const { data: { session } } = await supabase.auth.getSession()
+      const base = (import.meta.env.VITE_SUPABASE_URL || '').replace('.supabase.co', '.functions.supabase.co')
+      const r = await fetch(`${base}/scan-receipt`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session!.access_token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY }, body: JSON.stringify({ image: { data: imageData, mimeType: 'image/jpeg' } }) })
+      const result = await r.json(); if (!r.ok) throw new Error(result?.error || 'Scan failed')
+      const d = result.extracted
+      const catMap: Record<string, string> = { utilities: 'Utilities', rent: 'Rent', supplies: 'Inventory', transport: 'Transport', food: 'Other', salary: 'Salaries', maintenance: 'Maintenance', marketing: 'Marketing', tax: 'Other', other: 'Other' }
+      setForm({ type: 'expense', category: catMap[d.category] || 'Other', description: d.vendor || 'Scanned receipt', amount: String(d.amount || ''), payment_method: d.payment_method || 'cash', date: d.date || new Date().toISOString().split('T')[0], notes: d.tax_amount ? `GST: ₹${d.tax_amount}` : '' })
+      setShowForm(true); toast.success('Receipt scanned — review and save')
+    } catch (err) { toast.error(err instanceof Error ? err.message : 'Scan failed') }
+    finally { setScanning(false) }
+  }
 
   useEffect(() => { loadData() }, [])
 
@@ -56,7 +81,7 @@ export default function Accounts() {
 
   return (
     <div className="animate-fade-in">
-      <PageHeader title="Accounts" subtitle="Track expenses, income, cash flow & profit" icon={<Wallet className="w-5 h-5" />} action={<div className="flex gap-2"><button onClick={() => exportToCSV('accounts', entries as unknown as Record<string, unknown>[])} className="btn-secondary text-xs"><Download className="w-3.5 h-3.5" /> Export</button><button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showForm ? 'Close' : 'Add Entry'}</button></div>} />
+      <PageHeader title="Accounts" subtitle="Track expenses, income, cash flow & profit" icon={<Wallet className="w-5 h-5" />} action={<div className="flex gap-2"><input ref={scanRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={scanReceipt} /><button onClick={() => scanRef.current?.click()} disabled={scanning} className="btn-secondary text-xs">{scanning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />} Scan</button><button onClick={() => exportToCSV('accounts', entries as unknown as Record<string, unknown>[])} className="btn-secondary text-xs"><Download className="w-3.5 h-3.5" /> Export</button><button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showForm ? 'Close' : 'Add Entry'}</button></div>} />
 
       {/* Overview cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
