@@ -62,6 +62,7 @@ export default function AIAssistant() {
   const galleryRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
   const [showCam, setShowCam] = useState(false)
+  const [pendingImage, setPendingImage] = useState<{ data: string; mimeType: string; preview: string } | null>(null)
   const recRef = useRef<any>(null)
   const [listening, setListening] = useState(false)
 
@@ -80,14 +81,15 @@ export default function AIAssistant() {
 
   const send = async () => {
     const q = input.trim()
-    if (!q || loading) return
+    if ((!q && !pendingImage) || loading) return
     setInput('')
     const next = [...messages, { role: 'user' as const, text: q }]
     setMessages(next)
     setLoading(true)
     const history = messages.slice(-10).map((m) => ({ role: m.role, text: m.text }))
     try {
-      const res = await askAssistant(q, false, scope, mode, undefined, undefined, history)
+      const res = await askAssistant(q || '(shared an image)', false, scope, mode, undefined, undefined, history, pendingImage || undefined)
+      setPendingImage(null)
       const done = [...next, { role: 'meraj' as const, text: res.reply, pending: res.pending }]
       setMessages(done)
       if (res.reply) setTyping(true)
@@ -133,9 +135,21 @@ export default function AIAssistant() {
   const stopListen = () => { recRef.current?.stop(); setListening(false) }
   useEffect(() => () => recRef.current?.stop(), [])
 
-  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) toast.success('Image attached — visual understanding is coming soon.')
-    setShowCam(false); e.target.value = ''
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    setShowCam(false)
+    if (!file || !file.type.startsWith('image/')) { toast.error('Please choose an image.'); return }
+    try {
+      const dataUrl = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = rej; r.readAsDataURL(file) })
+      const img = await new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataUrl })
+      const maxSize = 1024; const scale = Math.min(1, maxSize / Math.max(img.width, img.height))
+      const canvas = document.createElement('canvas'); canvas.width = img.width * scale; canvas.height = img.height * scale
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+      const resized = canvas.toDataURL('image/jpeg', 0.8)
+      setPendingImage({ data: resized.split(',')[1], mimeType: 'image/jpeg', preview: resized })
+      toast.success('Image attached — send it to Meraj.')
+    } catch { toast.error('Could not process the image.') }
   }
 
   return (
@@ -231,6 +245,13 @@ export default function AIAssistant() {
           <span className="text-[11px] text-fg-subtle">{mode === 'task' ? 'takes actions (asks before doing)' : 'conversational'}</span>
         </div>
 
+        {pendingImage && (
+          <div className="flex items-center gap-2 px-1 pb-2">
+            <img src={pendingImage.preview} className="w-12 h-12 rounded-xl object-cover border border-line" alt="preview" />
+            <span className="text-xs text-fg-muted flex-1">Image ready to send</span>
+            <button onClick={() => setPendingImage(null)} className="text-fg-subtle hover:text-negative"><X className="w-4 h-4" /></button>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <div className="relative lg:hidden">
             <button onClick={() => setShowCam((s) => !s)} className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors" aria-label="Camera"><Camera className="w-5 h-5" strokeWidth={1.75} /></button>

@@ -8,7 +8,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
-import { callDefaultGemini, hasDefaultAI, callGeminiToolCall } from "../_shared/ai-default.ts";
+import { callDefaultGemini, hasDefaultAI, callGeminiToolCall, callGeminiWithImage } from "../_shared/ai-default.ts";
 import { callOpenRouter } from "../_shared/openrouter.ts";
 import { callGateway } from "../_shared/ai-gateway.ts";
 import { refreshGoogleToken } from "../_shared/google.ts";
@@ -356,7 +356,7 @@ Deno.serve(async (req) => {
     const limit = onTrial ? Math.max(profile.api_usage_limit, 500) : profile?.api_usage_limit || 50;
     if (profile && profile.api_usage_count >= limit) return json({ error: "Usage limit reached" }, 429);
 
-    const { message, briefing, scope, mode, confirm, pageContext, history } = await req.json();
+    const { message, briefing, scope, mode, confirm, pageContext, history, image } = await req.json();
     // Task-scoped conversations (e.g. Meraj opened from "Expenses"). Empty for general chat.
     const SCOPE_AREAS: Record<string, string> = {
       receipts: "bills, receipts, and GST invoices",
@@ -482,7 +482,18 @@ Deno.serve(async (req) => {
       ? `Generate a concise MORNING BRIEFING for today based on this business snapshot. Greet the owner by name, list today's tasks (follow-ups, stock, payments due), and give a quick status.\n\n${mem.block}\n\nSnapshot:\n${context}`
       : `Business owner asks: "${message}"\n\n${mem.block}${historyBlock}\n\nHere is the current business data snapshot:\n${context}\n\nAnswer the owner's question based on this data and what you already know about them.`;
 
-    const result = await callAIWithFallback(provider, SYSTEM + scopeFocus + pageFocus, userPrompt, 1200, "assistant");
+    const IMAGE_FOCUS = image && image.data
+      ? "\n\nIMAGE ANALYSIS: The owner shared a photo. It may be a handwritten sales list, a printed bill/receipt, a product catalog, a stock sheet, or something else. Read it carefully. Tell the owner concisely what you see (items, prices, quantities). If it contains sellable items with prices, offer to create an invoice or add products (switch to Task mode if they confirm). If you are unsure what it is or what to do, ask the owner one short question. Never invent items you cannot read.\n"
+      : "";
+
+    let result: string;
+    if (image && image.data) {
+      const imgRes = await callGeminiWithImage(SYSTEM + scopeFocus + pageFocus + IMAGE_FOCUS, userPrompt, image, { maxTokens: 1500, feature: "image-analysis" });
+      if (!imgRes.ok) throw new Error(imgRes.value);
+      result = imgRes.value;
+    } else {
+      result = await callAIWithFallback(provider, SYSTEM + scopeFocus + pageFocus, userPrompt, 1200, "assistant");
+    }
 
     // ── Persist memory (single upsert): append this turn to the transcript,
     //    and (if memory-worthy) extract durable facts to remember. ──
