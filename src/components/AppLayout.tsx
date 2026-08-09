@@ -84,8 +84,7 @@ export default function AppLayout() {
       {/* Mobile bottom nav (persistent; "More" opens the grouped drawer) */}
       {!isAssistant && <BottomNav onMore={() => setSidebarOpen(true)} />}
 
-      {/* Global tap ripple + persistent Meraj launcher (desktop FAB; mobile uses bottom-nav center) */}
-      <TouchRipple />
+      {/* Desktop persistent voice Meraj (FAB) */}
       {showFloatingMeraj && <FloatingMeraj pathname={location.pathname} />}
     </div>
   )
