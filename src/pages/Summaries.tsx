@@ -16,7 +16,7 @@ const summaryTypes = [
 ]
 
 export default function Summaries() {
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
   const [summaries, setSummaries] = useState<Summary[]>([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -58,7 +58,7 @@ export default function Summaries() {
       const { data, error } = await supabase
         .from('summaries')
         .insert({
-          user_id: profile!.id,
+          user_id: ownerId,
           source_text: sourceText,
           summary_type: summaryType,
           generated_summary: result,

@@ -37,7 +37,7 @@ const statusInfo: Record<string, { label: string; color: string }> = {
 const DRIVE_DEV_KEY = import.meta.env.VITE_GOOGLE_DRIVE_API_KEY || ''
 
 export default function ConnectApps() {
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
   const [connections, setConnections] = useState<Record<string, ConnectedApp>>({})
   const [loading, setLoading] = useState(true)
   const [activeModal, setActiveModal] = useState<AppCatalogEntry | null>(null)
@@ -49,7 +49,7 @@ export default function ConnectApps() {
   const loadConnections = useCallback(async () => {
     if (!profile) return
     setLoading(true)
-    const { data } = await supabase.from('connected_apps').select('*').eq('user_id', profile.id)
+    const { data } = await supabase.from('connected_apps').select('*').eq('user_id', ownerId)
     const map: Record<string, ConnectedApp> = {}
     ;(data || []).forEach((c: any) => { map[c.app_slug] = c })
     setConnections(map)
@@ -78,8 +78,8 @@ export default function ConnectApps() {
     const base = (import.meta.env.VITE_SUPABASE_URL || '').replace('.supabase.co', '.functions.supabase.co')
     const fnUrl = app.slug === 'canva' ? `${base}/canva-oauth` : `${base}/google-oauth`
     const url = app.slug === 'canva'
-      ? `${fnUrl}?action=authorize&user=${profile!.id}`
-      : `${fnUrl}?action=authorize&user=${profile!.id}&provider=${oauthProviderForSlug(app.slug)}&permission=${permission}`
+      ? `${fnUrl}?action=authorize&user=${ownerId}`
+      : `${fnUrl}?action=authorize&user=${ownerId}&provider=${oauthProviderForSlug(app.slug)}&permission=${permission}`
     window.location.href = url
   }
 

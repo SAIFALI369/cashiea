@@ -10,7 +10,7 @@ import toast from 'react-hot-toast'
 interface POFormItem { name: string; quantity: string; unit_price: string }
 
 export default function Suppliers() {
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [pos, setPos] = useState<PurchaseOrder[]>([])
   const [loading, setLoading] = useState(true)
@@ -27,8 +27,8 @@ export default function Suppliers() {
   const loadData = async () => {
     setLoading(true)
     const [s, p] = await Promise.all([
-      supabase.from('suppliers').select('*').eq('user_id', profile!.id).order('created_at', { ascending: false }),
-      supabase.from('purchase_orders').select('*').eq('user_id', profile!.id).order('created_at', { ascending: false }),
+      supabase.from('suppliers').select('*').eq('user_id', ownerId).order('created_at', { ascending: false }),
+      supabase.from('purchase_orders').select('*').eq('user_id', ownerId).order('created_at', { ascending: false }),
     ])
     setSuppliers((s.data as Supplier[]) || [])
     setPos((p.data as PurchaseOrder[]) || [])
@@ -37,7 +37,7 @@ export default function Suppliers() {
 
   const saveSupplier = async () => {
     if (!supForm.name.trim()) return toast.error('Supplier name required')
-    const { data, error } = await supabase.from('suppliers').insert({ user_id: profile!.id, ...supForm }).select().single()
+    const { data, error } = await supabase.from('suppliers').insert({ user_id: ownerId, ...supForm }).select().single()
     if (error) { toast.error(error.message); return }
     setSuppliers([data as Supplier, ...suppliers])
     setSupForm({ name: '', contact_person: '', email: '', phone: '', address: '', gstin: '', notes: '' })
@@ -65,7 +65,7 @@ export default function Suppliers() {
     if (validItems.length === 0) return toast.error('Add at least one item')
     const poNumber = `PO-${Date.now().toString().slice(-7)}`
     const { data, error } = await supabase.from('purchase_orders').insert({
-      user_id: profile!.id,
+      user_id: ownerId,
       supplier_id: poForm.supplier_id,
       po_number: poNumber,
       items: validItems.map((it) => ({ name: it.name, quantity: Number(it.quantity), unit_price: Number(it.unit_price) || 0 })),

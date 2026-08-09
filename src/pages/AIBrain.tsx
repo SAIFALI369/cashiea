@@ -26,7 +26,7 @@ const typeIcon: Record<string, string> = {
 }
 
 export default function AIBrain() {
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
   const [memory, setMemory] = useState<BusinessMemory | null>(null)
   const [predictions, setPredictions] = useState<Prediction[]>([])
   const [corrections, setCorrections] = useState<Correction[]>([])
@@ -41,9 +41,9 @@ export default function AIBrain() {
   const loadData = async () => {
     setLoading(true)
     const [mem, preds, cors] = await Promise.all([
-      supabase.from('business_memory').select('*').eq('user_id', profile!.id).maybeSingle(),
-      supabase.from('ai_predictions').select('*').eq('user_id', profile!.id).order('created_at', { ascending: false }).limit(30),
-      supabase.from('ai_corrections').select('*').eq('user_id', profile!.id).order('created_at', { ascending: false }).limit(10),
+      supabase.from('business_memory').select('*').eq('user_id', ownerId).maybeSingle(),
+      supabase.from('ai_predictions').select('*').eq('user_id', ownerId).order('created_at', { ascending: false }).limit(30),
+      supabase.from('ai_corrections').select('*').eq('user_id', ownerId).order('created_at', { ascending: false }).limit(10),
     ])
     setMemory((mem.data as BusinessMemory) || null)
     setPredictions((preds.data as Prediction[]) || [])

@@ -19,7 +19,7 @@ interface Metric { label: string; value: string; count: number; alert?: boolean;
 interface FocusItem { title: string; body: string; action: string; to: string }
 
 export default function Dashboard() {
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
   const [loading, setLoading] = useState(true)
   const [metrics, setMetrics] = useState<Metric[]>([])
   const [focus, setFocus] = useState<FocusItem[]>([])
@@ -34,13 +34,13 @@ export default function Dashboard() {
 
     ;(async () => {
       const [tx, inv, prod, msg, quotes, staff, preds] = await Promise.all([
-        supabase.from('transactions').select('total').eq('user_id', profile.id).eq('status', 'completed').gte('created_at', startToday),
-        supabase.from('invoices').select('total,status').eq('user_id', profile.id).in('status', ['sent', 'viewed', 'partial', 'overdue']),
-        supabase.from('products').select('stock_quantity,low_stock_threshold').eq('user_id', profile.id),
-        supabase.from('whatsapp_messages').select('id', { count: 'exact', head: true }).eq('user_id', profile.id).eq('direction', 'inbound').gte('created_at', dayAgo),
-        supabase.from('quotations').select('id', { count: 'exact', head: true }).eq('user_id', profile.id).eq('status', 'sent'),
-        supabase.from('team_members').select('id', { count: 'exact', head: true }).eq('user_id', profile.id).eq('status', 'active'),
-        supabase.from('ai_predictions').select('*').eq('user_id', profile.id).eq('status', 'pending').order('created_at', { ascending: false }).limit(6),
+        supabase.from('transactions').select('total').eq('user_id', ownerId).eq('status', 'completed').gte('created_at', startToday),
+        supabase.from('invoices').select('total,status').eq('user_id', ownerId).in('status', ['sent', 'viewed', 'partial', 'overdue']),
+        supabase.from('products').select('stock_quantity,low_stock_threshold').eq('user_id', ownerId),
+        supabase.from('whatsapp_messages').select('id', { count: 'exact', head: true }).eq('user_id', ownerId).eq('direction', 'inbound').gte('created_at', dayAgo),
+        supabase.from('quotations').select('id', { count: 'exact', head: true }).eq('user_id', ownerId).eq('status', 'sent'),
+        supabase.from('team_members').select('id', { count: 'exact', head: true }).eq('user_id', ownerId).eq('status', 'active'),
+        supabase.from('ai_predictions').select('*').eq('user_id', ownerId).eq('status', 'pending').order('created_at', { ascending: false }).limit(6),
       ])
 
       const salesToday = (tx.data || []).reduce((s, r: any) => s + Number(r.total || 0), 0)

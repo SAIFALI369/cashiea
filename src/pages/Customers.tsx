@@ -11,7 +11,7 @@ import toast from 'react-hot-toast'
 const empty = { name: '', email: '', phone: '', address: '', company: '', notes: '', tags: '' }
 
 export default function Customers() {
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -26,7 +26,7 @@ export default function Customers() {
 
   const loadCustomers = async () => {
     setLoading(true)
-    const { data } = await supabase.from('customers').select('*').eq('user_id', profile!.id).order('created_at', { ascending: false })
+    const { data } = await supabase.from('customers').select('*').eq('user_id', ownerId).order('created_at', { ascending: false })
     setCustomers((data as Customer[]) || [])
     setLoading(false)
   }
@@ -35,7 +35,7 @@ export default function Customers() {
     if (!form.name.trim()) return toast.error('Customer name is required')
     const tags = form.tags.split(',').map((t) => t.trim()).filter(Boolean)
     const { data, error } = await supabase.from('customers').insert({
-      user_id: profile!.id,
+      user_id: ownerId,
       name: form.name,
       email: form.email || null,
       phone: form.phone || null,

@@ -11,7 +11,7 @@ import toast from 'react-hot-toast'
 interface QuoteItem { description: string; quantity: string; unit_price: string }
 
 export default function Quotations() {
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
   const navigate = useNavigate()
   const [quotes, setQuotes] = useState<Quotation[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -24,8 +24,8 @@ export default function Quotations() {
   const loadData = async () => {
     setLoading(true)
     const [q, c] = await Promise.all([
-      supabase.from('quotations').select('*').eq('user_id', profile!.id).order('created_at', { ascending: false }),
-      supabase.from('customers').select('*').eq('user_id', profile!.id).order('name'),
+      supabase.from('quotations').select('*').eq('user_id', ownerId).order('created_at', { ascending: false }),
+      supabase.from('customers').select('*').eq('user_id', ownerId).order('name'),
     ])
     setQuotes((q.data as Quotation[]) || [])
     setCustomers((c.data as Customer[]) || [])
@@ -53,7 +53,7 @@ export default function Quotations() {
     if (validItems.length === 0) return toast.error('Add at least one item')
     const quoteNumber = `QT-${Date.now().toString().slice(-7)}`
     const { data, error } = await supabase.from('quotations').insert({
-      user_id: profile!.id, customer_id: form.customer_id || null, quote_number: quoteNumber,
+      user_id: ownerId, customer_id: form.customer_id || null, quote_number: quoteNumber,
       customer_name: form.customer_name, customer_email: form.customer_email || null,
       items: validItems.map((it) => ({ description: it.description, quantity: Number(it.quantity), unit_price: Number(it.unit_price) || 0 })),
       subtotal, tax_rate: Number(form.tax_rate) || 0, tax_amount: taxAmount, total,
@@ -69,7 +69,7 @@ export default function Quotations() {
   const convertToInvoice = async (q: Quotation) => {
     const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`
     const { error } = await supabase.from('invoices').insert({
-      user_id: profile!.id,
+      user_id: ownerId,
       invoice_number: invoiceNumber,
       client_name: q.customer_name,
       client_email: q.customer_email,

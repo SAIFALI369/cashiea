@@ -20,7 +20,7 @@ const emailTypes = [
 const tones = ['professional', 'friendly', 'persuasive', 'formal', 'casual']
 
 export default function EmailAssistant() {
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
   const [emails, setEmails] = useState<Email[]>([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -78,7 +78,7 @@ export default function EmailAssistant() {
       const { data, error } = await supabase
         .from('emails')
         .insert({
-          user_id: profile!.id,
+          user_id: ownerId,
           subject: finalSubject || 'Untitled',
           recipient: recipient || null,
           email_type: emailType,

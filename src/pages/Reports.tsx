@@ -10,7 +10,7 @@ import toast from 'react-hot-toast'
 import { REPORT_TEMPLATES, getReportTemplate } from '../lib/report-templates'
 
 export default function Reports() {
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -52,7 +52,7 @@ export default function Reports() {
       const { data, error } = await supabase
         .from('reports')
         .insert({
-          user_id: profile!.id,
+          user_id: ownerId,
           title: title || `${reportType} Report`,
           report_type: reportType,
           input_data: inputData,

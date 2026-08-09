@@ -23,7 +23,7 @@ const statusColor: Record<string, string> = {
 }
 
 export default function Invoices() {
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -73,7 +73,7 @@ export default function Invoices() {
       }
 
       const { data, error } = await supabase.from('invoices').insert({
-        user_id: profile!.id,
+        user_id: ownerId,
         invoice_number: invoiceNumber,
         client_name: parsed.client_name || 'Customer',
         client_email: parsed.client_email || null,
@@ -104,7 +104,7 @@ export default function Invoices() {
     const total = qty * price
     const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`
     const { data, error } = await supabase.from('invoices').insert({
-      user_id: profile!.id,
+      user_id: ownerId,
       invoice_number: invoiceNumber,
       client_name: quick.name, client_phone: quick.phone || null,
       items: [{ description: quick.item, quantity: qty, unit_price: price }],

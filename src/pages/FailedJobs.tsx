@@ -122,7 +122,7 @@ const typeIcon: Record<string, string> = {
 }
 
 export default function FailedJobs() {
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
   const navigate = useNavigate()
   const [jobs, setJobs] = useState<FailedJob[]>([])
   const [loading, setLoading] = useState(true)
@@ -136,7 +136,7 @@ export default function FailedJobs() {
     const { data } = await supabase
       .from('failed_jobs')
       .select('*')
-      .eq('user_id', profile!.id)
+      .eq('user_id', ownerId)
       .order('created_at', { ascending: false })
       .limit(100)
     setJobs((data as FailedJob[]) || [])
@@ -160,7 +160,7 @@ export default function FailedJobs() {
           Authorization: `Bearer ${session!.access_token}`,
           apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
-        body: JSON.stringify({ user_id: profile!.id, retry: true, payload: job.payload }),
+        body: JSON.stringify({ user_id: ownerId, retry: true, payload: job.payload }),
       })
       const result = await res.json().catch(() => ({ error: 'No response' }))
       if (!res.ok) throw new Error(result?.error || `Retry failed (HTTP ${res.status})`)

@@ -65,7 +65,7 @@ const SECTIONS: Section[] = [
 ]
 
 export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { profile, signOut } = useAuth()
+  const { profile, ownerId, signOut } = useAuth()
   const navigate = useNavigate()
   const [failedCount, setFailedCount] = useState(0)
   const { count: pendingApprovals } = usePendingApprovals()
@@ -73,7 +73,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
   useEffect(() => {
     if (!profile) return
     const fetchCount = async () => {
-      const { count } = await supabase.from('failed_jobs').select('*', { count: 'exact', head: true }).eq('user_id', profile.id).eq('status', 'pending')
+      const { count } = await supabase.from('failed_jobs').select('*', { count: 'exact', head: true }).eq('user_id', ownerId).eq('status', 'pending')
       setFailedCount(count || 0)
     }
     fetchCount()

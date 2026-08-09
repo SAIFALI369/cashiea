@@ -12,7 +12,7 @@ interface CartLine extends TransactionItem {
 }
 
 export default function POS() {
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
@@ -34,8 +34,8 @@ export default function POS() {
   const loadData = async () => {
     setLoading(true)
     const [p, c] = await Promise.all([
-      supabase.from('products').select('*').eq('user_id', profile!.id).eq('active', true).order('name'),
-      supabase.from('customers').select('*').eq('user_id', profile!.id).order('name'),
+      supabase.from('products').select('*').eq('user_id', ownerId).eq('active', true).order('name'),
+      supabase.from('customers').select('*').eq('user_id', ownerId).order('name'),
     ])
     setProducts((p.data as Product[]) || [])
     setCustomers((c.data as Customer[]) || [])
@@ -106,7 +106,7 @@ export default function POS() {
       const { data, error } = await supabase
         .from('transactions')
         .insert({
-          user_id: profile!.id,
+          user_id: ownerId,
           customer_id: selectedCustomer?.id || null,
           receipt_number: receiptNumber,
           items: cart.map(({ product_id, name, quantity, unit_price }) => ({ product_id, name, quantity, unit_price })),
@@ -138,7 +138,7 @@ export default function POS() {
 
       // Log activity for the overview tracker
       await supabase.from('activity_logs').insert({
-        user_id: profile!.id,
+        user_id: ownerId,
         action_type: 'invoice',
         description: `Sale ${receiptNumber} — ${cart.reduce((s, l) => s + l.quantity, 0)} items, $${total.toFixed(2)}`,
         time_saved_minutes: 8,

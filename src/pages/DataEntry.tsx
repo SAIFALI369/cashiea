@@ -12,7 +12,7 @@ import { exportToCSV, exportToJSON } from '../lib/export'
 type Mode = 'single' | 'batch'
 
 export default function DataEntryPage() {
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
   const [entries, setEntries] = useState<DataEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -56,7 +56,7 @@ export default function DataEntryPage() {
       const { data, error } = await supabase
         .from('data_entries')
         .insert({
-          user_id: profile!.id,
+          user_id: ownerId,
           source_text: sourceText,
           extracted_data: parsed || { raw: result },
           category,
@@ -121,7 +121,7 @@ export default function DataEntryPage() {
         const { data, error } = await supabase
           .from('data_entries')
           .insert({
-            user_id: profile!.id,
+            user_id: ownerId,
             source_text: record,
             extracted_data: parsed || { raw: result },
             category,

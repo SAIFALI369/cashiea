@@ -22,7 +22,7 @@ interface InvItem { name: string; quantity: string }
 
 export default function Onboarding() {
   const navigate = useNavigate()
-  const { profile, refreshProfile, loading: authLoading } = useAuth()
+  const { profile, ownerId, refreshProfile, loading: authLoading } = useAuth()
 
   // Start from wherever the user left off (resume-on-reload)
   const initialStep = profile?.onboarding_step && profile.onboarding_step >= 1 && profile.onboarding_step <= 3
@@ -92,7 +92,7 @@ export default function Onboarding() {
     try {
       // Insert the products
       const rows = valid.map((it) => ({
-        user_id: profile!.id,
+        user_id: ownerId,
         name: it.name.trim(),
         stock_quantity: Number(it.quantity) || 0,
         category: 'general',

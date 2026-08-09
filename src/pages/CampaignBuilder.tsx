@@ -16,7 +16,7 @@ interface RecipientInput {
 const tones = ['professional', 'friendly', 'persuasive', 'formal', 'casual']
 
 export default function CampaignBuilder() {
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
   const navigate = useNavigate()
   const { id } = useParams()
 
@@ -82,7 +82,7 @@ export default function CampaignBuilder() {
       const { data: campaign, error: cErr } = await supabase
         .from('email_campaigns')
         .insert({
-          user_id: profile!.id,
+          user_id: ownerId,
           name,
           template_subject: subject,
           template_body: body,
@@ -104,7 +104,7 @@ export default function CampaignBuilder() {
       // 2. Insert recipients
       const recipientRows = validRecipients.map((r) => ({
         campaign_id: campaign.id,
-        user_id: profile!.id,
+        user_id: ownerId,
         email: r.email,
         name: r.name || null,
         personalization: {

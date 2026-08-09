@@ -12,7 +12,7 @@ import toast from 'react-hot-toast'
 const empty = { name: '', description: '', sku: '', category: 'general', price: '', cost: '', stock_quantity: '', low_stock_threshold: '5' }
 
 export default function Products() {
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
   const { isOwner } = useCan()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -25,7 +25,7 @@ export default function Products() {
 
   const loadProducts = async () => {
     setLoading(true)
-    const { data } = await supabase.from('products').select('*').eq('user_id', profile!.id).order('created_at', { ascending: false })
+    const { data } = await supabase.from('products').select('*').eq('user_id', ownerId).order('created_at', { ascending: false })
     setProducts((data as Product[]) || [])
     setLoading(false)
   }
@@ -40,7 +40,7 @@ export default function Products() {
         stock_quantity: Number(form.stock_quantity) || 0, low_stock_threshold: Number(form.low_stock_threshold) || 5,
       }
       if (isOwner) {
-        const { data, error } = await supabase.from('products').insert({ user_id: profile!.id, ...prod }).select().single()
+        const { data, error } = await supabase.from('products').insert({ user_id: ownerId, ...prod }).select().single()
         if (error) throw error
         setProducts([data as Product, ...products])
         toast.success('Product added')

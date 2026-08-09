@@ -14,7 +14,7 @@ const actionIcons: Record<string, typeof FileText> = {
 }
 
 export default function ActivityLogs() {
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
   const [logs, setLogs] = useState<ActivityLog[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
@@ -28,7 +28,7 @@ export default function ActivityLogs() {
     const { data } = await supabase
       .from('activity_logs')
       .select('*')
-      .eq('user_id', profile!.id)
+      .eq('user_id', ownerId)
       .order('created_at', { ascending: false })
       .limit(200)
     setLogs((data as ActivityLog[]) || [])

@@ -17,7 +17,7 @@ const roleIcon: Record<string, typeof Crown> = { owner: Crown, manager: Shield, 
 const roleColor: Record<string, string> = { owner: 'text-amber-400', manager: 'text-blue-400', accountant: 'text-purple-400', staff: 'text-green-400' }
 
 export default function Team() {
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
   const [members, setMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -27,7 +27,7 @@ export default function Team() {
 
   const loadMembers = async () => {
     setLoading(true)
-    const { data } = await supabase.from('team_members').select('*').eq('user_id', profile!.id).order('created_at', { ascending: false })
+    const { data } = await supabase.from('team_members').select('*').eq('user_id', ownerId).order('created_at', { ascending: false })
     setMembers((data as TeamMember[]) || [])
     setLoading(false)
   }
@@ -41,7 +41,7 @@ export default function Team() {
       ? { pos: false, invoices: true, reports: true, accounts: true, team: false }
       : { pos: true, invoices: false, reports: false, accounts: false, team: false }
     const { data, error } = await supabase.from('team_members').insert({
-      user_id: profile!.id, member_email: form.email, name: form.name || null,
+      user_id: ownerId, member_email: form.email, name: form.name || null,
       role: form.role, status: 'invited', permissions: perms,
     }).select().single()
     if (error) { toast.error(error.message); return }

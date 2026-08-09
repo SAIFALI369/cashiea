@@ -18,7 +18,7 @@ const PROVIDERS: { id: IntegrationProvider; name: string; icon: typeof Mail; des
 ]
 
 export default function Integrations() {
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
   const [integrations, setIntegrations] = useState<Integration[]>([])
   const [loading, setLoading] = useState(true)
   const [connecting, setConnecting] = useState<IntegrationProvider | null>(null)
@@ -30,7 +30,7 @@ export default function Integrations() {
 
   const loadData = async () => {
     setLoading(true)
-    const { data } = await supabase.from('integrations').select('*').eq('user_id', profile!.id)
+    const { data } = await supabase.from('integrations').select('*').eq('user_id', ownerId)
     setIntegrations((data as Integration[]) || [])
     setLoading(false)
   }
@@ -42,7 +42,7 @@ export default function Integrations() {
   const connect = async (p: IntegrationProvider) => {
     // Real OAuth flow for Google sources (opens Google consent screen)
     if (p === 'gmail' || p === 'google_sheets') {
-      const url = googleAuthorizeUrl(profile!.id, p)
+      const url = googleAuthorizeUrl(ownerId!, p)
       // If OAuth isn't configured, the function returns a 503; we open it
       // in a new tab and the callback will redirect back here.
       window.open(url, '_blank')
@@ -54,7 +54,7 @@ export default function Integrations() {
     setConnecting(p)
     try {
       const { data, error } = await supabase.from('integrations').upsert({
-        user_id: profile!.id,
+        user_id: ownerId,
         provider: p,
         status: 'connected',
         label: PROVIDERS.find((x) => x.id === p)?.name,
@@ -92,7 +92,7 @@ export default function Integrations() {
   }
 
   const disconnect = async (p: IntegrationProvider) => {
-    const { error } = await supabase.from('integrations').update({ status: 'disconnected', metadata: {} }).eq('user_id', profile!.id).eq('provider', p)
+    const { error } = await supabase.from('integrations').update({ status: 'disconnected', metadata: {} }).eq('user_id', ownerId).eq('provider', p)
     if (!error) {
       setIntegrations(integrations.map((i) => i.provider === p ? { ...i, status: 'disconnected' } : i))
       toast.success('Disconnected')

@@ -12,7 +12,7 @@ import toast from 'react-hot-toast'
 const STRIPE_ENABLED = import.meta.env.VITE_STRIPE_ENABLED === 'true'
 
 export default function Subscription() {
-  const { profile, refreshProfile } = useAuth()
+  const { profile, ownerId, refreshProfile } = useAuth()
   const [updating, setUpdating] = useState<PlanKey | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
   const currentPlan = profile?.plan || 'free'
@@ -78,7 +78,7 @@ export default function Subscription() {
 
     await supabase
       .from('subscriptions')
-      .upsert({ user_id: profile!.id, plan, status: 'active' })
+      .upsert({ user_id: ownerId, plan, status: 'active' })
 
     await refreshProfile()
   }

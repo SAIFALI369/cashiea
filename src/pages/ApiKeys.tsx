@@ -21,7 +21,7 @@ function randomKey(): string {
 }
 
 export default function ApiKeys() {
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
   const [keys, setKeys] = useState<ApiKey[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
@@ -47,7 +47,7 @@ export default function ApiKeys() {
     const keyPrefix = fullKey.slice(0, 16)
 
     const { error } = await supabase.from('api_keys').insert({
-      user_id: profile!.id,
+      user_id: ownerId,
       name: newName,
       key_prefix: keyPrefix,
       key_hash: keyHash,
