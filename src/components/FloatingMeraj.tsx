@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { askAssistant } from '../lib/ai'
 import { getPageContext } from '../lib/pageContext'
 import { MerajMark } from './MerajMark'
+import { MerajCharacter, type MerajCharState } from './MerajCharacter'
+import { useSpeech } from '../lib/useSpeech'
 import {
   X, Send, Loader2, Sparkles, ArrowUpRight, Plus, Zap, MessageCircle,
 } from 'lucide-react'
@@ -39,6 +41,9 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
   const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState<'ask' | 'task'>('ask')
   const [showMode, setShowMode] = useState(false)
+  const { speak, stopSpeaking, speaking, startListening, stopListening, listening } = useSpeech()
+  const [voiceMode, setVoiceMode] = useState(false)
+  const [voiceReply, setVoiceReply] = useState('')
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -88,17 +93,51 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
     setMessages((m) => [...m, { role: 'meraj' as const, text: 'No problem — cancelled.' }])
   }
 
+  const voiceCharState: MerajCharState = listening ? 'listening' : loading ? 'replying' : speaking ? 'speaking' : 'idle'
+  const voiceStatus = listening ? 'Listening…' : loading ? 'Thinking…' : speaking ? 'Speaking…' : ''
+
+  const startVoice = () => {
+    setVoiceMode(true); setVoiceReply('')
+    const ok = startListening(async (text) => {
+      setLoading(true)
+      try {
+        const res = await askAssistant(text, false, undefined, 'ask', undefined, pageContext)
+        setVoiceReply(res.reply)
+        if (res.reply) speak(res.reply, () => setTimeout(() => { setVoiceMode(false); setVoiceReply('') }, 2000))
+        else setTimeout(() => setVoiceMode(false), 1500)
+      } catch (e) {
+        setVoiceReply('⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.'))
+        setTimeout(() => setVoiceMode(false), 3000)
+      } finally { setLoading(false) }
+    })
+    if (!ok) { setVoiceMode(false); setOpen(true) }
+  }
+  const cancelVoice = () => { stopListening(); stopSpeaking(); setVoiceMode(false); setVoiceReply('') }
+
   return (
     <>
-      {/* Small professional launcher */}
-      <button
-        onClick={() => setOpen(true)}
-        aria-label="Open Meraj"
-        className="fixed z-40 bottom-6 right-6 w-12 h-12 rounded-full bg-accent-strong text-accent-fg shadow-float ring-1 ring-accent/30 hover:bg-accent hover:shadow-lift active:scale-95 transition-all hidden lg:flex items-center justify-center"
-      >
-        <MerajMark size={22} className="pointer-events-none" />
-        <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-positive rounded-full border-2 border-paper" />
-      </button>
+      {/* Voice-first launcher (desktop). Tap → listen → think → speak. */}
+      {voiceMode ? (
+        <div className="fixed z-40 bottom-6 right-6 hidden lg:flex flex-col items-center gap-2">
+          <div className="relative flex items-center justify-center w-24 h-24 rounded-full bg-surface border border-accent/30 shadow-float">
+            <MerajCharacter state={voiceCharState} width={96} />
+          </div>
+          {voiceStatus && <p className="text-[11px] font-medium text-fg-muted">{voiceStatus}</p>}
+          {voiceReply && (
+            <div className="card p-3 max-w-xs text-sm max-h-32 overflow-y-auto scroll-area prose-content" dangerouslySetInnerHTML={{ __html: voiceReply.replace(/[*#`]/g, '') }} />
+          )}
+          <button onClick={cancelVoice} className="w-8 h-8 rounded-lg flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2" aria-label="Cancel"><X className="w-4 h-4" /></button>
+        </div>
+      ) : (
+        <button
+          onClick={startVoice}
+          aria-label="Tap to talk to Meraj"
+          className="fixed z-40 bottom-6 right-6 w-12 h-12 rounded-full bg-accent-strong text-accent-fg shadow-float ring-1 ring-accent/30 hover:bg-accent hover:shadow-lift active:scale-95 transition-all hidden lg:flex items-center justify-center"
+        >
+          <MerajMark size={22} className="pointer-events-none" />
+          <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-positive rounded-full border-2 border-paper animate-pulse" />
+        </button>
+      )}
 
       <AnimatePresence>
         {open && (
