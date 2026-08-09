@@ -33,6 +33,7 @@ export default function Team() {
   }
 
   const invite = async () => {
+    if (members.filter(m => m.status !== 'revoked').length >= 2) return toast.error('Maximum 2 team members per account')
     if (!form.email.trim()) return toast.error('Email is required')
     const perms = form.role === 'manager'
       ? { pos: true, invoices: true, reports: true, accounts: true, team: true }

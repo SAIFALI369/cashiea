@@ -12,6 +12,7 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
+  ownerId: string | null
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
@@ -126,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, session, profile, loading, signUp, signIn, signOut, refreshProfile }}
+      value={{ user, session, profile, loading, signUp, signIn, signOut, refreshProfile, ownerId: profile?.business_owner_id || profile?.id || null }}
     >
       {children}
     </AuthContext.Provider>

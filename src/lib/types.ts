@@ -22,6 +22,7 @@ export interface Profile {
   onboarding_step: number
   role: 'owner' | 'manager' | 'accountant' | 'staff'
   permission_config: Record<string, unknown> | null
+  business_owner_id: string | null
   report_time_utc: string
   report_timezone: string
   created_at: string
