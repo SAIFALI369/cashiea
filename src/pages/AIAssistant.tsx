@@ -82,6 +82,7 @@ export default function AIAssistant() {
   const send = async () => {
     const q = input.trim()
     if ((!q && !pendingImage) || loading) return
+    if (!navigator.onLine) { toast.error('No internet connection right now.'); return }
     setInput('')
     const next = [...messages, { role: 'user' as const, text: q }]
     setMessages(next)
@@ -128,7 +129,7 @@ export default function AIAssistant() {
     if (recRef.current) { try { recRef.current.stop() } catch { /* ignore */ } }
     const rec = new SR(); rec.lang = 'hi-IN'; rec.interimResults = false; rec.maxAlternatives = 1
     rec.onstart = () => setListening(true); rec.onend = () => setListening(false)
-    rec.onerror = () => setListening(false)
+    rec.onerror = (e: any) => { setListening(false); const er = String(e?.error || ''); if (er === 'not-allowed' || er === 'service-not-allowed') toast.error('Microphone access is blocked — allow it in your browser settings.'); else if (er === 'no-speech') toast.error("I couldn't hear that clearly — try again."); else if (er && er !== 'aborted') toast.error('Microphone error — please try again.') }
     rec.onresult = (e: any) => { const t = e.results[0][0].transcript; setInput((p) => (p ? p + ' ' : '') + t) }
     recRef.current = rec; rec.start()
   }

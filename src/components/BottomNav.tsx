@@ -55,19 +55,33 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
 
   const startVoice = () => {
     setVoiceActive(true); setVoiceReply(''); setVoiceLoading(false)
-    const ok = startListening(async (text) => {
-      setVoiceLoading(true)
-      try {
-        const res = await askAssistant(text, false, undefined, 'ask', undefined, pageContext)
-        setVoiceReply(res.reply)
-        if (res.reply) speak(res.reply, () => setTimeout(() => { setVoiceActive(false); setVoiceReply('') }, 2500))
-        else setTimeout(() => setVoiceActive(false), 1500)
-      } catch (e) {
-        setVoiceReply('⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.'))
-        setTimeout(() => setVoiceActive(false), 3000)
-      } finally { setVoiceLoading(false) }
-    })
-    if (!ok) { setVoiceActive(false); setVoiceReply('Voice not supported on this browser.') }
+    const ok = startListening(
+      async (text) => {
+        if (!navigator.onLine) {
+          const m = "No internet connection right now. I'll answer as soon as you're back online."
+          setVoiceReply(m); speak(m); return
+        }
+        setVoiceLoading(true)
+        try {
+          const res = await askAssistant(text, false, undefined, 'ask', undefined, pageContext)
+          setVoiceReply(res.reply)
+          if (res.reply) speak(res.reply, () => setTimeout(() => { setVoiceActive(false); setVoiceReply('') }, 2500))
+          else setTimeout(() => setVoiceActive(false), 1500)
+        } catch (e) {
+          const m = e instanceof Error ? e.message : 'Something went wrong.'
+          setVoiceReply('⚠️ ' + m); speak("Sorry, that didn't work. " + m)
+          setTimeout(() => setVoiceActive(false), 3500)
+        } finally { setVoiceLoading(false) }
+      },
+      (errMsg) => {
+        if (errMsg) { setVoiceReply(errMsg); speak(errMsg) }
+        setTimeout(() => setVoiceActive(false), 3500)
+      }
+    )
+    if (!ok) {
+      const m = "Voice isn't supported on this browser. Open Meraj from the menu to type your question."
+      setVoiceReply(m); speak(m); setTimeout(() => setVoiceActive(false), 4500)
+    }
   }
 
   const cancelVoice = () => { stopListening(); stopSpeaking(); setVoiceActive(false); setVoiceReply(''); setVoiceLoading(false) }

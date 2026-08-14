@@ -3,67 +3,141 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 /**
  * useSpeech — browser-native Text-to-Speech + Speech-to-Text.
  * Free (no API keys), instant, works on Chrome/Edge/Safari.
- * Structured so a premium voice (ElevenLabs etc.) can replace `speak` later.
+ *
+ * Honest failure handling (spec §9): microphone errors are surfaced with a
+ * plain-language reason the owner can act on — never swallowed silently.
+ * Language matching (spec §10): TTS picks a Hindi or English voice based on
+ * the reply's script, so an English answer isn't read in a Hindi voice.
  */
+
+/** Map a SpeechRecognition error code to an honest, actionable message. */
+function micErrorMessage(error: string): string {
+  switch (error) {
+    case 'not-allowed':
+    case 'service-not-allowed':
+      return 'Microphone access is blocked. Allow mic permission in your browser settings, then tap Meraj again.'
+    case 'no-speech':
+      return "I couldn't hear that clearly — please try again."
+    case 'audio-capture':
+      return 'No microphone was found. Connect a mic and try again.'
+    case 'network':
+      return 'Network problem while listening. Check your connection and try again.'
+    case 'aborted':
+      return '' // user-initiated stop — stay silent
+    case 'language-not-supported':
+      return 'Speech input for this language is not supported on this browser.'
+    default:
+      return 'Sorry, I could not catch that. Please try again.'
+  }
+}
+
+/** Detect reply language: Devanagari → Hindi voice, otherwise English. */
+function detectLang(text: string): 'hi-IN' | 'en-IN' {
+  return /[\u0900-\u097F]/.test(text) ? 'hi-IN' : 'en-IN'
+}
+
 export function useSpeech() {
   const [speaking, setSpeaking] = useState(false)
   const [listening, setListening] = useState(false)
   const recRef = useRef<any>(null)
 
-  // Preload voices (Chrome loads them async)
-  useEffect(() => { window.speechSynthesis?.getVoices() }, [])
+  const ttsSupported = typeof window !== 'undefined' && 'speechSynthesis' in window
+  const sttSupported =
+    typeof window !== 'undefined' &&
+    !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
 
-  const speak = useCallback((text: string, onEnd?: () => void) => {
-    if (!window.speechSynthesis) { onEnd?.(); return }
-    window.speechSynthesis.cancel()
-    const clean = text.replace(/[*#`_>~|\-]/g, '').replace(/\n+/g, '. ').replace(/\.\s*\./g, '.').slice(0, 400)
-    if (!clean.trim()) { onEnd?.(); return }
-    const u = new SpeechSynthesisUtterance(clean)
-    const voices = window.speechSynthesis.getVoices()
-    const hiVoice = voices.find((v) => v.lang.startsWith('hi'))
-    if (hiVoice) u.voice = hiVoice
-    u.lang = hiVoice ? 'hi-IN' : 'en-IN'
-    u.rate = 1.05
-    u.pitch = 1.1
-    u.volume = 1
-    u.onstart = () => setSpeaking(true)
-    u.onend = () => { setSpeaking(false); onEnd?.() }
-    u.onerror = () => { setSpeaking(false); onEnd?.() }
-    window.speechSynthesis.speak(u)
-  }, [])
+  // Preload voices (Chrome loads them async)
+  useEffect(() => { if (ttsSupported) window.speechSynthesis?.getVoices() }, [ttsSupported])
+
+  const speak = useCallback(
+    (text: string, onEnd?: () => void) => {
+      if (!ttsSupported) { onEnd?.(); return }
+      window.speechSynthesis.cancel()
+      const clean = text.replace(/[*#`_>~|\-]/g, '').replace(/\n+/g, '. ').replace(/\.\s*\./g, '.').slice(0, 400)
+      if (!clean.trim()) { onEnd?.(); return }
+      const u = new SpeechSynthesisUtterance(clean)
+      const lang = detectLang(clean)
+      const voices = window.speechSynthesis.getVoices()
+      const v = voices.find((x) => x.lang === lang) || voices.find((x) => x.lang.startsWith(lang.slice(0, 2)))
+      if (v) u.voice = v
+      u.lang = lang
+      u.rate = 1.05
+      u.pitch = 1.1
+      u.volume = 1
+      u.onstart = () => setSpeaking(true)
+      u.onend = () => { setSpeaking(false); onEnd?.() }
+      u.onerror = () => { setSpeaking(false); onEnd?.() }
+      window.speechSynthesis.speak(u)
+    },
+    [ttsSupported]
+  )
 
   const stopSpeaking = useCallback(() => {
-    window.speechSynthesis?.cancel()
+    if (ttsSupported) window.speechSynthesis?.cancel()
     setSpeaking(false)
-  }, [])
+  }, [ttsSupported])
 
-  const startListening = useCallback((onResult: (text: string) => void) => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SR) return false
-    try { recRef.current?.stop() } catch { /* ignore */ }
-    const rec = new SR()
-    rec.lang = 'hi-IN'
-    rec.interimResults = false
-    rec.maxAlternatives = 1
-    rec.continuous = false
-    rec.onstart = () => setListening(true)
-    rec.onend = () => setListening(false)
-    rec.onerror = () => setListening(false)
-    rec.onresult = (e: any) => {
-      const text = e.results[0][0].transcript
-      onResult(text)
-    }
-    recRef.current = rec
-    rec.start()
-    return true
-  }, [])
+  /**
+   * Start a push-to-talk listening session.
+   *   onResult(text) — fired once with the recognised transcript.
+   *   onError(msg)   — fired with an honest message on failure ('' = aborted,
+   *                    undefined = nothing to say). NOT called if unsupported.
+   * Returns false when speech recognition is unavailable (caller should offer typing).
+   */
+  const startListening = useCallback(
+    (onResult: (text: string) => void, onError?: (msg: string) => void) => {
+      const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      if (!SR) return false
+      try { recRef.current?.stop() } catch { /* ignore */ }
+      const rec = new SR()
+      rec.lang = 'hi-IN' // Hindi/Hinglish/English transcript (Chrome handles Hinglish well)
+      rec.interimResults = false
+      rec.maxAlternatives = 1
+      rec.continuous = false
+      rec.onstart = () => setListening(true)
+      rec.onend = () => setListening(false)
+      rec.onerror = (e: any) => {
+        setListening(false)
+        const msg = micErrorMessage(String(e?.error || ''))
+        if (msg) onError?.(msg)
+      }
+      rec.onresult = (e: any) => {
+        const text = e.results[0][0].transcript
+        onResult(text)
+      }
+      recRef.current = rec
+      try {
+        rec.start()
+      } catch {
+        onError?.('Could not start the microphone. Please try again.')
+        return false
+      }
+      return true
+    },
+    []
+  )
 
   const stopListening = useCallback(() => {
     try { recRef.current?.stop() } catch { /* ignore */ }
     setListening(false)
   }, [])
 
-  useEffect(() => () => { try { recRef.current?.stop() } catch { /* ignore */ }; window.speechSynthesis?.cancel() }, [])
+  useEffect(
+    () => () => {
+      try { recRef.current?.stop() } catch { /* ignore */ }
+      if (ttsSupported) window.speechSynthesis?.cancel()
+    },
+    [ttsSupported]
+  )
 
-  return { speak, stopSpeaking, speaking, startListening, stopListening, listening }
+  return {
+    speak,
+    stopSpeaking,
+    speaking,
+    startListening,
+    stopListening,
+    listening,
+    /** Feature availability — use to give honest "not supported" guidance. */
+    supported: { tts: ttsSupported, stt: sttSupported },
+  }
 }

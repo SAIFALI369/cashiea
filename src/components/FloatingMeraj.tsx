@@ -98,18 +98,29 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
 
   const startVoice = () => {
     setVoiceMode(true); setVoiceReply('')
-    const ok = startListening(async (text) => {
-      setLoading(true)
-      try {
-        const res = await askAssistant(text, false, undefined, 'ask', undefined, pageContext)
-        setVoiceReply(res.reply)
-        if (res.reply) speak(res.reply, () => setTimeout(() => { setVoiceMode(false); setVoiceReply('') }, 2000))
-        else setTimeout(() => setVoiceMode(false), 1500)
-      } catch (e) {
-        setVoiceReply('⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.'))
-        setTimeout(() => setVoiceMode(false), 3000)
-      } finally { setLoading(false) }
-    })
+    const ok = startListening(
+      async (text) => {
+        if (!navigator.onLine) {
+          const m = "No internet connection right now. I'll answer as soon as you're back online."
+          setVoiceReply(m); speak(m); return
+        }
+        setLoading(true)
+        try {
+          const res = await askAssistant(text, false, undefined, 'ask', undefined, pageContext)
+          setVoiceReply(res.reply)
+          if (res.reply) speak(res.reply, () => setTimeout(() => { setVoiceMode(false); setVoiceReply('') }, 2000))
+          else setTimeout(() => setVoiceMode(false), 1500)
+        } catch (e) {
+          const m = e instanceof Error ? e.message : 'Something went wrong.'
+          setVoiceReply('⚠️ ' + m); speak("Sorry, that didn't work. " + m)
+          setTimeout(() => setVoiceMode(false), 3500)
+        } finally { setLoading(false) }
+      },
+      (errMsg) => {
+        if (errMsg) { setVoiceReply(errMsg); speak(errMsg) }
+        setTimeout(() => setVoiceMode(false), 3500)
+      }
+    )
     if (!ok) { setVoiceMode(false); setOpen(true) }
   }
   const cancelVoice = () => { stopListening(); stopSpeaking(); setVoiceMode(false); setVoiceReply('') }
