@@ -34,17 +34,17 @@ export function MerajMark({ size = 24, className = '' }: { size?: number; classN
       <path d="M21 9.5 L24 8 L22.8 13.2 Z" fill="currentColor" fillOpacity={0.42} />
       {/* Muzzle hint */}
       <path d="M16 21.5 Q12.5 23 12.8 26 Q16 27.6 19.2 26 Q19.5 23 16 21.5 Z" fill="currentColor" fillOpacity={0.3} />
-      {/* Cyan chevron spark */}
+      {/* Warm bronze chevron spark (intelligence + momentum) */}
       <path
         d="M12.4 17.4 L16 13 L19.6 17.4"
-        stroke="#2FD6FF"
+        stroke="#D9A441"
         strokeWidth="1.9"
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       {/* spark dot */}
-      <circle cx="16" cy="13" r="1.25" fill="#2FD6FF" />
+      <circle cx="16" cy="13" r="1.25" fill="#D9A441" />
     </svg>
   )
 }

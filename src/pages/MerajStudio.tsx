@@ -59,10 +59,15 @@ export default function MerajStudio() {
         <p className="text-[11px] font-bold tracking-[0.14em] uppercase text-accent mb-1">Character Studio</p>
         <h1 className="text-2xl sm:text-3xl font-bold text-fg tracking-tight">Meraj Mascot</h1>
         <p className="text-sm text-fg-subtle mt-1.5 max-w-xl">
-          The full-body chibi fox. Rust-orange fur, ice-blue eyes, tech goggles, glowing-cyan hoodie.
+          The full-body chibi fox. Rust-orange fur, ice-blue eyes, tech goggles, glowing bronze hoodie.
           Pick a state, expression, pose or motion — Meraj reacts in real time.
         </p>
       </header>
+
+      {/* Cinematic reference render */}
+      <div className="card rounded-card overflow-hidden mb-6 p-0">
+        <img src="/meraj-hero.png" alt="Meraj cinematic render" className="w-full object-cover" style={{ maxHeight: 460 }} />
+      </div>
 
       {/* LIVE STAGE */}
       <div className="card rounded-card p-5 mb-6 overflow-hidden relative">
