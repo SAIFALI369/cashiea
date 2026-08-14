@@ -1,5 +1,5 @@
 import { MerajStateIcon } from './MerajStateIcon'
-import { MerajCharacter, type MerajCharState } from './MerajCharacter'
+import { MerajCharacter, type MerajCharState, type MerajPose } from './MerajCharacter'
 
 /**
  * <MerajAvatar /> — the SINGLE entry point for the Meraj mascot anywhere in
@@ -7,30 +7,25 @@ import { MerajCharacter, type MerajCharState } from './MerajCharacter'
  * pieces) directly — they all go through this.
  *
  * Props
- *   state    'idle' | 'listening' | 'thinking' | 'speaking'  (bind to live app behaviour)
- *   size     'sm' | 'md' | 'lg'
+ *   state    'idle' | 'listening' | 'thinking' | 'speaking'
+ *   size     'xs' | 'sm' | 'md' | 'lg'
  *   context  'icon' | 'floating' | 'panel'
  *            · icon     → circular avatar badge (headers, buttons, message rows)
- *            · floating → the persistent floating-assistant button (compact, glow rings)
- *            · panel    → the full character (chat header / voice overlay / hero units)
+ *            · floating → the persistent floating-assistant button (compact)
+ *            · panel    → the full character (voice companion / chat header / hero)
+ *   pose     optional gesture for the panel context (e.g. 'wave' to greet)
  *
- * Bound to real app state via deriveAvatarState():
- *   listening → mic active · loading → AI request in flight (thinking) ·
- *   speaking  → TTS playing · otherwise idle.
- *
- * icon/floating/panel are driven by the SVG mascot, so the state is ALWAYS
- * pixel-consistent, correctly labelled and animated (the right face for
- * "listening" every time) and crisp at any size.
+ * State is bound to real app behaviour via deriveAvatarState().
  */
 
 export type MerajAvatarState = 'idle' | 'listening' | 'thinking' | 'speaking'
-export type MerajAvatarSize = 'sm' | 'md' | 'lg'
+export type MerajAvatarSize = 'xs' | 'sm' | 'md' | 'lg'
 export type MerajAvatarContext = 'icon' | 'floating' | 'panel'
 
 const SIZE_PX: Record<MerajAvatarContext, Record<MerajAvatarSize, number>> = {
-  icon: { sm: 26, md: 38, lg: 52 },
-  floating: { sm: 40, md: 52, lg: 64 },
-  panel: { sm: 84, md: 116, lg: 156 },
+  icon: { xs: 22, sm: 26, md: 38, lg: 52 },
+  floating: { xs: 30, sm: 40, md: 52, lg: 64 },
+  panel: { xs: 60, sm: 84, md: 116, lg: 156 },
 }
 
 const STATE_TO_CHAR: Record<MerajAvatarState, MerajCharState> = {
@@ -52,18 +47,19 @@ export interface MerajAvatarProps {
   state?: MerajAvatarState
   size?: MerajAvatarSize
   context?: MerajAvatarContext
+  pose?: MerajPose
   className?: string
 }
 
-export function MerajAvatar({ state = 'idle', size = 'md', context = 'icon', className }: MerajAvatarProps) {
+export function MerajAvatar({ state = 'idle', size = 'md', context = 'icon', pose, className }: MerajAvatarProps) {
   const px = SIZE_PX[context][size]
 
   if (context === 'panel') {
-    return <MerajCharacter state={STATE_TO_CHAR[state]} width={px} className={className} />
+    return <MerajCharacter state={STATE_TO_CHAR[state]} pose={pose} width={px} className={className} />
   }
 
   // icon | floating — circular state badge; compact when small or floating
-  const compact = context === 'floating' || size === 'sm'
+  const compact = context === 'floating' || size === 'xs' || size === 'sm'
   return <MerajStateIcon state={state} size={px} compact={compact} className={className} />
 }
 

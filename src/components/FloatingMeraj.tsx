@@ -130,9 +130,7 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
       {/* Voice-first launcher (desktop). Tap → listen → think → speak. */}
       {voiceMode ? (
         <div className="fixed z-40 bottom-6 right-6 hidden lg:flex flex-col items-center gap-2">
-          <div className="relative flex items-center justify-center w-24 h-24 rounded-full bg-surface border border-accent/30 shadow-float">
-            <MerajAvatar state={avatarState} size="md" context="panel" />
-          </div>
+          <MerajAvatar state={avatarState} size="sm" context="panel" />
           {voiceStatus && <p className="text-[11px] font-medium text-fg-muted">{voiceStatus}</p>}
           {voiceReply && (
             <div className="card p-3 max-w-xs text-sm max-h-32 overflow-y-auto scroll-area prose-content" dangerouslySetInnerHTML={{ __html: voiceReply.replace(/[*#`]/g, '') }} />

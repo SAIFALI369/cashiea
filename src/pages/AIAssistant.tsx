@@ -165,10 +165,14 @@ export default function AIAssistant() {
           {convos.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />}
         </button>
         <div className="flex-1 flex items-center justify-center gap-2">
-          <MerajAvatar state={avatarState} size="sm" context="panel" />
+          <MerajAvatar state={avatarState} pose={userTyping ? 'wave' : undefined} size="xs" context="panel" />
           <div className="text-left leading-tight">
             <p className="font-semibold text-fg text-sm">Meraj</p>
-            {scopeLabel ? <p className="text-[10px] text-accent">Focused · {scopeLabel}</p> : <p className="text-[10px] text-fg-subtle">Your shop assistant</p>}
+            {userTyping
+              ? <p className="text-[10px] text-accent">👋 Hello! I'm here…</p>
+              : scopeLabel
+                ? <p className="text-[10px] text-accent">Focused · {scopeLabel}</p>
+                : <p className="text-[10px] text-fg-subtle">Your shop assistant</p>}
           </div>
         </div>
         <Link to="/app" className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2"><ArrowLeft className="w-5 h-5" strokeWidth={1.75} /></Link>

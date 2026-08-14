@@ -89,46 +89,27 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
   return (
     <>
       {/* Voice overlay — covers the lower screen when active */}
+      {/* Voice COMPANION — small & non-blocking. The whole app stays usable
+          while Meraj listens / thinks / speaks down in the corner. */}
       {voiceActive && (
-        <div className="lg:hidden fixed inset-0 z-50 flex flex-col items-center justify-end pb-4" style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)' }} onClick={(e) => { if (e.target === e.currentTarget) cancelVoice() }}>
-          <div className="w-full max-w-md mx-auto px-4 flex flex-col items-center gap-3 pb-4">
-            {/* Character */}
-            <div className="relative flex items-center justify-center w-28 h-28 rounded-full bg-surface border-2 border-accent/30 shadow-float">
-              <MerajAvatar state={avatarState} size="md" context="panel" />
+        <div className="lg:hidden fixed z-40 right-3 flex flex-col items-end gap-2" style={{ bottom: 'calc(env(safe-area-inset-bottom) + 88px)' }}>
+          {voiceReply && (
+            <div className="card p-3 max-w-[230px] max-h-44 overflow-y-auto scroll-area prose-content text-sm shadow-float">
+              <div dangerouslySetInnerHTML={{ __html: voiceReply.replace(/[*#`]/g, '') }} />
             </div>
-            {/* Status */}
-            <p className="text-sm font-semibold text-white">{statusText || (voiceReply ? 'Done' : '')}</p>
-            {/* Reply text */}
-            {voiceReply && (
-              <div className="card p-3.5 w-full max-h-40 overflow-y-auto scroll-area">
-                <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: voiceReply.replace(/[*#`]/g, '') }} />
-              </div>
+          )}
+          <div className="flex items-center gap-2">
+            {statusText && (
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-accent bg-surface/95 border border-line px-2.5 py-1 rounded-full shadow-float">
+                {voiceLoading && <Loader2 className="w-3 h-3 animate-spin" />}{statusText}
+              </span>
             )}
-            {/* Loading spinner */}
-            {voiceLoading && <Loader2 className="w-5 h-5 text-accent animate-spin" />}
-            {/* Controls */}
-            <div className="flex items-center gap-4">
-              {listening && (
-                <button onClick={cancelVoice} className="flex flex-col items-center gap-1">
-                  <span className="w-12 h-12 rounded-full bg-negative text-white flex items-center justify-center active:scale-95 transition-transform"><X className="w-5 h-5" /></span>
-                  <span className="text-[10px] font-medium text-white/70">Cancel</span>
-                </button>
-              )}
-              {!listening && !speaking && !voiceLoading && voiceReply && (
-                <button onClick={startVoice} className="flex flex-col items-center gap-1">
-                  <span className="w-12 h-12 rounded-full bg-accent-strong text-accent-fg flex items-center justify-center active:scale-95 transition-transform">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
-                  </span>
-                  <span className="text-[10px] font-medium text-white/70">Ask again</span>
-                </button>
-              )}
-              {!listening && !voiceLoading && !speaking && (
-                <button onClick={cancelVoice} className="flex flex-col items-center gap-1">
-                  <span className="w-10 h-10 rounded-full bg-white/20 text-white flex items-center justify-center active:scale-95 transition-transform"><X className="w-4 h-4" /></span>
-                  <span className="text-[10px] font-medium text-white/70">Close</span>
-                </button>
-              )}
-            </div>
+            <button onClick={cancelVoice} aria-label="Close Meraj" className="w-8 h-8 rounded-full bg-surface border border-line text-fg-muted hover:text-negative flex items-center justify-center active:scale-95 transition-transform shadow-float">
+              <X className="w-4 h-4" />
+            </button>
+            <button onClick={startVoice} aria-label="Tap to talk to Meraj" className="active:scale-95 transition-transform">
+              <MerajAvatar state={avatarState} size="xs" context="panel" />
+            </button>
           </div>
         </div>
       )}

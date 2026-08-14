@@ -223,13 +223,13 @@ function Face({ id, expression, mode, mouthFrame }: { id: string; expression: Me
   } else if (expression === 'thinking') {
     Mouth = <path d="M113 137 L127 134" stroke={C.brown} strokeWidth="2.6" strokeLinecap="round" fill="none" />
   } else {
-    Mouth = <path d="M110 135 Q120 142 130 135" stroke={C.brown} strokeWidth="2.6" strokeLinecap="round" fill="none" />
+    Mouth = <path d="M108 134 Q120 146 132 134" stroke={C.brown} strokeWidth="2.6" strokeLinecap="round" fill="none" />
   }
 
   return (
     <g>
-      <circle cx={82} cy={125} r={6} fill={C.fur} opacity={0.22} />
-      <circle cx={158} cy={125} r={6} fill={C.fur} opacity={0.22} />
+      <circle cx={80} cy={126} r={7.5} fill={C.fur} opacity={0.3} />
+      <circle cx={160} cy={126} r={7.5} fill={C.fur} opacity={0.3} />
       {Eyes}
       {browL}{browR}
       <path d="M112 116 L128 116 L120 125 Z" fill={C.ink} />
@@ -329,7 +329,7 @@ function Arms({ id, pose, walking }: { id: string; pose: MerajPose; walking: boo
 // ── HEAD ─────────────────────────────────────────────────────────────
 function Ears({ id, alert }: { id: string; alert: boolean }) {
   return (
-    <motion.g animate={alert ? { scale: [1, 1.13, 1] } : { scale: 1 }} transition={alert ? { duration: 0.85, repeat: Infinity, ease: 'easeInOut' } : { duration: 0 }} style={{ transformOrigin: '120px 52px' }}>
+    <motion.g animate={alert ? { scale: [1, 1.13, 1] } : { scale: [1, 1.06, 1] }} transition={alert ? { duration: 0.85, repeat: Infinity, ease: 'easeInOut' } : { duration: 4, repeat: Infinity, ease: 'easeInOut' }} style={{ transformOrigin: '120px 52px' }}>
       <path d="M70 62 L50 4 L90 50 Z" fill={`url(#${id}-fur)`} stroke={C.furLo} strokeWidth={0.7} />
       <path d="M70 62 L54 16 L86 48 Z" fill={`url(#${id}-furrim)`} opacity={0.5} />
       <path d="M74 58 L62 18 L84 49 Z" fill={C.cream} opacity={0.92} />
@@ -509,7 +509,7 @@ export function MerajCharacter({
           <Arms id={uid} pose={poseF} walking={walking} />
           <motion.g animate={{ opacity: staticBack ? 0 : (turning ? [1, 0, 0, 0, 1] : 1) }} transition={turning ? { ...T_TURN, times: [0, 0.32, 0.5, 0.68, 1] } : { duration: 0 }}>
             <FrontTorsoFx id={uid} />
-            <motion.g animate={{ rotate: alert ? [0, 5, 0] : mode === 'speaking' ? [0, -3, 0, 2, 0] : 0 }} transition={alert ? { duration: 1.1, repeat: Infinity, ease: 'easeInOut' } : mode === 'speaking' ? { duration: 0.8, repeat: Infinity, ease: 'easeInOut' } : { duration: 0 }} style={{ transformOrigin: '120px 96px' }}>
+            <motion.g animate={{ rotate: alert ? [0, 5, 0] : mode === 'speaking' ? [0, -3, 0, 2, 0] : [0, 2.5, 0, -2.5, 0] }} transition={alert ? { duration: 1.1, repeat: Infinity, ease: 'easeInOut' } : mode === 'speaking' ? { duration: 0.8, repeat: Infinity, ease: 'easeInOut' } : { duration: 5, repeat: Infinity, ease: 'easeInOut' }} style={{ transformOrigin: '120px 96px' }}>
               <FrontHead id={uid} expression={expressionF} mode={mode} mouthFrame={mouthFrame} />
             </motion.g>
           </motion.g>
