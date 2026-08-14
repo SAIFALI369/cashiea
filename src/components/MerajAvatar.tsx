@@ -14,6 +14,7 @@ import { MerajCharacter, type MerajCharState, type MerajPose } from './MerajChar
  *            · floating → the persistent floating-assistant button (compact)
  *            · panel    → the full character (voice companion / chat header / hero)
  *   pose     optional gesture for the panel context (e.g. 'wave' to greet)
+ *   bust     panel only — crop to head + chest (compact, professional header)
  *
  * State is bound to real app behaviour via deriveAvatarState().
  */
@@ -25,7 +26,7 @@ export type MerajAvatarContext = 'icon' | 'floating' | 'panel'
 const SIZE_PX: Record<MerajAvatarContext, Record<MerajAvatarSize, number>> = {
   icon: { xs: 22, sm: 26, md: 38, lg: 52 },
   floating: { xs: 30, sm: 40, md: 52, lg: 64 },
-  panel: { xs: 60, sm: 84, md: 116, lg: 156 },
+  panel: { xs: 44, sm: 72, md: 108, lg: 148 },
 }
 
 const STATE_TO_CHAR: Record<MerajAvatarState, MerajCharState> = {
@@ -48,14 +49,15 @@ export interface MerajAvatarProps {
   size?: MerajAvatarSize
   context?: MerajAvatarContext
   pose?: MerajPose
+  bust?: boolean
   className?: string
 }
 
-export function MerajAvatar({ state = 'idle', size = 'md', context = 'icon', pose, className }: MerajAvatarProps) {
+export function MerajAvatar({ state = 'idle', size = 'md', context = 'icon', pose, bust, className }: MerajAvatarProps) {
   const px = SIZE_PX[context][size]
 
   if (context === 'panel') {
-    return <MerajCharacter state={STATE_TO_CHAR[state]} pose={pose} width={px} className={className} />
+    return <MerajCharacter state={STATE_TO_CHAR[state]} pose={pose} bust={bust} width={px} className={className} />
   }
 
   // icon | floating — circular state badge; compact when small or floating

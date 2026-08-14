@@ -108,7 +108,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
               <X className="w-4 h-4" />
             </button>
             <button onClick={startVoice} aria-label="Tap to talk to Meraj" className="active:scale-95 transition-transform">
-              <MerajAvatar state={avatarState} size="xs" context="panel" />
+              <MerajAvatar state={avatarState} size="sm" context="panel" />
             </button>
           </div>
         </div>

@@ -9,7 +9,7 @@ import { MerajAvatar, deriveAvatarState } from '../components/MerajAvatar'
 import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft, Plus, MessageCircle, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-interface Msg { role: 'user' | 'meraj'; text: string; pending?: { type: string; input: any; preview: any } }
+interface Msg { role: 'user' | 'meraj'; text: string; pending?: { type: string; input: any; preview: any }; media?: { type: string; thumb: string; url: string; alt: string; link?: string }[] }
 interface Convo { id: string; title: string; msgs: Msg[]; ts: number; scope?: string }
 
 const STORE = 'cashiea_meraj_convos'
@@ -91,7 +91,7 @@ export default function AIAssistant() {
     try {
       const res = await askAssistant(q || '(shared an image)', false, scope, mode, undefined, undefined, history, pendingImage || undefined)
       setPendingImage(null)
-      const done = [...next, { role: 'meraj' as const, text: res.reply, pending: res.pending }]
+        const done = [...next, { role: 'meraj' as const, text: res.reply, pending: res.pending, media: res.media }]
       setMessages(done)
       if (res.reply) setTyping(true)
       const convo: Convo = { id: crypto.randomUUID(), title: q.slice(0, 48), msgs: done, ts: Date.now(), scope }
@@ -164,15 +164,18 @@ export default function AIAssistant() {
           <History className="w-5 h-5" strokeWidth={1.75} />
           {convos.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />}
         </button>
-        <div className="flex-1 flex items-center justify-center gap-2">
-          <MerajAvatar state={avatarState} pose={userTyping ? 'wave' : undefined} size="xs" context="panel" />
+        <div className="flex-1 flex items-center justify-center gap-2.5">
+          <div className="flex flex-col items-center">
+            <MerajAvatar state={avatarState} pose={userTyping ? 'wave' : undefined} bust size="xs" context="panel" />
+            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#F4DDA8', background: 'linear-gradient(180deg,#1c2333,#10131d)', padding: '2px 8px', borderRadius: 5, marginTop: -2, border: '1px solid rgba(217,164,65,0.35)', boxShadow: 'inset 0 1px 0 rgba(244,221,168,0.2)' }}>Meraj Desk</span>
+          </div>
           <div className="text-left leading-tight">
             <p className="font-semibold text-fg text-sm">Meraj</p>
             {userTyping
               ? <p className="text-[10px] text-accent">👋 Hello! I'm here…</p>
               : scopeLabel
                 ? <p className="text-[10px] text-accent">Focused · {scopeLabel}</p>
-                : <p className="text-[10px] text-fg-subtle">Your shop assistant</p>}
+                : <p className="text-[10px] text-fg-subtle">At your desk</p>}
           </div>
         </div>
         <Link to="/app" className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2"><ArrowLeft className="w-5 h-5" strokeWidth={1.75} /></Link>
@@ -200,6 +203,15 @@ export default function AIAssistant() {
                   <div className="prose-content text-sm">
                     {typing && i === lastIdx ? <TypewriterMessage text={m.text} onDone={() => setTyping(false)} /> : <span dangerouslySetInnerHTML={{ __html: render(m.text) }} />}
                   </div>
+                  {m.media && m.media.length > 0 && (
+                    <div className="mt-2 grid grid-cols-3 gap-1.5">
+                      {m.media.map((mi, j) => (
+                        <a key={j} href={mi.link} target="_blank" rel="noreferrer" className="block rounded-lg overflow-hidden border border-line bg-surface-2">
+                          <img src={mi.thumb} alt={mi.alt} className="w-full h-16 object-cover" loading="lazy" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
                   {m.pending && (
                     <div className="mt-3 flex gap-2">
                       <button onClick={() => confirmAction(m.pending)} disabled={loading} className="btn-primary text-sm flex-1 h-9"><Sparkles className="w-4 h-4" /> {m.pending?.type === "create_invoice" ? "Create it" : m.pending?.type === "send_whatsapp" ? "Send it" : "Add it"}</button>

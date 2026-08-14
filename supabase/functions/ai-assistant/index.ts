@@ -14,6 +14,7 @@ import { callGateway } from "../_shared/ai-gateway.ts";
 import { refreshGoogleToken } from "../_shared/google.ts";
 import { getDriveToken, readDriveFile } from "../_shared/connectors/google-drive.ts";
 import { sendWhatsAppText } from "../_shared/whatsapp.ts";
+import { fetchNews, fetchMedia, wantsNews, wantsMedia, extractNewsTopic, extractMediaSubject } from "../_shared/web.ts";
 
 async function callAI(provider: string, systemPrompt: string, prompt: string): Promise<string> {
   // OpenRouter — auto-fallback chain: Gemini -> Kimi K3 -> Llama -> any free model
@@ -189,10 +190,12 @@ async function buildContext(supabase: any, userId: string, message = "", briefin
   const wantEmails = briefing || /\b(mail|email|gmail|inbox|reply|sent (me|to))\b/i.test(message);
   const wantDrive = briefing || /\b(drive|file|document|sheet|doc\b|pdf|spreadsheet|folder)\b/i.test(message);
   const wantWa = briefing || /\b(whatsapp|message|customer (wrote|sent|asked))\b/i.test(message);
-  const [recentEmails, driveFiles, recentWhatsApp] = await Promise.all([
+  const wantNews = wantsNews(message);
+  const [recentEmails, driveFiles, recentWhatsApp, currentNews] = await Promise.all([
     wantEmails ? getRecentEmails(supabase, userId) : Promise.resolve([]),
     wantDrive ? getDriveContext(supabase, userId) : Promise.resolve([]),
     wantWa ? getRecentWhatsApp(supabase, userId) : Promise.resolve([]),
+    wantNews ? fetchNews(extractNewsTopic(message), Deno.env.get("GNEWS_API_KEY") || "") : Promise.resolve([]),
   ]);
 
   return JSON.stringify({
@@ -209,6 +212,7 @@ async function buildContext(supabase: any, userId: string, message = "", briefin
     recentEmails,
     driveFiles,
     recentWhatsApp,
+    currentNews,
   }, null, 1);
 }
 
@@ -225,6 +229,7 @@ You handle everything about running the shop: sales and revenue, profit and marg
 - If a specific record is not in the snapshot, say so plainly rather than guessing.
 - If the snapshot includes a "recentEmails" array, the owner has connected Gmail. Use it ONLY when they ask about emails, replies, or customer/supplier messages — and never invent email content that isn't listed.
 - If the snapshot includes a "recentWhatsApp" array, those are inbound WhatsApp messages the owner received. Use them only when relevant. To SEND a WhatsApp, use the send_whatsapp tool (the owner confirms before sending). Free-text business replies only work within 24h of the customer's last message; outside that window Meta requires an approved template.
+- If the snapshot includes a "currentNews" array, those are REAL current news headlines fetched live from the web. Use them ONLY when the owner asks about news or current events, and mention the source for each. Never invent news.
 - You remember what the owner has told you before (see the memory section). Use those details naturally.
 
 SCOPE — you are this shop's business assistant, NOT a general chatbot:
@@ -384,6 +389,14 @@ Deno.serve(async (req) => {
     const pageFocus = pageContext && pageContext.name
       ? "\n\nPAGE CONTEXT: The owner currently has the \"" + pageContext.name + "\" page open on their screen \u2014 it shows " + pageContext.description + ". When they say \"this\", \"here\", \"this page\", or point at something visible, they mean the " + pageContext.name + " page. Tailor your answer to what they're looking at and pull the matching data from the snapshot (e.g. stock for the Products page, customers for the Customers page, expenses for the Accounts page, invoices for the Invoices page). Do not describe the page layout unless explicitly asked.\n"
       : "";
+
+    // WEB MEDIA (Pexels) — read-only, instant, no AI round-trip. Falls through
+    // to the normal answer if nothing is found.
+    if (wantsMedia(String(message || ""))) {
+      const subject = extractMediaSubject(String(message || ""));
+      const media = await fetchMedia(subject, Deno.env.get("PEXELS_API_KEY") || "");
+      if (media.length) return json({ reply: `Here's what I found for "${subject}" 👇`, media });
+    }
 
     // ── TASK MODE: function-calling + confirm/execute ──
     if (mode === "task") {

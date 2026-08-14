@@ -4,7 +4,7 @@ import Sidebar from './Sidebar'
 import FloatingMeraj from './FloatingMeraj'
 import BottomNav from './BottomNav'
 import TouchRipple from './TouchRipple'
-import { SyncIndicator } from './SyncIndicator'
+import { LiveClock } from './LiveClock'
 import { motion } from './motion'
 import Skeleton from './ui/Skeleton'
 import { Avatar } from './Avatar'
@@ -47,7 +47,7 @@ export default function AppLayout() {
           <div style={{ opacity: hdrOpacity, transition: 'opacity 0.4s ease' }} className="flex-1 min-w-0">
             <span className="font-bold text-white">Cashiea</span>
           </div>
-          <SyncIndicator />
+          <LiveClock />
           <Link to="/app/account" aria-label="Open account" className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full">
             <Avatar url={profile?.avatar_url} name={profile?.full_name} size={34} />
           </Link>

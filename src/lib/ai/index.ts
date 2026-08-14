@@ -103,7 +103,7 @@ export async function askAssistant(
   /** Recent turns from the CURRENT chat, so Meraj remembers the ongoing conversation. */
   history?: { role: 'user' | 'meraj'; text: string }[],
   image?: { data: string; mimeType: string }
-): Promise<{ reply: string; pending?: any; executed?: any }> {
+): Promise<{ reply: string; pending?: any; executed?: any; media?: { type: string; thumb: string; url: string; alt: string; link?: string }[] }> {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('You must be logged in.')
 
