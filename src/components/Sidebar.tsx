@@ -11,7 +11,7 @@ import {
   Sparkles, ListChecks, FileBarChart, MessageCircle, Mail, ScrollText, Database,
   Package, Wallet, History, AlertOctagon, UsersRound,
   Settings as SettingsIcon, Plug, Key, CreditCard, Network, Shield, LifeBuoy,
-  UserCircle, Bell, ShieldCheck, Lightbulb, X, LogOut, PawPrint,
+  UserCircle, Bell, ShieldCheck, Lightbulb, X, LogOut,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -32,7 +32,6 @@ const SECTIONS: Section[] = [
   ]},
   { label: 'AI Tools', items: [
     { to: '/app/assistant', label: 'Meraj', icon: Sparkles, ai: true },
-    { to: '/app/mascot', label: 'Mascot Studio', icon: PawPrint },
     { to: '/app/brain', label: 'Tasks', icon: ListChecks },
     { to: '/app/reports', label: 'Reports', icon: FileBarChart },
     { to: '/app/campaigns', label: 'Campaigns', icon: MessageCircle },

@@ -5,7 +5,7 @@ import { marked } from 'marked'
 import { motion, AnimatePresence } from 'framer-motion'
 import { askAssistant } from '../lib/ai'
 import { MerajMark } from '../components/MerajMark'
-import { MerajCharacter, type MerajCharState } from '../components/MerajCharacter'
+import { MerajAvatar, deriveAvatarState } from '../components/MerajAvatar'
 import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft, Plus, MessageCircle, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -77,7 +77,7 @@ export default function AIAssistant() {
 
   const replying = loading || typing
   const userTyping = !replying && (focused || input.trim().length > 0)
-  const charState: MerajCharState = replying ? 'replying' : userTyping ? 'userTyping' : 'idle'
+  const avatarState = deriveAvatarState({ listening, loading: replying || userTyping })
 
   const send = async () => {
     const q = input.trim()
@@ -164,7 +164,7 @@ export default function AIAssistant() {
           {convos.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />}
         </button>
         <div className="flex-1 flex items-center justify-center gap-2">
-          <MerajCharacter state={charState} width={68} />
+          <MerajAvatar state={avatarState} size="sm" context="panel" />
           <div className="text-left leading-tight">
             <p className="font-semibold text-fg text-sm">Meraj</p>
             {scopeLabel ? <p className="text-[10px] text-accent">Focused · {scopeLabel}</p> : <p className="text-[10px] text-fg-subtle">Your shop assistant</p>}
@@ -259,7 +259,7 @@ export default function AIAssistant() {
               {showCam && (
                 <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} className="absolute bottom-12 left-0 card p-1.5 w-40 shadow-float z-10">
                   <button onClick={() => galleryRef.current?.click()} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-fg hover:bg-surface-2"><ImageIcon className="w-4 h-4" /> Gallery</button>
-                  <button onClick={() => cameraRef.current?.click()} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-fg hover:bg-surface-2"><Camera className="w-4 h-4" /> Camera</button>
+                  <button onClick={() => cameraRef.current?.click()} className="w-full flex items-center gap-2 ppx-3 py-2 rounded-xl text-sm text-fg hover:bg-surface-2"><Camera className="w-4 h-4" /> Camera</button>
                 </motion.div>
               )}
             </AnimatePresence>

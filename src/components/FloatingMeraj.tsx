@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { askAssistant } from '../lib/ai'
 import { getPageContext } from '../lib/pageContext'
 import { MerajMark } from './MerajMark'
-import { MerajCharacter, type MerajCharState } from './MerajCharacter'
+import { MerajAvatar, deriveAvatarState } from './MerajAvatar'
 import { useSpeech } from '../lib/useSpeech'
 import {
   X, Send, Loader2, Sparkles, ArrowUpRight, Plus, Zap, MessageCircle,
@@ -93,7 +93,7 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
     setMessages((m) => [...m, { role: 'meraj' as const, text: 'No problem — cancelled.' }])
   }
 
-  const voiceCharState: MerajCharState = listening ? 'listening' : loading ? 'replying' : speaking ? 'speaking' : 'idle'
+  const avatarState = deriveAvatarState({ listening, loading, speaking })
   const voiceStatus = listening ? 'Listening…' : loading ? 'Thinking…' : speaking ? 'Speaking…' : ''
 
   const startVoice = () => {
@@ -120,7 +120,7 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
       {voiceMode ? (
         <div className="fixed z-40 bottom-6 right-6 hidden lg:flex flex-col items-center gap-2">
           <div className="relative flex items-center justify-center w-24 h-24 rounded-full bg-surface border border-accent/30 shadow-float">
-            <MerajCharacter state={voiceCharState} width={96} />
+            <MerajAvatar state={avatarState} size="md" context="panel" />
           </div>
           {voiceStatus && <p className="text-[11px] font-medium text-fg-muted">{voiceStatus}</p>}
           {voiceReply && (
@@ -132,10 +132,12 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
         <button
           onClick={startVoice}
           aria-label="Tap to talk to Meraj"
-          className="fixed z-40 bottom-6 right-6 w-12 h-12 rounded-full bg-accent-strong text-accent-fg shadow-float ring-1 ring-accent/30 hover:bg-accent hover:shadow-lift active:scale-95 transition-all hidden lg:flex items-center justify-center"
+          className="fixed z-40 bottom-6 right-6 hidden lg:block active:scale-95 transition-transform"
         >
-          <MerajMark size={22} className="pointer-events-none" />
-          <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-positive rounded-full border-2 border-paper animate-pulse" />
+          <span className="relative block">
+            <MerajAvatar state={avatarState} size="md" context="floating" />
+            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-positive rounded-full border-2 border-paper animate-pulse" />
+          </span>
         </button>
       )}
 

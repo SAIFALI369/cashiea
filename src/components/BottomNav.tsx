@@ -3,7 +3,7 @@ import { useState } from 'react'
 import clsx from 'clsx'
 import { LayoutDashboard, ShoppingCart, Users, LayoutGrid, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { MerajCharacter, type MerajCharState } from './MerajCharacter'
+import { MerajAvatar, deriveAvatarState } from './MerajAvatar'
 import { useSpeech } from '../lib/useSpeech'
 import { askAssistant } from '../lib/ai'
 import { getPageContext } from '../lib/pageContext'
@@ -50,7 +50,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
   const [voiceLoading, setVoiceLoading] = useState(false)
   const [voiceReply, setVoiceReply] = useState('')
 
-  const charState: MerajCharState = listening ? 'listening' : voiceLoading ? 'replying' : speaking ? 'speaking' : 'idle'
+  const avatarState = deriveAvatarState({ listening, loading: voiceLoading, speaking })
   const statusText = listening ? 'Listening…' : voiceLoading ? 'Thinking…' : speaking ? 'Speaking…' : ''
 
   const startVoice = () => {
@@ -80,7 +80,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
           <div className="w-full max-w-md mx-auto px-4 flex flex-col items-center gap-3 pb-4">
             {/* Character */}
             <div className="relative flex items-center justify-center w-28 h-28 rounded-full bg-surface border-2 border-accent/30 shadow-float">
-              <MerajCharacter state={charState} width={112} />
+              <MerajAvatar state={avatarState} size="md" context="panel" />
             </div>
             {/* Status */}
             <p className="text-sm font-semibold text-white">{statusText || (voiceReply ? 'Done' : '')}</p>
@@ -136,7 +136,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
               aria-label="Talk to Meraj"
             >
               <span className={`w-12 h-12 -mt-6 rounded-full shadow-float ring-4 ring-surface flex items-center justify-center active:scale-95 transition-all ${listening || speaking ? 'bg-accent text-accent-fgl border-2 border-accent' : 'bg-accent-strong text-accent-fg'}`}>
-                <MerajCharacter state={voiceActive ? charState : 'idle'} width={voiceActive ? 44 : 36} />
+                <MerajAvatar state={voiceActive ? avatarState : 'idle'} size="sm" context="floating" />
               </span>
               <span className="text-[10px] font-bold text-accent -mt-0.5">Talk</span>
             </button>

@@ -46,7 +46,6 @@ const AboutPage = lazy(() => import('./pages/About'))
 const SuggestionsPage = lazy(() => import('./pages/Suggestions'))
 const NotificationsPage = lazy(() => import('./pages/Notifications'))
 const PermissionsPage = lazy(() => import('./pages/Permissions'))
-const MerajStudio = lazy(() => import('./pages/MerajStudio'))
 
 /** Full-page fallback for the initial/public route load. */
 function FullPageFallback() {
@@ -129,7 +128,6 @@ function App() {
           <Route path="suggestions" element={<SuggestionsPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="permissions" element={<PermissionsPage />} />
-          <Route path="mascot" element={<MerajStudio />} />
         </Route>
 
         {/* Fallback */}

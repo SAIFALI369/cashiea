@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MerajCharacter } from '../components/MerajCharacter'
+import { MerajAvatar } from '../components/MerajAvatar'
 import { MerajMark } from '../components/MerajMark'
 import { ArrowRight, ArrowDown, ChevronDown, Check, Menu, X, Sparkles, Receipt, Package, Users, Wallet, MessageCircle, FileBarChart } from 'lucide-react'
 
@@ -170,7 +170,7 @@ export default function Landing() {
               <div className="absolute inset-4 rounded-full border border-line/40" />
               <div className="absolute inset-12 rounded-full border border-line/30" />
               <motion.div animate={{ y: [0, -6, 0] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }} className="absolute inset-0 flex items-center justify-center">
-                <MerajCharacter state="idle" width={100} />
+                <MerajAvatar state="idle" size="md" context="panel" />
               </motion.div>
               {/* Tooltip */}
               <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-fg text-paper text-[10px] font-mono whitespace-nowrap z-10">
@@ -325,7 +325,7 @@ export default function Landing() {
       <section className="px-4 py-24 relative overflow-hidden">
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, rgb(var(--accent) / 0.08), transparent 60%)' }} />
         <Reveal className="relative max-w-xl mx-auto text-center">
-          <div className="flex justify-center mb-5"><motion.div animate={{ y: [0, -5, 0] }} transition={{ duration: 3, repeat: Infinity }}><MerajCharacter state="idle" width={72} /></motion.div></div>
+          <div className="flex justify-center mb-5"><motion.div animate={{ y: [0, -5, 0] }} transition={{ duration: 3, repeat: Infinity }}><MerajAvatar state="idle" size="sm" context="panel" /></motion.div></div>
           <h2 className="text-2xl sm:text-3xl font-bold text-fg leading-tight">You know your shop.<br /><span className="text-accent">Meraj makes sure nothing slips through.</span></h2>
           <p className="text-sm text-fg-muted mt-3">14-day free trial. No card required.</p>
           <Link to="/signup" className="inline-flex items-center gap-2 mt-6 px-7 py-3.5 rounded-full bg-accent-strong text-accent-fg text-sm font-bold hover:bg-accent transition-colors">Start free trial <ArrowRight className="w-4 h-4" /></Link>
