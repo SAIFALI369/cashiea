@@ -84,7 +84,7 @@ export default function Customers() {
 
   const segments = [
     { value: 'all', label: 'All', count: customers.length },
-    { value: 'vip', label: '⭐ VIP ($500+)', count: customers.filter(isVip).length },
+    { value: 'vip', label: '⭐ VIP (₹500+)', count: customers.filter(isVip).length },
     { value: 'dormant', label: '💤 Dormant (60d+)', count: customers.filter(isDormant).length },
     { value: 'new', label: '🆕 No orders', count: customers.filter(isNew).length },
   ]

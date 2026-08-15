@@ -25,14 +25,14 @@ export const REPORT_TEMPLATES: ReportTemplate[] = [
     label: '📊 Financial',
     hint: 'Revenue, expenses, margins & cash flow',
     sections: ['Executive Summary', 'Revenue Analysis', 'Expense Breakdown', 'Profitability & Margins', 'Cash Flow', 'Recommendations'],
-    placeholder: 'Revenue: $125,000\nExpenses: $87,000\nCOGS: $32,000\nCash balance: $48,000\nAR aging: 30 days\nBurn rate: $9K/mo',
+    placeholder: 'Revenue: ₹125,000\nExpenses: ₹87,000\nCOGS: ₹32,000\nCash balance: ₹48,000\nAR aging: 30 days\nBurn rate: ₹9K/mo',
   },
   {
     value: 'sales',
     label: '📈 Sales',
     hint: 'Pipeline, deals, conversion & forecast',
     sections: ['Executive Summary', 'Pipeline Overview', 'Win/Loss Analysis', 'Top Performers', 'Conversion Funnel', 'Forecast'],
-    placeholder: 'Deals in pipeline: 24 ($310K)\nWon this quarter: 8 ($96K)\nLost: 5\nAvg deal size: $12K\nWin rate: 38%\nSales cycle: 21 days',
+    placeholder: 'Deals in pipeline: 24 (₹310K)\nWon this quarter: 8 (₹96K)\nLost: 5\nAvg deal size: ₹12K\nWin rate: 38%\nSales cycle: 21 days',
   },
   {
     value: 'operations',

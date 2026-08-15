@@ -79,8 +79,8 @@ export default function AIAssistant() {
   const userTyping = !replying && (focused || input.trim().length > 0)
   const avatarState = deriveAvatarState({ listening, loading: replying || userTyping })
 
-  const send = async () => {
-    const q = input.trim()
+  const send = async (override?: string) => {
+    const q = (override ?? input).trim()
     if ((!q && !pendingImage) || loading) return
     if (!navigator.onLine) { toast.error('No internet connection right now.'); return }
     setInput('')
@@ -186,7 +186,14 @@ export default function AIAssistant() {
         {/* Upper-middle: iPhone-style black bar + full-body robot under it */}
         {!messages.length && (
           <div className="flex flex-col items-center justify-center min-h-[50vh] px-6 text-center">
-            <p className="text-sm text-fg-muted max-w-xs">{scopeLabel ? `Ask me about ${scopeLabel.toLowerCase()} — I'll keep us focused there.` : 'Ask about sales, stock, customers — anything about your business.'}</p>
+            <p className="text-sm text-fg-muted max-w-xs mb-4">{scopeLabel ? `Ask me about ${scopeLabel.toLowerCase()} — I'll keep us focused there.` : 'Ask about sales, stock, customers — anything about your business.'}</p>
+            {!scopeLabel && (
+              <div className="flex flex-wrap gap-2 justify-center max-w-sm">
+                {["What's my pending payment?", 'Any items low on stock?', "Show today's sales", "Which customers haven't ordered recently?"].map((p) => (
+                  <button key={p} onClick={() => send(p)} className="text-xs font-medium text-fg bg-surface-2 border border-line rounded-full px-3 py-1.5 hover:bg-surface-3 hover:border-accent/40 active:scale-95 transition-all">{p}</button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -297,7 +304,7 @@ export default function AIAssistant() {
             className="input-field flex-1 text-sm"
             disabled={loading}
           />
-          <button onClick={send} disabled={loading || !input.trim()} className="btn-primary px-3.5 h-11 flex items-center justify-center" aria-label="Send">
+          <button onClick={() => send()} disabled={loading || !input.trim()} className="btn-primary px-3.5 h-11 flex items-center justify-center" aria-label="Send">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>

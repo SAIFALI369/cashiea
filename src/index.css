@@ -107,10 +107,14 @@
 
   .card {
     @apply bg-surface border border-line rounded-card shadow-soft
-           transition-[transform,box-shadow,border-color] duration-200 ease-out;
+           transition-[transform,box-shadow,border-color] duration-150 ease-out;
+  }
+  .card:active { transform: scale(0.98); }
+  @media (hover: hover) {
+    .card:hover { @apply shadow-lift border-line-2; }
   }
   .card-hover { @apply hover:-translate-y-0.5 hover:shadow-lift hover:border-line-2; }
-  .card-press { @apply active:translate-y-0 active:shadow-soft; }
+  .card-press { @apply active:scale-[0.98]; }
 
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm

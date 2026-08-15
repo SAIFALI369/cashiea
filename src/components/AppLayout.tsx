@@ -60,9 +60,9 @@ export default function AppLayout() {
           : 'flex-1 px-4 pt-4 pb-28 sm:px-5 sm:pt-5 lg:p-8 lg:pb-8 max-w-7xl mx-auto w-full'}>
           <motion.div
             key={location.pathname}
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
             className={isAssistant ? 'flex-1 flex flex-col min-h-0' : ''}
           >
             <Suspense fallback={

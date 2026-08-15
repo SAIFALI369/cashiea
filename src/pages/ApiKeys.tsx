@@ -166,7 +166,7 @@ export default function ApiKeys() {
             <pre className="bg-slate-900 rounded-xl p-4 text-xs text-slate-300 overflow-x-auto border border-slate-800"><code>{`curl -X POST ${apiUrl}/api-generate-invoice \\
   -H "x-api-key: biz_live_..." \\
   -H "Content-Type: application/json" \\
-  -d '{"prompt":"Invoice for 10 hrs at $80/hr, tax 8%, for Acme"}'`}</code></pre>
+  -d '{"prompt":"Invoice for 10 hrs at ₹80/hr, tax 8%, for Acme"}'`}</code></pre>
           </div>
           <div>
             <p className="text-sm font-semibold text-white mb-2">Draft Email</p>

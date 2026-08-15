@@ -214,7 +214,7 @@ export default function DataEntryPage() {
               onChange={(e) => setSourceText(e.target.value)}
               rows={5}
               className="input-field resize-none"
-              placeholder={`Paste messy data, an email, or notes...\n\nExample:\nJohn Smith, john@smithco.com, 555-0100. Ordered 3 widgets at $25 each on March 15. Ship to 123 Main St.`}
+              placeholder={`Paste messy data, an email, or notes...\n\nExample:\nJohn Smith, john@smithco.com, 555-0100. Ordered 3 widgets at ₹25 each on March 15. Ship to 123 Main St.`}
             />
             <div className="flex justify-end mt-4">
               <button onClick={handleExtract} disabled={generating} className="btn-primary text-sm">
@@ -241,7 +241,7 @@ export default function DataEntryPage() {
               onChange={(e) => setBatchText(e.target.value)}
               rows={8}
               className="input-field resize-none font-mono text-sm"
-              placeholder={`Paste all your records at once, separated by blank lines.\n\nExample (blank-line delimiter):\nJohn Smith, john@smithco.com, ordered 3 widgets @ $25\n\nJane Doe, jane@acme.io, ordered 1 pro plan @ $49\n\n...`}
+              placeholder={`Paste all your records at once, separated by blank lines.\n\nExample (blank-line delimiter):\nJohn Smith, john@smithco.com, ordered 3 widgets @ ₹25\n\nJane Doe, jane@acme.io, ordered 1 pro plan @ ₹49\n\n...`}
             />
             {generating && (
               <div className="mt-3">

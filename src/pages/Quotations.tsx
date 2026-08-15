@@ -122,6 +122,12 @@ export default function Quotations() {
         </div>
       )}
 
+      {!showForm && quotes.length > 0 && quotes.length <= 3 && (
+        <p className="text-xs text-fg-muted bg-accent-soft/40 border border-accent/20 rounded-control px-3 py-2 mb-4">
+          💡 Quotes convert to invoices in one tap once a customer confirms.
+        </p>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-brand-500" /></div>
       ) : quotes.length === 0 ? (
