@@ -94,22 +94,29 @@ export function useSpeech() {
       rec.interimResults = false
       rec.maxAlternatives = 1
       rec.continuous = false
-      rec.onstart = () => setListening(true)
-      rec.onend = () => setListening(false)
-      rec.onerror = (e: any) => {
-        setListening(false)
-        const msg = micErrorMessage(String(e?.error || ''))
-        if (msg) onError?.(msg)
+      let gotResult = false
+      let reported = false
+      let timer: ReturnType<typeof setTimeout> | null = null
+      const clearTimer = () => { if (timer) { clearTimeout(timer); timer = null } }
+      const report = (msg: string) => { if (!reported && msg) { reported = true; onError?.(msg) } }
+      rec.onstart = () => {
+        setListening(true)
+        // Safety net: speech recognition is cloud-based — if the connection
+        // drops or the service hangs, stop after 9s instead of listening forever.
+        timer = setTimeout(() => { try { rec.stop() } catch { /* ignore */ } }, 9000)
       }
-      rec.onresult = (e: any) => {
-        const text = e.results[0][0].transcript
-        onResult(text)
+      rec.onresult = (e: any) => { gotResult = true; clearTimer(); onResult(e.results[0][0].transcript) }
+      rec.onerror = (e: any) => { setListening(false); clearTimer(); report(micErrorMessage(String(e?.error || ''))) }
+      rec.onend = () => {
+        setListening(false)
+        clearTimer()
+        if (!gotResult) report("I didn't catch that — please try again, or type your question.")
       }
       recRef.current = rec
       try {
         rec.start()
       } catch {
-        onError?.('Could not start the microphone. Please try again.')
+        report('Could not start the microphone. Please try again.')
         return false
       }
       return true

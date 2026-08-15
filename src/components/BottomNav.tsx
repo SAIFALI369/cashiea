@@ -54,6 +54,11 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
   const statusText = listening ? 'Listening…' : voiceLoading ? 'Thinking…' : speaking ? 'Speaking…' : ''
 
   const startVoice = () => {
+    if (!navigator.onLine) {
+      const m = "Voice needs an internet connection. Please connect, or type your question in Meraj."
+      setVoiceActive(true); setVoiceReply(m); speak(m); setTimeout(() => setVoiceActive(false), 5500)
+      return
+    }
     setVoiceActive(true); setVoiceReply(''); setVoiceLoading(false)
     const ok = startListening(
       async (text) => {
@@ -107,7 +112,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
             <button onClick={cancelVoice} aria-label="Close Meraj" className="w-8 h-8 rounded-full bg-surface border border-line text-fg-muted hover:text-negative flex items-center justify-center active:scale-95 transition-transform shadow-float">
               <X className="w-4 h-4" />
             </button>
-            <button onClick={startVoice} aria-label="Tap to talk to Meraj" className="active:scale-95 transition-transform">
+            <button onClick={() => (listening ? cancelVoice() : startVoice())} aria-label="Tap to talk to Meraj" className="active:scale-95 transition-transform">
               <MerajAvatar state={avatarState} size="sm" context="panel" />
             </button>
           </div>

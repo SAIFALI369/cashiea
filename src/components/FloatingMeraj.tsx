@@ -97,6 +97,11 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
   const voiceStatus = listening ? 'Listening…' : loading ? 'Thinking…' : speaking ? 'Speaking…' : ''
 
   const startVoice = () => {
+    if (!navigator.onLine) {
+      const m = "Voice needs an internet connection. Please connect, or type your question."
+      setVoiceMode(true); setVoiceReply(m); speak(m); setTimeout(() => setVoiceMode(false), 5500)
+      return
+    }
     setVoiceMode(true); setVoiceReply('')
     const ok = startListening(
       async (text) => {

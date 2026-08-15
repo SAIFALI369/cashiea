@@ -5,6 +5,7 @@ import FloatingMeraj from './FloatingMeraj'
 import BottomNav from './BottomNav'
 import TouchRipple from './TouchRipple'
 import { LiveClock } from './LiveClock'
+import { OfflineBanner } from './OfflineBanner'
 import { motion } from './motion'
 import Skeleton from './ui/Skeleton'
 import { Avatar } from './Avatar'
@@ -38,6 +39,7 @@ export default function AppLayout() {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0">
+        <OfflineBanner />
         {/* Mobile header — menu · brand (fades) · sync state · account */}
         {!isAssistant && (
         <header className="lg:hidden sticky top-0 z-30 bg-slate-900/80 backdrop-blur border-b border-slate-800 px-4 py-3 flex items-center gap-3">
