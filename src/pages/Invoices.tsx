@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { offlineInsert } from '../lib/mutations'
 import { callAI, parseAIJson } from '../lib/ai'
 import {
   buildUpiLink, buildUpiQrUrl, buildInvoiceMessage,
@@ -72,7 +73,7 @@ export default function Invoices() {
         })
       }
 
-      const { data, error } = await supabase.from('invoices').insert({
+      const { data, error } = await offlineInsert('invoices', {
         user_id: ownerId,
         invoice_number: invoiceNumber,
         client_name: parsed.client_name || 'Customer',
@@ -82,7 +83,7 @@ export default function Invoices() {
         items, subtotal, tax_rate: taxRate, tax_amount: taxAmount, total,
         status: 'draft', due_date: parsed.due_date || null,
         notes: parsed.notes || null, payment_link: paymentLink,
-      }).select().single()
+      })
 
       if (error) throw error
       setInvoices([data as Invoice, ...invoices])
@@ -103,14 +104,14 @@ export default function Invoices() {
     const price = Number(quick.price)
     const total = qty * price
     const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`
-    const { data, error } = await supabase.from('invoices').insert({
+    const { data, error } = await offlineInsert('invoices', {
       user_id: ownerId,
       invoice_number: invoiceNumber,
       client_name: quick.name, client_phone: quick.phone || null,
       items: [{ description: quick.item, quantity: qty, unit_price: price }],
       subtotal: total, tax_rate: 0, tax_amount: 0, total,
       status: 'sent',
-    }).select().single()
+    })
     setGenerating(false)
     if (error) return toast.error(error.message)
     setInvoices([data as Invoice, ...invoices])

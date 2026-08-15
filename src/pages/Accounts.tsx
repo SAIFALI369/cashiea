@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { offlineInsert } from '../lib/mutations'
 import type { Expense } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
@@ -54,10 +55,10 @@ export default function Accounts() {
   const save = async () => {
     if (!form.description.trim()) return toast.error('Description required')
     if (!form.amount) return toast.error('Amount required')
-    const { data, error } = await supabase.from('expenses').insert({
+    const { data, error } = await offlineInsert('expenses', {
       user_id: profile!.id, type: form.type, category: form.category, description: form.description,
       amount: Number(form.amount), payment_method: form.payment_method, date: form.date, notes: form.notes || null,
-    }).select().single()
+    })
     if (error) { toast.error(error.message); return }
     setEntries([data as Expense, ...entries])
     setForm({ ...form, description: '', amount: '' })

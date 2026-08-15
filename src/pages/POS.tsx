@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { offlineInsert } from '../lib/mutations'
 import type { Product, Customer, TransactionItem, PaymentMethod } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
@@ -103,54 +104,47 @@ export default function POS() {
     try {
       const receiptNumber = `RCP-${Date.now().toString().slice(-8)}`
 
-      const { data, error } = await supabase
-        .from('transactions')
-        .insert({
-          user_id: ownerId,
-          customer_id: selectedCustomer?.id || null,
-          receipt_number: receiptNumber,
-          items: cart.map(({ product_id, name, quantity, unit_price }) => ({ product_id, name, quantity, unit_price })),
-          subtotal,
-          tax_rate: taxRate,
-          tax_amount: taxAmount,
-          discount,
-          total,
-          payment_method: paymentMethod,
-          status: 'completed',
-          served_by: profile?.full_name || null,
-        })
-        .select()
-        .single()
-
+      const { data, error, queued } = await offlineInsert('transactions', {
+        user_id: ownerId,
+        customer_id: selectedCustomer?.id || null,
+        receipt_number: receiptNumber,
+        items: cart.map(({ product_id, name, quantity, unit_price }) => ({ product_id, name, quantity, unit_price })),
+        subtotal,
+        tax_rate: taxRate,
+        tax_amount: taxAmount,
+        discount,
+        total,
+        payment_method: paymentMethod,
+        status: 'completed',
+        served_by: profile?.full_name || null,
+      })
       if (error) throw error
 
-      // Decrement inventory
-      await Promise.all(cart.map((l) =>
-        supabase.rpc('decrement_stock', { p_id: l.product_id, qty: l.quantity }).then(({ error }) => {
-          if (error) console.warn('stock decrement failed for', l.product_id, error.message)
+      // Online-only side effects (stock decrement, customer stats, activity log)
+      if (!queued && navigator.onLine) {
+        await Promise.all(cart.map((l) =>
+          supabase.rpc('decrement_stock', { p_id: l.product_id, qty: l.quantity }).then(({ error }) => {
+            if (error) console.warn('stock decrement failed for', l.product_id, error.message)
+          })
+        ))
+        if (selectedCustomer) {
+          await supabase.rpc('recompute_customer_stats', { customer_uuid: selectedCustomer.id })
+        }
+        await supabase.from('activity_logs').insert({
+          user_id: ownerId,
+          action_type: 'invoice',
+          description: `Sale ${receiptNumber} — ${cart.reduce((s, l) => s + l.quantity, 0)} items, ₹${total.toFixed(2)}`,
+          time_saved_minutes: 8,
+          money_saved: 4,
         })
-      ))
-
-      // Recompute customer stats if linked
-      if (selectedCustomer) {
-        await supabase.rpc('recompute_customer_stats', { customer_uuid: selectedCustomer.id })
       }
-
-      // Log activity for the overview tracker
-      await supabase.from('activity_logs').insert({
-        user_id: ownerId,
-        action_type: 'invoice',
-        description: `Sale ${receiptNumber} — ${cart.reduce((s, l) => s + l.quantity, 0)} items, $${total.toFixed(2)}`,
-        time_saved_minutes: 8,
-        money_saved: 4,
-      })
 
       setLastReceipt({ number: receiptNumber, total })
       setCart([])
       setDiscount(0)
       setSelectedCustomer(null)
-      await loadData()
-      toast.success('Sale completed! 💰')
+      if (!queued) await loadData()
+      toast.success(queued ? 'Sale saved offline — will sync when reconnected' : 'Sale completed! 💰')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Checkout failed')
     } finally {

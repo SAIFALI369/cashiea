@@ -6,6 +6,8 @@ import BottomNav from './BottomNav'
 import TouchRipple from './TouchRipple'
 import { LiveClock } from './LiveClock'
 import { OfflineBanner } from './OfflineBanner'
+import { SyncManager } from './SyncManager'
+import { QueueBadge } from './QueueBadge'
 import { motion } from './motion'
 import Skeleton from './ui/Skeleton'
 import { Avatar } from './Avatar'
@@ -49,6 +51,7 @@ export default function AppLayout() {
           <div style={{ opacity: hdrOpacity, transition: 'opacity 0.4s ease' }} className="flex-1 min-w-0">
             <span className="font-bold text-white">Cashiea</span>
           </div>
+          <QueueBadge />
           <LiveClock />
           <Link to="/app/account" aria-label="Open account" className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full">
             <Avatar url={profile?.avatar_url} name={profile?.full_name} size={34} />
@@ -88,6 +91,7 @@ export default function AppLayout() {
 
       {/* Desktop persistent voice Meraj (FAB) */}
       {showFloatingMeraj && <FloatingMeraj pathname={location.pathname} />}
+      <SyncManager />
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { offlineInsert } from '../lib/mutations'
 import type { Customer, Transaction } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
@@ -34,7 +35,7 @@ export default function Customers() {
   const handleSave = async () => {
     if (!form.name.trim()) return toast.error('Customer name is required')
     const tags = form.tags.split(',').map((t) => t.trim()).filter(Boolean)
-    const { data, error } = await supabase.from('customers').insert({
+    const { data, error } = await offlineInsert('customers', {
       user_id: ownerId,
       name: form.name,
       email: form.email || null,
@@ -43,7 +44,7 @@ export default function Customers() {
       company: form.company || null,
       notes: form.notes || null,
       tags,
-    }).select().single()
+    })
     if (error) { toast.error(error.message); return }
     setCustomers([data as Customer, ...customers])
     setForm(empty)

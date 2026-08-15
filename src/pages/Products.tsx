@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { useCan } from '../lib/permissions'
 import { requestAction } from '../lib/approvals'
 import { supabase } from '../lib/supabase'
+import { offlineInsert } from '../lib/mutations'
 import type { Product } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
@@ -40,7 +41,7 @@ export default function Products() {
         stock_quantity: Number(form.stock_quantity) || 0, low_stock_threshold: Number(form.low_stock_threshold) || 5,
       }
       if (isOwner) {
-        const { data, error } = await supabase.from('products').insert({ user_id: ownerId, ...prod }).select().single()
+        const { data, error } = await offlineInsert('products', { user_id: ownerId, ...prod })
         if (error) throw error
         setProducts([data as Product, ...products])
         toast.success('Product added')
