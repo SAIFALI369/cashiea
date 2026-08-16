@@ -4,6 +4,7 @@ import { useCan } from '../lib/permissions'
 import { requestAction } from '../lib/approvals'
 import { supabase } from '../lib/supabase'
 import { offlineInsert } from '../lib/mutations'
+import { formatINR } from '../lib/format'
 import type { Product } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
@@ -21,13 +22,38 @@ export default function Products() {
   const [form, setForm] = useState(empty)
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
+  const [popular, setPopular] = useState<Product[]>([])
 
   useEffect(() => { loadProducts() }, [])
 
   const loadProducts = async () => {
     setLoading(true)
-    const { data } = await supabase.from('products').select('*').eq('user_id', ownerId).order('created_at', { ascending: false })
-    setProducts((data as Product[]) || [])
+    const since = new Date(Date.now() - 30 * 86400000).toISOString()
+    const [prodRes, txRes, invRes] = await Promise.all([
+      supabase.from('products').select('*').eq('user_id', ownerId).order('created_at', { ascending: false }),
+      supabase.from('transactions').select('items').eq('user_id', ownerId).gte('created_at', since).limit(300),
+      supabase.from('invoices').select('items').eq('user_id', ownerId).gte('created_at', since).limit(300),
+    ])
+    const list = (prodRes.data as Product[]) || []
+    setProducts(list)
+    // Popularity = line-item appearances across invoices + sales (last 30 days)
+    const txCount: Record<string, number> = {}
+    const nameCount: Record<string, number> = {}
+    ;((txRes.data as any[]) || []).forEach((t) => (t.items || []).forEach((it: any) => {
+      if (it.product_id) txCount[it.product_id] = (txCount[it.product_id] || 0) + 1
+      if (it.name) nameCount[String(it.name).toLowerCase()] = (nameCount[String(it.name).toLowerCase()] || 0) + 1
+    }))
+    ;((invRes.data as any[]) || []).forEach((inv) => (inv.items || []).forEach((it: any) => {
+      if (it.description) nameCount[String(it.description).toLowerCase()] = (nameCount[String(it.description).toLowerCase()] || 0) + 1
+    }))
+    setPopular(
+      list
+        .map((p) => ({ p, score: (txCount[p.id] || 0) + (nameCount[p.name.toLowerCase()] || 0) }))
+        .filter((x) => x.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 8)
+        .map((x) => x.p),
+    )
     setLoading(false)
   }
 
@@ -142,6 +168,25 @@ export default function Products() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-fg-subtle" />
             <input value={search} onChange={(e) => setSearch(e.target.value)} className="input-field pl-11" placeholder="Search products..." />
           </div>
+
+          {popular.length > 0 && (
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-2 px-1">
+                <h2 className="text-[11px] font-bold tracking-[0.12em] uppercase text-fg-subtle">Popular products</h2>
+                <button onClick={() => setSearch('')} className="text-xs font-semibold text-accent hover:underline">View all</button>
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scroll-area">
+                {popular.map((p) => (
+                  <button key={p.id} onClick={() => setSearch(p.name)} className="card p-3 flex-shrink-0 w-36 text-left active:scale-[0.98] transition-transform">
+                    <div className="w-9 h-9 rounded-control bg-accent-soft text-accent flex items-center justify-center mb-2"><Package className="w-5 h-5" /></div>
+                    <p className="text-sm font-semibold text-fg truncate">{p.name}</p>
+                    <p className="text-xs text-accent">{formatINR(p.price)}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="space-y-2">
             {filtered.map((p) => {
               const low = p.stock_quantity <= p.low_stock_threshold

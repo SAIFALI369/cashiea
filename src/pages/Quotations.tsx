@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { formatINR } from '../lib/format'
 import type { Quotation, Customer } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
@@ -141,7 +142,7 @@ export default function Quotations() {
                 <p className="text-xs text-slate-500 mt-0.5">{q.customer_name} · {q.items?.length || 0} items · {new Date(q.created_at).toLocaleDateString()}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="font-semibold text-white">₹{Number(q.total).toFixed(0)}</span>
+                <span className="font-semibold text-white">{formatINR(Number(q.total), 0)}</span>
                 {(q.status === 'sent' || q.status === 'accepted') && <button onClick={() => convertToInvoice(q)} className="btn-primary text-xs whitespace-nowrap">Convert <ArrowRight className="w-3 h-3" /></button>}
                 <button onClick={() => del(q.id)} className="text-slate-500 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
               </div>

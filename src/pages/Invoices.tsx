@@ -11,6 +11,7 @@ import { generateInvoicePdf } from '../lib/invoice-pdf'
 import type { Invoice, InvoiceItem } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
+import { Avatar } from '../components/Avatar'
 import { FileText, Sparkles, Loader2, Trash2, Plus, Smartphone, MessageCircle, Send, QrCode, Check, Clock, Copy, Zap, X, Download, FileDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -31,6 +32,7 @@ export default function Invoices() {
   const [prompt, setPrompt] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [shareInv, setShareInv] = useState<Invoice | null>(null)
+  const [statusFilter, setStatusFilter] = useState<'all' | 'unpaid' | 'paid' | 'overdue'>('all')
 
   useEffect(() => { loadInvoices() }, [])
 
@@ -176,6 +178,13 @@ export default function Invoices() {
   const unpaidTotal = unpaid.reduce((s, i) => s + Number(i.total), 0)
   const overdueCount = invoices.filter((i) => i.status === 'overdue').length
 
+  const filteredInvoices = invoices.filter((inv) => {
+    if (statusFilter === 'all') return true
+    if (statusFilter === 'paid') return inv.status === 'paid'
+    if (statusFilter === 'overdue') return inv.status === 'overdue'
+    return inv.status !== 'paid' && inv.status !== 'draft' // unpaid
+  })
+
   return (
     <div className="animate-fade-in">
       <PageHeader
@@ -241,49 +250,62 @@ export default function Invoices() {
       ) : invoices.length === 0 ? (
         <EmptyState icon={FileText} title="No invoices yet" description="Use Quick Invoice (30 sec on phone), or describe one with AI. Share via WhatsApp and collect via UPI." />
       ) : (
-        <div className="space-y-3">
-          {invoices.map((inv) => (
-            <div key={inv.id} className="card p-4">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-bold text-white">{inv.invoice_number}</h3>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor[inv.status]}`}>{inv.status}</span>
-                    {inv.reminder_count > 0 && <span className="text-xs text-slate-500">({inv.reminder_count} reminders)</span>}
+        <>
+          {/* Filter tabs */}
+          <div className="flex gap-2 mb-5 overflow-x-auto scroll-area">
+            {([['all', 'All'], ['unpaid', 'Unpaid'], ['paid', 'Paid'], ['overdue', 'Overdue']] as const).map(([key, label]) => (
+              <button key={key} onClick={() => setStatusFilter(key)} className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${statusFilter === key ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}>{label}</button>
+            ))}
+          </div>
+          <div className="space-y-3">
+            {filteredInvoices.length === 0 ? (
+              <p className="text-sm text-fg-muted text-center py-10">No {statusFilter} invoices.</p>
+            ) : filteredInvoices.map((inv) => (
+              <div key={inv.id} className="card p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0 flex items-start gap-2.5">
+                    <Avatar name={inv.client_name} size={32} className="mt-0.5 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-bold text-white">{inv.invoice_number}</h3>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor[inv.status]}`}>{inv.status}</span>
+                        {inv.reminder_count > 0 && <span className="text-xs text-slate-500">({inv.reminder_count} reminders)</span>}
+                      </div>
+                      <p className="text-slate-400 text-sm mt-0.5">{inv.client_name}{inv.client_phone && ` · ${inv.client_phone}`}</p>
+                    </div>
                   </div>
-                  <p className="text-slate-400 text-sm mt-0.5">{inv.client_name}{inv.client_phone && ` · ${inv.client_phone}`}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xl font-bold text-white">₹{inv.total.toFixed(2)}</p>
-                  {inv.due_date && <p className="text-xs text-slate-500">Due {inv.due_date}</p>}
-                </div>
-              </div>
-
-              {/* Items */}
-              <div className="mt-3 border-t border-slate-800 pt-3 space-y-1">
-                {inv.items.map((it, i) => (
-                  <div key={i} className="flex justify-between text-sm">
-                    <span className="text-slate-300">{it.description} <span className="text-slate-500">× {it.quantity}</span></span>
-                    <span className="text-slate-400">₹{(it.quantity * it.unit_price).toFixed(0)}</span>
+                  <div className="text-right">
+                    <p className="text-xl font-bold text-white">₹{inv.total.toFixed(2)}</p>
+                    {inv.due_date && <p className="text-xs text-slate-500">Due {inv.due_date}</p>}
                   </div>
-                ))}
-              </div>
+                </div>
 
-              {/* Actions */}
-              <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-800">
-                <button onClick={() => setShareInv(inv)} className="btn-ghost text-xs"><QrCode className="w-3.5 h-3.5" /> Pay / Share</button>
-                <button onClick={() => downloadPdf(inv)} disabled={downloadingPdf === inv.id} className="btn-ghost text-xs">
-                  {downloadingPdf === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />} PDF
-                </button>
-                <button onClick={() => share('whatsapp', inv)} className="btn-ghost text-xs text-green-400"><MessageCircle className="w-3.5 h-3.5" /> WhatsApp</button>
-                {inv.status !== 'paid' && inv.status !== 'draft' && (
-                  <button onClick={() => markPaid(inv)} className="btn-ghost text-xs text-green-400"><Check className="w-3.5 h-3.5" /> Mark paid</button>
-                )}
-                <button onClick={() => handleDelete(inv.id)} className="btn-ghost text-xs text-red-400 ml-auto"><Trash2 className="w-3.5 h-3.5" /></button>
+                {/* Items */}
+                <div className="mt-3 border-t border-slate-800 pt-3 space-y-1">
+                  {inv.items.map((it, i) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span className="text-slate-300">{it.description} <span className="text-slate-500">× {it.quantity}</span></span>
+                      <span className="text-slate-400">₹{(it.quantity * it.unit_price).toFixed(0)}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-800">
+                  <button onClick={() => setShareInv(inv)} className="btn-ghost text-xs"><QrCode className="w-3.5 h-3.5" /> Pay / Share</button>
+                  <button onClick={() => downloadPdf(inv)} disabled={downloadingPdf === inv.id} className="btn-ghost text-xs">
+                    {downloadingPdf === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />} PDF
+                  </button>
+                  <button onClick={() => share('whatsapp', inv)} className="btn-ghost text-xs text-green-400"><MessageCircle className="w-3.5 h-3.5" /> WhatsApp</button>
+                  {inv.status !== 'paid' && inv.status !== 'draft' && (
+                    <button onClick={() => markPaid(inv)} className="btn-ghost text-xs text-green-400"><Check className="w-3.5 h-3.5" /> Mark paid</button>
+                  )}
+                  <button onClick={() => handleDelete(inv.id)} className="btn-ghost text-xs text-red-400 ml-auto"><Trash2 className="w-3.5 h-3.5" /></button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Share / Pay modal */}

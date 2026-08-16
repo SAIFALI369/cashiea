@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { offlineInsert } from '../lib/mutations'
+import { formatINR } from '../lib/format'
 import type { Product, Customer, TransactionItem, PaymentMethod } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
@@ -239,7 +240,7 @@ export default function POS() {
                 {selectedCustomer ? (
                   <div className="min-w-0">
                     <p className="text-sm text-white truncate">{selectedCustomer.name}</p>
-                    <p className="text-xs text-slate-500">{selectedCustomer.total_orders} prior orders · ${selectedCustomer.total_spent.toFixed(0)} spent</p>
+                    <p className="text-xs text-slate-500">{selectedCustomer.total_orders} prior orders · {formatINR(selectedCustomer.total_spent, 0)} spent</p>
                   </div>
                 ) : (
                   <span className="text-sm text-slate-500">Walk-in customer (optional)</span>
@@ -258,21 +259,21 @@ export default function POS() {
                       <div key={line.product_id} className="flex items-center gap-2 bg-slate-900/60 rounded-lg p-2">
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-white truncate">{line.name}</p>
-                          <p className="text-xs text-slate-500">${line.unit_price.toFixed(2)} ea</p>
+                          <p className="text-xs text-slate-500">{formatINR(line.unit_price)} ea</p>
                         </div>
                         <div className="flex items-center gap-1">
                           <button onClick={() => changeQty(line.product_id, -1)} className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 flex items-center justify-center"><Minus className="w-3 h-3" /></button>
                           <span className="w-6 text-center text-sm text-white">{line.quantity}</span>
                           <button onClick={() => changeQty(line.product_id, 1)} className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 flex items-center justify-center"><Plus className="w-3 h-3" /></button>
                         </div>
-                        <span className="text-sm font-semibold text-white w-16 text-right">${(line.quantity * line.unit_price).toFixed(2)}</span>
+                        <span className="text-sm font-semibold text-white w-16 text-right">{formatINR(line.quantity * line.unit_price)}</span>
                         <button onClick={() => removeLine(line.product_id)} className="text-slate-500 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
                     ))}
                   </div>
 
                   <div className="space-y-1.5 text-sm border-t border-slate-800 pt-3">
-                    <div className="flex justify-between text-slate-400"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
+                    <div className="flex justify-between text-slate-400"><span>Subtotal</span><span>{formatINR(subtotal)}</span></div>
                     <div className="flex justify-between items-center text-slate-400">
                       <span>Discount</span>
                       <input type="number" min={0} value={discount || ''} onChange={(e) => setDiscount(Math.max(0, Number(e.target.value)))} className="w-20 px-2 py-0.5 bg-slate-900 border border-slate-700 rounded text-right text-white text-sm" placeholder="0" />
@@ -281,8 +282,6 @@ export default function POS() {
                       <span>Tax %</span>
                       <input type="number" min={0} value={taxRate || ''} onChange={(e) => setTaxRate(Math.max(0, Number(e.target.value)))} className="w-20 px-2 py-0.5 bg-slate-900 border border-slate-700 rounded text-right text-white text-sm" placeholder="0" />
                     </div>
-                    <div className="flex justify-between text-slate-400"><span>Tax amount</span><span>${taxAmount.toFixed(2)}</span></div>
-                    <div className="flex justify-between text-lg font-bold text-white pt-1.5 border-t border-slate-800"><span>Total</span><span>${total.toFixed(2)}</span></div>
                   </div>
 
                   {/* Payment method */}
@@ -292,8 +291,8 @@ export default function POS() {
                     ))}
                   </div>
 
-                  <button onClick={handleCheckout} disabled={processing} className="btn-primary w-full mt-4 py-3">
-                    {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Complete Sale'}
+                  <button onClick={handleCheckout} disabled={processing} className="btn-primary w-full mt-4 py-3 flex items-center justify-center gap-2">
+                    {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Continue → {formatINR(total)}</>}
                   </button>
                 </>
               )}
@@ -333,7 +332,7 @@ export default function POS() {
             </div>
             <h3 className="text-xl font-bold text-white mb-1">Sale Complete!</h3>
             <p className="text-sm text-slate-400 mb-4">Receipt {lastReceipt.number}</p>
-            <p className="text-3xl font-extrabold text-white mb-6">${lastReceipt.total.toFixed(2)}</p>
+            <p className="text-3xl font-extrabold text-white mb-6">{formatINR(lastReceipt.total)}</p>
             <button onClick={() => setLastReceipt(null)} className="btn-primary w-full">New Sale</button>
           </div>
         </div>

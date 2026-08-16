@@ -7,7 +7,7 @@ import ThemeToggle from '../components/ThemeToggle'
 import {
   Settings as SettingsIcon, Loader2, Save, Check,
   ShoppingCart, Brain, Mail, FileSignature, ScrollText, Database, History, Key,
-  Shield, CreditCard, Network, LifeBuoy, ChevronRight, Sun,
+  Shield, ShieldCheck, CreditCard, Network, LifeBuoy, ChevronRight, Sun,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -31,10 +31,11 @@ const WORKSPACE: NavLinkItem[] = [
   { to: '/app/activity', label: 'Activity Logs', desc: 'Your history', icon: History },
 ]
 const ACCOUNT_TOOLS: NavLinkItem[] = [
-  { to: '/app/api-keys', label: 'API Keys', desc: 'Keys for integrations', icon: Key },
-  { to: '/app/compliance', label: 'Compliance', desc: 'Data protection', icon: Shield },
+  { to: '/app/api-keys', label: 'API Keys', desc: 'For third-party integrations, if you use any', icon: Key },
+  { to: '/app/integrations', label: 'Integrations', desc: 'Connect Cashiea to other tools', icon: Network },
+  { to: '/app/compliance', label: 'Compliance', desc: 'Data handling and security info', icon: Shield },
+  { to: '/app/permissions', label: 'Permissions', desc: 'Control what staff accounts can access', icon: ShieldCheck },
   { to: '/app/subscription', label: 'Subscription', desc: 'Plan & billing', icon: CreditCard },
-  { to: '/app/integrations', label: 'Integrations', desc: 'Connect tools', icon: Network },
   { to: '/app/support', label: 'Support', desc: 'Get help', icon: LifeBuoy },
 ]
 
