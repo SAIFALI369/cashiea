@@ -8,7 +8,7 @@ import { formatINR } from '../lib/format'
 import type { Product } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
-import { Package, Plus, Loader2, Trash2, AlertTriangle, Search } from 'lucide-react'
+import { Package, Plus, Loader2, Trash2, AlertTriangle, Search, MapPin, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const empty = { name: '', description: '', sku: '', category: 'general', price: '', cost: '', stock_quantity: '', low_stock_threshold: '5' }
@@ -23,6 +23,7 @@ export default function Products() {
   const [search, setSearch] = useState('')
   const [saving, setSaving] = useState(false)
   const [popular, setPopular] = useState<Product[]>([])
+  const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out'>('all')
 
   useEffect(() => { loadProducts() }, [])
 
@@ -110,9 +111,13 @@ export default function Products() {
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed') }
   }
 
-  const filtered = products.filter((p) =>
-    !search || p.name.toLowerCase().includes(search.toLowerCase()) || (p.sku || '').toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = products.filter((p) => {
+    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || (p.sku || '').toLowerCase().includes(search.toLowerCase())
+    if (!matchSearch) return false
+    if (stockFilter === 'low') return p.stock_quantity <= p.low_stock_threshold && p.stock_quantity > 0
+    if (stockFilter === 'out') return p.stock_quantity === 0
+    return true
+  })
   const lowStockCount = products.filter((p) => p.stock_quantity <= p.low_stock_threshold).length
   const inventoryValue = products.reduce((s, p) => s + p.cost * p.stock_quantity, 0)
 
@@ -169,6 +174,18 @@ export default function Products() {
             <input value={search} onChange={(e) => setSearch(e.target.value)} className="input-field pl-11" placeholder="Search products..." />
           </div>
 
+          {/* Stock filters + location affordance */}
+          <div className="flex items-center gap-2 mb-4">
+            <div className="flex gap-2 overflow-x-auto scroll-area flex-1">
+              {([['all', 'All'], ['low', 'Low stock'], ['out', 'Out of stock']] as const).map(([k, label]) => (
+                <button key={k} onClick={() => setStockFilter(k)} className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${stockFilter === k ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}>{label}</button>
+              ))}
+            </div>
+            <button type="button" title="Multi-location support coming soon" className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-surface-2 text-fg-muted border border-line">
+              <MapPin className="w-3.5 h-3.5" /> All locations <ChevronDown className="w-3 h-3" />
+            </button>
+          </div>
+
           {popular.length > 0 && (
             <div className="mb-5">
               <div className="flex items-center justify-between mb-2 px-1">
@@ -189,7 +206,9 @@ export default function Products() {
 
           <div className="space-y-2">
             {filtered.map((p) => {
-              const low = p.stock_quantity <= p.low_stock_threshold
+              const status = p.stock_quantity === 0 ? 'out' : p.stock_quantity <= p.low_stock_threshold ? 'low' : 'in'
+              const statusLabel = status === 'out' ? 'Out of stock' : status === 'low' ? 'Low stock' : 'In stock'
+              const statusCls = status === 'out' ? 'bg-negative/15 text-negative' : status === 'low' ? 'bg-warning/15 text-warning' : 'bg-positive/15 text-positive'
               const margin = p.price > 0 ? (((p.price - p.cost) / p.price) * 100).toFixed(0) : '—'
               return (
                 <div key={p.id} className="card p-4 flex items-center gap-4">
@@ -204,11 +223,13 @@ export default function Products() {
                     </div>
                     <p className="text-sm text-accent mt-0.5">₹{p.price.toFixed(2)} <span className="text-fg-subtle">· {margin}% margin</span></p>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    {low && <span className="flex items-center gap-1 text-xs text-warning mr-1"><AlertTriangle className="w-3.5 h-3.5" /></span>}
-                    <button onClick={() => restock(p, -1)} className="w-7 h-7 rounded-control bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-fg-muted">−</button>
-                    <span className={`w-12 text-center text-sm font-semibold ${low ? 'text-warning' : 'text-fg'}`}>{p.stock_quantity}</span>
-                    <button onClick={() => restock(p, 1)} className="w-7 h-7 rounded-control bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-fg-muted">+</button>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap ${statusCls}`}>{statusLabel}</span>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => restock(p, -1)} className="w-7 h-7 rounded-control bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-fg-muted">−</button>
+                      <span className="w-16 text-center text-sm font-semibold text-fg">{p.stock_quantity}<span className="text-[10px] font-normal text-fg-subtle ml-0.5">pcs</span></span>
+                      <button onClick={() => restock(p, 1)} className="w-7 h-7 rounded-control bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-fg-muted">+</button>
+                    </div>
                   </div>
                   <button onClick={() => handleDelete(p)} className="text-fg-subtle hover:text-negative ml-2"><Trash2 className="w-4 h-4" /></button>
                 </div>

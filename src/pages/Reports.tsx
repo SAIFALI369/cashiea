@@ -8,6 +8,7 @@ import EmptyState from '../components/ui/EmptyState'
 import { BarChart3, Sparkles, Loader2, Trash2, Plus, ChevronDown, Copy } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { REPORT_TEMPLATES, getReportTemplate } from '../lib/report-templates'
+import { SalesTrend } from '../components/SalesTrend'
 
 export default function Reports() {
   const { profile, ownerId } = useAuth()
@@ -115,6 +116,8 @@ export default function Reports() {
           </button>
         }
       />
+
+      <SalesTrend ownerId={ownerId} />
 
       {showForm && (
         <div className="card p-4 mb-6 animate-slide-up">

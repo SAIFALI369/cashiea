@@ -202,9 +202,9 @@ export default function Invoices() {
       {/* Unpaid summary */}
       {invoices.length > 0 && (
         <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className="card p-4"><p className="text-xl font-bold text-amber-400">₹{unpaidTotal.toFixed(0)}</p><p className="text-xs text-slate-400">Unpaid</p></div>
-          <div className="card p-4"><p className="text-xl font-bold text-white">{unpaid.length}</p><p className="text-xs text-slate-400">Unpaid invoices</p></div>
-          <div className="card p-4"><p className="text-xl font-bold text-red-400">{overdueCount}</p><p className="text-xs text-slate-400">Overdue</p></div>
+          <div className="card p-5"><p className="text-xl font-bold text-amber-400">₹{unpaidTotal.toFixed(0)}</p><p className="text-xs text-slate-400">Unpaid</p></div>
+          <div className="card p-5"><p className="text-xl font-bold text-white">{unpaid.length}</p><p className="text-xs text-slate-400">Unpaid invoices</p></div>
+          <div className="card p-5"><p className="text-xl font-bold text-red-400">{overdueCount}</p><p className="text-xs text-slate-400">Overdue</p></div>
         </div>
       )}
 
@@ -290,18 +290,18 @@ export default function Invoices() {
                   ))}
                 </div>
 
-                {/* Actions */}
-                <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-800">
-                  <button onClick={() => setShareInv(inv)} className="btn-ghost text-xs"><QrCode className="w-3.5 h-3.5" /> Pay / Share</button>
-                  <button onClick={() => downloadPdf(inv)} disabled={downloadingPdf === inv.id} className="btn-ghost text-xs">
-                    {downloadingPdf === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />} PDF
-                  </button>
-                  <button onClick={() => share('whatsapp', inv)} className="btn-ghost text-xs text-green-400"><MessageCircle className="w-3.5 h-3.5" /> WhatsApp</button>
-                  {inv.status !== 'paid' && inv.status !== 'draft' && (
-                    <button onClick={() => markPaid(inv)} className="btn-ghost text-xs text-green-400"><Check className="w-3.5 h-3.5" /> Mark paid</button>
-                  )}
-                  <button onClick={() => handleDelete(inv.id)} className="btn-ghost text-xs text-red-400 ml-auto"><Trash2 className="w-3.5 h-3.5" /></button>
-                </div>
+              {/* Actions */}
+              <div className="flex gap-2 overflow-x-auto scroll-area pb-1 mt-3 pt-3 border-t border-slate-800 [&>button]:flex-shrink-0">
+                <button onClick={() => setShareInv(inv)} className="btn-ghost text-xs"><QrCode className="w-3.5 h-3.5" /> Pay / Share</button>
+                <button onClick={() => downloadPdf(inv)} disabled={downloadingPdf === inv.id} className="btn-ghost text-xs">
+                  {downloadingPdf === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />} PDF
+                </button>
+                <button onClick={() => share('whatsapp', inv)} className="btn-ghost text-xs text-green-400"><MessageCircle className="w-3.5 h-3.5" /> WhatsApp</button>
+                {inv.status !== 'paid' && inv.status !== 'draft' && (
+                  <button onClick={() => markPaid(inv)} className="btn-ghost text-xs text-green-400"><Check className="w-3.5 h-3.5" /> Mark paid</button>
+                )}
+                <button onClick={() => handleDelete(inv.id)} className="btn-ghost text-xs text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+              </div>
               </div>
             ))}
           </div>
