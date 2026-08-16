@@ -1,33 +1,22 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+// ── Production Supabase project (hardcoded) ──────────────────────────
+// Pointed explicitly at the LIVE project so the app works regardless of
+// CI/Vercel env vars (which were previously stuck on the abandoned old
+// project with dead Auth). The anon key is public-safe (RLS-protected).
+// To switch projects later, change these two constants.
+const SUPABASE_URL = 'https://prwvaetatdidsugczluv.supabase.co'
+const SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByd3ZhZXRhdGRpZHN1Z2N6bHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NDUzNTgsImV4cCI6MjEwMTQyMTM1OH0.OasYlwTZh-Uvpv69hbfTq60VPtj6DN2OFQIj1GPlc30'
 
-// True when the deploy is missing its Supabase config. The app shows a
-// clear setup screen in this case instead of a confusing white screen.
-export const supabaseConfigured = Boolean(
-  supabaseUrl &&
-    supabaseAnonKey &&
-    !supabaseUrl.includes('localhost:54321') &&
-    supabaseAnonKey !== 'placeholder'
-)
+export const supabaseConfigured = true
 
-if (!supabaseConfigured) {
-  console.warn(
-    '⚠️  Cashiea: Missing Supabase env vars. Copy .env.example to .env and fill in your values, then rebuild.'
-  )
-}
-
-export const supabase = createClient(
-  supabaseUrl || 'http://localhost:54321',
-  supabaseAnonKey || 'placeholder',
-  {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-    },
-  }
-)
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+})
 
 // URL of the deployed edge function
-export const AI_FUNCTION_URL = `${supabaseUrl || 'http://localhost:54321'}/functions/v1/ai-automation`
+export const AI_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/ai-automation`
