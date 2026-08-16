@@ -50,7 +50,7 @@ export default defineConfig({
       workbox: {
         // Bump this version on each release so browsers fetch the new build
         // instead of serving a stale cached app shell.
-        cacheId: 'cashiea-v2',
+        cacheId: 'cashiea-v3',
         cleanupOutdatedCaches: true,
       },
     }),
