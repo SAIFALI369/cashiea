@@ -15,8 +15,14 @@ export default defineConfig({
     VitePWA({
       // Offline-first: the app shell is precached (loads offline), and Supabase
       // REST reads are cached NetworkFirst so saved data renders offline.
+      //
+      // ⚠️ selfDestroying TEMPORARILY DISABLES the PWA / offline cache — the
+      // service worker was serving a stale shell so pushed UI updates never
+      // showed. To RE-ENABLE offline later: set selfDestroying to false AND
+      // remove the unregister block in src/main.tsx.
       registerType: 'autoUpdate',
       injectRegister: 'auto',
+      selfDestroying: true,
       includeAssets: ['favicon.svg', 'icon-512.png'],
       manifest: {
         name: 'Cashiea — AI Shop Manager',
