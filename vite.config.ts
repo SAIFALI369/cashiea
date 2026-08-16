@@ -2,6 +2,46 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// PWA / offline cache is DISABLED — the service worker was serving a stale app
+// shell so pushed UI updates never appeared. To RE-ENABLE offline later:
+//   1) set PWA_ENABLED to true below
+//   2) delete public/sw.js (the destroy stub)
+//   3) remove the service-worker unregister block in src/main.tsx
+const PWA_ENABLED = false
+const PWA_OPTIONS = {
+  registerType: 'autoUpdate',
+  injectRegister: 'auto',
+  includeAssets: ['favicon.svg', 'icon-512.png'],
+  manifest: {
+    name: 'Cashiea — AI Shop Manager',
+    short_name: 'Cashiea',
+    description: "POS billing, customer tracking & AI automation for India's small shops.",
+    theme_color: '#0c1322',
+    background_color: '#0c1322',
+    display: 'standalone',
+    start_url: '/',
+    scope: '/',
+    icons: [
+      { src: '/icon-512.png', sizes: '192x192', type: 'image/png' },
+      { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+      { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    ],
+  },
+  runtimeCaching: [
+    {
+      urlPattern: /^https:\/\/[a-z0-9]+\.supabase\.co\/rest\//i,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'supabase-rest',
+        networkTimeoutSeconds: 4,
+        expiration: { maxEntries: 200, maxAgeSeconds: 7 * 24 * 60 * 60 },
+        cacheableResponse: { statuses: [0, 200] },
+      },
+    },
+  ],
+  workbox: { cacheId: 'cashiea-v3', cleanupOutdatedCaches: true },
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
   // Force the LIVE Supabase project into the build regardless of what
@@ -12,54 +52,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
-    VitePWA({
-      // Offline-first: the app shell is precached (loads offline), and Supabase
-      // REST reads are cached NetworkFirst so saved data renders offline.
-      //
-      // ⚠️ selfDestroying TEMPORARILY DISABLES the PWA / offline cache — the
-      // service worker was serving a stale shell so pushed UI updates never
-      // showed. To RE-ENABLE offline later: set selfDestroying to false AND
-      // remove the unregister block in src/main.tsx.
-      registerType: 'autoUpdate',
-      injectRegister: 'auto',
-      selfDestroying: true,
-      includeAssets: ['favicon.svg', 'icon-512.png'],
-      manifest: {
-        name: 'Cashiea — AI Shop Manager',
-        short_name: 'Cashiea',
-        description: "POS billing, customer tracking & AI automation for India's small shops.",
-        theme_color: '#0c1322',
-        background_color: '#0c1322',
-        display: 'standalone',
-        start_url: '/',
-        scope: '/',
-        icons: [
-          { src: '/icon-512.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-        ],
-      },
-      runtimeCaching: [
-        {
-          // Supabase REST reads (products, customers, invoices, …).
-          // Online → fresh data; offline or slow → last cached response.
-          urlPattern: /^https:\/\/[a-z0-9]+\.supabase\.co\/rest\//i,
-          handler: 'NetworkFirst',
-          options: {
-            cacheName: 'supabase-rest',
-            networkTimeoutSeconds: 4,
-            expiration: { maxEntries: 200, maxAgeSeconds: 7 * 24 * 60 * 60 },
-            cacheableResponse: { statuses: [0, 200] },
-          },
-        },
-      ],
-      workbox: {
-        // Bump this version on each release so browsers fetch the new build
-        // instead of serving a stale cached app shell.
-        cacheId: 'cashiea-v3',
-        cleanupOutdatedCaches: true,
-      },
-    }),
+    ...(PWA_ENABLED ? [VitePWA(PWA_OPTIONS)] : []),
   ],
   server: {
     port: 5173,
