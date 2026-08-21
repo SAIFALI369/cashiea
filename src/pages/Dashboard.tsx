@@ -74,8 +74,27 @@ export default function Dashboard() {
     })()
   }, [profile])
 
+  const hr = new Date().getHours()
+  const greeting = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening'
+
   return (
     <div className="animate-fade-in space-y-7">
+      {/* MERAJ — on-duty staff card: presented as a team member, not an "AI feature" */}
+      <div className="card p-5 flex items-center gap-4">
+        <div className="w-14 h-14 rounded-2xl bg-accent-soft text-accent flex items-center justify-center flex-shrink-0">
+          <MerajMark size={30} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-bold text-fg">Meraj</p>
+            <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-positive/15 text-positive">On duty</span>
+            <span className="text-[11px] text-fg-subtle">· Shop Manager</span>
+          </div>
+          <p className="text-xs text-fg-subtle mt-0.5">{greeting}, {profile?.full_name?.split(' ')[0] || 'boss'} — your shop manager, ready when you are.</p>
+        </div>
+        <Link to="/app/assistant" className="btn-primary text-sm h-9 px-3 flex-shrink-0 whitespace-nowrap">Talk to Meraj</Link>
+      </div>
+
       {/* 1 ─ STATUS LINE (one sentence, employee tone) */}
       <p className="text-sm font-medium text-fg-muted">
         {loading ? 'Checking today’s numbers.' : alertCount === 0 ? 'Everything is under control.' : `${alertCount} ${alertCount === 1 ? 'thing needs' : 'things need'} your attention.`}
