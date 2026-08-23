@@ -92,20 +92,53 @@ export async function callAI(params: AICallParams): Promise<AICallResult> {
  * Ask the AI Assistant a natural-language business question.
  * Uses the /functions/v1/ai-assistant edge function.
  */
+// ── Client-side AI response cache (≤1-2 MB, 50 entries, 30-min TTL) ──
+// Prevents repeat API calls for identical questions asked within 30 min.
+const AI_CACHE_KEY = 'cashiea_ai_cache'
+const AI_CACHE_TTL = 30 * 60 * 1000
+const AI_CACHE_MAX = 50
+
+function aiCacheRead(): Record<string, any> {
+  try { return JSON.parse(localStorage.getItem(AI_CACHE_KEY) || '{}') } catch { return {} }
+}
+function aiCacheGet(key: string): { reply: string; pending?: any } | null {
+  try {
+    const c = aiCacheRead()
+    const e = c[key]
+    if (e && Date.now() - e.ts < AI_CACHE_TTL) return { reply: e.reply, pending: e.pending }
+  } catch { /* ignore */ }
+  return null
+}
+function aiCacheSet(key: string, val: { reply: string; pending?: any }) {
+  try {
+    const c = aiCacheRead()
+    c[key] = { ...val, ts: Date.now() }
+    const keys = Object.keys(c)
+    if (keys.length > AI_CACHE_MAX) { keys.sort((a, b) => c[a].ts - c[b].ts); delete c[keys[0]] }
+    localStorage.setItem(AI_CACHE_KEY, JSON.stringify(c))
+  } catch { /* quota — ignore */ }
+}
+
 export async function askAssistant(
   message = '',
   briefing = false,
   scope?: string,
   mode: 'ask' | 'task' = 'ask',
   confirm?: any,
-  /** Which screen the owner is on — lets Meraj answer "this page" questions. */
   pageContext?: { name: string; description: string },
-  /** Recent turns from the CURRENT chat, so Meraj remembers the ongoing conversation. */
   history?: { role: 'user' | 'meraj'; text: string }[],
   image?: { data: string; mimeType: string }
 ): Promise<{ reply: string; pending?: any; executed?: any; media?: { type: string; thumb: string; url: string; alt: string; link?: string }[] }> {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('You must be logged in.')
+
+  // Cache: skip the API for recent identical ask-mode questions (saves a full round-trip)
+  const cacheable = mode === 'ask' && !confirm && !image && !briefing
+  const cacheKey = cacheable ? `${scope || 'g'}:${(message || '').trim().toLowerCase().slice(0, 200)}` : ''
+  if (cacheKey) {
+    const cached = aiCacheGet(cacheKey)
+    if (cached) return cached
+  }
 
   const res = await fetchWithRetry(AI_FUNCTION_URL.replace('ai-automation', 'ai-assistant'), {
     method: 'POST',
@@ -118,7 +151,11 @@ export async function askAssistant(
   })
   const data = await res.json().catch(() => ({ error: 'Invalid response from server' }))
   if (!res.ok) throw new Error(data?.error || `Request failed (HTTP ${res.status})`)
-  return data as { reply: string; pending?: any; executed?: any }
+
+  // Store in cache for next time
+  if (cacheKey && data.reply) aiCacheSet(cacheKey, { reply: data.reply, pending: data.pending })
+
+  return data as { reply: string; pending?: any; executed?: any; media?: { type: string; thumb: string; url: string; alt: string; link?: string }[] }
 }
 
 /**

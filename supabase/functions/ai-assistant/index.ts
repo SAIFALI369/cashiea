@@ -367,7 +367,7 @@ Deno.serve(async (req) => {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) return json({ error: "Unauthorized" }, 401);
 
-    const { data: profile } = await supabase.from("profiles").select("ai_provider, api_usage_count, api_usage_limit, trial_ends_at").eq("id", user.id).single();
+    const { data: profile } = await supabase.from("profiles").select("ai_provider, api_usage_count, api_usage_limit, trial_ends_at, full_name").eq("id", user.id).single();
     const onTrial = profile?.trial_ends_at && new Date(profile.trial_ends_at) > new Date();
     const limit = onTrial ? Math.max(profile.api_usage_limit, 500) : profile?.api_usage_limit || 50;
     if (profile && profile.api_usage_count >= limit) return json({ error: "Usage limit reached" }, 429);
@@ -403,6 +403,16 @@ Deno.serve(async (req) => {
 
     // WEB MEDIA (Pexels) — read-only, instant, no AI round-trip. Falls through
     // to the normal answer if nothing is found.
+    // Fast-path: trivial greetings skip the expensive context build + AI call
+    if (mode !== "task" && !confirm && !image && !briefing) {
+      const trimmed = String(message || "").trim().toLowerCase();
+      if (/^(hi+|hello+|hey+|namaste|namaskar|good (morning|afternoon|evening)|yo|sup)\b/.test(trimmed) && trimmed.length < 25) {
+        const ownerName = (profile?.full_name || "there").split(" ")[0];
+        try { await supabase.rpc("increment_api_usage", { user_uuid: user.id }); } catch { /* ignore */ }
+        return json({ reply: `Namaste ${ownerName}! Main Meraj hoon — aapka AI shop manager. Aap pooch sakte hain aaj ki sales, stock, ya customers ke baare mein. Bolo "create an invoice" ya "show today's sales" — main turant kar doonga.` });
+      }
+    }
+
     if (wantsMedia(String(message || ""))) {
       const subject = extractMediaSubject(String(message || ""));
       const media = await fetchMedia(subject, Deno.env.get("PEXELS_API_KEY") || "");
