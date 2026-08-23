@@ -138,7 +138,7 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
           <MerajAvatar state={avatarState} size="sm" context="panel" />
           {voiceStatus && <p className="text-[11px] font-medium text-fg-muted">{voiceStatus}</p>}
           {voiceReply && (
-            <div className="card p-3 max-w-xs text-sm max-h-32 overflow-y-auto scroll-area prose-content" dangerouslySetInnerHTML={{ __html: voiceReply.replace(/[*#`]/g, '') }} />
+            <div className="card p-3 max-w-xs text-sm max-h-32 overflow-y-auto scroll-area prose-content" dangerouslySetInnerHTML={{ __html: render(voiceReply) }} />
           )}
           <button onClick={cancelVoice} className="w-8 h-8 rounded-lg flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2" aria-label="Cancel"><X className="w-4 h-4" /></button>
         </div>

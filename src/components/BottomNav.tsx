@@ -6,6 +6,7 @@ import type { LucideIcon } from 'lucide-react'
 import { MerajAvatar, deriveAvatarState } from './MerajAvatar'
 import { useSpeech } from '../lib/useSpeech'
 import { askAssistant } from '../lib/ai'
+import { renderMd } from '../lib/markdown'
 import { getPageContext } from '../lib/pageContext'
 import { useLocation } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
@@ -100,7 +101,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
         <div className="lg:hidden fixed z-40 right-3 flex flex-col items-end gap-2" style={{ bottom: 'calc(env(safe-area-inset-bottom) + 88px)' }}>
           {voiceReply && (
             <div className="card p-3 max-w-[230px] max-h-44 overflow-y-auto scroll-area prose-content text-sm shadow-float">
-              <div dangerouslySetInnerHTML={{ __html: voiceReply.replace(/[*#`]/g, '') }} />
+              <div dangerouslySetInnerHTML={{ __html: renderMd(voiceReply) }} />
             </div>
           )}
           <div className="flex items-center gap-2">

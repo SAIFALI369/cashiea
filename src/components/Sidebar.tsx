@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import clsx from 'clsx'
 import ThemeToggle from './ThemeToggle'
 import { Avatar } from './Avatar'
+import { CashieaLogo } from './CashieaLogo'
 import { usePendingApprovals } from '../lib/approvals'
 import {
   LayoutDashboard, ShoppingCart, Receipt, FileSignature, Users, Truck,
@@ -119,9 +120,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
       )}>
         <div className="flex items-center justify-between p-5 border-b border-line">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-control bg-gradient-to-br from-accent to-accent-strong text-accent-fg flex items-center justify-center">
-              <Sparkles className="w-5 h-5" />
-            </div>
+            <CashieaLogo size={36} />
             <div className="min-w-0">
               <h1 className="font-bold text-fg text-lg leading-none">Cashiea</h1>
               <p className="text-xs text-fg-subtle mt-0.5 truncate max-w-[140px]">{profile?.company_name || 'AI Platform'}</p>

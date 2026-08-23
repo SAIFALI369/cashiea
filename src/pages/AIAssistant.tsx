@@ -180,18 +180,11 @@ export default function AIAssistant() {
           <History className="w-5 h-5" strokeWidth={1.75} />
           {convos.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />}
         </button>
-        <div className="flex-1 flex items-center justify-center gap-2.5">
-          <div className="flex flex-col items-center">
-            <MerajAvatar state={avatarState} pose={userTyping ? 'wave' : undefined} bust size="xs" context="panel" />
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#F4DDA8', background: 'linear-gradient(180deg,#1c2333,#10131d)', padding: '2px 8px', borderRadius: 5, marginTop: -2, border: '1px solid rgba(217,164,65,0.35)', boxShadow: 'inset 0 1px 0 rgba(244,221,168,0.2)' }}>Meraj Desk</span>
-          </div>
+        <div className="flex-1 flex items-center justify-center gap-2">
+          <MerajAvatar state={avatarState} context="icon" size="sm" />
           <div className="text-left leading-tight">
             <p className="font-semibold text-fg text-sm">Meraj</p>
-            {userTyping
-              ? <p className="text-[10px] text-accent">👋 Hello! I'm here…</p>
-              : scopeLabel
-                ? <p className="text-[10px] text-accent">Focused · {scopeLabel}</p>
-                : <p className="text-[10px] text-fg-subtle">At your desk</p>}
+            <p className="text-[10px] text-fg-subtle">{userTyping ? 'Hello — ask me anything' : scopeLabel ? `Focused · ${scopeLabel}` : 'Your shop assistant'}</p>
           </div>
         </div>
         <Link to="/app" className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2"><ArrowLeft className="w-5 h-5" strokeWidth={1.75} /></Link>
@@ -292,21 +285,21 @@ export default function AIAssistant() {
             <button onClick={() => setPendingImage(null)} className="text-fg-subtle hover:text-negative"><X className="w-4 h-4" /></button>
           </div>
         )}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 rounded-2xl border border-line bg-paper px-2 py-1.5 shadow-soft focus-within:border-accent/50 transition-colors">
           <div className="relative lg:hidden">
-            <button onClick={() => setShowCam((s) => !s)} className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors" aria-label="Camera"><Camera className="w-5 h-5" strokeWidth={1.75} /></button>
+            <button onClick={() => setShowCam((s) => !s)} className="w-10 h-10 rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors" aria-label="Camera"><Camera className="w-[18px] h-[18px]" strokeWidth={1.75} /></button>
             <AnimatePresence>
               {showCam && (
                 <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} className="absolute bottom-12 left-0 card p-1.5 w-40 shadow-float z-10">
                   <button onClick={() => galleryRef.current?.click()} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-fg hover:bg-surface-2"><ImageIcon className="w-4 h-4" /> Gallery</button>
-                  <button onClick={() => cameraRef.current?.click()} className="w-full flex items-center gap-2 ppx-3 py-2 rounded-xl text-sm text-fg hover:bg-surface-2"><Camera className="w-4 h-4" /> Camera</button>
+                  <button onClick={() => cameraRef.current?.click()} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-fg hover:bg-surface-2"><Camera className="w-4 h-4" /> Camera</button>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          <button onClick={listening ? stopListen : startListen} className={`min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center transition-colors ${listening ? 'text-negative bg-negative/10' : 'text-fg-muted hover:text-fg hover:bg-surface-2'}`} aria-label="Voice input">
-            {listening ? <Square className="w-4 h-4" /> : <Mic className="w-5 h-5" strokeWidth={1.75} />}
+          <button onClick={listening ? stopListen : startListen} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors flex-shrink-0 ${listening ? 'text-negative bg-negative/10' : 'text-fg-muted hover:text-fg hover:bg-surface-2'}`} aria-label="Voice input">
+            {listening ? <Square className="w-4 h-4" /> : <Mic className="w-[18px] h-[18px]" strokeWidth={1.75} />}
           </button>
 
           <input
@@ -316,11 +309,11 @@ export default function AIAssistant() {
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             onKeyDown={(e) => e.key === 'Enter' && send()}
-            placeholder={mode === 'task' ? 'Do anything…' : 'Ask anything…'}
-            className="input-field flex-1 text-sm"
+            placeholder={mode === 'task' ? 'Do anything…' : 'Ask Meraj anything…'}
+            className="flex-1 bg-transparent px-2 py-2 text-sm text-fg placeholder:text-fg-subtle outline-none min-w-0"
             disabled={loading}
           />
-          <button onClick={() => send()} disabled={loading || !input.trim()} className="btn-primary px-3.5 h-11 flex items-center justify-center" aria-label="Send">
+          <button onClick={() => send()} disabled={loading || !input.trim()} className="w-10 h-10 rounded-xl bg-fg text-paper flex items-center justify-center flex-shrink-0 hover:opacity-90 disabled:opacity-40 transition-opacity" aria-label="Send">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>
