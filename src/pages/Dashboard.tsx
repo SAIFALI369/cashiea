@@ -2,85 +2,154 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import { MerajAvatar } from '../components/MerajAvatar'
 import { MerajMark } from '../components/MerajMark'
 import { formatINR } from '../lib/format'
-import type { Prediction } from '../lib/types'
 import {
-  TrendingUp, Wallet, Package, MessageCircle, FileSignature, Users,
-  ArrowRight, Circle, Send,
+  TrendingUp, TrendingDown, Wallet, Package, MessageCircle, FileSignature, Users,
+  ArrowRight, AlertTriangle, Send, Mic, ChevronDown, ChevronRight, Check, Circle,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-// ── Today's Workspace ────────────────────────────────────────────
-// Opens with a professional "staff briefing + command bar" from Meraj
-// (not a fluffy AI bubble), then a dense health strip and resolvable
-// focus items. The dashboard is the conversion surface — keep it crisp.
+// ── Today's Workspace (additive redesign) ────────────────────────
+// Bare greeting → top-priority overdue hero → Meraj insights → Ask bar +
+// suggestion pills → enriched dense stats → Today's focus (overdue checklist)
+// + Business at a glance (weekly bars). Real data; insights in Meraj's voice.
 
-interface Metric { label: string; value: string; count: number; alert?: boolean; icon: LucideIcon }
-interface FocusItem { title: string; body: string; action: string; to: string }
+interface Stat {
+  label: string; value: string; count: number; icon: LucideIcon
+  delta?: string; deltaTone?: 'good' | 'bad' | 'neutral'
+  footer: string; footerTone: 'warning' | 'negative' | 'positive' | 'muted'
+}
+interface Insight { severity: 'critical' | 'warning' | 'healthy'; title: string; subtitle: string }
+interface OverdueInv { id: string; invoice_number: string; client_name: string; total: number; due_date: string | null }
+
+const DAY = 86400000
+const startOfWeek = (d = new Date()) => {
+  const r = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const wd = (r.getDay() + 6) % 7 // Mon=0 … Sun=6
+  r.setDate(r.getDate() - wd)
+  return r
+}
 
 export default function Dashboard() {
   const { profile, ownerId } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
-  const [metrics, setMetrics] = useState<Metric[]>([])
-  const [focus, setFocus] = useState<FocusItem[]>([])
-  const [suggestions, setSuggestions] = useState<Prediction[]>([])
-  const [briefing, setBriefing] = useState('Pulling together today’s numbers.')
+  const [stats, setStats] = useState<Stat[]>([])
+  const [topPriority, setTopPriority] = useState<OverdueInv | null>(null)
+  const [overdueCount, setOverdueCount] = useState(0)
+  const [overdueSum, setOverdueSum] = useState(0)
+  const [insights, setInsights] = useState<Insight[]>([])
+  const [daily, setDaily] = useState<number[]>([0, 0, 0, 0, 0, 0, 0])
+  const [weekSales, setWeekSales] = useState(0)
+  const [weekExpenses, setWeekExpenses] = useState(0)
   const [ask, setAsk] = useState('')
+  const [checks, setChecks] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     if (!profile) return
-    const today = new Date()
-    const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString()
-    const dayAgo = new Date(Date.now() - 86400000).toISOString()
+    const now = new Date()
+    const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+    const startYesterday = new Date(now.getTime() - DAY).toISOString()
+    const startMon = startOfWeek(now).toISOString()
+    const dayAgo = new Date(now.getTime() - DAY).toISOString()
 
     ;(async () => {
-      const [tx, inv, prod, msg, quotes, staff, preds] = await Promise.all([
+      const [txToday, txYesterday, txWeek, invUnpaid, invOverdue, prod, msg, quotes, staff, expWeek] = await Promise.all([
         supabase.from('transactions').select('total').eq('user_id', ownerId).eq('status', 'completed').gte('created_at', startToday),
+        supabase.from('transactions').select('total').eq('user_id', ownerId).eq('status', 'completed').gte('created_at', startYesterday).lt('created_at', startToday),
+        supabase.from('transactions').select('total,created_at').eq('user_id', ownerId).eq('status', 'completed').gte('created_at', startMon),
         supabase.from('invoices').select('total,status').eq('user_id', ownerId).in('status', ['sent', 'viewed', 'partial', 'overdue']),
+        supabase.from('invoices').select('id,invoice_number,client_name,total,due_date').eq('user_id', ownerId).eq('status', 'overdue').order('total', { ascending: false }),
         supabase.from('products').select('stock_quantity,low_stock_threshold').eq('user_id', ownerId),
         supabase.from('whatsapp_messages').select('id', { count: 'exact', head: true }).eq('user_id', ownerId).eq('direction', 'inbound').gte('created_at', dayAgo),
         supabase.from('quotations').select('id', { count: 'exact', head: true }).eq('user_id', ownerId).eq('status', 'sent'),
         supabase.from('team_members').select('id', { count: 'exact', head: true }).eq('user_id', ownerId).eq('status', 'active'),
-        supabase.from('ai_predictions').select('*').eq('user_id', ownerId).eq('status', 'pending').order('created_at', { ascending: false }).limit(6),
+        supabase.from('expenses').select('amount').eq('user_id', ownerId).eq('type', 'expense').gte('date', startMon),
       ])
 
-      const salesToday = (tx.data || []).reduce((s, r: any) => s + Number(r.total || 0), 0)
-      const unpaid = (inv.data || []) as any[]
+      const sum = (rows: any[] | null) => (rows || []).reduce((s, r) => s + Number(r.total || r.amount || 0), 0)
+      const salesToday = sum(txToday.data as any[])
+      const salesYesterday = sum(txYesterday.data as any[])
+      const unpaid = (invUnpaid.data || []) as any[]
       const pendingCount = unpaid.length
       const pendingSum = unpaid.reduce((s, r) => s + Number(r.total || 0), 0)
       const lowStock = (prod.data || []).filter((p: any) => Number(p.stock_quantity) <= Number(p.low_stock_threshold)).length
       const messages = msg.count || 0
       const orders = quotes.count || 0
       const staffN = staff.count || 0
+      const expensesWeek = sum(expWeek.data as any[])
 
-      setMetrics([
-        { label: 'Sales today', value: formatINR(salesToday, 0), count: salesToday, icon: TrendingUp },
-        { label: 'Pending payments', value: pendingCount ? `${pendingCount} · ${formatINR(pendingSum, 0)}` : '—', count: pendingCount, alert: true, icon: Wallet },
-        { label: 'Low stock', value: `${lowStock}`, count: lowStock, alert: true, icon: Package },
-        { label: 'Customer messages', value: `${messages}`, count: messages, icon: MessageCircle },
-        { label: 'Orders waiting', value: `${orders}`, count: orders, icon: FileSignature },
-        { label: 'Active staff', value: `${staffN}`, count: staffN, icon: Users },
+      // overdue
+      const overdue = (invOverdue.data || []) as OverdueInv[]
+      setOverdueCount(overdue.length)
+      setOverdueSum(overdue.reduce((s, r) => s + Number(r.total || 0), 0))
+      setTopPriority(overdue[0] || null)
+
+      // weekly buckets (Mon–Sun)
+      const buckets = [0, 0, 0, 0, 0, 0, 0]
+      ;(txWeek.data || []).forEach((t: any) => {
+        const idx = (new Date(t.created_at).getDay() + 6) % 7
+        buckets[idx] += Number(t.total || 0)
+      })
+      setDaily(buckets)
+      setWeekSales(buckets.reduce((s, v) => s + v, 0))
+      setWeekExpenses(expensesWeek)
+
+      // stats (enriched, dense)
+      const salesDelta = salesYesterday > 0 ? Math.round(((salesToday - salesYesterday) / salesYesterday) * 100) : null
+      setStats([
+        {
+          label: 'Sales today', value: formatINR(salesToday, 0), count: salesToday, icon: TrendingUp,
+          delta: salesDelta !== null ? `${salesDelta >= 0 ? '+' : ''}${salesDelta}% vs yesterday` : undefined,
+          deltaTone: salesDelta === null ? 'neutral' : salesDelta >= 0 ? 'good' : 'bad',
+          footer: `Yesterday ${formatINR(salesYesterday, 0)}`, footerTone: 'muted',
+        },
+        {
+          label: 'Pending payments', value: pendingCount ? `${pendingCount} · ${formatINR(pendingSum, 0)}` : '—', count: pendingCount, icon: Wallet,
+          delta: pendingCount ? `${formatINR(pendingSum, 0)} outstanding` : 'All clear',
+          deltaTone: pendingCount ? 'bad' : 'good',
+          footer: pendingCount ? 'Awaiting collection' : 'Nothing pending', footerTone: pendingCount ? 'warning' : 'positive',
+        },
+        {
+          label: 'Low stock', value: `${lowStock}`, count: lowStock, icon: Package,
+          delta: lowStock ? `${lowStock} need reorder` : 'Stocked',
+          deltaTone: lowStock ? 'bad' : 'good',
+          footer: lowStock ? 'Review inventory' : 'Levels healthy', footerTone: lowStock ? 'warning' : 'positive',
+        },
+        {
+          label: 'Customer messages', value: `${messages}`, count: messages, icon: MessageCircle,
+          delta: messages ? 'Awaiting reply' : 'Inbox empty',
+          deltaTone: messages ? 'neutral' : 'good',
+          footer: 'Since yesterday', footerTone: 'muted',
+        },
+        {
+          label: 'Orders waiting', value: `${orders}`, count: orders, icon: FileSignature,
+          delta: orders ? 'Needs response' : 'None',
+          deltaTone: orders ? 'neutral' : 'good',
+          footer: 'Quotes sent', footerTone: 'muted',
+        },
+        {
+          label: 'Active staff', value: `${staffN}`, count: staffN, icon: Users,
+          delta: staffN ? 'On the floor' : 'Just you',
+          deltaTone: 'neutral',
+          footer: 'Team members', footerTone: 'muted',
+        },
       ])
 
-      const f: FocusItem[] = []
-      if (lowStock > 0) f.push({ title: `${lowStock} ${lowStock === 1 ? 'item is' : 'items are'} running low`, body: 'Restock to avoid stockouts.', action: 'Review stock', to: '/app/products' })
-      if (pendingCount > 0) f.push({ title: `${pendingCount} ${pendingCount === 1 ? 'invoice is' : 'invoices are'} unpaid`, body: `${formatINR(pendingSum, 0)} outstanding.`, action: 'See invoices', to: '/app/invoices' })
-      if (orders > 0) f.push({ title: `${orders} ${orders === 1 ? 'quote awaits' : 'quotes await'} a reply`, body: 'Customers are waiting on your response.', action: 'Follow up', to: '/app/quotations' })
-      if (messages > 0) f.push({ title: `${messages} customer ${messages === 1 ? 'message' : 'messages'} since yesterday`, body: 'Reply to keep them engaged.', action: 'Open', to: '/app/notifications' })
-      setFocus(f)
+      // Meraj insights (Hinglish voice, real-derived)
+      const ins: Insight[] = []
+      if (overdue.length > 0) ins.push({ severity: 'critical', title: `${overdue.length} bill${overdue.length > 1 ? 's' : ''} overdue`, subtitle: `${formatINR(overdue.reduce((s, r) => s + Number(r.total || 0), 0), 0)} collect karna baki hai` })
+      if (salesYesterday > 0 && salesToday < salesYesterday) {
+        const pct = Math.round(((salesYesterday - salesToday) / salesYesterday) * 100)
+        ins.push({ severity: 'warning', title: 'Aaj sales thodi kam hain', subtitle: `Kal ke mukable ${pct}% kam abhi tak` })
+      } else if (salesToday > 0) {
+        ins.push({ severity: 'healthy', title: 'Sales theek chal rahi hai', subtitle: `Aaj ${formatINR(salesToday, 0)} tak abhi` })
+      }
+      if (lowStock > 0) ins.push({ severity: 'warning', title: `${lowStock} item low stock par`, subtitle: 'Time rahe toh reorder kar lein' })
+      else ins.push({ severity: 'healthy', title: 'Stock healthy hai', subtitle: 'Sab items available hain' })
+      setInsights(ins.slice(0, 3))
 
-      // Professional one-line briefing (data-driven, no fluff)
-      const parts: string[] = []
-      if (salesToday > 0) parts.push(`${formatINR(salesToday, 0)} in sales today`)
-      if (pendingCount > 0) parts.push(`${pendingCount} unpaid invoice${pendingCount > 1 ? 's' : ''} · ${formatINR(pendingSum, 0)} outstanding`)
-      if (lowStock > 0) parts.push(`${lowStock} item${lowStock > 1 ? 's' : ''} low on stock`)
-      if (messages > 0) parts.push(`${messages} new message${messages > 1 ? 's' : ''}`)
-      setBriefing(parts.length ? parts.join(' · ') : 'Everything looks clear for today.')
-
-      setSuggestions((preds.data as Prediction[]) || [])
       setLoading(false)
     })()
   }, [profile])
@@ -94,109 +163,199 @@ export default function Dashboard() {
     navigate(text ? `/app/assistant?q=${encodeURIComponent(text)}` : '/app/assistant')
   }
 
-  const chips = ["Summarize today's sales", 'Who owes me money?', "What's low on stock?", 'Top customers this month']
+  const topAmount = topPriority ? Number(topPriority.total) : overdueSum
+  const suggestions = [
+    'Why did sales drop today?',
+    topPriority ? `Should I follow up with ${formatINR(topAmount, 0)} invoice?` : 'Which customers may delay payments?',
+    'Which customers may delay payments?',
+    'What should I reorder this week?',
+  ]
+
+  const sevDot = { critical: 'bg-negative', warning: 'bg-warning', healthy: 'bg-positive' } as const
+  const footerCls = { warning: 'text-warning', negative: 'text-negative', positive: 'text-positive', muted: 'text-fg-subtle' } as const
+  const deltaCls = { good: 'text-positive', bad: 'text-negative', neutral: 'text-fg-subtle' } as const
+
+  const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+  const maxDay = Math.max(1, ...daily)
+  const todayIdx = (new Date().getDay() + 6) % 7
+  const bestIdx = daily.indexOf(Math.max(...daily))
+  const weekProfit = weekSales - weekExpenses
+
+  const checklist = topPriority ? [
+    { id: 'followup', label: `Follow up with ${topPriority.client_name || 'customer'}` },
+    { id: 'reminder', label: 'Send payment reminder' },
+    { id: 'check', label: 'Check payment status' },
+  ] : []
 
   return (
-    <div className="animate-fade-in space-y-7">
-      {/* 1 ─ MERAJ STAFF BRIEFING + COMMAND BAR */}
-      <section className="card p-5 sm:p-6">
-        <div className="flex items-start gap-3.5">
-          <MerajAvatar state="idle" context="icon" size="md" className="flex-shrink-0" />
-          <div className="min-w-0 flex-1 pt-0.5">
-            <p className="text-base font-bold text-fg leading-tight">{greeting}, {firstName}.</p>
-            <p className="text-sm text-fg-muted mt-1 leading-snug">{briefing}</p>
-          </div>
-          <Link to="/app/assistant" className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline flex-shrink-0 mt-1">
-            Open Meraj <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
+    <div className="animate-fade-in space-y-5">
+      {/* GREETING — bare page text, no card */}
+      <div>
+        <h1 className="text-2xl font-semibold text-fg leading-tight">{greeting}, {firstName}.</h1>
+        <p className="text-sm text-fg-muted mt-1">Here's what's happening in your business today.</p>
+      </div>
 
-        {/* Command-style assistant bar */}
-        <form onSubmit={(e) => { e.preventDefault(); goAsk() }} className="mt-4 flex items-center gap-2 rounded-control border border-line bg-surface-2 focus-within:border-accent/50 transition-colors">
-          <span className="pl-3.5 text-fg-subtle"><MerajMark size={16} /></span>
+      {/* TOP PRIORITY — overdue hero */}
+      {topPriority && (
+        <section className="card p-4 sm:p-5 border-negative/30">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-start gap-3 min-w-0 flex-1">
+              <span className="w-9 h-9 rounded-control bg-negative/10 text-negative flex items-center justify-center flex-shrink-0"><AlertTriangle className="w-5 h-5" /></span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-negative">Top priority</p>
+                <p className="text-base font-bold text-fg leading-tight mt-0.5">{formatINR(topPriority.total, 0)} is overdue</p>
+                <p className="text-xs text-fg-muted mt-0.5">
+                  {overdueCount > 1 ? `${overdueCount} invoices` : `${topPriority.invoice_number} · ${topPriority.client_name || 'Customer'}`}
+                  {topPriority.due_date ? ` · ${Math.max(0, Math.floor((Date.now() - new Date(topPriority.due_date).getTime()) / DAY))} days overdue` : ''}
+                </p>
+                {topPriority.client_name && overdueCount > 1 && <p className="text-xs text-fg-muted">Largest: {topPriority.client_name}</p>}
+                <div className="flex items-center gap-2 mt-3">
+                  <button onClick={() => navigate('/app/invoices')} className="inline-flex items-center gap-1.5 bg-fg text-paper text-xs font-semibold rounded-control px-3 h-8 hover:opacity-90 transition-opacity">Collect payment</button>
+                  <Link to="/app/invoices" className="inline-flex items-center gap-1.5 border border-line text-fg text-xs font-semibold rounded-control px-3 h-8 hover:bg-surface-2 transition-colors">View invoice</Link>
+                </div>
+              </div>
+            </div>
+            <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:gap-1 sm:text-right sm:border-l sm:border-line sm:pl-4">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Overdue amount</p>
+              <p className="text-2xl font-bold text-negative tabular-nums">{formatINR(overdueSum, 0)}</p>
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-negative/10 text-negative">{overdueCount} invoice{overdueCount > 1 ? 's' : ''}</span>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* MERAJ INSIGHTS */}
+      {insights.length > 0 && (
+        <section className="card p-4 sm:p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="w-9 h-9 rounded-control bg-accent-soft text-accent flex items-center justify-center flex-shrink-0"><MerajMark size={18} /></span>
+            <div>
+              <p className="text-sm font-bold text-fg flex items-center gap-1.5">Meraj noticed {insights.length} things</p>
+              <p className="text-[11px] text-fg-subtle">A quick look at your business</p>
+            </div>
+          </div>
+          <div className="space-y-2.5">
+            {insights.map((it, i) => (
+              <div key={i} className="flex items-start gap-2.5">
+                <span className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${sevDot[it.severity]}`} />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-fg leading-snug">{it.title}</p>
+                  <p className="text-xs text-fg-subtle leading-snug">{it.subtitle}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ASK MERAJ bar */}
+      <section>
+        <form onSubmit={(e) => { e.preventDefault(); goAsk() }} className="flex items-center gap-2 rounded-control border border-line bg-surface px-2 focus-within:border-accent/50 transition-colors">
+          <span className="text-accent pl-1.5"><MerajMark size={18} /></span>
           <input
             value={ask}
             onChange={(e) => setAsk(e.target.value)}
-            placeholder="Ask Meraj anything — sales, stock, customers…"
-            className="flex-1 bg-transparent px-1.5 py-3 text-sm text-fg placeholder:text-fg-subtle outline-none"
+            placeholder="Ask Meraj anything…"
+            className="flex-1 bg-transparent py-2.5 text-sm text-fg placeholder:text-fg-subtle outline-none min-w-0"
           />
-          <button type="submit" aria-label="Ask Meraj" className="m-1 w-9 h-9 rounded-control bg-accent text-accent-fg flex items-center justify-center flex-shrink-0 hover:bg-accent-strong transition-colors">
-            <Send className="w-4 h-4" />
-          </button>
+          <button type="button" onClick={() => navigate('/app/assistant')} aria-label="Voice" className="w-8 h-8 rounded-control text-fg-muted hover:text-fg hover:bg-surface-2 flex items-center justify-center flex-shrink-0"><Mic className="w-4 h-4" /></button>
+          <button type="submit" aria-label="Send" className="w-8 h-8 rounded-control bg-fg text-paper flex items-center justify-center flex-shrink-0 hover:opacity-90 transition-opacity"><Send className="w-4 h-4" /></button>
         </form>
-
-        {/* Quick actions */}
-        <div className="flex flex-wrap gap-2 mt-3">
-          {chips.map((c) => (
-            <button key={c} onClick={() => goAsk(c)} className="text-xs font-medium text-fg-muted bg-surface-2 border border-line rounded-full px-3 py-1.5 hover:text-fg hover:border-accent/40 transition-colors">{c}</button>
+        {/* Suggestion pills — horizontal, wraps */}
+        <div className="flex flex-wrap gap-2 mt-2.5">
+          {suggestions.map((s) => (
+            <button key={s} onClick={() => goAsk(s)} className="text-xs font-medium text-fg-muted bg-surface-2 border border-line rounded-full px-3 py-1.5 hover:text-fg hover:border-accent/40 transition-colors">{s}</button>
           ))}
+          <button onClick={() => navigate('/app/assistant')} className="text-xs font-medium text-accent bg-surface-2 border border-line rounded-full px-3 py-1.5 hover:border-accent/40 transition-colors inline-flex items-center gap-1">More <ChevronDown className="w-3 h-3" /></button>
         </div>
       </section>
 
-      {/* 2 ─ BUSINESS HEALTH STRIP (dense, zero-state recedes) */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-px rounded-card overflow-hidden border border-line bg-line">
-        {metrics.map((m) => {
+      {/* STATS grid — dense, enriched */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+        {stats.map((m) => {
           const muted = m.count === 0
-          const tone = m.alert && !muted ? 'text-warning' : 'text-fg'
           return (
-            <div key={m.label} className="bg-surface px-3 py-3 flex flex-col gap-1">
+            <div key={m.label} className="card p-4 flex flex-col">
               <div className="flex items-center gap-1.5">
-                <m.icon className="w-3.5 h-3.5 text-fg-subtle" strokeWidth={1.75} />
-                <span className="text-[10px] font-semibold tracking-wide uppercase text-fg-subtle">{m.label}</span>
+                <m.icon className="w-[18px] h-[18px] text-fg-subtle" strokeWidth={1.75} />
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle truncate">{m.label}</span>
               </div>
-              <span className={`text-lg font-bold tabular-nums ${muted ? 'text-fg-subtle' : tone}`}>{m.value}</span>
+              <p className={`text-2xl font-bold tabular-nums mt-1.5 ${muted ? 'text-fg-subtle' : 'text-fg'}`}>{m.value}</p>
+              {m.delta && <p className={`text-[11px] font-medium mt-0.5 ${deltaCls[m.deltaTone || 'neutral']}`}>{m.delta}</p>}
+              <p className={`text-[11px] mt-auto pt-2 ${footerCls[m.footerTone]}`}>{m.footer}</p>
             </div>
           )
         })}
       </div>
 
-      {/* 3 ─ TODAY'S FOCUS (resolvable task cards) */}
-      <section>
-        <h2 className="text-xs font-bold tracking-[0.1em] uppercase text-fg-subtle mb-3">Today’s focus</h2>
-        {focus.length === 0 ? (
-          <div className="card p-5 flex items-center gap-3">
-            <Circle className="w-4 h-4 text-positive" />
-            <p className="text-sm text-fg-muted">Nothing needs your attention right now.</p>
+      {/* TODAY'S FOCUS + BUSINESS AT A GLANCE */}
+      <div className="grid lg:grid-cols-2 gap-4">
+        {/* Today's focus */}
+        <section className="card p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold text-fg">Today's focus</h2>
+            {overdueCount > 0 && <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-negative/10 text-negative">{overdueCount} overdue · {formatINR(overdueSum, 0)}</span>}
           </div>
-        ) : (
-          <div className="space-y-2.5">
-            {focus.slice(0, 4).map((f, i) => (
-              <div key={i} className="card p-4 flex items-center gap-4">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-fg">{f.title}</p>
-                  <p className="text-xs text-fg-subtle mt-0.5">{f.body}</p>
-                </div>
-                <Link to={f.to} className="btn-secondary text-xs h-8 px-3 flex-shrink-0 whitespace-nowrap">
-                  {f.action} <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
+          {topPriority ? (
+            <>
+              <button onClick={() => navigate('/app/invoices')} className="inline-flex items-center gap-1.5 text-xs font-semibold text-fg border border-line rounded-control px-3 h-8 hover:bg-surface-2 transition-colors mb-3">See invoices <ArrowRight className="w-3.5 h-3.5" /></button>
+              <div className="space-y-1">
+                {checklist.map((c) => {
+                  const done = !!checks[c.id]
+                  return (
+                    <button key={c.id} onClick={() => setChecks((p) => ({ ...p, [c.id]: !p[c.id] }))} className="w-full flex items-center gap-2.5 py-1.5 text-left">
+                      <span className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 ${done ? 'bg-positive border-positive' : 'border-line-2'}`}>{done && <Check className="w-3 h-3 text-accent-fg" />}</span>
+                      <span className={`text-sm ${done ? 'text-fg-subtle line-through' : 'text-fg'}`}>{c.label}</span>
+                    </button>
+                  )
+                })}
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+              <p className="text-[10px] text-fg-subtle mt-2">Checklist is local for now — persistence needs a tasks table.</p>
+            </>
+          ) : (
+            <div className="flex items-center gap-2.5">
+              <Circle className="w-4 h-4 text-positive" />
+              <p className="text-sm text-fg-muted">Nothing needs your attention right now.</p>
+            </div>
+          )}
+        </section>
 
-      {/* 4 ─ FOR YOUR REVIEW (staff notes from Meraj) */}
-      {suggestions.length > 0 && (
-        <section>
-          <h2 className="text-xs font-bold tracking-[0.1em] uppercase text-fg-subtle mb-3">For your review</h2>
-          <div className="card divide-y divide-line">
-            {suggestions.slice(0, 3).map((s) => (
-              <Link key={s.id} to="/app/assistant?scope=tasks" className="flex items-center gap-3 p-4 hover:bg-surface-2 transition-colors">
-                <span className="w-7 h-7 rounded-control bg-surface-2 text-fg-muted flex items-center justify-center flex-shrink-0"><MerajMark size={15} /></span>
-                <p className="text-sm text-fg flex-1 min-w-0 truncate">{staffTone(s)}</p>
-                <ArrowRight className="w-4 h-4 text-fg-subtle flex-shrink-0" />
-              </Link>
-            ))}
+        {/* Business at a glance */}
+        <section className="card p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold text-fg">Business at a glance</h2>
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-fg-muted border border-line rounded-control px-2 py-1">This week <ChevronDown className="w-3 h-3" /></span>
+          </div>
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div><p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Sales</p><p className="text-xl font-bold text-fg tabular-nums">{formatINR(weekSales, 0)}</p></div>
+            <div><p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Expenses</p><p className="text-xl font-bold text-fg tabular-nums">{formatINR(weekExpenses, 0)}</p></div>
+            <div><p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Profit</p><p className={`text-xl font-bold tabular-nums ${weekProfit >= 0 ? 'text-positive' : 'text-negative'}`}>{formatINR(weekProfit, 0)}</p></div>
+          </div>
+          {/* Mon–Sun bars */}
+          <div className="flex items-end justify-between gap-1.5 h-24">
+            {daily.map((v, i) => {
+              const h = Math.max(4, Math.round((v / maxDay) * 100))
+              const isToday = i === todayIdx
+              const isBest = i === bestIdx && v > 0
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                  <div className="w-full flex justify-center items-end" style={{ height: '100%' }}>
+                    <div
+                      className="w-full rounded-t"
+                      style={{
+                        height: `${h}%`,
+                        background: isToday ? 'transparent' : isBest ? 'rgb(var(--fg))' : 'rgb(var(--fg) / 0.18)',
+                        border: isToday ? '1.5px dashed rgb(var(--fg) / 0.5)' : 'none',
+                      }}
+                    />
+                  </div>
+                  <span className={`text-[9px] ${isToday ? 'text-fg font-bold' : 'text-fg-subtle'}`}>{days[i]}</span>
+                </div>
+              )
+            })}
           </div>
         </section>
-      )}
+      </div>
     </div>
   )
-}
-
-// Render a prediction as a first-person staff note (no "AI" framing).
-function staffTone(p: Prediction): string {
-  const t = p.title?.trim()
-  if (t) return t.endsWith('.') || t.endsWith('?') ? t : `${t}.`
-  return p.description || 'Noted for your review.'
 }

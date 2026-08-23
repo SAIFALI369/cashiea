@@ -135,10 +135,10 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
               className="flex flex-col items-center justify-center gap-0.5 min-h-[56px]"
               aria-label="Talk to Meraj"
             >
-              <span className={`w-12 h-12 -mt-6 rounded-full shadow-float ring-4 ring-surface flex items-center justify-center active:scale-95 transition-all ${listening || speaking ? 'bg-accent text-accent-fgl border-2 border-accent' : 'bg-accent-strong text-accent-fg'}`}>
+              <span className={`w-12 h-12 -mt-6 rounded-full ring-4 ring-surface flex items-center justify-center active:scale-95 transition-all shadow-[0_6px_20px_-4px_rgb(var(--accent))] ${listening || speaking ? 'bg-accent text-accent-fgl border-2 border-accent' : 'bg-accent-strong text-accent-fg'}`}>
                 <MerajAvatar state={voiceActive ? avatarState : 'idle'} size="sm" context="floating" />
               </span>
-              <span className="text-[10px] font-bold text-accent -mt-0.5">Talk</span>
+              <span className="text-[9px] font-bold text-accent -mt-0.5">Talk to Meraj</span>
             </button>
           </div>
 

@@ -28,7 +28,7 @@ export default function AppLayout() {
   const fadeTimer = useRef<number | undefined>(undefined)
   useEffect(() => {
     if (isAssistant) return
-    const reset = () => { setHdrOpacity(1); clearTimeout(fadeTimer.current); fadeTimer.current = window.setTimeout(() => setHdrOpacity(0.15), 2000) }
+    const reset = () => { setHdrOpacity(1); clearTimeout(fadeTimer.current); fadeTimer.current = window.setTimeout(() => setHdrOpacity(1), 2000) }
     window.addEventListener('scroll', reset, { passive: true })
     window.addEventListener('touchstart', reset, { passive: true })
     reset()
@@ -44,7 +44,7 @@ export default function AppLayout() {
         <OfflineBanner />
         {/* Mobile header — menu · brand (fades) · sync state · account */}
         {!isAssistant && (
-        <header className="lg:hidden sticky top-0 z-30 bg-slate-900/80 backdrop-blur border-b border-slate-800 px-4 py-3 flex items-center gap-3">
+        <header className="lg:hidden sticky top-0 z-30 bg-slate-900/80 backdrop-blur border-b border-slate-800 px-4 py-2 flex items-center gap-3">
           <button onClick={() => setSidebarOpen(true)} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-muted hover:text-fg">
             <Menu className="w-6 h-6" />
           </button>
