@@ -29,7 +29,7 @@ async function callAI(provider: string, systemPrompt: string, prompt: string): P
       if (!key) throw new Error("GROQ_API_KEY not configured");
       const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-        body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages: [{ role: "system", content: s }, { role: "user", content: p }], temperature: 0.5, max_tokens: 900 }),
+        body: JSON.stringify({ model: "groq/compound", messages: [{ role: "system", content: s }, { role: "user", content: p }], temperature: 0.5, max_tokens: 900 }),
       });
       if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
       return { ok: true, status: 200, value: (await res.json()).choices[0].message.content };
@@ -76,8 +76,9 @@ async function callAIWithFallback(provider: string, systemPrompt: string, prompt
   try {
     return await callAI(provider, systemPrompt, prompt);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (hasDefaultAI() && (msg.includes("not configured") || msg.includes("OPENROUTER_API_KEY") || msg.includes("OPENAI_API_KEY") || msg.includes("GEMINI_API_KEY") || msg.includes("ANTHROPIC_API_KEY") || msg.includes("AI_GATEWAY_API_KEY"))) {
+    // Any provider failure (wrong/deprecated model, 404, rate limit, network) →
+    // fall back to the default Gemini so the owner always gets a response.
+    if (hasDefaultAI()) {
       const fb = await callDefaultGemini(systemPrompt, prompt, { maxTokens, feature });
       if (!fb.ok) throw new Error(fb.value);
       return fb.value;
