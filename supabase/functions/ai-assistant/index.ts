@@ -24,6 +24,16 @@ async function callAI(provider: string, systemPrompt: string, prompt: string): P
     return r.value;
   }
   const callers: Record<string, (s: string, p: string) => Promise<{ ok: boolean; status: number; value: string }>> = {
+    groq: async (s, p) => {
+      const key = Deno.env.get("GROQ_API_KEY");
+      if (!key) throw new Error("GROQ_API_KEY not configured");
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages: [{ role: "system", content: s }, { role: "user", content: p }], temperature: 0.5, max_tokens: 900 }),
+      });
+      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
+      return { ok: true, status: 200, value: (await res.json()).choices[0].message.content };
+    },
     openai: async (s, p) => {
       const key = Deno.env.get("OPENAI_API_KEY");
       if (!key) throw new Error("OPENAI_API_KEY not configured");
@@ -205,9 +215,9 @@ async function buildContext(supabase: any, userId: string, message = "", briefin
     monthProfit: +(monthRevenue - monthExpenses).toFixed(2),
     topProducts: topProducts.map((p) => ({ name: p.name, qty: p.qty, revenue: +p.rev.toFixed(2) })),
     lowStock: lowStockItems.map((p: any) => ({ name: p.name, stock: p.stock_quantity, reorderAt: p.low_stock_threshold })),
-    dormantCustomers: (dormant.data || []).map((c: any) => ({ name: c.name, email: c.email, orders: c.total_orders, lastPurchase: c.last_purchase_at })),
-    productCatalog: (products.data || []).slice(0, 12).map((p: any) => ({ name: p.name, sku: p.sku, category: p.category, price: p.price, stock: p.stock_quantity })),
-    customers: (customers.data || []).slice(0, 12).map((c: any) => ({ name: c.name, email: c.email, phone: c.phone, spent: +Number(c.total_spent).toFixed(2), orders: c.total_orders, last: c.last_purchase_at })),
+    dormantCustomers: (dormant.data || []).slice(0, 6).map((c: any) => ({ name: c.name, orders: c.total_orders, lastPurchase: c.last_purchase_at })),
+    productCatalog: (products.data || []).slice(0, 6).map((p: any) => ({ name: p.name, category: p.category, price: p.price, stock: p.stock_quantity })),
+    customers: (customers.data || []).slice(0, 6).map((c: any) => ({ name: c.name, phone: c.phone, spent: +Number(c.total_spent).toFixed(2), orders: c.total_orders, last: c.last_purchase_at })),
     suppliersOwed: (suppliers.data || []).filter((s: any) => s.outstanding > 0).map((s: any) => ({ name: s.name, outstanding: s.outstanding })),
     recentEmails,
     driveFiles,
@@ -376,7 +386,7 @@ Deno.serve(async (req) => {
     const scopeFocus = scope && SCOPE_AREAS[scope]
       ? "\n\nTASK FOCUS: In this conversation you are helping ONLY with " + SCOPE_AREAS[scope] + ". Stay on this topic; if the owner asks something unrelated, acknowledge briefly and gently steer back to " + SCOPE_AREAS[scope] + ".\n"
       : "";
-    const provider = profile?.ai_provider || "openai";
+    const provider = profile?.ai_provider && profile.ai_provider !== "openai" ? profile.ai_provider : "groq";
 
     // PAGE CONTEXT — the floating mini-assistant tells us which screen the
     // owner is looking at, so "this", "here", or "this page" questions are
@@ -505,7 +515,7 @@ Deno.serve(async (req) => {
       if (!imgRes.ok) throw new Error(imgRes.value);
       result = imgRes.value;
     } else {
-      result = await callAIWithFallback(provider, SYSTEM + scopeFocus + pageFocus, userPrompt, 1200, "assistant");
+      result = await callAIWithFallback(provider, SYSTEM + scopeFocus + pageFocus, userPrompt, 800, "assistant");
     }
 
     // ── Persist memory (single upsert): append this turn to the transcript,
