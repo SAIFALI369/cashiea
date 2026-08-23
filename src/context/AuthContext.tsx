@@ -119,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signOut = async () => {
+    try { Object.keys(localStorage).filter((k) => k.startsWith('cashiea_meraj_')).forEach((k) => localStorage.removeItem(k)) } catch { /* ignore */ }
     await supabase.auth.signOut()
     setProfile(null)
     setUser(null)

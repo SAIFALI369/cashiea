@@ -5,6 +5,7 @@ import { marked } from 'marked'
 import { motion, AnimatePresence } from 'framer-motion'
 import { askAssistant } from '../lib/ai'
 import { MerajMark } from '../components/MerajMark'
+import { useAuth } from '../context/AuthContext'
 import { MerajAvatar, deriveAvatarState } from '../components/MerajAvatar'
 import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft, Plus, MessageCircle, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -12,8 +13,8 @@ import toast from 'react-hot-toast'
 interface Msg { role: 'user' | 'meraj'; text: string; pending?: { type: string; input: any; preview: any }; media?: { type: string; thumb: string; url: string; alt: string; link?: string }[] }
 interface Convo { id: string; title: string; msgs: Msg[]; ts: number; scope?: string }
 
-const STORE = 'cashiea_meraj_convos'
-const CURRENT_KEY = 'cashiea_meraj_current'
+const STORE_BASE = 'cashiea_meraj_convos'
+const CURRENT_BASE = 'cashiea_meraj_current'
 const SCOPE_LABELS: Record<string, string> = {
   receipts: 'Receipts', reports: 'Reports', emails: 'Emails', whatsapp: 'WhatsApp',
   expenses: 'Expenses', profits: 'Profits', stocks: 'Stocks', tasks: 'Tasks',
@@ -67,9 +68,13 @@ export default function AIAssistant() {
   const recRef = useRef<any>(null)
   const [listening, setListening] = useState(false)
 
-  useEffect(() => { try { setConvos(JSON.parse(localStorage.getItem(STORE) || '[]')) } catch { /* ignore */ } }, [])
+  const { user } = useAuth()
+  const STORE = STORE_BASE + (user?.id ? '_' + user.id : '')
+  const CURRENT_KEY = CURRENT_BASE + (user?.id ? '_' + user.id : '')
+
+  useEffect(() => { try { setConvos(JSON.parse(localStorage.getItem(STORE) || '[]')) } catch { /* ignore */ } }, [STORE])
   // Restore the in-progress conversation on open — closing the page mid-task no longer loses it.
-  useEffect(() => { try { const s = localStorage.getItem(CURRENT_KEY); if (s) setMessages(JSON.parse(s)) } catch { /* ignore */ } }, [])
+  useEffect(() => { try { const s = localStorage.getItem(CURRENT_KEY); if (s) setMessages(JSON.parse(s)) } catch { /* ignore */ } }, [CURRENT_KEY])
   // Persist the current conversation continuously.
   useEffect(() => { try { localStorage.setItem(CURRENT_KEY, JSON.stringify(messages)) } catch { /* ignore */ } }, [messages])
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }) }, [messages, loading, typing])

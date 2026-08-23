@@ -157,7 +157,7 @@ export default function Account() {
         <div className="flex items-center gap-5">
           <div className="relative flex-shrink-0">
             <Avatar url={profile?.avatar_url} name={displayName} size={88} />
-            {owner && (
+            {(
               <button
                 onClick={onPickFile}
                 disabled={uploading}
@@ -178,24 +178,20 @@ export default function Account() {
             <p className="text-sm text-fg-muted mt-0.5 truncate">
               {company || 'Add your business name below'}
             </p>
-            {owner ? (
-              <div className="flex items-center gap-3 mt-3">
-                <button onClick={onPickFile} disabled={uploading} className="btn-secondary text-xs h-8 px-3">
-                  <Camera className="w-3.5 h-3.5" /> {profile?.avatar_url ? 'Change photo' : 'Upload photo'}
+            <div className="flex items-center gap-3 mt-3">
+              <button onClick={onPickFile} disabled={uploading} className="btn-secondary text-xs h-8 px-3">
+                <Camera className="w-3.5 h-3.5" /> {profile?.avatar_url ? 'Change photo' : 'Upload photo'}
+              </button>
+              {profile?.avatar_url && (
+                <button
+                  onClick={removePhoto}
+                  disabled={uploading}
+                  className="btn-ghost text-xs h-8 px-2 text-fg-muted hover:text-negative"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Remove
                 </button>
-                {profile?.avatar_url && (
-                  <button
-                    onClick={removePhoto}
-                    disabled={uploading}
-                    className="btn-ghost text-xs h-8 px-2 text-fg-muted hover:text-negative"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" /> Remove
-                  </button>
-                )}
-              </div>
-            ) : (
-              <p className="text-[11px] text-fg-subtle mt-3">Only the owner can change this photo.</p>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import { MerajMark } from '../components/MerajMark'
+import { MerajAvatar } from '../components/MerajAvatar'
 import { formatINR } from '../lib/format'
 import {
   TrendingUp, TrendingDown, Wallet, Package, MessageCircle, FileSignature, Users,
@@ -191,7 +191,7 @@ export default function Dashboard() {
     <div className="animate-fade-in space-y-5">
       {/* GREETING — bare page text, no card */}
       <div>
-        <h1 className="text-2xl font-semibold text-fg leading-tight">{greeting}, {firstName}.</h1>
+        <h1 className="text-2xl font-semibold text-fg leading-tight truncate">{greeting}, {firstName}.</h1>
         <p className="text-sm text-fg-muted mt-1">Here's what's happening in your business today.</p>
       </div>
 
@@ -228,9 +228,9 @@ export default function Dashboard() {
       {insights.length > 0 && (
         <section className="card p-4 sm:p-5">
           <div className="flex items-center gap-3 mb-3">
-            <span className="w-9 h-9 rounded-control bg-accent-soft text-accent flex items-center justify-center flex-shrink-0"><MerajMark size={18} /></span>
-            <div>
-              <p className="text-sm font-bold text-fg flex items-center gap-1.5">Meraj noticed {insights.length} things</p>
+            <MerajAvatar state="idle" context="icon" size="sm" className="flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-fg">Meraj noticed {insights.length} things</p>
               <p className="text-[11px] text-fg-subtle">A quick look at your business</p>
             </div>
           </div>
@@ -239,7 +239,7 @@ export default function Dashboard() {
               <div key={i} className="flex items-start gap-2.5">
                 <span className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${sevDot[it.severity]}`} />
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-fg leading-snug">{it.title}</p>
+                  <p className="text-sm font-semibold text-fg leading-snug truncate">{it.title}</p>
                   <p className="text-xs text-fg-subtle leading-snug">{it.subtitle}</p>
                 </div>
               </div>
@@ -251,7 +251,7 @@ export default function Dashboard() {
       {/* ASK MERAJ bar */}
       <section>
         <form onSubmit={(e) => { e.preventDefault(); goAsk() }} className="flex items-center gap-2 rounded-control border border-line bg-surface px-2 focus-within:border-accent/50 transition-colors">
-          <span className="text-accent pl-1.5"><MerajMark size={18} /></span>
+          <span className="pl-1.5"><MerajAvatar state="idle" context="icon" size="xs" /></span>
           <input
             value={ask}
             onChange={(e) => setAsk(e.target.value)}
@@ -271,7 +271,7 @@ export default function Dashboard() {
       </section>
 
       {/* STATS grid — dense, enriched */}
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         {stats.map((m) => {
           const muted = m.count === 0
           return (
