@@ -43,6 +43,7 @@ function TypewriterMessage({ text, onDone }: { text: string; onDone: () => void 
 export default function AIAssistant() {
   const [params] = useSearchParams()
   const scope = params.get('scope') || undefined
+  const qParam = params.get('q')
   const scopeLabel = scope ? SCOPE_LABELS[scope] : undefined
 
   const [messages, setMessages] = useState<Msg[]>([])
@@ -102,6 +103,16 @@ export default function AIAssistant() {
       setLoading(false)
     }
   }
+
+  // Auto-send a question handed over from the Dashboard command bar (?q=).
+  const sentFromQ = useRef(false)
+  useEffect(() => {
+    if (qParam && !sentFromQ.current) {
+      sentFromQ.current = true
+      send(qParam)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qParam])
 
   const confirmAction = async (pending: any) => {
     if (loading) return
