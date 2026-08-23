@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -12,6 +12,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { AIProvider } from '../lib/ai'
+import { fetchBusinessMemory, saveOwnerNotes } from '../lib/useDailyIntelligence'
 
 const providers: { value: AIProvider; label: string; desc: string }[] = [
   { value: 'openrouter', label: 'OpenRouter', desc: 'Gemini → Kimi → Llama auto-fallback' },
@@ -76,6 +77,33 @@ export default function SettingsPage() {
   })
   const [aiProvider, setAiProvider] = useState<AIProvider>(profile?.ai_provider || 'openai')
   const [saving, setSaving] = useState(false)
+  const [businessSummary, setBusinessSummary] = useState('')
+  const [businessFacts, setBusinessFacts] = useState<string[]>([])
+  const [ownerNotes, setOwnerNotes] = useState('')
+  const [savingNotes, setSavingNotes] = useState(false)
+  const [memoryLoading, setMemoryLoading] = useState(true)
+
+  useEffect(() => {
+    if (!profile) return
+    const id = profile.business_owner_id || profile.id
+    fetchBusinessMemory(id).then((mem) => {
+      if (mem) {
+        setBusinessSummary(mem.summary || '')
+        setBusinessFacts(Array.isArray(mem.key_facts) ? mem.key_facts.map((f: any) => typeof f === 'string' ? f : f?.fact || JSON.stringify(f)) : [])
+        setOwnerNotes(mem.preferences?.owner_notes || '')
+      }
+      setMemoryLoading(false)
+    })
+  }, [profile])
+
+  const handleSaveNotes = async () => {
+    const id = profile?.business_owner_id || profile?.id
+    if (!id) return
+    setSavingNotes(true)
+    const ok = await saveOwnerNotes(id, ownerNotes)
+    toast.success(ok ? 'Notes saved — Meraj will use them' : 'Could not save')
+    setSavingNotes(false)
+  }
 
   const handleSave = async () => {
     setSaving(true)
@@ -190,6 +218,47 @@ export default function SettingsPage() {
           <div className="-mx-1">
             {ACCOUNT_TOOLS.map((it) => <NavRow key={it.to} {...it} />)}
           </div>
+        </Section>
+
+        {/* Business insights — what Meraj knows + owner-editable notes */}
+        <Section title="Business insights">
+          <p className="text-sm text-fg-subtle mb-3">What Meraj knows about your business. Add your own notes below and Meraj will use them to give better advice.</p>
+          {memoryLoading ? (
+            <div className="flex items-center gap-2 text-sm text-fg-muted"><Loader2 className="w-4 h-4 animate-spin" /> Loading...</div>
+          ) : (
+            <>
+              {businessSummary && (
+                <div className="mb-3 p-3 rounded-control bg-surface-2">
+                  <p className="text-xs font-semibold text-fg-subtle mb-1">Meraj's understanding</p>
+                  <p className="text-sm text-fg leading-snug">{businessSummary}</p>
+                </div>
+              )}
+              {businessFacts.length > 0 && (
+                <div className="mb-3 space-y-1">
+                  <p className="text-xs font-semibold text-fg-subtle mb-1">Key facts learned</p>
+                  {businessFacts.slice(0, 5).map((f, i) => (
+                    <p key={i} className="text-xs text-fg-muted flex items-start gap-1.5">
+                      <span className="text-accent mt-0.5">●</span> {f}
+                    </p>
+                  ))}
+                </div>
+              )}
+              <div>
+                <label className="label">Your business notes</label>
+                <textarea
+                  value={ownerNotes}
+                  onChange={(e) => setOwnerNotes(e.target.value)}
+                  rows={4}
+                  className="input-field resize-none"
+                  placeholder="Add insights Meraj should know — supplier details, seasonal trends, customer preferences, business goals..."
+                />
+                <p className="text-[11px] text-fg-subtle mt-1">Non-confidential only. Meraj uses these for better advice.</p>
+              </div>
+              <button onClick={handleSaveNotes} disabled={savingNotes} className="btn-secondary text-sm mt-3">
+                {savingNotes ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save notes
+              </button>
+            </>
+          )}
         </Section>
 
         <button onClick={handleSave} disabled={saving} className="btn-primary w-full py-3">

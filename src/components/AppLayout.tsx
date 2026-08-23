@@ -6,6 +6,7 @@ import BottomNav from './BottomNav'
 import TouchRipple from './TouchRipple'
 import { LiveClock } from './LiveClock'
 import { OfflineBanner } from './OfflineBanner'
+import { useDailyIntelligence } from '../lib/useDailyIntelligence'
 import { SyncManager } from './SyncManager'
 import { QueueBadge } from './QueueBadge'
 import { motion } from './motion'
@@ -17,7 +18,8 @@ import { Menu } from 'lucide-react'
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
+  useDailyIntelligence(ownerId)
   // The Meraj assistant page is full-bleed and scrolls internally; other pages
   // keep the padded, max-width shell + native body scroll.
   const isAssistant = location.pathname.startsWith('/app/assistant')
