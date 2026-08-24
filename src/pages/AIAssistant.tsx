@@ -92,9 +92,9 @@ export default function AIAssistant() {
     if ((!q && !img) || loading) return
     if (!navigator.onLine) { toast.error('No internet connection right now.'); return }
     setInput('')
-    // When an image is shared, use Task mode so Meraj analyses it + proposes a
-    // real action (create bill / sale / quotation) instead of just describing it.
-    const sendMode: 'ask' | 'task' = img ? 'task' : mode
+    // When an image is shared, use Ask mode so Meraj ANALYSES it via vision
+    // (Task mode doesn't read images). The vision prompt then offers to act.
+    const sendMode: 'ask' | 'task' = img ? 'ask' : mode
     const next = [...messages, { role: 'user' as const, text: q, image: img ? img.preview : undefined }]
     setMessages(next)
     setLoading(true)
@@ -136,7 +136,6 @@ export default function AIAssistant() {
         const dataUrl = sessionStorage.getItem('cashiea_pending_photo')
         if (dataUrl) {
           sessionStorage.removeItem('cashiea_pending_photo')
-          setMode('task')
           send(undefined, { data: dataUrl.split(',')[1] || '', mimeType: 'image/jpeg', preview: dataUrl })
         }
       } catch { /* ignore */ }

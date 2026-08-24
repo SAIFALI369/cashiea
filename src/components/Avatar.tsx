@@ -1,6 +1,10 @@
+import { useEffect, useState } from 'react'
+
 /**
  * Avatar — shows the owner's profile photo when set, otherwise a branded
- * initial tile. Used in the header, sidebar, and account page.
+ * initial tile. Falls back to initials automatically if the image URL ever
+ * fails to load (broken link, transient storage error, offline). Used in the
+ * header, sidebar, and account page.
  */
 export function Avatar({
   url,
@@ -13,15 +17,20 @@ export function Avatar({
   size?: number
   className?: string
 }) {
+  const [broken, setBroken] = useState(false)
+  // Reset the broken flag whenever a new URL is supplied.
+  useEffect(() => { setBroken(false) }, [url])
+
   const initial = (name?.trim()?.charAt(0) || '?').toUpperCase()
   const dim = { width: size, height: size }
 
-  if (url) {
+  if (url && !broken) {
     return (
       <img
         src={url}
         alt={name || 'Profile photo'}
         loading="lazy"
+        onError={() => setBroken(true)}
         className={`rounded-full object-cover bg-surface-2 ring-1 ring-line/80 ${className}`}
         style={dim}
       />

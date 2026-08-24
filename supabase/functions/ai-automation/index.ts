@@ -7,96 +7,10 @@
 // ════════════════════════════════════════════════════════════════
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
-import { callDefaultGemini, hasDefaultAI } from "../_shared/ai-default.ts";
+import { corsHeaders, json } from "../_shared/retry.ts";
 import { callAIWithFallback } from "../_shared/ai-call.ts";
-import { callOpenRouter } from "../_shared/openrouter.ts";
-import { callGateway, GATEWAY_DEFAULT_MODEL } from "../_shared/ai-gateway.ts";
 
-// ─── Provider calls (each returns {ok, status, value}) ──────────
-async function callOpenAI(systemPrompt: string, prompt: string): Promise<{ ok: boolean; status: number; value: string }> {
-  const key = Deno.env.get("OPENAI_API_KEY");
-  if (!key) throw new Error("OPENAI_API_KEY not configured");
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      model: "gpt-4o-mini",
-      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: prompt }],
-      temperature: 0.7,
-      max_tokens: 2000,
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`OpenAI error (${res.status}): ${err.slice(0, 300)}`);
-  }
-  const data = await res.json();
-  return { ok: true, status: 200, value: data.choices[0].message.content };
-}
-
-async function callGemini(systemPrompt: string, prompt: string): Promise<{ ok: boolean; status: number; value: string }> {
-  const key = Deno.env.get("GEMINI_API_KEY");
-  if (!key) throw new Error("GEMINI_API_KEY not configured");
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: systemPrompt }] },
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 2000 },
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Gemini error (${res.status}): ${err.slice(0, 300)}`);
-  }
-  const data = await res.json();
-  return { ok: true, status: 200, value: data.candidates[0].content.parts[0].text };
-}
-
-async function callAnthropic(systemPrompt: string, prompt: string): Promise<{ ok: boolean; status: number; value: string }> {
-  const key = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!key) throw new Error("ANTHROPIC_API_KEY not configured");
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({
-      model: "claude-3-5-sonnet-20241022",
-      max_tokens: 2000,
-      system: systemPrompt,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Anthropic error (${res.status}): ${err.slice(0, 300)}`);
-  }
-  const data = await res.json();
-  return { ok: true, status: 200, value: data.content[0].text };
-}
-
-async function callProvider(provider: string, systemPrompt: string, prompt: string): Promise<string> {
-  // OpenRouter — auto-fallback chain: Gemini -> Kimi K3 -> Llama -> any free model
-  if (provider === "openrouter") {
-    const r = await callOpenRouter(systemPrompt, prompt, { maxTokens: 1500 });
-    if (!r.ok) throw new Error(r.value);
-    return r.value;
-  }
-  // Vercel AI Gateway is OpenAI-compatible and routes to any provider/model
-  if (provider === "vercel_gateway") {
-    return withRetry(() => callGateway(systemPrompt, prompt), 2, 600);
-  }
-  const callers: Record<string, (s: string, p: string) => Promise<{ ok: boolean; status: number; value: string }>> = {
-    openai: callOpenAI,
-    gemini: callGemini,
-    anthropic: callAnthropic,
-  };
-  const caller = callers[provider];
-  if (!caller) throw new Error(`Unknown provider: ${provider}`);
-  return withRetry(() => caller(systemPrompt, prompt), 2, 600);
-}
+// ─── AI calls now go through the shared _shared/ai-call.ts (Groq + Gemini fallback) ───
 
 // ─── Structured system prompts per task type ────────────────────
 // Report sub-types get tailored instructions so output is genuinely

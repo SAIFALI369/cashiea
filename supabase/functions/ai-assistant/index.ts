@@ -343,7 +343,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (wantsMedia(String(message || ""))) {
+    // WEB MEDIA (Pexels) — read-only, instant, no AI round-trip. Falls through
+    // to the normal answer if nothing is found. NEVER triggers when the owner
+    // shared a photo — those must be analyzed, not image-searched.
+    if (!image && !confirm && wantsMedia(String(message || ""))) {
       const subject = extractMediaSubject(String(message || ""));
       const media = await fetchMedia(subject, Deno.env.get("PEXELS_API_KEY") || "");
       if (media.length) return json({ reply: `Here's what I found for "${subject}" 👇`, media });
