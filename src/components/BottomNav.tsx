@@ -1,14 +1,15 @@
 import { NavLink } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import clsx from 'clsx'
-import { LayoutDashboard, ShoppingCart, Users, LayoutGrid, X } from 'lucide-react'
+import { LayoutDashboard, ShoppingCart, Users, LayoutGrid, X, Camera } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { MerajAvatar, deriveAvatarState } from './MerajAvatar'
 import { useSpeech } from '../lib/useSpeech'
 import { askAssistant } from '../lib/ai'
 import { renderMd } from '../lib/markdown'
+import toast from 'react-hot-toast'
 import { getPageContext } from '../lib/pageContext'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 
 /**
@@ -92,8 +93,30 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
 
   const cancelVoice = () => { stopListening(); stopSpeaking(); setVoiceActive(false); setVoiceReply(''); setVoiceLoading(false) }
 
+  const navigate = useNavigate()
+  const cameraRef = useRef<HTMLInputElement>(null)
+  const onCamera = () => cameraRef.current?.click()
+  const onCameraFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !file.type.startsWith('image/')) { toast.error('Please take a photo.'); return }
+    try {
+      toast.loading('Processing photo…', { id: 'cam' })
+      const dataUrl = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = rej; r.readAsDataURL(file) })
+      const img = await new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataUrl })
+      const maxSize = 1024; const scale = Math.min(1, maxSize / Math.max(img.width, img.height))
+      const canvas = document.createElement('canvas'); canvas.width = img.width * scale; canvas.height = img.height * scale
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+      const resized = canvas.toDataURL('image/jpeg', 0.8)
+      sessionStorage.setItem('cashiea_pending_photo', resized)
+      toast.dismiss('cam')
+      navigate('/app/assistant?photo=true')
+    } catch { toast.error('Could not process the photo.'); toast.dismiss('cam') }
+  }
+
   return (
     <>
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onCameraFile} />
       {/* Voice overlay — covers the lower screen when active */}
       {/* Voice COMPANION — small & non-blocking. The whole app stays usable
           while Meraj listens / thinks / speaks down in the corner. */}
@@ -145,14 +168,15 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
 
           {RIGHT.map((it) => <Slot key={it.to} item={it} />)}
 
-          <button
-            onClick={onMore}
-            className="flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] text-fg-subtle hover:text-fg transition-colors"
-            aria-label="More"
-          >
-            <LayoutGrid className="w-[22px] h-[22px]" strokeWidth={1.75} />
-            <span className="text-[10px] font-semibold">More</span>
-          </button>
+          {/* Camera — scan a photo to create bills/sales */}
+          <div className="flex justify-center">
+            <button onClick={onCamera} className="flex flex-col items-center justify-center gap-0.5 min-h-[56px]" aria-label="Scan photo">
+              <span className="w-12 h-12 -mt-6 rounded-full shadow-float ring-4 ring-surface flex items-center justify-center active:scale-95 transition-all bg-surface border border-line">
+                <Camera className="w-5 h-5 text-accent" strokeWidth={1.75} />
+              </span>
+              <span className="text-[10px] font-bold text-accent -mt-0.5">Scan</span>
+            </button>
+          </div>
         </div>
       </nav>
     </>

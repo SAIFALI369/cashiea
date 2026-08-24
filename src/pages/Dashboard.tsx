@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { MerajAvatar } from '../components/MerajAvatar'
 import { formatINR } from '../lib/format'
+import { askAssistant } from '../lib/ai'
 import {
   TrendingUp, TrendingDown, Wallet, Package, MessageCircle, FileSignature, Users,
   ArrowRight, AlertTriangle, Send, Mic, ChevronDown, ChevronRight, Check, Circle,
@@ -45,6 +46,20 @@ export default function Dashboard() {
   const [weekExpenses, setWeekExpenses] = useState(0)
   const [ask, setAsk] = useState('')
   const [checks, setChecks] = useState<Record<string, boolean>>({})
+  const [aiGreeting, setAiGreeting] = useState('')
+
+  // Dynamic AI greeting — refreshed every 1 hour, cached in localStorage
+  useEffect(() => {
+    if (!profile) return
+    try {
+      const cached = JSON.parse(localStorage.getItem('cashiea_greeting') || '{}')
+      if (cached.ts && Date.now() - cached.ts < 3600000 && cached.text) { setAiGreeting(cached.text); return }
+    } catch {}
+    const fn = (profile?.full_name || 'there').split(' ')[0]
+    askAssistant(`Generate a warm, brief (1 sentence) greeting for ${fn}, a shop owner in India. Rules: do NOT say "Good morning/afternoon/evening". Be creative and personal — reference the time of day freshly, the business, or a quick observation. Vary it each time. Keep it casual Hinglish or English. One sentence, no emojis, no markdown.`, false, undefined, 'ask')
+      .then((res) => { if (res.reply) { const t = res.reply.replace(/[*#`]/g, '').trim(); setAiGreeting(t); try { localStorage.setItem('cashiea_greeting', JSON.stringify({ text: t, ts: Date.now() })) } catch {} } })
+      .catch(() => {})
+  }, [profile])
 
   useEffect(() => {
     if (!profile) return
@@ -154,8 +169,6 @@ export default function Dashboard() {
     })()
   }, [profile])
 
-  const hour = new Date().getHours()
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
   const firstName = (profile?.full_name || 'there').split(' ')[0]
 
   const goAsk = (q?: string) => {
@@ -191,7 +204,7 @@ export default function Dashboard() {
     <div className="animate-fade-in space-y-5">
       {/* GREETING — bare page text, no card */}
       <div>
-        <h1 className="text-2xl font-semibold text-fg leading-tight truncate">{greeting}, {firstName}.</h1>
+        <h1 className="text-2xl font-semibold text-fg leading-tight">{aiGreeting || `Welcome back, ${firstName}.`}</h1>
         <p className="text-sm text-fg-muted mt-1">Here's what's happening in your business today.</p>
       </div>
 
@@ -288,40 +301,8 @@ export default function Dashboard() {
         })}
       </div>
 
-      {/* TODAY'S FOCUS + BUSINESS AT A GLANCE */}
-      <div className="grid lg:grid-cols-2 gap-4">
-        {/* Today's focus */}
-        <section className="card p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold text-fg">Today's focus</h2>
-            {overdueCount > 0 && <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-negative/10 text-negative">{overdueCount} overdue · {formatINR(overdueSum, 0)}</span>}
-          </div>
-          {topPriority ? (
-            <>
-              <button onClick={() => navigate('/app/invoices')} className="inline-flex items-center gap-1.5 text-xs font-semibold text-fg border border-line rounded-control px-3 h-8 hover:bg-surface-2 transition-colors mb-3">See invoices <ArrowRight className="w-3.5 h-3.5" /></button>
-              <div className="space-y-1">
-                {checklist.map((c) => {
-                  const done = !!checks[c.id]
-                  return (
-                    <button key={c.id} onClick={() => setChecks((p) => ({ ...p, [c.id]: !p[c.id] }))} className="w-full flex items-center gap-2.5 py-1.5 text-left">
-                      <span className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 ${done ? 'bg-positive border-positive' : 'border-line-2'}`}>{done && <Check className="w-3 h-3 text-accent-fg" />}</span>
-                      <span className={`text-sm ${done ? 'text-fg-subtle line-through' : 'text-fg'}`}>{c.label}</span>
-                    </button>
-                  )
-                })}
-              </div>
-              <p className="text-[10px] text-fg-subtle mt-2">Checklist is local for now — persistence needs a tasks table.</p>
-            </>
-          ) : (
-            <div className="flex items-center gap-2.5">
-              <Circle className="w-4 h-4 text-positive" />
-              <p className="text-sm text-fg-muted">Nothing needs your attention right now.</p>
-            </div>
-          )}
-        </section>
-
-        {/* Business at a glance */}
-        <section className="card p-4 sm:p-5">
+      {/* BUSINESS AT A GLANCE */}
+      <section className="card p-4 sm:p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-bold text-fg">Business at a glance</h2>
             <span className="inline-flex items-center gap-1 text-xs font-medium text-fg-muted border border-line rounded-control px-2 py-1">This week <ChevronDown className="w-3 h-3" /></span>
@@ -355,7 +336,6 @@ export default function Dashboard() {
             })}
           </div>
         </section>
-      </div>
     </div>
   )
 }
