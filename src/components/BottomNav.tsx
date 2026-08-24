@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { useState, useRef } from 'react'
 import clsx from 'clsx'
-import { LayoutDashboard, ShoppingCart, Users, LayoutGrid, X, Camera } from 'lucide-react'
+import { LayoutDashboard, ShoppingCart, Users, X, Camera } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { MerajAvatar, deriveAvatarState } from './MerajAvatar'
 import { useSpeech } from '../lib/useSpeech'
@@ -168,15 +168,11 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
 
           {RIGHT.map((it) => <Slot key={it.to} item={it} />)}
 
-          {/* Camera — scan a photo to create bills/sales */}
-          <div className="flex justify-center">
-            <button onClick={onCamera} className="flex flex-col items-center justify-center gap-0.5 min-h-[56px]" aria-label="Scan photo">
-              <span className="w-12 h-12 -mt-6 rounded-full shadow-float ring-4 ring-surface flex items-center justify-center active:scale-95 transition-all bg-surface border border-line">
-                <Camera className="w-5 h-5 text-accent" strokeWidth={1.75} />
-              </span>
-              <span className="text-[10px] font-bold text-accent -mt-0.5">Scan</span>
-            </button>
-          </div>
+          {/* Camera — simple flat scan button (only the center Meraj pops out) */}
+          <button onClick={onCamera} className="flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] text-accent transition-colors active:scale-95" aria-label="Scan photo">
+            <Camera className="w-[22px] h-[22px]" strokeWidth={1.75} />
+            <span className="text-[10px] font-semibold">Scan</span>
+          </button>
         </div>
       </nav>
     </>

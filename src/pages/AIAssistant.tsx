@@ -10,7 +10,7 @@ import { MerajAvatar, deriveAvatarState } from '../components/MerajAvatar'
 import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft, Plus, MessageCircle, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-interface Msg { role: 'user' | 'meraj'; text: string; pending?: { type: string; input: any; preview: any }; media?: { type: string; thumb: string; url: string; alt: string; link?: string }[] }
+interface Msg { role: 'user' | 'meraj'; text: string; pending?: { type: string; input: any; preview: any }; media?: { type: string; thumb: string; url: string; alt: string; link?: string }[]; image?: string }
 interface Convo { id: string; title: string; msgs: Msg[]; ts: number; scope?: string }
 
 const STORE_BASE = 'cashiea_meraj_convos'
@@ -45,6 +45,7 @@ export default function AIAssistant() {
   const [params] = useSearchParams()
   const scope = params.get('scope') || undefined
   const qParam = params.get('q')
+  const photoParam = params.get('photo')
   const scopeLabel = scope ? SCOPE_LABELS[scope] : undefined
 
   const [messages, setMessages] = useState<Msg[]>([])
@@ -85,22 +86,26 @@ export default function AIAssistant() {
   const userTyping = !replying && (focused || input.trim().length > 0)
   const avatarState = deriveAvatarState({ listening, loading: replying || userTyping })
 
-  const send = async (override?: string) => {
+  const send = async (override?: string, overrideImage?: { data: string; mimeType: string; preview: string } | null) => {
+    const img = overrideImage ?? pendingImage
     const q = (override ?? input).trim()
-    if ((!q && !pendingImage) || loading) return
+    if ((!q && !img) || loading) return
     if (!navigator.onLine) { toast.error('No internet connection right now.'); return }
     setInput('')
-    const next = [...messages, { role: 'user' as const, text: q }]
+    // When an image is shared, use Task mode so Meraj analyses it + proposes a
+    // real action (create bill / sale / quotation) instead of just describing it.
+    const sendMode: 'ask' | 'task' = img ? 'task' : mode
+    const next = [...messages, { role: 'user' as const, text: q, image: img ? img.preview : undefined }]
     setMessages(next)
     setLoading(true)
     const history = messages.slice(-10).map((m) => ({ role: m.role, text: m.text }))
     try {
-      const res = await askAssistant(q || '(shared an image)', false, scope, mode, undefined, undefined, history, pendingImage || undefined)
+      const res = await askAssistant(q || '(shared an image)', false, scope, sendMode, undefined, undefined, history, img || undefined)
       setPendingImage(null)
         const done = [...next, { role: 'meraj' as const, text: res.reply, pending: res.pending, media: res.media }]
       setMessages(done)
       if (res.reply) setTyping(true)
-      const convo: Convo = { id: crypto.randomUUID(), title: q.slice(0, 48), msgs: done, ts: Date.now(), scope }
+      const convo: Convo = { id: crypto.randomUUID(), title: q.slice(0, 48) || 'Shared photo', msgs: done, ts: Date.now(), scope }
       persist([convo, ...convos].slice(0, 5))
     } catch (e) {
       setMessages([...next, { role: 'meraj' as const, text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.') }])
@@ -118,6 +123,26 @@ export default function AIAssistant() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [qParam])
+
+  // Auto-send a photo handed over from the bottom-bar Camera (?photo=true).
+  // BottomNav captures the photo → stores it in sessionStorage → navigates here.
+  // We read it, attach it, and auto-send in Task mode so Meraj analyses it and
+  // proposes an action (bill / sale / quotation).
+  const sentFromPhoto = useRef(false)
+  useEffect(() => {
+    if (photoParam === 'true' && !sentFromPhoto.current) {
+      sentFromPhoto.current = true
+      try {
+        const dataUrl = sessionStorage.getItem('cashiea_pending_photo')
+        if (dataUrl) {
+          sessionStorage.removeItem('cashiea_pending_photo')
+          setMode('task')
+          send(undefined, { data: dataUrl.split(',')[1] || '', mimeType: 'image/jpeg', preview: dataUrl })
+        }
+      } catch { /* ignore */ }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photoParam])
 
   const confirmAction = async (pending: any) => {
     if (loading) return
@@ -210,7 +235,10 @@ export default function AIAssistant() {
           {messages.map((m, i) =>
             m.role === 'user' ? (
               <div key={i} className="flex justify-end">
-                <div className="bg-surface-2/70 rounded-2xl rounded-br-md px-4 py-2.5 max-w-[75%]"><p className="text-sm text-fg whitespace-pre-wrap">{m.text}</p></div>
+                <div className="bg-surface-2/70 rounded-2xl rounded-br-md px-4 py-2.5 max-w-[75%]">
+                {m.image && <img src={m.image} alt="sent" className="rounded-xl mb-2 max-h-52 w-auto max-w-full object-cover" />}
+                {m.text && <p className="text-sm text-fg whitespace-pre-wrap">{m.text}</p>}
+              </div>
               </div>
             ) : (
               <div key={i} className="flex gap-3">
