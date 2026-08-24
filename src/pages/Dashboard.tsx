@@ -20,6 +20,7 @@ interface Stat {
   label: string; value: string; count: number; icon: LucideIcon
   delta?: string; deltaTone?: 'good' | 'bad' | 'neutral'
   footer: string; footerTone: 'warning' | 'negative' | 'positive' | 'muted'
+  to: string
 }
 interface Insight { severity: 'critical' | 'warning' | 'healthy'; title: string; subtitle: string }
 interface OverdueInv { id: string; invoice_number: string; client_name: string; total: number; due_date: string | null }
@@ -119,36 +120,42 @@ export default function Dashboard() {
           delta: salesDelta !== null ? `${salesDelta >= 0 ? '+' : ''}${salesDelta}% vs yesterday` : undefined,
           deltaTone: salesDelta === null ? 'neutral' : salesDelta >= 0 ? 'good' : 'bad',
           footer: `Yesterday ${formatINR(salesYesterday, 0)}`, footerTone: 'muted',
+          to: '/app/reports',
         },
         {
           label: 'Pending payments', value: pendingCount ? `${pendingCount} · ${formatINR(pendingSum, 0)}` : '—', count: pendingCount, icon: Wallet,
           delta: pendingCount ? `${formatINR(pendingSum, 0)} outstanding` : 'All clear',
           deltaTone: pendingCount ? 'bad' : 'good',
           footer: pendingCount ? 'Awaiting collection' : 'Nothing pending', footerTone: pendingCount ? 'warning' : 'positive',
+          to: '/app/invoices',
         },
         {
           label: 'Low stock', value: `${lowStock}`, count: lowStock, icon: Package,
           delta: lowStock ? `${lowStock} need reorder` : 'Stocked',
           deltaTone: lowStock ? 'bad' : 'good',
           footer: lowStock ? 'Review inventory' : 'Levels healthy', footerTone: lowStock ? 'warning' : 'positive',
+          to: '/app/products',
         },
         {
           label: 'Customer messages', value: `${messages}`, count: messages, icon: MessageCircle,
           delta: messages ? 'Awaiting reply' : 'Inbox empty',
           deltaTone: messages ? 'neutral' : 'good',
           footer: 'Since yesterday', footerTone: 'muted',
+          to: '/app/customers',
         },
         {
           label: 'Orders waiting', value: `${orders}`, count: orders, icon: FileSignature,
           delta: orders ? 'Needs response' : 'None',
           deltaTone: orders ? 'neutral' : 'good',
           footer: 'Quotes sent', footerTone: 'muted',
+          to: '/app/quotations',
         },
         {
           label: 'Active staff', value: `${staffN}`, count: staffN, icon: Users,
           delta: staffN ? 'On the floor' : 'Just you',
           deltaTone: 'neutral',
           footer: 'Team members', footerTone: 'muted',
+          to: '/app/team',
         },
       ])
 
@@ -288,21 +295,22 @@ export default function Dashboard() {
         {stats.map((m) => {
           const muted = m.count === 0
           return (
-            <div key={m.label} className="card p-4 flex flex-col">
+            <Link key={m.label} to={m.to} className="card p-4 flex flex-col cursor-pointer hover:border-accent/40 transition-colors group">
               <div className="flex items-center gap-1.5">
                 <m.icon className="w-[18px] h-[18px] text-fg-subtle" strokeWidth={1.75} />
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle truncate">{m.label}</span>
+                <ArrowRight className="w-3.5 h-3.5 text-fg-subtle ml-auto opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
               </div>
               <p className={`text-2xl font-bold tabular-nums mt-1.5 ${muted ? 'text-fg-subtle' : 'text-fg'}`}>{m.value}</p>
               {m.delta && <p className={`text-[11px] font-medium mt-0.5 ${deltaCls[m.deltaTone || 'neutral']}`}>{m.delta}</p>}
               <p className={`text-[11px] mt-auto pt-2 ${footerCls[m.footerTone]}`}>{m.footer}</p>
-            </div>
+            </Link>
           )
         })}
       </div>
 
       {/* BUSINESS AT A GLANCE */}
-      <section className="card p-4 sm:p-5">
+      <section onClick={() => navigate('/app/reports')} className="card p-4 sm:p-5 cursor-pointer hover:border-accent/40 transition-colors">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-bold text-fg">Business at a glance</h2>
             <span className="inline-flex items-center gap-1 text-xs font-medium text-fg-muted border border-line rounded-control px-2 py-1">This week <ChevronDown className="w-3 h-3" /></span>

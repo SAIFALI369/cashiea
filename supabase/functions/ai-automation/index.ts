@@ -9,6 +9,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
 import { callDefaultGemini, hasDefaultAI } from "../_shared/ai-default.ts";
+import { callAIWithFallback } from "../_shared/ai-call.ts";
 import { callOpenRouter } from "../_shared/openrouter.ts";
 import { callGateway, GATEWAY_DEFAULT_MODEL } from "../_shared/ai-gateway.ts";
 
@@ -178,16 +179,7 @@ Deno.serve(async (req) => {
       userPrompt = frameReportPrompt(report_type || "custom", title || "", prompt);
     }
 
-    let result;
-    try {
-      result = await callProvider(provider, systemPrompt, userPrompt);
-    } catch (err) {
-      if (hasDefaultAI() && err.message.includes("not configured")) {
-        const fb = await callDefaultGemini(systemPrompt, userPrompt);
-        if (!fb.ok) throw new Error(fb.value);
-        result = fb.value;
-      } else { throw err; }
-    }
+    const result = await callAIWithFallback(provider, systemPrompt, userPrompt, 2000, "ai-automation");
 
     // Increment usage + log activity
     await supabase.rpc("increment_api_usage", { user_uuid: user.id });

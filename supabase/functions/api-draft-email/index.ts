@@ -5,6 +5,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, apiCorsHeaders, json } from "../_shared/retry.ts";
+import { callAIWithFallback } from "../_shared/ai-call.ts";
 
 async function sha256(text: string): Promise<string> {
   const data = new TextEncoder().encode(text);
@@ -64,7 +65,7 @@ Deno.serve(async (req) => {
     if (!points) return json({ error: "points is required" }, 400, apiCorsHeaders);
 
     const prompt = `Email type: ${type}\nTone: ${tone}\n${recipient ? `Recipient: ${recipient}` : ""}\n${subject ? `Suggested subject: ${subject}` : ""}\nKey points:\n${points}`;
-    const result = await callAI(
+    const result = await callAIWithFallback(
       profile?.ai_provider || "openai",
       "You are an expert business copywriter. Write a polished, ready-to-send email. Match the requested tone and type. Return format: first line 'Subject: ...', blank line, then the body.",
       prompt

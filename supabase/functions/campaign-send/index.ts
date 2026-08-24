@@ -10,6 +10,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
+import { callAIWithFallback } from "../_shared/ai-call.ts";
 
 const TRACK_BASE = Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", ".functions.supabase.co") + "/track" || "";
 
@@ -110,7 +111,7 @@ Deno.serve(async (req) => {
         const recipientCtx = `Recipient: ${r.name || r.email}${r.personalization && Object.keys(r.personalization).length ? `\nContext: ${JSON.stringify(r.personalization)}` : ""}`;
         const prompt = `${baseTemplate}\n\nUse this subject line: ${subjectLine}\n\n${recipientCtx}\n\nWrite the personalized email now.`;
 
-        const generated = await callAI(provider, PERSONALIZER_SYS, prompt);
+        const generated = await callAIWithFallback(provider, PERSONALIZER_SYS, prompt, 800, "campaign");
 
         let finalSubject = subjectLine;
         let finalBody = generated;

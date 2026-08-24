@@ -15,63 +15,9 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
-import { callDefaultGemini, hasDefaultAI } from "../_shared/ai-default.ts";
-import { callOpenRouter } from "../_shared/openrouter.ts";
-import { callGateway, GATEWAY_DEFAULT_MODEL } from "../_shared/ai-gateway.ts";
+import { callAIWithFallback } from "../_shared/ai-call.ts";
 
-async function callAI(provider: string, systemPrompt: string, prompt: string, maxTokens = 1000): Promise<string> {
-  // OpenRouter — auto-fallback chain: Gemini -> Kimi K3 -> Llama -> any free model
-  if (provider === "openrouter") {
-    const r = await callOpenRouter(systemPrompt, prompt, { maxTokens: 1500 });
-    if (!r.ok) throw new Error(r.value);
-    return r.value;
-  }
-  // Prefer the Vercel AI Gateway if configured, else fall back to the direct provider
-  const gatewayKey = Deno.env.get("AI_GATEWAY_API_KEY");
-  if (gatewayKey) {
-    return withRetry(() => callGateway(systemPrompt, prompt, { maxTokens }), 2, 600);
-  }
-  const callers: Record<string, () => Promise<{ ok: boolean; status: number; value: string }>> = {
-    openai: async () => {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
-        body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: systemPrompt }, { role: "user", content: prompt }], temperature: 0.6, max_tokens: maxTokens }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).choices[0].message.content };
-    },
-    gemini: async () => {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${Deno.env.get("GEMINI_API_KEY")}`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system_instruction: { parts: [{ text: systemPrompt }] }, contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.6, maxOutputTokens: maxTokens } }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).candidates[0].content.parts[0].text };
-    },
-    anthropic: async () => {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!, "anthropic-version": "2023-06-01" },
-        body: JSON.stringify({ model: "claude-3-5-sonnet-20241022", max_tokens: maxTokens, system: systemPrompt, messages: [{ role: "user", content: prompt }] }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).content[0].text };
-    },
-  };
-  return withRetry(() => callers[provider || "openai"](), 2, 600);
-}
-
-async function callAIWithFallback(provider: string, systemPrompt: string, prompt: string, maxTokens = 1000): Promise<string> {
-  try {
-    return await callAI(provider, systemPrompt, prompt, maxTokens);
-  } catch (err) {
-    if (hasDefaultAI() && err.message.includes("not configured")) {
-      const fb = await callDefaultGemini(systemPrompt, prompt, { maxTokens });
-      if (!fb.ok) throw new Error(fb.value);
-      return fb.value;
-    }
-    throw err;
-  }
-}
+// AI calls now go through _shared/ai-call.ts (Groq primary + Gemini fallback — identical to Meraj chat).
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });

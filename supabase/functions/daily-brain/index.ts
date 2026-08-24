@@ -15,9 +15,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry } from "../_shared/retry.ts";
-import { callDefaultGemini, hasDefaultAI } from "../_shared/ai-default.ts";
-import { callOpenRouter } from "../_shared/openrouter.ts";
-import { callGateway } from "../_shared/ai-gateway.ts";
+import { callAIWithFallback } from "../_shared/ai-call.ts";
 import { refreshGoogleToken, fetchGmail } from "../_shared/google.ts";
 
 const supabase = createClient(
@@ -25,59 +23,7 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
-async function callAI(provider: string, systemPrompt: string, prompt: string, maxTokens = 1000): Promise<string> {
-  // OpenRouter — auto-fallback chain: Gemini -> Kimi K3 -> Llama -> any free model
-  if (provider === "openrouter") {
-    const r = await callOpenRouter(systemPrompt, prompt, { maxTokens: 1500 });
-    if (!r.ok) throw new Error(r.value);
-    return r.value;
-  }
-  const callers: Record<string, (s: string, p: string) => Promise<{ ok: boolean; status: number; value: string }>> = {
-    openai: async (s, p) => {
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
-        body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: s }, { role: "user", content: p }], temperature: 0.5, max_tokens: maxTokens }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).choices[0].message.content };
-    },
-    gemini: async (s, p) => {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${Deno.env.get("GEMINI_API_KEY")}`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system_instruction: { parts: [{ text: s }] }, contents: [{ parts: [{ text: p }] }], generationConfig: { temperature: 0.5, maxOutputTokens: maxTokens } }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).candidates[0].content.parts[0].text };
-    },
-    anthropic: async (s, p) => {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!, "anthropic-version": "2023-06-01" },
-        body: JSON.stringify({ model: "claude-3-5-sonnet-20241022", max_tokens: maxTokens, system: s, messages: [{ role: "user", content: p }] }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).content[0].text };
-    },
-  };
-  // Vercel AI Gateway is OpenAI-compatible and routes to any provider/model
-  if (provider === "vercel_gateway") {
-    return withRetry(() => callGateway(systemPrompt, prompt), 1, 800);
-  }
-  return withRetry(() => callers[provider || "openai"](systemPrompt, prompt), 1, 800);
-}
-
-// Fallback: if the selected provider has no key, use the built-in default Gemini
-async function callAIWithFallback(provider: string, systemPrompt: string, prompt: string, maxTokens = 1200, feature = "daily-brain"): Promise<string> {
-  try {
-    return await callAI(provider, systemPrompt, prompt, maxTokens);
-  } catch (err) {
-    if (hasDefaultAI() && (err.message.includes("not configured") || err.message.includes("OPENROUTER_API_KEY") || err.message.includes("OPENAI_API_KEY") || err.message.includes("GEMINI_API_KEY") || err.message.includes("ANTHROPIC_API_KEY") || err.message.includes("AI_GATEWAY_API_KEY"))) {
-      const fb = await callDefaultGemini(systemPrompt, prompt, { maxTokens, feature });
-      if (!fb.ok) throw new Error(fb.value);
-      return fb.value;
-    }
-    throw err;
-  }
-}
+// AI calls now go through _shared/ai-call.ts (Groq primary + Gemini fallback — identical to Meraj chat).
 
 async function gatherSnapshot(userId: string) {
   const now = new Date();
@@ -125,10 +71,15 @@ async function deliverBriefing(to: string, subject: string, markdown: string): P
 }
 
 Deno.serve(async (req) => {
-  // Service-role invocation only (from pg_cron or manual trigger)
+  // Service-role invocation only (from pg_cron or manual trigger).
+  // Accepts a service_role JWT (cron sends the project service-role key) OR the
+  // service-role key via suffix match — robust across legacy-JWT and new key formats.
   const authHeader = req.headers.get("authorization") || "";
+  const bearer = authHeader.replace(/^Bearer\s+/i, "");
+  let isServiceRole = false;
+  try { isServiceRole = JSON.parse(atob(bearer.split(".")[1]))?.role === "service_role"; } catch { /* not a JWT */ }
   const expectedKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!expectedKey || !authHeader.endsWith(expectedKey)) {
+  if (!isServiceRole && (!expectedKey || !authHeader.endsWith(expectedKey))) {
     return new Response(JSON.stringify({ error: "Unauthorized — service-role only" }), {
       status: 401, headers: { "Content-Type": "application/json" },
     });

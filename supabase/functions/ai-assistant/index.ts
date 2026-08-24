@@ -8,84 +8,14 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
-import { callDefaultGemini, hasDefaultAI, callGeminiToolCall, callGeminiWithImage } from "../_shared/ai-default.ts";
-import { callOpenRouter } from "../_shared/openrouter.ts";
-import { callGateway } from "../_shared/ai-gateway.ts";
+import { callGeminiToolCall, callGeminiWithImage } from "../_shared/ai-default.ts";
+import { callAIWithFallback } from "../_shared/ai-call.ts";
 import { refreshGoogleToken } from "../_shared/google.ts";
 import { getDriveToken, readDriveFile } from "../_shared/connectors/google-drive.ts";
 import { sendWhatsAppText } from "../_shared/whatsapp.ts";
 import { fetchNews, fetchMedia, wantsNews, wantsMedia, extractNewsTopic, extractMediaSubject } from "../_shared/web.ts";
 
-async function callAI(provider: string, systemPrompt: string, prompt: string): Promise<string> {
-  // OpenRouter — auto-fallback chain: Gemini -> Kimi K3 -> Llama -> any free model
-  if (provider === "openrouter") {
-    const r = await callOpenRouter(systemPrompt, prompt, { maxTokens: 1500 });
-    if (!r.ok) throw new Error(r.value);
-    return r.value;
-  }
-  const callers: Record<string, (s: string, p: string) => Promise<{ ok: boolean; status: number; value: string }>> = {
-    groq: async (s, p) => {
-      const key = Deno.env.get("GROQ_API_KEY");
-      if (!key) throw new Error("GROQ_API_KEY not configured");
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-        body: JSON.stringify({ model: "groq/compound", messages: [{ role: "system", content: s }, { role: "user", content: p }], temperature: 0.5, max_tokens: 900 }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).choices[0].message.content };
-    },
-    openai: async (s, p) => {
-      const key = Deno.env.get("OPENAI_API_KEY");
-      if (!key) throw new Error("OPENAI_API_KEY not configured");
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-        body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: s }, { role: "user", content: p }], temperature: 0.5, max_tokens: 1200 }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).choices[0].message.content };
-    },
-    gemini: async (s, p) => {
-      const key = Deno.env.get("GEMINI_API_KEY");
-      if (!key) throw new Error("GEMINI_API_KEY not configured");
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system_instruction: { parts: [{ text: s }] }, contents: [{ parts: [{ text: p }] }], generationConfig: { temperature: 0.5, maxOutputTokens: 1200 } }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).candidates[0].content.parts[0].text };
-    },
-    anthropic: async (s, p) => {
-      const key = Deno.env.get("ANTHROPIC_API_KEY");
-      if (!key) throw new Error("ANTHROPIC_API_KEY not configured");
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
-        body: JSON.stringify({ model: "claude-3-5-sonnet-20241022", max_tokens: 1200, system: s, messages: [{ role: "user", content: p }] }),
-      });
-      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
-      return { ok: true, status: 200, value: (await res.json()).content[0].text };
-    },
-  };
-  if (provider === "vercel_gateway") {
-    return withRetry(() => callGateway(systemPrompt, prompt), 2, 600);
-  }
-  return withRetry(() => callers[provider || "openai"](systemPrompt, prompt), 2, 600);
-}
-
-// Fallback: if the selected provider has no key, use the built-in default Gemini
-async function callAIWithFallback(provider: string, systemPrompt: string, prompt: string, maxTokens = 1200, feature = "unknown"): Promise<string> {
-  try {
-    return await callAI(provider, systemPrompt, prompt);
-  } catch (err) {
-    // Any provider failure (wrong/deprecated model, 404, rate limit, network) →
-    // fall back to the default Gemini so the owner always gets a response.
-    if (hasDefaultAI()) {
-      const fb = await callDefaultGemini(systemPrompt, prompt, { maxTokens, feature });
-      if (!fb.ok) throw new Error(fb.value);
-      return fb.value;
-    }
-    throw err;
-  }
-}
+// AI calls now go through _shared/ai-call.ts (Groq primary + Gemini fallback — identical to Meraj chat).
 
 // Live, best-effort recent-Gmail summary for the snapshot. Only fetches when
 // the owner has a connected Gmail integration. Concurrent + time-boxed so a

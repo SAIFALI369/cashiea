@@ -13,6 +13,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, json, withRetry } from "../_shared/retry.ts";
+import { callAIWithFallback } from "../_shared/ai-call.ts";
 import { refreshGoogleToken, fetchGmail, fetchSheet } from "../_shared/google.ts";
 
 Deno.serve(async (req) => {
@@ -79,26 +80,9 @@ Deno.serve(async (req) => {
     // will synthesize. For an immediate update, we do a direct AI call here.
     let summary = null;
     try {
-      const key = Deno.env.get("OPENAI_API_KEY");
-      if (key) {
-        const aiRes = await withRetry(() => fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              { role: "system", content: "You are a business-learning assistant. From the provided data, extract 3-5 concise key facts about this business (products, customers, patterns). Return ONLY a JSON object: {\"facts\":[\"...\"]}." },
-              { role: "user", content: `Data from ${provider}:\n${fetchedData.slice(0, 6000)}` },
-            ],
-            temperature: 0.5, max_tokens: 600,
-          }),
-        }).then(async (r) => ({ ok: r.ok, status: r.status, value: await r.text() })), 1, 800);
-
-        if (aiRes.ok) {
-          const parsed = JSON.parse(aiRes.value);
-          summary = parsed.choices?.[0]?.message?.content || null;
-        }
-      }
+      summary = await callAIWithFallback("groq",
+        "You are a business-learning assistant. From the provided data, extract 3-5 concise key facts about this business (products, customers, patterns). Return ONLY a JSON object: {\"facts\":[\"...\"]}.",
+        `Data from ${provider}:\n${fetchedData.slice(0, 6000)}`, 600, "google-fetch");
     } catch { /* non-fatal — sync still succeeded */ }
 
     await supabase.from("activity_logs").insert({

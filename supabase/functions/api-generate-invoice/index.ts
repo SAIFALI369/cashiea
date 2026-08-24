@@ -5,6 +5,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, apiCorsHeaders, json } from "../_shared/retry.ts";
+import { callAIWithFallback } from "../_shared/ai-call.ts";
 
 async function sha256(text: string): Promise<string> {
   const data = new TextEncoder().encode(text);
@@ -63,7 +64,7 @@ Deno.serve(async (req) => {
     const { prompt } = await req.json();
     if (!prompt) return json({ error: "prompt is required" }, 400, apiCorsHeaders);
 
-    const result = await callAI(
+    const result = await callAIWithFallback(
       profile?.ai_provider || "openai",
       "You are an expert billing assistant. Generate a complete invoice as valid JSON with keys: invoice_number, client_name, client_email, client_address, items (array of {description, quantity, unit_price}), tax_rate, due_date, notes. Calculate subtotal, tax_amount, total automatically. Return ONLY valid JSON, no markdown.",
       prompt

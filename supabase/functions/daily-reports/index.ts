@@ -122,10 +122,15 @@ function formatMessage(shopName: string, dateStr: string, data: ReturnType<typeo
 
 // ─── Main ───────────────────────────────────────────────────────
 Deno.serve(async (req) => {
-  // Service-role only (cron or manual trigger)
+  // Service-role only (cron or manual trigger). Accepts a service_role JWT
+  // (cron sends the project service-role key) OR the key via suffix match —
+  // robust across legacy-JWT and new key formats.
   const authHeader = req.headers.get("authorization") || "";
+  const bearer = authHeader.replace(/^Bearer\s+/i, "");
+  let isServiceRole = false;
+  try { isServiceRole = JSON.parse(atob(bearer.split(".")[1]))?.role === "service_role"; } catch { /* not a JWT */ }
   const expectedKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!expectedKey || !authHeader.endsWith(expectedKey)) {
+  if (!isServiceRole && (!expectedKey || !authHeader.endsWith(expectedKey))) {
     return new Response(JSON.stringify({ error: "Unauthorized — service-role only" }), {
       status: 401, headers: { "Content-Type": "application/json" },
     });
