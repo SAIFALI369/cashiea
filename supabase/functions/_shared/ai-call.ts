@@ -5,15 +5,17 @@
 //
 //     AI TASK
 //       ↓ classify
-//     Need huge context?
+//     Need huge context?  (≥20k chars)
 //       ├── YES → Ox Alpha   (OpenRouter stealth/ox-alpha, 1M-token ctx)
 //       └── NO
 //            ↓
-//          Need extreme speed?
+//          Need extreme speed?  (chat / quick-tasks, small input)
 //            ├── YES → Groq   (groq/compound, sub-second)
 //            └── NO → Gemini  (gemini-3.6-flash key pool)
 //       ↓
-//     Provider unavailable? → automatic Gemini fallback (2-key pool)
+//     Provider unavailable? → automatic Gemini fallback (2-key pool),
+//     then the remaining providers as an absolute last resort — a single
+//     busy provider can never fail the owner's request.
 //
 // The 4 API keys: OpenRouter (Ox Alpha) · Groq (speed) · 2× Gemini
 // (default route + universal fallback, with key rotation).
@@ -28,6 +30,13 @@ import { withRetry } from "./retry.ts";
 /** ≈5k tokens of input → big enough to want the 1M-context Ox Alpha model. */
 const HUGE_CONTEXT_CHARS = 20_000;
 /**
+ * Above this size a "speed" feature still routes to Gemini: Groq's free-tier
+ * per-minute token budget (~30k TPM) makes LARGE requests fragile (one big
+ * request eats half the minute), and a big request is not latency-critical
+ * anyway. Keeps Groq's quota for the many small snappy chat turns.
+ */
+const SPEED_MAX_CHARS = 10_000;
+/**
  * Interactive features where the owner is watching a spinner and sub-second
  * latency matters. Background/batch jobs (daily-brain, campaign, api-*, …)
  * deliberately route to Gemini instead — balanced quality, no rush.
@@ -38,9 +47,9 @@ type Route = "oxalpha" | "groq" | "gemini";
 
 function classifyRoute(systemPrompt: string, prompt: string, feature: string): Route {
   const size = (systemPrompt || "").length + (prompt || "").length;
-  if (size >= HUGE_CONTEXT_CHARS) return "oxalpha"; // 1. huge context
-  if (SPEED_FEATURES.has(feature)) return "groq";   // 2. extreme speed
-  return "gemini";                                   // 3. balanced default
+  if (size >= HUGE_CONTEXT_CHARS) return "oxalpha";        // 1. huge context
+  if (SPEED_FEATURES.has(feature) && size < SPEED_MAX_CHARS) return "groq"; // 2. extreme speed
+  return "gemini";                                          // 3. balanced default
 }
 
 // ── Direct providers ──────────────────────────────────────────────
@@ -94,7 +103,7 @@ async function callAI(provider: string, systemPrompt: string, prompt: string, ma
   return withRetry(() => callers[provider || "openai"](systemPrompt, prompt), 2, 600);
 }
 
-// ── The three routes ──────────────────────────────────────────────
+// ── The routes ────────────────────────────────────────────────────
 /** Ox Alpha (huge context) via OpenRouter — chain starts with stealth/ox-alpha. */
 async function callOxAlpha(systemPrompt: string, prompt: string, maxTokens: number): Promise<string> {
   const r = await callOpenRouter(systemPrompt, prompt, { maxTokens });
@@ -124,29 +133,34 @@ export async function callAIWithFallback(
   maxTokens = 1200,
   feature = "unknown"
 ): Promise<string> {
-  // Rare explicit overrides keep working exactly as before.
-  if (provider === "openrouter" || provider === "anthropic" || provider === "vercel_gateway") {
+  const run = (p: string): Promise<string> => {
+    if (p === "oxalpha") return callOxAlpha(systemPrompt, prompt, maxTokens);
+    if (p === "gemini") return callGeminiPool(systemPrompt, prompt, maxTokens, feature);
+    return callAI(p, systemPrompt, prompt, maxTokens); // groq, anthropic, vercel_gateway
+  };
+
+  // Fallback order: the classified route first, then Gemini (the designated
+  // fallback), then the remaining providers as an absolute last resort.
+  let order: string[];
+  if (provider === "openrouter") {
+    order = ["oxalpha", "gemini", "groq"];
+  } else if (provider === "anthropic" || provider === "vercel_gateway") {
+    order = [provider, "gemini", "groq"];
+  } else {
+    const route = classifyRoute(systemPrompt, prompt, feature);
+    order =
+      route === "oxalpha" ? ["oxalpha", "gemini", "groq"] :
+      route === "groq" ? ["groq", "gemini", "oxalpha"] :
+                          ["gemini", "groq", "oxalpha"];
+  }
+
+  let lastErr: unknown = null;
+  for (const p of order) {
     try {
-      if (provider === "openrouter") return await callOxAlpha(systemPrompt, prompt, maxTokens);
-      return await callAI(provider, systemPrompt, prompt, maxTokens);
+      return await run(p);
     } catch (err) {
-      if (hasDefaultAI()) return callGeminiPool(systemPrompt, prompt, maxTokens, feature);
-      throw err;
+      lastErr = err;
     }
   }
-
-  // Default: task-classification routing.
-  const route = classifyRoute(systemPrompt, prompt, feature);
-
-  // Gemini route — the pool already rotates the 2 keys, no further fallback.
-  if (route === "gemini") return callGeminiPool(systemPrompt, prompt, maxTokens, feature);
-
-  try {
-    if (route === "oxalpha") return await callOxAlpha(systemPrompt, prompt, maxTokens);
-    return await callAI("groq", systemPrompt, prompt, maxTokens); // speed route
-  } catch (err) {
-    // Provider unavailable → automatic Gemini fallback.
-    if (hasDefaultAI()) return callGeminiPool(systemPrompt, prompt, maxTokens, feature);
-    throw err;
-  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
