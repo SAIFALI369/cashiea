@@ -4,10 +4,10 @@ import { supabase } from '../lib/supabase'
 import type { ApiKey } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
-import { Key, Plus, Loader2, Copy, Trash2, Terminal, Check, ShieldCheck } from 'lucide-react'
+import { Key, Plus, Loader2, Copy, Trash2, Terminal, Check, Eye, EyeOff, ShieldCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-// SHA-256 in the browser (matches the edge function hashing).
+// SHA-256 in the browser (matches the edge function hashing)
 async function sha256(text: string): Promise<string> {
   const data = new TextEncoder().encode(text)
   const hash = await crypto.subtle.digest('SHA-256', data)
@@ -20,19 +20,34 @@ function randomKey(): string {
   return 'biz_live_' + [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-function CodeBlock({ label, code }: { label: string; code: string }) {
-  const [copied, setCopied] = useState(false)
-  const copy = () => { navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 2000) }
+/** Masked key display — only the prefix is ever visible after creation. */
+function MaskedKey({ prefix }: { prefix: string }) {
   return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-semibold text-fg">{label}</p>
-        <button onClick={copy} className="inline-flex items-center gap-1 text-[11px] font-semibold text-fg-muted hover:text-accent transition-colors">
-          {copied ? <Check className="w-3 h-3 text-positive" /> : <Copy className="w-3 h-3" />} {copied ? 'Copied' : 'Copy'}
-        </button>
-      </div>
-      <pre className="bg-paper rounded-control p-3.5 text-[11px] leading-relaxed text-fg-muted overflow-x-auto border border-line"><code>{code}</code></pre>
-    </div>
+    <span className="inline-flex items-center gap-1 font-mono text-xs text-fg-muted bg-surface-2 border border-line rounded-lg px-2.5 py-1.5">
+      <Key className="w-3.5 h-3.5 text-fg-subtle" />
+      <span className="text-fg">{prefix.slice(0, 12)}</span>
+      <span className="tracking-widest">••••••••</span>
+    </span>
+  )
+}
+
+function CopyButton({ value, label = 'Copy', className = '' }: { value: string; label?: string; className?: string }) {
+  const [copied, setCopied] = useState(false)
+  const copy = () => {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(true)
+      toast.success('Copied to clipboard')
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+  return (
+    <button
+      onClick={copy}
+      className={`inline-flex items-center gap-1.5 text-xs font-semibold rounded-control border border-line text-fg-muted hover:text-fg hover:border-accent/40 transition-colors px-2.5 h-7 ${className}`}
+    >
+      {copied ? <Check className="w-3.5 h-3.5 text-positive" /> : <Copy className="w-3.5 h-3.5" />}
+      {copied ? 'Copied' : label}
+    </button>
   )
 }
 
@@ -43,8 +58,9 @@ export default function ApiKeys() {
   const [showCreate, setShowCreate] = useState(false)
   const [newName, setNewName] = useState('')
   const [createdKey, setCreatedKey] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
-  const [creating, setCreating] = useState(false)
+  const [revealCreated, setRevealCreated] = useState(true)
+  const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null)
+  const [docTab, setDocTab] = useState<'curl' | 'node' | 'python'>('curl')
 
   useEffect(() => { loadKeys() }, [])
 
@@ -57,70 +73,95 @@ export default function ApiKeys() {
 
   const handleCreate = async () => {
     if (!newName.trim()) return toast.error('Give your key a name')
-    setCreating(true)
-    try {
-      const fullKey = randomKey()
-      const keyHash = await sha256(fullKey)
-      const { error } = await supabase.from('api_keys').insert({
-        user_id: ownerId, name: newName, key_prefix: fullKey.slice(0, 16), key_hash: keyHash,
-      })
-      if (error) { toast.error(error.message); return }
-      setCreatedKey(fullKey); setNewName(''); setShowCreate(false); setCopied(false)
-      await loadKeys()
-    } finally { setCreating(false) }
+    const fullKey = randomKey()
+    const keyHash = await sha256(fullKey)
+    const keyPrefix = fullKey.slice(0, 16)
+
+    const { error } = await supabase.from('api_keys').insert({
+      user_id: ownerId,
+      name: newName,
+      key_prefix: keyPrefix,
+      key_hash: keyHash,
+    })
+    if (error) { toast.error(error.message); return }
+
+    setCreatedKey(fullKey)
+    setRevealCreated(true)
+    setNewName('')
+    setShowCreate(false)
+    await loadKeys()
   }
 
   const handleDelete = async (id: string) => {
+    if (confirmRevoke !== id) { setConfirmRevoke(id); return } // two-tap confirm
     const { error } = await supabase.from('api_keys').delete().eq('id', id)
-    if (!error) { setKeys(keys.filter((k) => k.id !== id)); toast.success('Key revoked') }
-  }
-
-  const copyKey = (key: string) => {
-    navigator.clipboard.writeText(key); setCopied(true); setTimeout(() => setCopied(false), 2000)
+    if (!error) {
+      setKeys(keys.filter((k) => k.id !== id))
+      setConfirmRevoke(null)
+      toast.success('API key revoked')
+    }
   }
 
   const apiUrl = (import.meta.env.VITE_SUPABASE_URL || 'https://YOUR-PROJECT.supabase.co') + '/functions/v1'
-  const invoiceCurl = `curl -X POST ${apiUrl}/api-generate-invoice \\\n  -H "x-api-key: biz_live_..." \\\n  -H "Content-Type: application/json" \\\n  -d '{"prompt":"Invoice for 10 hrs at ₹80/hr, tax 8%, for Acme"}'`
-  const emailCurl = `curl -X POST ${apiUrl}/api-draft-email \\\n  -H "x-api-key: biz_live_..." \\\n  -H "Content-Type: application/json" \\\n  -d '{"type":"follow_up","tone":"friendly","points":"Re-engage about trial"}'`
+
+  const examples: Record<'curl' | 'node' | 'python', { title: string; snippet: (k: string) => string }> = {
+    curl: {
+      title: 'cURL',
+      snippet: (k) =>
+        `curl -X POST ${apiUrl}/api-generate-invoice \\\n  -H "x-api-key: ${k}" \\\n  -H "Content-Type: application/json" \\\n  -d '{"prompt":"Invoice for 10 hrs at ₹80/hr, tax 8%, for Acme"}'`,
+    },
+    node: {
+      title: 'Node.js',
+      snippet: (k) =>
+        `const res = await fetch("${apiUrl}/api-draft-email", {\n  method: "POST",\n  headers: {\n    "x-api-key": "${k}",\n    "Content-Type": "application/json",\n  },\n  body: JSON.stringify({\n    type: "follow_up",\n    tone: "friendly",\n    points: "Re-engage about trial",\n  }),\n});\nconst data = await res.json();`,
+    },
+    python: {
+      title: 'Python',
+      snippet: (k) =>
+        `import requests\n\nres = requests.post(\n    "${apiUrl}/api-generate-invoice",\n    headers={"x-api-key": "${k}"},\n    json={"prompt": "Invoice for 10 hrs at ₹80/hr, tax 8%, for Acme"},\n)\nprint(res.json())`,
+    },
+  }
 
   return (
-    <div className="animate-fade-in">
-      <PageHeader title="API Keys" subtitle="Connect Cashiea to your apps, scripts, and automation tools" icon={<Key className="w-5 h-5" />} />
+    <div className="animate-fade-in max-w-2xl">
+      <PageHeader
+        title="API Keys"
+        subtitle="Connect Cashiea to your apps, scripts, and automations."
+        icon={<Key className="w-5 h-5" />}
+        action={
+          <button onClick={() => setShowCreate(!showCreate)} className="btn-primary text-sm">
+            <Plus className="w-4 h-4" /> New key
+          </button>
+        }
+      />
 
-      <div className="flex justify-end mb-4">
-        <button onClick={() => setShowCreate(!showCreate)} className="btn-primary text-sm">
-          <Plus className="w-4 h-4" /> New key
-        </button>
-      </div>
-
-      {/* Created key reveal */}
+      {/* Created key — shown once */}
       {createdKey && (
-        <div className="card p-4 mb-6 border-positive/40">
-          <div className="flex items-center gap-2 mb-1.5">
-            <ShieldCheck className="w-5 h-5 text-positive" />
-            <h3 className="font-semibold text-fg">Key created</h3>
-          </div>
-          <p className="text-xs text-fg-muted mb-3">Copy it now — for security, the full key is shown only once.</p>
-          <div className="flex items-center gap-2 bg-paper rounded-control p-3 border border-line">
-            <code className="text-sm text-accent flex-1 break-all font-mono">{createdKey}</code>
-            <button onClick={() => copyKey(createdKey)} className="btn-secondary text-xs whitespace-nowrap">
-              {copied ? <Check className="w-3.5 h-3.5 text-positive" /> : <Copy className="w-3.5 h-3.5" />} {copied ? 'Copied' : 'Copy'}
-            </button>
-          </div>
-          <button onClick={() => setCreatedKey(null)} className="btn-ghost text-xs mt-3">Got it</button>
-        </div>
-      )}
-
-      {/* Create form */}
-      {showCreate && (
-        <div className="card p-4 mb-6">
-          <label className="label">Key name</label>
-          <input value={newName} onChange={(e) => setNewName(e.target.value)} className="input-field" placeholder="e.g. Production, Zapier, CRM" />
-          <div className="flex justify-end gap-2 mt-3">
-            <button onClick={() => setShowCreate(false)} className="btn-secondary text-sm">Cancel</button>
-            <button onClick={handleCreate} disabled={creating} className="btn-primary text-sm">
-              {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Create key
-            </button>
+        <div className="card p-5 mb-6 border-accent/40">
+          <div className="flex items-start gap-3">
+            <span className="w-9 h-9 rounded-control bg-accent-soft text-accent flex items-center justify-center flex-shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-bold text-fg">Key created — copy it now</h3>
+              <p className="text-xs text-fg-subtle mt-0.5">
+                For security, the full key is shown <strong className="text-fg-muted">only once</strong>. We store only a hash — it can't be recovered later.
+              </p>
+              <div className="flex items-center gap-2 mt-3">
+                <code className="flex-1 min-w-0 truncate font-mono text-xs bg-surface-2 border border-line rounded-control px-3 py-2.5 text-fg">
+                  {revealCreated ? createdKey : 'biz_live_' + '•'.repeat(20)}
+                </code>
+                <button
+                  onClick={() => setRevealCreated((v) => !v)}
+                  className="w-9 h-9 rounded-control border border-line text-fg-muted hover:text-fg hover:border-accent/40 flex items-center justify-center flex-shrink-0 transition-colors"
+                  aria-label={revealCreated ? 'Hide key' : 'Reveal key'}
+                >
+                  {revealCreated ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+                <CopyButton value={createdKey} />
+              </div>
+              <button onClick={() => setCreatedKey(null)} className="btn-ghost text-xs mt-3">Done</button>
+            </div>
           </div>
         </div>
       )}
@@ -129,39 +170,104 @@ export default function ApiKeys() {
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 animate-spin text-fg-subtle" /></div>
       ) : keys.length === 0 && !createdKey ? (
-        <EmptyState icon={Key} title="No API keys yet" description="Create a key to call Cashiea from your own apps, scripts, or no-code tools like Zapier, Make, or n8n." />
+        <EmptyState icon={Key} title="No API keys yet" description="Create a key to call Cashiea from your own apps, scripts, or no-code tools like Zapier." />
       ) : (
         <div className="space-y-3 mb-8">
           {keys.map((k) => (
-            <div key={k.id} className="card p-4 flex items-center justify-between">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-medium text-fg truncate">{k.name}</p>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-positive/10 text-positive">Active</span>
+            <div key={k.id} className="card p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-fg truncate">{k.name}</p>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-positive/10 text-positive">
+                      <span className="w-1.5 h-1.5 rounded-full bg-positive" /> Active
+                    </span>
+                  </div>
+                  <div className="mt-2"><MaskedKey prefix={k.key_prefix} /></div>
+                  <p className="text-[11px] text-fg-subtle mt-2">
+                    Created {new Date(k.created_at).toLocaleDateString()}
+                    {k.last_used_at && ` · Last used ${new Date(k.last_used_at).toLocaleDateString()}`}
+                  </p>
                 </div>
-                <p className="text-xs text-fg-subtle font-mono mt-1">{k.key_prefix}…</p>
-                <p className="text-[11px] text-fg-subtle mt-0.5">
-                  Created {new Date(k.created_at).toLocaleDateString()}
-                  {k.last_used_at && ` · Last used ${new Date(k.last_used_at).toLocaleDateString()}`}
-                </p>
+                <button
+                  onClick={() => handleDelete(k.id)}
+                  className={`inline-flex items-center gap-1.5 text-xs font-semibold rounded-control px-2.5 h-7 border transition-colors flex-shrink-0 ${
+                    confirmRevoke === k.id
+                      ? 'bg-negative text-paper border-negative'
+                      : 'border-line text-fg-muted hover:text-negative hover:border-negative/40'
+                  }`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  {confirmRevoke === k.id ? 'Confirm revoke' : 'Revoke'}
+                </button>
               </div>
-              <button onClick={() => handleDelete(k.id)} className="btn-ghost text-xs text-fg-muted hover:text-negative">
-                <Trash2 className="w-3.5 h-3.5" /> Revoke
-              </button>
             </div>
           ))}
         </div>
       )}
 
-      {/* Quick start */}
-      <div className="card p-4">
-        <h3 className="font-semibold text-fg mb-1 flex items-center gap-2"><Terminal className="w-4 h-4 text-accent" /> Quick start</h3>
-        <p className="text-xs text-fg-muted mb-4">Send your API key in the <code className="text-accent font-mono">x-api-key</code> header.</p>
-        <div className="space-y-4">
-          <CodeBlock label="Generate invoice" code={invoiceCurl} />
-          <CodeBlock label="Draft email" code={emailCurl} />
+      {/* Create form */}
+      {showCreate && (
+        <div className="card p-5 mb-6">
+          <label className="label">Key name</label>
+          <input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+            className="input-field"
+            placeholder="e.g. Production, Zapier, Internal CRM"
+            autoFocus
+          />
+          <div className="flex justify-end gap-2 mt-3">
+            <button onClick={() => setShowCreate(false)} className="btn-secondary text-sm">Cancel</button>
+            <button onClick={handleCreate} className="btn-primary text-sm"><Key className="w-4 h-4" /> Create key</button>
+          </div>
         </div>
-        <p className="text-[11px] text-fg-subtle mt-4">Works with Zapier, Make, n8n, Python, Node.js — anything that speaks REST.</p>
+      )}
+
+      {/* API docs */}
+      <div className="card p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Terminal className="w-4 h-4 text-accent" />
+          <h3 className="text-sm font-bold text-fg">Quick start</h3>
+        </div>
+
+        <div className="flex items-center gap-2 mb-4 text-xs">
+          <span className="text-fg-subtle font-medium">Send your key in the</span>
+          <code className="font-mono text-accent bg-accent-soft rounded px-1.5 py-0.5">x-api-key</code>
+          <span className="text-fg-subtle font-medium">header to:</span>
+        </div>
+        <div className="flex items-center gap-2 bg-surface-2 border border-line rounded-control px-3 py-2.5 mb-5">
+          <code className="flex-1 min-w-0 truncate font-mono text-xs text-fg">{apiUrl}</code>
+          <CopyButton value={apiUrl} label="Copy URL" />
+        </div>
+
+        {/* Language tabs */}
+        <div className="flex gap-1.5 mb-3">
+          {(Object.keys(examples) as ('curl' | 'node' | 'python')[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => setDocTab(t)}
+              className={`text-xs font-semibold px-3 h-8 rounded-control border transition-colors ${
+                docTab === t ? 'bg-fg text-paper border-fg' : 'bg-surface text-fg-muted border-line hover:text-fg'
+              }`}
+            >
+              {examples[t].title}
+            </button>
+          ))}
+        </div>
+        <div className="relative">
+          <pre className="bg-surface-2 border border-line rounded-control p-4 text-xs text-fg-muted overflow-x-auto leading-relaxed">
+            <code className="font-mono">{examples[docTab].snippet('biz_live_YOUR_KEY')}</code>
+          </pre>
+          <div className="absolute top-2.5 right-2.5">
+            <CopyButton value={examples[docTab].snippet('biz_live_YOUR_KEY')} />
+          </div>
+        </div>
+
+        <p className="text-xs text-fg-subtle mt-4">
+          Works with Zapier, Make, n8n, Python, Node.js — anything that can call a REST API.
+        </p>
       </div>
     </div>
   )

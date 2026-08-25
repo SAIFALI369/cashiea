@@ -345,15 +345,17 @@ Deno.serve(async (req) => {
 
     // WEB MEDIA (Pexels) — read-only, instant, no AI round-trip. Falls through
     // to the normal answer if nothing is found. NEVER triggers when the owner
-    // shared a photo — those must be analyzed, not image-searched.
-    if (!image && !confirm && wantsMedia(String(message || ""))) {
+    // attached their OWN photo — that must go to image analysis, not stock photos.
+    if (!image?.data && !confirm && wantsMedia(String(message || ""))) {
       const subject = extractMediaSubject(String(message || ""));
       const media = await fetchMedia(subject, Deno.env.get("PEXELS_API_KEY") || "");
       if (media.length) return json({ reply: `Here's what I found for "${subject}" 👇`, media });
     }
 
     // ── TASK MODE: function-calling + confirm/execute ──
-    if (mode === "task") {
+    // (Photos skip task mode: an attached image is ANALYZED first — the ask path
+    //  below reads it and proposes the action; the owner then confirms in chat.)
+    if (mode === "task" && !image?.data) {
       // EXECUTE a confirmed action
       if (confirm && confirm.type === "create_invoice" && confirm.input) {
         try {
@@ -450,7 +452,7 @@ Deno.serve(async (req) => {
       : `Business owner asks: "${message}"\n\n${mem.block}${historyBlock}\n\nHere is the current business data snapshot:\n${context}\n\nAnswer the owner's question based on this data and what you already know about them.`;
 
     const IMAGE_FOCUS = image && image.data
-      ? "\n\nIMAGE ANALYSIS: The owner shared a photo. It may be a handwritten sales list, a printed bill/receipt, a product catalog, a stock sheet, or something else. Read it carefully. Tell the owner concisely what you see (items, prices, quantities). If it contains sellable items with prices, offer to create an invoice or add products (switch to Task mode if they confirm). If you are unsure what it is or what to do, ask the owner one short question. Never invent items you cannot read.\n"
+      ? "\n\nIMAGE ANALYSIS: The owner shared a photo with this message — analyze the IMAGE itself, never fetch or describe stock/web pictures. It may be a handwritten sales list, a printed bill/receipt, a product catalog, a stock sheet, a quotation, or something else. Read it carefully and tell the owner EXACTLY what you see: list each item, quantity and price you can read, plus any total. Then propose what you can do next — e.g. \"I can create a bill/invoice for these items (₹X total), add them as products, or turn this into a quotation.\" ALWAYS end with one short question asking which action to take. If part of the image is unreadable, say so plainly — never invent items or prices.\n"
       : "";
 
     let result: string;

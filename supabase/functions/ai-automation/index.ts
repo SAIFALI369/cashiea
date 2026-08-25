@@ -10,7 +10,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/retry.ts";
 import { callAIWithFallback } from "../_shared/ai-call.ts";
 
-// ─── AI calls now go through the shared _shared/ai-call.ts (Groq + Gemini fallback) ───
+// ─── AI calls go through _shared/ai-call.ts (Groq primary + Gemini fallback — same as Meraj chat) ──
 
 // ─── Structured system prompts per task type ────────────────────
 // Report sub-types get tailored instructions so output is genuinely

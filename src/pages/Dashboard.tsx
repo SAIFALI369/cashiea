@@ -6,14 +6,14 @@ import { MerajAvatar } from '../components/MerajAvatar'
 import { formatINR } from '../lib/format'
 import { askAssistant } from '../lib/ai'
 import {
-  TrendingUp, TrendingDown, Wallet, Package, MessageCircle, FileSignature, Users,
-  ArrowRight, AlertTriangle, Send, Mic, ChevronDown, ChevronRight, Check, Circle,
+  TrendingUp, Wallet, Package, MessageCircle, FileSignature, Users,
+  ArrowRight, AlertTriangle, Send, Mic, ChevronDown,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-// ── Today's Workspace (additive redesign) ────────────────────────
+// ── Today's Workspace ────────────────────────────────────────────
 // Bare greeting → top-priority overdue hero → Meraj insights → Ask bar +
-// suggestion pills → enriched dense stats → Today's focus (overdue checklist)
+// suggestion pills → enriched dense stats (every card navigates to its page)
 // + Business at a glance (weekly bars). Real data; insights in Meraj's voice.
 
 interface Stat {
@@ -46,7 +46,6 @@ export default function Dashboard() {
   const [weekSales, setWeekSales] = useState(0)
   const [weekExpenses, setWeekExpenses] = useState(0)
   const [ask, setAsk] = useState('')
-  const [checks, setChecks] = useState<Record<string, boolean>>({})
   const [aiGreeting, setAiGreeting] = useState('')
 
   // Dynamic AI greeting — refreshed every 1 hour, cached in localStorage
@@ -200,12 +199,6 @@ export default function Dashboard() {
   const todayIdx = (new Date().getDay() + 6) % 7
   const bestIdx = daily.indexOf(Math.max(...daily))
   const weekProfit = weekSales - weekExpenses
-
-  const checklist = topPriority ? [
-    { id: 'followup', label: `Follow up with ${topPriority.client_name || 'customer'}` },
-    { id: 'reminder', label: 'Send payment reminder' },
-    { id: 'check', label: 'Check payment status' },
-  ] : []
 
   return (
     <div className="animate-fade-in space-y-5">

@@ -13,7 +13,7 @@ async function sha256(text: string): Promise<string> {
   return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// AI invoicing uses the shared _shared/ai-call.ts (Groq + Gemini fallback).
+// AI calls go through _shared/ai-call.ts (Groq primary + Gemini fallback — same as Meraj chat).
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: apiCorsHeaders });

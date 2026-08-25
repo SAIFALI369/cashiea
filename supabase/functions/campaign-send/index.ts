@@ -14,7 +14,7 @@ import { callAIWithFallback } from "../_shared/ai-call.ts";
 
 const TRACK_BASE = Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", ".functions.supabase.co") + "/track" || "";
 
-// AI personalization uses the shared _shared/ai-call.ts (Groq + Gemini fallback).
+// AI calls go through _shared/ai-call.ts (Groq primary + Gemini fallback — same as Meraj chat).
 
 const PERSONALIZER_SYS = `You are an expert at writing hyper-personalized cold emails at scale. Given a base email template and a recipient's details, produce a personalized version. Keep the core message and offer, but naturally weave in the recipient's name, company, and any context. First line MUST be "Subject: ..." then a blank line then the body. Return ONLY the email.`;
 

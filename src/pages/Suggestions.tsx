@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { askAssistant } from '../lib/ai'
+import { renderMd } from '../lib/markdown'
 import PageHeader from '../components/ui/PageHeader'
-import { Lightbulb, Loader2, Check, X, Sparkles, ArrowRight } from 'lucide-react'
+import { Lightbulb, Loader2, Check, Trash2, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Pred {
   id: string; title: string; description: string | null
-  priority: string | null; prediction_type: string | null; status: string; created_at: string
-  action_payload?: { outcome?: string } | null
+  priority: string | null; prediction_type: string | null
+  status: string; created_at: string; action_payload?: any
 }
 
 const PRIO: Record<string, string> = {
@@ -24,13 +24,17 @@ const TYPE_LABEL: Record<string, string> = {
   offer: 'Offer', alert: 'Alert', expense: 'Expense', custom: 'Idea',
 }
 const dotFor = (p: string) => (p === 'urgent' ? 'bg-negative' : p === 'high' ? 'bg-warning' : 'bg-accent')
+const outcomeOf = (p: Pred) => {
+  const o = p.action_payload?.outcome
+  return typeof o === 'string' && o.trim() ? o : ''
+}
 
 export default function Suggestions() {
   const { ownerId } = useAuth()
   const [items, setItems] = useState<Pred[]>([])
   const [loading, setLoading] = useState(true)
-  const [running, setRunning] = useState<string | null>(null)
-  const [filter, setFilter] = useState<'pending' | 'done' | 'all'>('pending')
+  const [filter, setFilter] = useState<'pending' | 'done'>('pending')
+  const [runningId, setRunningId] = useState<string | null>(null)
 
   const load = async () => {
     setLoading(true)
@@ -45,48 +49,64 @@ export default function Suggestions() {
   }
   useEffect(() => { load() }, [ownerId])
 
-  // Dismiss = DELETE permanently (not just a status change, so it never lingers).
+  // Dismiss = DELETE the suggestion entirely (it disappears from every tab).
   const dismiss = async (p: Pred) => {
     const { error } = await supabase.from('ai_predictions').delete().eq('id', p.id)
-    if (error) { toast.error('Could not dismiss'); return }
+    if (error) { toast.error('Could not delete'); return }
     setItems((cur) => cur.filter((x) => x.id !== p.id))
-    toast.success('Dismissed')
+    toast.success('Deleted')
   }
 
-  // Accept = hand the recommendation to Meraj to actually DO it (task mode),
-  // then show Meraj's outcome on the card and persist it.
-  const accept = async (p: Pred) => {
-    setRunning(p.id)
+  // Approve = RUN it: Meraj executes the suggestion against the live business
+  // data and returns a concrete outcome (draft message / reorder list / etc.),
+  // which is stored on the prediction and shown in the card.
+  const run = async (p: Pred) => {
+    if (runningId) return
+    setRunningId(p.id)
     try {
-      const instruction = `Act on this business recommendation now: "${p.title}".${p.description ? ' ' + p.description : ''} Carry it out or prepare it — create the invoice, product, or customer, or send the message, whichever applies.`
-      const res = await askAssistant(instruction, false, undefined, 'task')
-      const outcome = res.reply || 'Done.'
-      const { error } = await supabase
+      const { error } = await supabase.from('ai_predictions').update({ status: 'approved' }).eq('id', p.id)
+      if (error) throw new Error(error.message)
+      const res = await askAssistant(
+        `I approved your suggestion: "${p.title}". ${p.description || ''} Execute it now using my business data and give me the concrete outcome I can use directly: if it's a follow-up, write the exact message and who to send it to; if it's a reorder, list the items and quantities; if it's an offer, write the offer message; if it's an alert, tell me exactly what to check and why. Keep it short and actionable — no preamble.`,
+        false, undefined, 'ask'
+      )
+      const outcome = (res.reply || '').trim() || 'Done — no further detail was needed.'
+      await supabase
         .from('ai_predictions')
-        .update({ status: 'approved', action_payload: { outcome } })
+        .update({ status: 'executed', action_payload: { ...(p.action_payload || {}), outcome } })
         .eq('id', p.id)
-      if (error) throw error
-      setItems((cur) => cur.map((x) => (x.id === p.id ? { ...x, status: 'approved', action_payload: { outcome } } : x)))
-      toast.success('Meraj handled it')
+      setItems((cur) => cur.map((x) => (x.id === p.id ? { ...x, status: 'executed', action_payload: { ...(x.action_payload || {}), outcome } } : x)))
+      toast.success('Done — outcome ready')
+      setFilter('done')
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not run')
+      // Keep it approved so the owner can retry; surface the error.
+      setItems((cur) => cur.map((x) => (x.id === p.id ? { ...x, status: 'approved' } : x)))
+      toast.error(e instanceof Error ? e.message : 'Could not run it — try again')
     } finally {
-      setRunning(null)
+      setRunningId(null)
     }
   }
 
-  const shown = items.filter((p) =>
-    filter === 'all' ? true : filter === 'pending' ? p.status === 'pending' : p.status === 'approved'
-  )
+  const pending = items.filter((p) => p.status === 'pending')
+  const done = items.filter((p) => p.status === 'executed' || p.status === 'approved')
+  const shown = filter === 'pending' ? pending : done
 
   return (
     <div className="animate-fade-in max-w-2xl">
-      <PageHeader title="Suggestions" subtitle="Smart recommendations from Meraj — accept to put Meraj on it, or dismiss." icon={<Lightbulb className="w-5 h-5" />} />
+      <PageHeader title="Suggestions" subtitle="Smart recommendations from Meraj — approve one and Meraj runs it." icon={<Lightbulb className="w-5 h-5" />} />
 
-      <div className="flex gap-2 mb-4">
-        {(['pending', 'done', 'all'] as const).map((f) => (
-          <button key={f} onClick={() => setFilter(f)} className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${filter === f ? 'bg-fg text-paper border-fg' : 'bg-surface text-fg-muted border-line hover:text-fg'}`}>
-            {f === 'pending' ? 'Pending' : f === 'done' ? 'Done' : 'All'}
+      {/* Tabs + counts */}
+      <div className="flex items-center gap-2 mb-4">
+        {(['pending', 'done'] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+              filter === f ? 'bg-fg text-paper border-fg' : 'bg-surface text-fg-muted border-line hover:text-fg'
+            }`}
+          >
+            {f === 'pending' ? 'Pending' : 'Done'}
+            <span className={`text-[10px] ${filter === f ? 'opacity-70' : 'text-fg-subtle'}`}>{f === 'pending' ? pending.length : done.length}</span>
           </button>
         ))}
       </div>
@@ -96,51 +116,87 @@ export default function Suggestions() {
       ) : shown.length === 0 ? (
         <div className="card p-8 text-center">
           <Lightbulb className="w-8 h-8 text-fg-subtle mx-auto mb-3" />
-          <p className="text-sm font-medium text-fg">No {filter === 'pending' ? 'pending' : filter} suggestions right now</p>
-          <p className="text-xs text-fg-subtle mt-1">Meraj generates fresh suggestions every morning and surfaces them here.</p>
+          <p className="text-sm font-medium text-fg">{filter === 'pending' ? 'No pending suggestions right now' : 'Nothing run yet'}</p>
+          <p className="text-xs text-fg-subtle mt-1">
+            {filter === 'pending'
+              ? 'Meraj generates fresh suggestions every morning and surfaces them here.'
+              : 'Approve a suggestion on the Pending tab — Meraj will run it and show the outcome here.'}
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {shown.map((p) => (
-            <div key={p.id} className="card p-4">
-              <div className="flex items-start gap-3">
-                <span className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${dotFor(p.priority || 'low')}`} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-sm font-semibold text-fg">{p.title}</h3>
-                    {p.priority && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${PRIO[p.priority] || PRIO.low}`}>{p.priority}</span>}
-                    {p.prediction_type && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-surface-2 text-fg-muted">{TYPE_LABEL[p.prediction_type] || p.prediction_type}</span>}
-                    {p.status === 'approved' && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-positive/10 text-positive">Done</span>}
+          {shown.map((p) => {
+            const isRunning = runningId === p.id
+            const outcome = outcomeOf(p)
+            return (
+              <div key={p.id} className={`card p-4 ${p.status !== 'pending' && !outcome ? 'opacity-70' : ''}`}>
+                <div className="flex items-start gap-3">
+                  <span className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${dotFor(p.priority || 'low')}`} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm font-semibold text-fg">{p.title}</h3>
+                      {p.priority && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${PRIO[p.priority] || PRIO.low}`}>{p.priority}</span>
+                      )}
+                      {p.prediction_type && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-surface-2 text-fg-muted">
+                          {TYPE_LABEL[p.prediction_type] || p.prediction_type}
+                        </span>
+                      )}
+                      {p.status === 'executed' && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-positive/10 text-positive inline-flex items-center gap-1">
+                          <Check className="w-3 h-3" /> Ran
+                        </span>
+                      )}
+                    </div>
+                    {p.description && <p className="text-xs text-fg-muted mt-1 leading-relaxed">{p.description}</p>}
+
+                    {/* Outcome — what Meraj actually produced when it ran */}
+                    {outcome && (
+                      <div className="mt-3 rounded-control border border-accent/30 bg-accent-soft/40 p-3">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-accent" />
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-accent">Meraj ran it — outcome</p>
+                        </div>
+                        <div className="prose-content text-sm text-fg" dangerouslySetInnerHTML={{ __html: renderMd(outcome) }} />
+                      </div>
+                    )}
+
+                    {p.status === 'pending' ? (
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={() => run(p)}
+                          disabled={!!runningId}
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold bg-fg text-paper rounded-control px-3 h-8 hover:opacity-90 disabled:opacity-50 transition-opacity"
+                        >
+                          {isRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                          {isRunning ? 'Meraj is running it…' : 'Do it'}
+                        </button>
+                        <button
+                          onClick={() => dismiss(p)}
+                          disabled={!!runningId}
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold border border-line text-fg-muted rounded-control px-3 h-8 hover:text-negative hover:border-negative/40 transition-colors disabled:opacity-50"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Delete
+                        </button>
+                      </div>
+                    ) : p.status === 'approved' && !outcome ? (
+                      <div className="flex gap-2 mt-3">
+                        <button onClick={() => run(p)} disabled={!!runningId} className="inline-flex items-center gap-1.5 text-xs font-semibold bg-fg text-paper rounded-control px-3 h-8 hover:opacity-90 disabled:opacity-50 transition-opacity">
+                          {isRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Retry
+                        </button>
+                        <button onClick={() => dismiss(p)} className="inline-flex items-center gap-1.5 text-xs font-semibold border border-line text-fg-muted rounded-control px-3 h-8 hover:text-negative transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" /> Delete
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
-                  {p.status === 'pending' && p.description && <p className="text-xs text-fg-muted mt-1 leading-relaxed">{p.description}</p>}
-
-                  {p.status === 'approved' && (
-                    <div className="mt-2 rounded-control bg-accent-soft/50 border border-accent/20 p-2.5 flex gap-2">
-                      <Sparkles className="w-3.5 h-3.5 text-accent flex-shrink-0 mt-0.5" />
-                      <p className="text-xs text-fg leading-relaxed whitespace-pre-wrap">{p.action_payload?.outcome || 'Meraj handled this.'}</p>
-                    </div>
-                  )}
-
-                  {p.status === 'pending' && (
-                    <div className="flex gap-2 mt-3">
-                      <button onClick={() => accept(p)} disabled={running === p.id} className="inline-flex items-center gap-1 text-xs font-semibold bg-fg text-paper rounded-control px-2.5 h-7 hover:opacity-90 disabled:opacity-50 transition-opacity">
-                        {running === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} {running === p.id ? 'Meraj working…' : 'Accept'}
-                      </button>
-                      <button onClick={() => dismiss(p)} className="inline-flex items-center gap-1 text-xs font-semibold border border-line text-fg-muted rounded-control px-2.5 h-7 hover:text-negative transition-colors">
-                        <X className="w-3.5 h-3.5" /> Dismiss
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
-
-      <div className="mt-6 text-center">
-        <Link to="/app/assistant" className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline">Ask Meraj for more ideas <ArrowRight className="w-3.5 h-3.5" /></Link>
-      </div>
     </div>
   )
 }
