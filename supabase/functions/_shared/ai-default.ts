@@ -17,6 +17,17 @@
 
 export const DEFAULT_MODEL = "gemini-3.6-flash";
 
+/**
+ * Gemini 3.x is a THINKING model: reasoning tokens count toward
+ * maxOutputTokens and silently eat the answer budget (a hard 26k-char
+ * analysis spent 2.3k tokens thinking + got only 0.7k visible before the
+ * cap → answer cut mid-sentence). We request the intended ANSWER cap plus
+ * this headroom so visible replies always complete. The cap is a ceiling,
+ * not a budget — short answers still stop naturally, so this wastes nothing.
+ * (Do NOT set thinkingBudget — disabling thinking breaks these models.)
+ */
+const THINKING_HEADROOM = 4000;
+
 // Build the key pool (default first, then stock). Filtered to set values,
 // then de-duplicated (e.g. if DEFAULT and GEMINI_API_KEY are the same).
 const RAW_KEYS: string[] = [
@@ -58,7 +69,7 @@ async function callWithKey(
         body: JSON.stringify({
           system_instruction: { parts: [{ text: systemPrompt }] },
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: opts.temperature ?? 0.7, maxOutputTokens: opts.maxTokens ?? 1500 },
+          generationConfig: { temperature: opts.temperature ?? 0.7, maxOutputTokens: (opts.maxTokens ?? 1500) + THINKING_HEADROOM },
         }),
       }
     );
@@ -146,7 +157,7 @@ export async function callGeminiToolCall(
           system_instruction: { parts: [{ text: systemPrompt }] },
           contents: [{ parts: [{ text: prompt }] }],
           tools, toolConfig: { function_calling_config: { mode: "AUTO" } },
-          generationConfig: { temperature: 0, maxOutputTokens: opts.maxTokens ?? 800 },
+          generationConfig: { temperature: 0, maxOutputTokens: (opts.maxTokens ?? 800) + THINKING_HEADROOM },
         }),
       });
       if (!res.ok) {
@@ -195,7 +206,7 @@ export async function callGeminiWithImage(
             { text: prompt },
             { inline_data: { mime_type: image.mimeType, data: image.data } },
           ] }],
-          generationConfig: { temperature: 0.4, maxOutputTokens: opts.maxTokens ?? 1500 },
+          generationConfig: { temperature: 0.4, maxOutputTokens: (opts.maxTokens ?? 1500) + THINKING_HEADROOM },
         }),
       });
       if (!res.ok) {
