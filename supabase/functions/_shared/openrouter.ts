@@ -8,23 +8,24 @@
 // Setup (Supabase secret — never commit):
 //   supabase secrets set OPENROUTER_API_KEY=sk-or-v1-...
 //
-// ROLE IN CASHIEA (owner's routing spec): OpenRouter = the Ox Alpha
-// route — stealth/ox-alpha has a 1M-token context window and is used
-// for HUGE-context tasks. The chain below backs it up if a provider
-// is unavailable; the caller (ai-call.ts) additionally falls back to
-// the Gemini key pool if the whole chain fails.
+// ROLE IN CASHIEA (owner's routing spec): OpenRouter = the huge-context
+// route. Primary is stealth/ox-alpha (1M-token ctx). NOTE: it needs the
+// OpenRouter account's DATA POLICY to permit it (the provider is already
+// allowlisted). While the account can't serve it (data policy / no credits /
+// free variants blocked), the caller (ai-call.ts) circuit-breaks past
+// OpenRouter and serves huge contexts from the Gemini key pool instead —
+// nothing fails, it just self-heals the moment the account allows it.
 // ════════════════════════════════════════════════════════════════
 
 export const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
 // The fallback chain — order matters. Each is tried in sequence.
+// Kept SHORT on purpose: while the account can't serve OpenRouter models,
+// every entry is a wasted round-trip before the caller falls back to the
+// Gemini pool — 2 attempts fail fast (<1s).
 export const OPENROUTER_MODELS = [
-  "stealth/ox-alpha",                // 1. Ox Alpha — 1M context, the huge-context model
-  "google/gemini-2.5-flash",         // 2. alternate big-context Gemini (1M ctx)
-  "moonshotai/kimi-k3",              // 3. Kimi K3
-  "meta-llama/llama-4-maverick",     // 4. Llama
-  "tencent/hy3:free",                // 5. guaranteed free fallback
-  "google/gemma-4-26b-a4b-it:free",  // 6. another free fallback
+  "stealth/ox-alpha",             // 1. Ox Alpha — 1M ctx (activates when the account data policy allows)
+  "google/gemini-3.6-flash",      // 2. 1M-ctx backup (activates when the account has credits)
 ];
 
 // Errors that should trigger a fallback to the next model.

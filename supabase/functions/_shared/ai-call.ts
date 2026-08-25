@@ -104,10 +104,23 @@ async function callAI(provider: string, systemPrompt: string, prompt: string, ma
 }
 
 // ── The routes ────────────────────────────────────────────────────
-/** Ox Alpha (huge context) via OpenRouter — chain starts with stealth/ox-alpha. */
+/**
+ * Huge-context route via OpenRouter. Circuit breaker: when the ACCOUNT can't
+ * serve OpenRouter at all (402 = no credits, 403/404 = policy blocks), skip it
+ * for 5 minutes so huge requests go straight to the Gemini pool instead of
+ * burning round-trips. Self-resets, so it starts working the moment the
+ * account settings allow it.
+ */
+const OR_SKIP_MS = 5 * 60_000;
+let orSkipUntil = 0;
+
 async function callOxAlpha(systemPrompt: string, prompt: string, maxTokens: number): Promise<string> {
+  if (Date.now() < orSkipUntil) throw new Error("OpenRouter skipped — account cannot serve it right now");
   const r = await callOpenRouter(systemPrompt, prompt, { maxTokens });
-  if (!r.ok) throw new Error(r.value);
+  if (!r.ok) {
+    if (r.status === 402 || r.status === 403 || r.status === 404) orSkipUntil = Date.now() + OR_SKIP_MS;
+    throw new Error(r.value);
+  }
   return r.value;
 }
 

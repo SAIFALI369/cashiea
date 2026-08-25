@@ -15,6 +15,7 @@ interface Convo { id: string; title: string; msgs: Msg[]; ts: number; scope?: st
 
 const STORE_BASE = 'cashiea_meraj_convos'
 const CURRENT_BASE = 'cashiea_meraj_current'
+const ACTIVE_BASE = 'cashiea_meraj_active'
 const SCOPE_LABELS: Record<string, string> = {
   receipts: 'Receipts', reports: 'Reports', emails: 'Emails', whatsapp: 'WhatsApp',
   expenses: 'Expenses', profits: 'Profits', stocks: 'Stocks', tasks: 'Tasks',
@@ -72,15 +73,39 @@ export default function AIAssistant() {
   const { user } = useAuth()
   const STORE = STORE_BASE + (user?.id ? '_' + user.id : '')
   const CURRENT_KEY = CURRENT_BASE + (user?.id ? '_' + user.id : '')
+  const ACTIVE_KEY = ACTIVE_BASE + (user?.id ? '_' + user.id : '')
+  // Which conversation the current messages belong to (null = next send starts a new one).
+  const activeIdRef = useRef<string | null>(null)
 
   useEffect(() => { try { setConvos(JSON.parse(localStorage.getItem(STORE) || '[]')) } catch { /* ignore */ } }, [STORE])
   // Restore the in-progress conversation on open — closing the page mid-task no longer loses it.
-  useEffect(() => { try { const s = localStorage.getItem(CURRENT_KEY); if (s) setMessages(JSON.parse(s)) } catch { /* ignore */ } }, [CURRENT_KEY])
+  useEffect(() => {
+    try { const s = localStorage.getItem(CURRENT_KEY); if (s) setMessages(JSON.parse(s)) } catch { /* ignore */ }
+    try { activeIdRef.current = localStorage.getItem(ACTIVE_KEY) } catch { /* ignore */ }
+  }, [CURRENT_KEY, ACTIVE_KEY])
   // Persist the current conversation continuously.
   useEffect(() => { try { localStorage.setItem(CURRENT_KEY, JSON.stringify(messages)) } catch { /* ignore */ } }, [messages])
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }) }, [messages, loading, typing])
 
-  const persist = (next: Convo[]) => { setConvos(next); try { localStorage.setItem(STORE, JSON.stringify(next.slice(0, 5))) } catch { /* ignore */ } }
+  const persist = (next: Convo[]) => { setConvos(next); try { localStorage.setItem(STORE, JSON.stringify(next.slice(0, 8))) } catch { /* ignore */ } }
+
+  // ── Conversation grouping ──
+  // Every turn APPENDS to the active conversation instead of spawning a new
+  // history entry. A new entry is only created for a genuinely new chat
+  // (the "New chat" button, or the first message with no active conversation).
+  const upsertConvo = (allMsgs: Msg[], titleFallback: string) => {
+    const id = activeIdRef.current
+    const existing = id ? convos.find((c) => c.id === id) : undefined
+    let next: Convo[]
+    if (existing) {
+      next = [{ ...existing, msgs: allMsgs, ts: Date.now() }, ...convos.filter((c) => c.id !== existing.id)]
+    } else {
+      next = [{ id: crypto.randomUUID(), title: titleFallback.slice(0, 48) || 'Conversation', msgs: allMsgs, ts: Date.now(), scope }, ...convos]
+    }
+    activeIdRef.current = next[0].id
+    try { localStorage.setItem(ACTIVE_KEY, next[0].id) } catch { /* ignore */ }
+    persist(next)
+  }
 
   const replying = loading || typing
   const userTyping = !replying && (focused || input.trim().length > 0)
@@ -105,8 +130,7 @@ export default function AIAssistant() {
         const done = [...next, { role: 'meraj' as const, text: res.reply, pending: res.pending, media: res.media }]
       setMessages(done)
       if (res.reply) setTyping(true)
-      const convo: Convo = { id: crypto.randomUUID(), title: q.slice(0, 48) || 'Shared photo', msgs: done, ts: Date.now(), scope }
-      persist([convo, ...convos].slice(0, 5))
+      upsertConvo(done, q || 'Shared photo')
     } catch (e) {
       setMessages([...next, { role: 'meraj' as const, text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.') }])
     } finally {
@@ -147,22 +171,40 @@ export default function AIAssistant() {
   const confirmAction = async (pending: any) => {
     if (loading) return
     setLoading(true)
-    setMessages((m) => [...m, { role: 'user' as const, text: '✓ ' + (pending?.type === 'create_invoice' ? 'Create it' : pending?.type === 'send_whatsapp' ? 'Send it' : 'Add it') }])
+    const confirmText = '✓ ' + (pending?.type === 'create_invoice' ? 'Create it' : pending?.type === 'send_whatsapp' ? 'Send it' : 'Add it')
+    const base = [...messages, { role: 'user' as const, text: confirmText }]
+    setMessages(base)
     try {
       const res = await askAssistant('', false, scope, 'task', pending)
-      setMessages((m) => [...m, { role: 'meraj' as const, text: res.reply }])
+      const done = [...base, { role: 'meraj' as const, text: res.reply }]
+      setMessages(done)
       if (res.reply) setTyping(true)
+      upsertConvo(done, confirmText)
     } catch (e) {
-      setMessages((m) => [...m, { role: 'meraj' as const, text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.') }])
+      setMessages([...base, { role: 'meraj' as const, text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.') }])
     } finally { setLoading(false) }
   }
   const cancelAction = (idx: number) => {
-    setMessages((m) => m.map((msg, i) => (i === idx ? { ...msg, pending: undefined } : msg)))
-    setMessages((m) => [...m, { role: 'meraj' as const, text: 'No problem — cancelled. What else can I do?' }])
+    const cleared = messages.map((msg, i) => (i === idx ? { ...msg, pending: undefined } : msg))
+    const done = [...cleared, { role: 'meraj' as const, text: 'No problem — cancelled. What else can I do?' }]
+    setMessages(done)
+    upsertConvo(done, 'Conversation')
   }
 
-  const openConvo = (c: Convo) =>  { setMessages(c.msgs); setShowHistory(false) }
-  const newChat = () => { setMessages([]); setShowHistory(false); try { localStorage.removeItem(CURRENT_KEY) } catch { /* ignore */ } inputRef.current?.focus() }
+  const openConvo = (c: Convo) => {
+    setMessages(c.msgs)
+    activeIdRef.current = c.id
+    try { localStorage.setItem(ACTIVE_KEY, c.id) } catch { /* ignore */ }
+    setShowHistory(false)
+  }
+  const newChat = () => {
+    setMessages([])
+    activeIdRef.current = null
+    try { localStorage.removeItem(ACTIVE_KEY) } catch { /* ignore */ }
+    try { localStorage.removeItem(CURRENT_KEY) } catch { /* ignore */ }
+    setShowHistory(false)
+    inputRef.current?.focus()
+  }
 
   const startListen = () => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
