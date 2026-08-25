@@ -40,7 +40,9 @@ Deno.serve(async (req) => {
     const result = await callAIWithFallback(
       profile?.ai_provider || "openai",
       "You are an expert business copywriter. Write a polished, ready-to-send email. Match the requested tone and type. Return format: first line 'Subject: ...', blank line, then the body.",
-      prompt
+      prompt,
+      2000,
+      "api-draft-email"
     );
 
     await service.rpc("increment_api_usage", { user_uuid: keyRow.user_id });

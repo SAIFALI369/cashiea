@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
       SYSTEM,
       "Extract the receipt data from this image. Return ONLY the JSON.",
       image,
-      { maxTokens: 600, feature: "scan-receipt" }
+      { maxTokens: 4000, feature: "scan-receipt" }
     );
 
     if (!res.ok) return json({ error: res.value }, 502);

@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
 Return ONLY valid JSON: {"business_type":"one short phrase","summary":"3-5 sentence overview of what the business is, what it sells, who its customers are, and how it's doing","key_facts":[{"fact":"...","source":"data|owner|integrations","confidence":"high|medium|low"}]}.
 Key facts should be specific, useful, and actionable (e.g. "Top product is X", "60% of customers are dormant", "Margin averages Y%"). No markdown.`;
       const prompt = `Business data snapshot:\n${JSON.stringify({ ...snap, existingMemory: snap.existingMemory?.summary }, null, 1)}${manualNotes}${integrationList}`;
-      result = await callAIWithFallback(provider, sys, prompt, 1000);
+      result = await callAIWithFallback(provider, sys, prompt, 2500);
 
       // Parse + persist the memory
       const cleaned = result.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
@@ -135,7 +135,7 @@ Key facts should be specific, useful, and actionable (e.g. "Top product is X", "
 Return ONLY valid JSON: {"predictions":[{"prediction_type":"reorder|followup|invoice|offer|alert|expense|custom","title":"short action title","description":"what to do","rationale":"why (based on the data)","priority":"low|medium|high|urgent"}]}.
 Base each prediction on real signals in the data (low stock, dormant customers, overdue payments, trends). Do NOT propose generic advice — be specific with names and numbers.`;
       const prompt = `Business data snapshot:\n${JSON.stringify(snap, null, 1)}`;
-      result = await callAIWithFallback(provider, sys, prompt, 1200);
+      result = await callAIWithFallback(provider, sys, prompt, 2500);
 
       // Parse + insert predictions as pending
       const cleaned = result.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();

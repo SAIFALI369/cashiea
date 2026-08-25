@@ -258,13 +258,14 @@ async function tryExtract(
 
 
 // ── Task mode: function-calling for real actions ──────────────────
-const TASK_SYSTEM = `You are Meraj in TASK mode — a capable staff member who prepares and executes real actions in the shop, but ONLY after the owner confirms. Speak briefly, like a good employee following instructions. When the owner asks to create an invoice/bill, add a product/item, or add a customer/client, call the appropriate tool (create_invoice, add_product, or add_customer) with all details. If any essential detail is missing or ambiguous (customer name, item, quantity, or price), DO NOT call the tool — ask the owner in plain text. Never guess a price, phone number, or discount percentage. For team roles, subscriptions, API keys, or account/login changes, tell the owner those must be done directly in Settings — do not attempt them.`;
+const TASK_SYSTEM = `You are Meraj in TASK mode — a capable staff member who prepares and executes real actions in the shop, but ONLY after the owner confirms. Speak briefly, like a good employee following instructions. When the owner asks to create an invoice/bill, add a product/item, or add a customer/client, call the appropriate tool (create_invoice, add_product, or add_customer) with all details. When the owner shares a LIST of products to add — a pasted list, a stock sheet, or items read from a photo — call add_products ONCE with every product in the products array (up to 50 items); never call add_product repeatedly. If any essential detail is missing or ambiguous (customer name, item, quantity, or price), DO NOT call the tool — ask the owner in plain text. Never guess a price, phone number, or discount percentage. For team roles, subscriptions, API keys, or account/login changes, tell the owner those must be done directly in Settings — do not attempt them.`;
 
 const CREATE_INVOICE_TOOL = [{ function_declarations: [{ name: "create_invoice", description: "Create a GST invoice/bill for a customer. Use when the owner asks to make, create, or generate an invoice or bill.", parameters: { type: "OBJECT", properties: { customer_name: { type: "STRING", description: "Customer name" }, customer_phone: { type: "STRING", description: "Customer phone (optional)" }, items: { type: "ARRAY", description: "Line items", items: { type: "OBJECT", properties: { name: { type: "STRING" }, qty: { type: "NUMBER" }, unit_price: { type: "NUMBER", description: "Price per unit in rupees" } }, required: ["name", "qty", "unit_price"] } }, discount_pct: { type: "NUMBER", description: "Discount % (optional, 0-100)" }, tax_rate: { type: "NUMBER", description: "GST/tax % (optional, default 0)" }, notes: { type: "STRING" } }, required: ["customer_name", "items"] } }] }];
 
 const ALL_TOOLS = [{ function_declarations: [
   ...CREATE_INVOICE_TOOL[0].function_declarations,
   { name: "add_product", description: "Add a new product or inventory item to the shop catalog.", parameters: { type: "OBJECT", properties: { name: { type: "STRING", description: "Product name" }, price: { type: "NUMBER", description: "Selling price in rupees" }, sku: { type: "STRING" }, category: { type: "STRING" }, stock_quantity: { type: "NUMBER", description: "Units in stock" }, low_stock_threshold: { type: "NUMBER", description: "Reorder threshold" }, cost: { type: "NUMBER", description: "Cost price in rupees" } }, required: ["name", "price"] } },
+  { name: "add_products", description: "Add MULTIPLE products to the shop catalog in ONE go (bulk). Use when the owner shares a list of products to add — a pasted list, a stock sheet, or items read from a photo — typically 2-50 items. Prefer this over calling add_product repeatedly.", parameters: { type: "OBJECT", properties: { products: { type: "ARRAY", description: "The products to add", items: { type: "OBJECT", properties: { name: { type: "STRING", description: "Product name" }, price: { type: "NUMBER", description: "Selling price in rupees" }, sku: { type: "STRING" }, category: { type: "STRING" }, stock_quantity: { type: "NUMBER", description: "Units in stock" }, low_stock_threshold: { type: "NUMBER", description: "Reorder threshold" }, cost: { type: "NUMBER", description: "Cost price in rupees" } }, required: ["name", "price"] } } }, required: ["products"] } },
   { name: "add_customer", description: "Add a new customer to the customer list.", parameters: { type: "OBJECT", properties: { name: { type: "STRING", description: "Customer name" }, phone: { type: "STRING" }, email: { type: "STRING" }, company: { type: "STRING" } }, required: ["name"] } },
   { name: "send_whatsapp", description: "Send a WhatsApp message to a phone number — a staff member, customer, or anyone the owner names. Use when the owner asks to send, message, or WhatsApp someone.", parameters: { type: "OBJECT", properties: { to: { type: "STRING", description: "Recipient phone number with country code, e.g. 919876543210" }, message: { type: "STRING", description: "The message text to send" } }, required: ["to", "message"] } },
 ] }];
@@ -382,6 +383,17 @@ Deno.serve(async (req) => {
         await supabase.rpc("increment_api_usage", { user_uuid: user.id });
         return json({ reply: `Done \u2014 **${i.name}** added to your products${i.stock_quantity !== undefined ? ` (${i.stock_quantity} in stock)` : ""}. Find it in your Stock page.`, executed: { type: "product" } });
       }
+      if (confirm && confirm.type === "add_products" && confirm.input) {
+        // BULK product add — one batched INSERT for the whole list (2-50 items).
+        const items = (Array.isArray(confirm.input.products) ? confirm.input.products : []).filter((x: any) => x && x.name);
+        if (!items.length) return json({ reply: "No valid products in that list \u2014 nothing was added." });
+        const rows = items.map((i: any) => ({ user_id: user.id, name: String(i.name).slice(0, 200), price: Number(i.price || 0), sku: i.sku || null, category: i.category || null, stock_quantity: Number(i.stock_quantity || 0), low_stock_threshold: Number(i.low_stock_threshold || 5), cost: Number(i.cost || 0) }));
+        const { error: be } = await supabase.from("products").insert(rows);
+        if (be) return json({ reply: `I couldn't add the products: ${be.message}.` });
+        await supabase.from("activity_logs").insert({ user_id: user.id, action_type: "summary", description: `Meraj added ${rows.length} products in bulk`, time_saved_minutes: 5 + rows.length, money_saved: 2 + rows.length, provider: "meraj-task" });
+        await supabase.rpc("increment_api_usage", { user_uuid: user.id });
+        return json({ reply: `Done \u2014 **${rows.length} products** added to your stock. Find them in your Stock page.`, executed: { type: "products", count: rows.length } });
+      }
       if (confirm && confirm.type === "add_customer" && confirm.input) {
         const i = confirm.input;
         const { error: ce } = await supabase.from("customers").insert({ user_id: user.id, name: String(i.name), phone: i.phone || null, email: i.email || null, company: i.company || null }).select().single();
@@ -408,7 +420,7 @@ Deno.serve(async (req) => {
       }
       // PREPARE: model decides tool-call vs text reply
       const [ctx2, mem2] = await Promise.all([ buildContext(supabase, user.id, String(message || ""), false), buildMemory(supabase, user.id) ]);
-      const tr = await callGeminiToolCall(TASK_SYSTEM + scopeFocus + pageFocus, `Owner: "${message}"\n\n${mem2.block}${historyBlock}\n\nSnapshot:\n${ctx2}`, ALL_TOOLS, { feature: "task-invoice" });
+      const tr = await callGeminiToolCall(TASK_SYSTEM + scopeFocus + pageFocus, `Owner: "${message}"\n\n${mem2.block}${historyBlock}\n\nSnapshot:\n${ctx2}`, ALL_TOOLS, { feature: "task-invoice", maxTokens: 3000 });
       if (!tr.ok) return json({ error: tr.value }, 500);
       if (tr.value.kind === "tool") {
         const tn = tr.value.name; const args = tr.value.args || {};
@@ -425,6 +437,14 @@ Deno.serve(async (req) => {
           if (args.category) r += `\n**Category:** ${args.category}`;
           r += `\n\nTap **Add it** to save.`;
           return json({ reply: r, pending: { type: "add_product", input: args, preview: args } });
+        }
+        if (tn === "add_products") {
+          const items = (Array.isArray(args.products) ? args.products : []).filter((x: any) => x && x.name && x.price !== undefined);
+          if (!items.length) return json({ reply: "I need each product's name and price to add them. Could you share the list?" });
+          const totalQty = items.reduce((s: number, x: any) => s + Number(x.stock_quantity || 0), 0);
+          const names = items.slice(0, 6).map((x: any) => `\u2022 ${x.name} \u2014 \u20b9${x.price}${x.stock_quantity !== undefined ? ` (${x.stock_quantity} pcs)` : ""}`).join("\n");
+          const more = items.length > 6 ? `\n\u2022 \u2026 +${items.length - 6} more` : "";
+          return json({ reply: `I've prepared **${items.length} products** to add in one go:\n\n${names}${more}\n\n**Total stock units:** ${totalQty}\n\nTap **Add it** to save all ${items.length}.`, pending: { type: "add_products", input: { products: items }, preview: { count: items.length } } });
         }
         if (tn === "add_customer") {
           if (!args.name) return json({ reply: "I need at least the customer's name to add them. Could you share it?" });
@@ -452,16 +472,16 @@ Deno.serve(async (req) => {
       : `Business owner asks: "${message}"\n\n${mem.block}${historyBlock}\n\nHere is the current business data snapshot:\n${context}\n\nAnswer the owner's question based on this data and what you already know about them.`;
 
     const IMAGE_FOCUS = image && image.data
-      ? "\n\nIMAGE ANALYSIS: The owner shared a photo with this message — analyze the IMAGE itself, never fetch or describe stock/web pictures. It may be a handwritten sales list, a printed bill/receipt, a product catalog, a stock sheet, a quotation, or something else. Read it carefully and tell the owner EXACTLY what you see: list each item, quantity and price you can read, plus any total. Then propose what you can do next — e.g. \"I can create a bill/invoice for these items (₹X total), add them as products, or turn this into a quotation.\" ALWAYS end with one short question asking which action to take. If part of the image is unreadable, say so plainly — never invent items or prices.\n"
+      ? "\n\nIMAGE ANALYSIS: The owner shared a photo with this message — analyze the IMAGE itself, never fetch or describe stock/web pictures. It may be a handwritten sales list, a printed bill/receipt, a product catalog, a stock sheet, a quotation, or something else. Read it carefully and tell the owner EXACTLY what you see: list each item, quantity and price you can read, plus any total. If it contains a product/stock list, extract EVERY item with its price and quantity — the whole list can be added as products in one go. Then propose what you can do next — e.g. \"I can create a bill/invoice for these items (₹X total), add them all as products, or turn this into a quotation.\" ALWAYS end with one short question asking which action to take. If part of the image is unreadable, say so plainly — never invent items or prices.\n"
       : "";
 
     let result: string;
     if (image && image.data) {
-      const imgRes = await callGeminiWithImage(SYSTEM + scopeFocus + pageFocus + IMAGE_FOCUS, userPrompt, image, { maxTokens: 1500, feature: "image-analysis" });
+      const imgRes = await callGeminiWithImage(SYSTEM + scopeFocus + pageFocus + IMAGE_FOCUS, userPrompt, image, { maxTokens: 4000, feature: "image-analysis" });
       if (!imgRes.ok) throw new Error(imgRes.value);
       result = imgRes.value;
     } else {
-      result = await callAIWithFallback(provider, SYSTEM + scopeFocus + pageFocus, userPrompt, 800, "assistant");
+      result = await callAIWithFallback(provider, SYSTEM + scopeFocus + pageFocus, userPrompt, 3000, "assistant");
     }
 
     // ── Persist memory (single upsert): append this turn to the transcript,

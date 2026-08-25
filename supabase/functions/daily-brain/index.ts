@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
         // 1. Generate predictions (pending approval)
         const sys = `You are a proactive retail business assistant. Based on the snapshot${learned}, propose 3-5 specific actions. Return ONLY JSON: {"predictions":[{"prediction_type":"reorder|followup|invoice|offer|alert","title":"...","description":"...","rationale":"...","priority":"low|medium|high|urgent"}]}. Be specific with names and numbers.`;
         const prompt = `Daily snapshot for ${user.full_name || "the owner"}:\n${JSON.stringify(snap, null, 1)}`;
-        const result = await callAIWithFallback(user.ai_provider || "openai", sys, prompt, 900);
+        const result = await callAIWithFallback(user.ai_provider || "openai", sys, prompt, 2500);
 
         let predsCreated = 0;
         try {

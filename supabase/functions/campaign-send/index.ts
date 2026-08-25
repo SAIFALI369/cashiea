@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
         const recipientCtx = `Recipient: ${r.name || r.email}${r.personalization && Object.keys(r.personalization).length ? `\nContext: ${JSON.stringify(r.personalization)}` : ""}`;
         const prompt = `${baseTemplate}\n\nUse this subject line: ${subjectLine}\n\n${recipientCtx}\n\nWrite the personalized email now.`;
 
-        const generated = await callAIWithFallback(provider, PERSONALIZER_SYS, prompt, 800, "campaign");
+        const generated = await callAIWithFallback(provider, PERSONALIZER_SYS, prompt, 1500, "campaign");
 
         let finalSubject = subjectLine;
         let finalBody = generated;

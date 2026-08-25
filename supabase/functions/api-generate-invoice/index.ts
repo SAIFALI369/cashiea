@@ -39,7 +39,9 @@ Deno.serve(async (req) => {
     const result = await callAIWithFallback(
       profile?.ai_provider || "openai",
       "You are an expert billing assistant. Generate a complete invoice as valid JSON with keys: invoice_number, client_name, client_email, client_address, items (array of {description, quantity, unit_price}), tax_rate, due_date, notes. Calculate subtotal, tax_amount, total automatically. Return ONLY valid JSON, no markdown.",
-      prompt
+      prompt,
+      2000,
+      "api-generate-invoice"
     );
 
     await service.rpc("increment_api_usage", { user_uuid: keyRow.user_id });
