@@ -1,17 +1,22 @@
 // ════════════════════════════════════════════════════════════════
 // ai-call.ts — THE single AI call helper for every Cashiea edge function.
 //
-// Identical to Meraj chat: Groq (groq/compound) is the PRIMARY provider,
-// and ANY failure falls back to the built-in Gemini key pool
-// (callDefaultGemini) so the owner always gets an answer.
+// TASK-CLASSIFICATION ROUTING (owner's spec):
 //
-// Every function imports `callAIWithFallback` from here instead of keeping
-// its own copy — so a model/provider change in ONE place fixes them all.
+//     AI TASK
+//       ↓ classify
+//     Need huge context?
+//       ├── YES → Ox Alpha   (OpenRouter stealth/ox-alpha, 1M-token ctx)
+//       └── NO
+//            ↓
+//          Need extreme speed?
+//            ├── YES → Groq   (groq/compound, sub-second)
+//            └── NO → Gemini  (gemini-3.6-flash key pool)
+//       ↓
+//     Provider unavailable? → automatic Gemini fallback (2-key pool)
 //
-// Signature matches the per-function helpers that existed before, so call
-// sites need no change:
-//   callAIWithFallback(provider, systemPrompt, prompt, maxTokens?, feature?)
-// 'openai' / unset → 'groq' (the chat default).
+// The 4 API keys: OpenRouter (Ox Alpha) · Groq (speed) · 2× Gemini
+// (default route + universal fallback, with key rotation).
 // ════════════════════════════════════════════════════════════════
 
 import { callDefaultGemini, hasDefaultAI } from "./ai-default.ts";
@@ -19,13 +24,27 @@ import { callOpenRouter } from "./openrouter.ts";
 import { callGateway } from "./ai-gateway.ts";
 import { withRetry } from "./retry.ts";
 
+// ── Classification ────────────────────────────────────────────────
+/** ≈5k tokens of input → big enough to want the 1M-context Ox Alpha model. */
+const HUGE_CONTEXT_CHARS = 20_000;
+/**
+ * Interactive features where the owner is watching a spinner and sub-second
+ * latency matters. Background/batch jobs (daily-brain, campaign, api-*, …)
+ * deliberately route to Gemini instead — balanced quality, no rush.
+ */
+const SPEED_FEATURES = new Set(["assistant", "assistant-memory", "quick-tasks"]);
+
+type Route = "oxalpha" | "groq" | "gemini";
+
+function classifyRoute(systemPrompt: string, prompt: string, feature: string): Route {
+  const size = (systemPrompt || "").length + (prompt || "").length;
+  if (size >= HUGE_CONTEXT_CHARS) return "oxalpha"; // 1. huge context
+  if (SPEED_FEATURES.has(feature)) return "groq";   // 2. extreme speed
+  return "gemini";                                   // 3. balanced default
+}
+
+// ── Direct providers ──────────────────────────────────────────────
 async function callAI(provider: string, systemPrompt: string, prompt: string, maxTokens = 1200): Promise<string> {
-  // OpenRouter — auto-fallback chain: Gemini -> Kimi K3 -> Llama -> any free model
-  if (provider === "openrouter") {
-    const r = await callOpenRouter(systemPrompt, prompt, { maxTokens: 1500 });
-    if (!r.ok) throw new Error(r.value);
-    return r.value;
-  }
   const callers: Record<string, (s: string, p: string) => Promise<{ ok: boolean; status: number; value: string }>> = {
     groq: async (s, p) => {
       const key = Deno.env.get("GROQ_API_KEY");
@@ -75,10 +94,28 @@ async function callAI(provider: string, systemPrompt: string, prompt: string, ma
   return withRetry(() => callers[provider || "openai"](systemPrompt, prompt), 2, 600);
 }
 
+// ── The three routes ──────────────────────────────────────────────
+/** Ox Alpha (huge context) via OpenRouter — chain starts with stealth/ox-alpha. */
+async function callOxAlpha(systemPrompt: string, prompt: string, maxTokens: number): Promise<string> {
+  const r = await callOpenRouter(systemPrompt, prompt, { maxTokens });
+  if (!r.ok) throw new Error(r.value);
+  return r.value;
+}
+
+/** Gemini key pool (the 2 Gemini keys, auto-rotation on 429) — default route + universal fallback. */
+async function callGeminiPool(systemPrompt: string, prompt: string, maxTokens: number, feature: string): Promise<string> {
+  const fb = await callDefaultGemini(systemPrompt, prompt, { maxTokens, feature });
+  if (!fb.ok) throw new Error(fb.value);
+  return fb.value;
+}
+
 /**
- * Same as Meraj chat: try the selected provider, then fall back to the built-in
- * Gemini key pool on ANY error (deprecated model, 404, 429, network, not configured).
- * 'openai' or unset → 'groq' (the chat default).
+ * Same signature every edge function already uses:
+ *   callAIWithFallback(provider, systemPrompt, prompt, maxTokens?, feature?)
+ *
+ * Routing is automatic (see the spec at the top). The `provider` argument is
+ * only honored as an explicit override for rare exotic choices
+ * ('openrouter' → Ox Alpha chain, 'anthropic', 'vercel_gateway').
  */
 export async function callAIWithFallback(
   provider: string,
@@ -87,15 +124,29 @@ export async function callAIWithFallback(
   maxTokens = 1200,
   feature = "unknown"
 ): Promise<string> {
-  const p = provider && provider !== "openai" ? provider : "groq";
-  try {
-    return await callAI(p, systemPrompt, prompt, maxTokens);
-  } catch (_err) {
-    if (hasDefaultAI()) {
-      const fb = await callDefaultGemini(systemPrompt, prompt, { maxTokens, feature });
-      if (fb.ok) return fb.value;
-      throw new Error(fb.value);
+  // Rare explicit overrides keep working exactly as before.
+  if (provider === "openrouter" || provider === "anthropic" || provider === "vercel_gateway") {
+    try {
+      if (provider === "openrouter") return await callOxAlpha(systemPrompt, prompt, maxTokens);
+      return await callAI(provider, systemPrompt, prompt, maxTokens);
+    } catch (err) {
+      if (hasDefaultAI()) return callGeminiPool(systemPrompt, prompt, maxTokens, feature);
+      throw err;
     }
-    throw _err;
+  }
+
+  // Default: task-classification routing.
+  const route = classifyRoute(systemPrompt, prompt, feature);
+
+  // Gemini route — the pool already rotates the 2 keys, no further fallback.
+  if (route === "gemini") return callGeminiPool(systemPrompt, prompt, maxTokens, feature);
+
+  try {
+    if (route === "oxalpha") return await callOxAlpha(systemPrompt, prompt, maxTokens);
+    return await callAI("groq", systemPrompt, prompt, maxTokens); // speed route
+  } catch (err) {
+    // Provider unavailable → automatic Gemini fallback.
+    if (hasDefaultAI()) return callGeminiPool(systemPrompt, prompt, maxTokens, feature);
+    throw err;
   }
 }

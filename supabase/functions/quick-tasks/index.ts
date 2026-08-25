@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
         result = "✅ All products are well stocked. No reorders needed right now.";
       } else {
         result = await callAIWithFallback(provider, `You are a retail inventory assistant for a shop in India. Write a clear low-stock alert in friendly Hinglish (Hindi+English mixed in Roman script). Use bullet points. Suggest reorder quantities based on the gap. Sign off as the shop's AI assistant.`,
-          `Low-stock items:\n${JSON.stringify(low, null, 1)}`, 600);
+          `Low-stock items:\n${JSON.stringify(low, null, 1)}`, 600, "quick-tasks");
       }
     }
 
@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
       result = await callAIWithFallback(provider,
         `Generate a clean DAILY CLOSING REPORT for an Indian retail shop. Be warm, professional, and concise. Format with clear sections. End with a one-line summary. Use ₹ symbol.`,
         `Target date: ${targetDate || 'today'} data:\n- Total revenue: ₹${revenue.toFixed(2)}\n- Orders: ${(todayTx || []).length}\n- Items sold: ${itemCount}\n- By payment method: ${JSON.stringify(byMethod)}\n- Shop name: ${profile?.company_name || profile?.full_name || 'My Shop'}`,
-        500);
+        500, "quick-tasks");
     }
 
     else if (mode === "hindi_bot") {
@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
       result = await callAIWithFallback(provider,
         `You are a friendly Hinglish WhatsApp assistant for an Indian retail shop. Hinglish = Hindi + English mixed in Roman script (e.g. "Namaste! Aapka order ready hai, please collect kar lijiye."). Reply warmly and naturally to the customer. Keep replies short (2-4 lines) — perfect for WhatsApp. Use emojis sparingly. Sign off as the shop.`,
         `Customer's message: "${userText}"\n\nShop name: ${profile?.company_name || 'My Shop'}\n\nWrite a helpful Hinglish reply:`,
-        300);
+        300, "quick-tasks");
     }
 
     else if (mode === "gst_invoice_voice") {
@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
       if (!userText) return json({ error: "Describe the sale (by voice or text) first" }, 400);
       const aiOut = await callAIWithFallback(provider,
         `You are a GST billing assistant for an Indian shop. Parse the sale description and return ONLY valid JSON: {"customer_name","customer_phone","items":[{"description","quantity","unit_price"}],"tax_rate" (use 18 for most, 5 for essentials, 0 for unbranded), "notes"}. Calculate subtotal, tax_amount, total in INR. If the spoken amount sounds like rupees, treat it as ₹.`,
-        `Description: "${userText}"\nShop GSTIN: ${profile?.gstin || 'not set'}`, 700);
+        `Description: "${userText}"\nShop GSTIN: ${profile?.gstin || 'not set'}`, 700, "quick-tasks");
       meta.raw = aiOut;
       // Try to parse + create the invoice
       try {
@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
       };
       result = await callAIWithFallback(provider,
         `You are a helpful retail business assistant for an Indian shop owner. Answer their request clearly in Hinglish (Hindi+English mixed in Roman script) or English — match their language. Be concise and actionable.`,
-        `Owner request: "${userText}"\n\nShop context: ${JSON.stringify(snapshot)}`, 800);
+        `Owner request: "${userText}"\n\nShop context: ${JSON.stringify(snapshot)}`, 800, "quick-tasks");
     }
 
     else return json({ error: "Unknown mode. Use low_stock_alert | daily_closing | hindi_bot | gst_invoice_voice | custom" }, 400);

@@ -8,31 +8,29 @@
 // Setup (Supabase secret — never commit):
 //   supabase secrets set OPENROUTER_API_KEY=sk-or-v1-...
 //
-// FALLBACK CHAIN (per owner request):
-//   1. Gemini first  (google/gemini-2.5-flash-lite — fast + cheap)
-//   2. Kimi K3       (moonshotai/kimi-k3)
-//   3. Llama         (meta-llama/llama-4-maverick)
-//   4. Any reachable model (auto-fallback to a free model as last resort)
-//
-// The chain auto-advances on: 402 (insufficient credits), 429 (rate
-// limit), 5xx (provider down). This means the feature works even
-// before credits are purchased — it falls through to a free model.
+// ROLE IN CASHIEA (owner's routing spec): OpenRouter = the Ox Alpha
+// route — stealth/ox-alpha has a 1M-token context window and is used
+// for HUGE-context tasks. The chain below backs it up if a provider
+// is unavailable; the caller (ai-call.ts) additionally falls back to
+// the Gemini key pool if the whole chain fails.
 // ════════════════════════════════════════════════════════════════
 
 export const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
 // The fallback chain — order matters. Each is tried in sequence.
 export const OPENROUTER_MODELS = [
-  "google/gemini-2.5-flash-lite",   // 1. Gemini first (fast + cheap)
-  "moonshotai/kimi-k3",              // 2. Kimi K3
-  "meta-llama/llama-4-maverick",     // 3. Llama
-  "google/gemini-2.5-flash",         // 4. alternate Gemini
+  "stealth/ox-alpha",                // 1. Ox Alpha — 1M context, the huge-context model
+  "google/gemini-2.5-flash",         // 2. alternate big-context Gemini (1M ctx)
+  "moonshotai/kimi-k3",              // 3. Kimi K3
+  "meta-llama/llama-4-maverick",     // 4. Llama
   "tencent/hy3:free",                // 5. guaranteed free fallback
   "google/gemma-4-26b-a4b-it:free",  // 6. another free fallback
 ];
 
 // Errors that should trigger a fallback to the next model.
-const FALLBACK_CODES = new Set([402, 429, 403, 408, 409, 413, 429, 500, 502, 503, 504, 529]);
+// 404 included: "model/provider not available for this account" (e.g. the
+// provider is not in the account's allowed-providers list yet) — advance.
+const FALLBACK_CODES = new Set([402, 403, 404, 408, 409, 413, 429, 500, 502, 503, 504, 529]);
 
 async function tryModel(
   apiKey: string,
@@ -78,7 +76,7 @@ async function tryModel(
     if (!content) return { ok: false, status: 502, value: "OpenRouter returned no content" };
     return { ok: true, status: 200, value: content as string };
   } catch (err) {
-    return { ok: false, status: 0, value: `Network error: ${err.message}` };
+    return { ok: false, status: 0, value: `Network error: ${(err as Error)?.message || err}` };
   }
 }
 
