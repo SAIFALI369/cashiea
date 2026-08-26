@@ -65,6 +65,29 @@ async function callAI(provider: string, systemPrompt: string, prompt: string, ma
       if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
       return { ok: true, status: 200, value: (await res.json()).choices[0].message.content };
     },
+    // gpt-oss models on Groq — SEPARATE free token pools from compound, so they
+    // keep working when compound's per-minute budget is spent. reasoning_effort
+    // "low" keeps them fast (sub-second) and leaves room for the visible reply.
+    "groq-oss": async (s, p) => {
+      const key = Deno.env.get("GROQ_API_KEY");
+      if (!key) throw new Error("GROQ_API_KEY not configured");
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ model: "openai/gpt-oss-120b", messages: [{ role: "system", content: s }, { role: "user", content: p }], temperature: 0.5, max_tokens: maxTokens, reasoning_effort: "low" }),
+      });
+      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
+      return { ok: true, status: 200, value: (await res.json()).choices[0].message.content };
+    },
+    "groq-oss-lite": async (s, p) => {
+      const key = Deno.env.get("GROQ_API_KEY");
+      if (!key) throw new Error("GROQ_API_KEY not configured");
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ model: "openai/gpt-oss-20b", messages: [{ role: "system", content: s }, { role: "user", content: p }], temperature: 0.5, max_tokens: maxTokens, reasoning_effort: "low" }),
+      });
+      if (!res.ok) return { ok: false, status: res.status, value: await res.text() };
+      return { ok: true, status: 200, value: (await res.json()).choices[0].message.content };
+    },
     openai: async (s, p) => {
       const key = Deno.env.get("OPENAI_API_KEY");
       if (!key) throw new Error("OPENAI_API_KEY not configured");
@@ -159,15 +182,18 @@ export async function callAIWithFallback(
   // account's OpenRouter DATA POLICY allows it (openrouter.ai/settings/privacy).
   let order: string[];
   if (provider === "openrouter") {
-    order = ["oxalpha", "gemini", "groq"];
+    order = ["oxalpha", "gemini", "groq", "groq-oss"];
   } else if (provider === "anthropic" || provider === "vercel_gateway") {
-    order = [provider, "gemini", "groq"];
+    order = [provider, "gemini", "groq", "groq-oss"];
   } else {
     const route = classifyRoute(systemPrompt, prompt, feature);
+    // Groq's models each have a SEPARATE free per-minute token pool, so the
+    // cascade steps through compound → gpt-oss-120b → gpt-oss-20b before/after
+    // Gemini — ~5 independent free pools total. Chat effectively never fails.
     order =
-      route === "oxalpha" ? ["oxalpha", "gemini", "groq"] :
-      route === "groq" ? ["groq", "gemini"] :
-                          ["gemini", "groq"];
+      route === "oxalpha" ? ["oxalpha", "gemini", "groq", "groq-oss"] :
+      route === "groq" ? ["groq", "groq-oss", "gemini", "groq-oss-lite"] :
+                          ["gemini", "groq", "groq-oss", "groq-oss-lite"];
   }
 
   // Multi-pass cascade. Free-tier limits (Groq per-minute tokens, Gemini
@@ -194,7 +220,7 @@ export async function callAIWithFallback(
   if (out !== null) return out;
 
   await new Promise((r) => setTimeout(r, 15000));
-  out = await tryChain(order.includes("oxalpha") ? ["gemini", "groq"] : order);
+  out = await tryChain(order.includes("oxalpha") ? ["gemini", "groq", "groq-oss"] : order);
   if (out !== null) return out;
 
   console.error(
