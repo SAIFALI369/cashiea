@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { MerajAvatar } from '../components/MerajAvatar'
 import { formatINR } from '../lib/format'
-import { askAssistant } from '../lib/ai'
+import { askAssistant, dashboardSuggestions } from '../lib/ai'
 import {
   TrendingUp, Wallet, Package, MessageCircle, FileSignature, Users,
   ArrowRight, AlertTriangle, Send, Mic, ChevronDown, BellRing, Check,
@@ -55,6 +55,7 @@ export default function Dashboard() {
   const [ask, setAsk] = useState('')
   const [aiGreeting, setAiGreeting] = useState('')
   const [activeDay, setActiveDay] = useState<number | null>(null)
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([])
 
   // Dynamic AI greeting — refreshed every 1 hour, cached in localStorage
   useEffect(() => {
@@ -192,6 +193,36 @@ export default function Dashboard() {
       else ins.push({ severity: 'healthy', title: 'Stock healthy hai', subtitle: 'Sab items available hain' })
       setInsights(ins.slice(0, 3))
 
+      // ── AI suggestion pills (search bar) ─────────────────────────
+      // Situation-specific questions from the LIVE numbers, cached 3 hours per
+      // user — regenerated on app open when the cache is stale. Falls back to
+      // sensible contextual pills until (or if) the AI call returns.
+      const suggKey = `cashiea_suggestions_${ownerId}`
+      const suggState = {
+        date: new Date().toISOString().split('T')[0],
+        day: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date().getDay()],
+        salesToday, salesYesterday, pendingCount, pendingSum,
+        overdueCount: overdue.length, overdueSum,
+        lowStock, unreadMessages: messages, pendingOrders: orders,
+        weekSales: buckets.reduce((s, v) => s + v, 0), weekExpenses: expensesWeek,
+        topOverdueClient: topPriority?.client_name || null,
+      }
+      try {
+        const cached = JSON.parse(localStorage.getItem(suggKey) || 'null')
+        if (cached?.ts && Date.now() - cached.ts < 3 * 60 * 60 * 1000 && Array.isArray(cached.pills) && cached.pills.length >= 3) {
+          setAiSuggestions(cached.pills)
+        } else {
+          dashboardSuggestions(suggState)
+            .then((p) => {
+              if (p.length) {
+                setAiSuggestions(p)
+                try { localStorage.setItem(suggKey, JSON.stringify({ pills: p, ts: Date.now() })) } catch { /* ignore */ }
+              }
+            })
+            .catch(() => { /* fallback pills remain */ })
+        }
+      } catch { /* ignore */ }
+
       setLoading(false)
     })()
   }, [profile])
@@ -204,12 +235,15 @@ export default function Dashboard() {
   }
 
   const topAmount = topPriority ? Number(topPriority.total) : overdueSum
-  const suggestions = [
-    'Why did sales drop today?',
-    topPriority ? `Should I follow up with ${formatINR(topAmount, 0)} invoice?` : 'Which customers may delay payments?',
-    'Which customers may delay payments?',
+  // Fallback pills (until the AI pills load / if the call fails) — still
+  // contextual, built from the live numbers.
+  const fallbackSuggestions = [
+    'How were sales today?',
+    topPriority ? `How do I collect ${formatINR(topAmount, 0)} overdue?` : 'Which customers may delay payments?',
     'What should I reorder this week?',
+    'How do I grow sales this week?',
   ]
+  const suggestions = aiSuggestions.length ? aiSuggestions : fallbackSuggestions
 
   const sevDot = { critical: 'bg-negative', warning: 'bg-warning', healthy: 'bg-positive' } as const
   const footerCls = { warning: 'text-warning', negative: 'text-negative', positive: 'text-positive', muted: 'text-fg-subtle' } as const

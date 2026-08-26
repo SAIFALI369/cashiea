@@ -204,7 +204,6 @@ export async function onboardingQuestions(input: { category: string; businessNam
 }
 
 export interface OnboardingPersona { headline: string; persona: string; skills: string[] }
-
 export async function onboardingPersona(input: { category: string; businessName?: string; city?: string; answers: Record<string, string> }): Promise<OnboardingPersona> {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('You must be logged in.')
@@ -220,6 +219,28 @@ export async function onboardingPersona(input: { category: string; businessName?
   const data = await res.json().catch(() => ({ error: 'Invalid response from server' }))
   if (!res.ok) throw new Error(data?.error || `Request failed (HTTP ${res.status})`)
   return { headline: data.headline || 'Your Business Expert', persona: data.persona || '', skills: Array.isArray(data.skills) ? data.skills : [] }
+}
+
+/**
+ * Dashboard suggestion pills — situation-specific questions generated from the
+ * shop's LIVE numbers (the Dashboard passes its loaded state). Cached by the
+ * caller for 3 hours and regenerated on app open when stale.
+ */
+export async function dashboardSuggestions(state: Record<string, unknown>): Promise<string[]> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('You must be logged in.')
+  const res = await fetchWithRetry(AI_FUNCTION_URL.replace('ai-automation', 'ai-assistant'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ mode: 'dashboard_suggestions', dashboardState: state }),
+  })
+  const data = await res.json().catch(() => ({ error: 'Invalid response from server' }))
+  if (!res.ok) throw new Error(data?.error || `Request failed (HTTP ${res.status})`)
+  return (Array.isArray(data.pills) ? data.pills : []).filter((p: unknown) => typeof p === 'string' && p.trim()) as string[]
 }
 
 /**

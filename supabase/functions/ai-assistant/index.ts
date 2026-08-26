@@ -304,7 +304,40 @@ Deno.serve(async (req) => {
     const limit = onTrial ? Math.max(profile.api_usage_limit, 500) : profile?.api_usage_limit || 50;
     if (profile && profile.api_usage_count >= limit) return json({ error: "Usage limit reached" }, 429);
 
-    const { message, briefing, scope, mode, confirm, pageContext, history, image, category, businessName, city, answers } = await req.json();
+    const { message, briefing, scope, mode, confirm, pageContext, history, image, category, businessName, city, answers, dashboardState } = await req.json();
+
+    // ── DASHBOARD SUGGESTION PILLS (under the search bar) ──────────
+    // Fresh, situation-specific questions — the client regenerates these every
+    // 3 hours with its live numbers, so pills always reflect the CURRENT state.
+    if (mode === "dashboard_suggestions") {
+      const s = dashboardState || {};
+      const sys = `You write the 4 suggestion pills shown under an Indian shop owner's dashboard search bar. TODAY: ${s.date || ""} (${s.day || ""}). CURRENT BUSINESS STATE (live numbers): ${JSON.stringify(s)}. Rules:
+- Exactly 4 pills, each a SHORT question (max 9 words).
+- Every pill must be SPECIFIC to the numbers above — mention the actual ₹ amounts / counts when useful.
+- Cover 4 DIFFERENT angles: money owed/pending (if any), sales trend or profit (why + how to improve), stock/reorder, customers/growth.
+- Frame around WHAT to do, WHY it matters, or HOW — never generic filler like "How can I improve my business?".
+- If an area is at 0 or healthy, take a growth / best-seller / profit angle instead.
+Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000 still unpaid?", "How do I lift tomorrow's sales?", "Which 2 items to reorder first?", "Who are my top customers this month?"]`;
+      let pills: string[] = [];
+      try {
+        const out = await callAIWithFallback("groq", sys, "Return the JSON array now.", 300, "dashboard-suggestions");
+        const m = String(out).match(/\[[\s\S]*\]/);
+        if (m) {
+          const parsed = JSON.parse(m[0]);
+          if (Array.isArray(parsed)) pills = parsed.filter((x: any) => typeof x === "string" && x.trim()).map((x: string) => x.trim().slice(0, 80));
+        }
+      } catch { /* fall through to the deterministic set */ }
+      if (pills.length < 4) {
+        const fb: string[] = [];
+        if (Number(s.pendingSum) > 0) fb.push(`How do I collect \u20b9${Number(s.pendingSum).toLocaleString("en-IN")} pending?`);
+        if (Number(s.lowStock) > 0) fb.push(`Which ${s.lowStock} low-stock items to reorder?`);
+        fb.push(Number(s.salesToday) < Number(s.salesYesterday) ? "Why are sales slower than yesterday?" : "How do I beat yesterday's sales?");
+        fb.push("Who are my top customers this month?");
+        pills = fb.slice(0, 4);
+      }
+      try { await supabase.rpc("increment_api_usage", { user_uuid: user.id }); } catch { /* ignore */ }
+      return json({ pills: pills.slice(0, 4) });
+    }
 
     // ── ONBOARDING (3-page signup wizard) ─────────────────────────
     // Page 2: Meraj drafts 3-5 zero-friction questions tailored to THIS trade.
