@@ -219,7 +219,7 @@ export async function callAIWithFallback(
   out = await tryChain([...order].reverse());
   if (out !== null) return out;
 
-  await new Promise((r) => setTimeout(r, 15000));
+  await new Promise((r) => setTimeout(r, 25000));
   out = await tryChain(order.includes("oxalpha") ? ["gemini", "groq", "groq-oss"] : order);
   if (out !== null) return out;
 
