@@ -13,6 +13,7 @@
 // Deploy:  supabase functions deploy support-email
 // ════════════════════════════════════════════════════════════════
 
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/retry.ts";
 
 const SUPPORT_EMAIL = Deno.env.get("SUPPORT_EMAIL") || "supportcashiea@gmail.com";
@@ -72,6 +73,15 @@ async function sendViaResend(name: string, from: string, subject: string, messag
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
+    // SECURITY: support email is only for signed-in Cashiea users. Without this
+    // check anyone could use the endpoint as a free spam relay.
+    const authHeader = req.headers.get("authorization") || "";
+    const anonClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user } } = await anonClient.auth.getUser();
+    if (!user) return json({ error: "You must be signed in to contact support." }, 401);
+
     const { name, email, subject, message } = await req.json();
 
     if (!name || !email || !message) {

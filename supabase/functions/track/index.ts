@@ -51,7 +51,11 @@ Deno.serve(async (req) => {
   }
 
   if (type === "click") {
-    const dest = url.searchParams.get("u") || "/";
+    // SECURITY: only allow http(s) redirects — blocks javascript:/data: injection
+    // (XSS via crafted links) and keeps this endpoint from being abused as an
+    // arbitrary-scheme redirector.
+    const rawDest = url.searchParams.get("u") || "/";
+    const dest = /^https?:\/\//i.test(rawDest) ? rawDest : "/";
     await supabase.from("campaign_recipients").update({ status: "clicked", clicked_at: new Date().toISOString() }).eq("id", id).neq("status", "replied");
     const { data: r } = await supabase.from("campaign_recipients").select("campaign_id").eq("id", id).single();
     if (r) await supabase.rpc("sync_campaign_stats", { campaign_uuid: r.campaign_id });

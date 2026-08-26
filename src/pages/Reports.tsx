@@ -1,3 +1,4 @@
+import { renderMd } from '../lib/markdown'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -88,20 +89,6 @@ export default function Reports() {
   const handleCopy = (content: string) => {
     navigator.clipboard.writeText(content)
     toast.success('Copied to clipboard')
-  }
-
-  const renderMarkdown = (md: string) => {
-    return md
-      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/`(.+?)`/g, '<code>$1</code>')
-      .replace(/^\s*[-*] (.+)$/gm, '<li>$1</li>')
-      .replace(/^\s*\d+\. (.+)$/gm, '<li>$1</li>')
-      .replace(/(<li>.*<\/li>)/s, (match) => `<ul>${match}</ul>`)
-      .replace(/\n\n/g, '</p><p>')
-      .replace(/^(?!<[hlup])(.+)$/gm, '<p>$1</p>')
   }
 
   return (
@@ -203,7 +190,7 @@ export default function Reports() {
                     <button onClick={() => handleCopy(report.generated_content!)} className="btn-ghost text-xs"><Copy className="w-3.5 h-3.5" /> Copy</button>
                     <button onClick={() => handleDelete(report.id)} className="btn-ghost text-xs text-red-400 hover:text-red-300"><Trash2 className="w-3.5 h-3.5" /> Delete</button>
                   </div>
-                  <div className="prose-content px-5 pb-5 max-h-[500px] overflow-y-auto" dangerouslySetInnerHTML={{ __html: renderMarkdown(report.generated_content) }} />
+                  <div className="prose-content px-5 pb-5 max-h-[500px] overflow-y-auto" dangerouslySetInnerHTML={{ __html: renderMd(report.generated_content) }} />
                 </div>
               )}
             </div>

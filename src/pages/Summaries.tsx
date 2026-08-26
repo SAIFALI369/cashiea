@@ -1,3 +1,4 @@
+import { renderMd } from '../lib/markdown'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -93,19 +94,6 @@ export default function Summaries() {
     toast.success('Copied to clipboard')
   }
 
-  const renderMarkdown = (md: string) => {
-    return md
-      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/^\s*[-*] (.+)$/gm, '<li>$1</li>')
-      .replace(/^\s*\d+\. (.+)$/gm, '<li>$1</li>')
-      .replace(/(<li>.*<\/li>)/s, (match) => `<ul>${match}</ul>`)
-      .replace(/\n\n/g, '</p><p>')
-      .replace(/^(?!<[hlup])(.+)$/gm, '<p>$1</p>')
-  }
-
   return (
     <div className="animate-fade-in">
       <PageHeader
@@ -199,7 +187,7 @@ export default function Summaries() {
               {summary.generated_summary && (
                 <div
                   className="prose-content"
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(summary.generated_summary) }}
+                  dangerouslySetInnerHTML={{ __html: renderMd(summary.generated_summary) }}
                 />
               )}
             </div>

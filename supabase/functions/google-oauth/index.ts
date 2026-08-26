@@ -38,6 +38,16 @@ function scopesFor(provider: string): string {
   return [...base, "https://www.googleapis.com/auth/spreadsheets.readonly"].join(" "); // google_sheets (default)
 }
 
+/** HMAC-sign the OAuth state so callbacks can't be forged. */
+async function hmacSign(data: string): Promise<string> {
+  const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const key = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data));
+  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+}
+
 function cors() {
   return {
     "Access-Control-Allow-Origin": "*",
@@ -81,6 +91,11 @@ Deno.serve(async (req) => {
         });
       }
 
+      // SECURITY: sign the OAuth state with an HMAC so the callback can verify
+      // the redirect really started from OUR authorize step (blocks forged
+      // callbacks that would link an attacker's Google account to a victim).
+      const stateBase = `${userId}|${provider}|${permission}`;
+      const stateSig = await hmacSign(stateBase);
       const params = new URLSearchParams({
         client_id: CLIENT_ID,
         redirect_uri: REDIRECT_URI,
@@ -88,7 +103,7 @@ Deno.serve(async (req) => {
         scope: scopesFor(provider),
         access_type: "offline",      // request a refresh token
         prompt: "consent",           // force consent so refresh token is returned
-        state: `${userId}|${provider}|${permission}`,
+        state: `${stateBase}|${stateSig}`,
       });
       return Response.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`, 302);
     }
@@ -97,10 +112,18 @@ Deno.serve(async (req) => {
     if (action === "callback") {
       const code = url.searchParams.get("code");
       const state = url.searchParams.get("state") || "";
-      const [userId, provider, permission] = state.split("|");
+      const parts = state.split("|");
+      const [userId, provider, permission] = parts;
+      const sig = parts[3] || "";
 
       if (!code || !userId) {
         return Response.redirect(`${APP_URL}/app/integrations?error=missing_code`, 302);
+      }
+
+      // SECURITY: verify the state signature — reject forged callbacks.
+      const expectedSig = await hmacSign(`${userId}|${provider}|${permission}`);
+      if (sig !== expectedSig) {
+        return Response.redirect(`${APP_URL}/app/integrations?error=invalid_state`, 302);
       }
 
       // Exchange authorization code for tokens
@@ -148,7 +171,7 @@ Deno.serve(async (req) => {
           access_token: tokens.access_token,
           refresh_token: tokens.refresh_token || null,
           expires_at: tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : null,
-          scope: tokens.scope || SCOPES,
+          scope: tokens.scope || scopesFor(provider),
           connected_at: new Date().toISOString(),
         },
         last_synced_at: new Date().toISOString(),
@@ -171,7 +194,7 @@ Deno.serve(async (req) => {
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token || null,
         token_expires_at: tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000).toISOString() : null,
-        scopes_granted: (tokens.scope || SCOPES).split(" "),
+        scopes_granted: (tokens.scope || scopesFor(provider)).split(" "),
         status: "connected",
         last_synced_at: new Date().toISOString(),
       }, { onConflict: "user_id,app_slug" });

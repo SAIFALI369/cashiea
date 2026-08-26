@@ -23,6 +23,27 @@ Deno.serve(async (req) => {
     const { user_id, provider, spreadsheet_id } = body;
     if (!user_id || !provider) return json({ error: "user_id and provider required" }, 400);
 
+    // ── SECURITY: verify the caller ──────────────────────────────
+    // Either a service-role invocation (cron / daily-brain) or the owner's own
+    // JWT. Any random caller asking for someone else's user_id is rejected —
+    // this function reads the user's Gmail/Sheets with the service role.
+    const authHeader = req.headers.get("authorization") || "";
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    let isServiceRole = false;
+    try {
+      const payload = JSON.parse(atob(authHeader.replace(/^Bearer\s+/i, "").split(".")[1]));
+      isServiceRole = payload?.role === "service_role";
+    } catch { /* not a JWT */ }
+    if (!isServiceRole && !authHeader.endsWith(serviceKey)) {
+      const anonClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: { user } } = await anonClient.auth.getUser();
+      if (!user || user.id !== user_id) {
+        return json({ error: "Unauthorized" }, 401);
+      }
+    }
+
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     // Load the integration
