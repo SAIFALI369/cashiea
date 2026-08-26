@@ -7,7 +7,7 @@ import { formatINR } from '../lib/format'
 import { askAssistant } from '../lib/ai'
 import {
   TrendingUp, Wallet, Package, MessageCircle, FileSignature, Users,
-  ArrowRight, AlertTriangle, Send, Mic, ChevronDown,
+  ArrowRight, AlertTriangle, Send, Mic, ChevronDown, BellRing, Check,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -21,6 +21,12 @@ interface Stat {
   delta?: string; deltaTone?: 'good' | 'bad' | 'neutral'
   footer: string; footerTone: 'warning' | 'negative' | 'positive' | 'muted'
   to: string
+  /** Soft warning tint for the card (pending funds, needs action). */
+  tone?: 'warning'
+  /** Primary in-card action (fintech style) — shown when there's something to act on. */
+  action?: { label: string; query: string }
+  /** Success state shown instead of a bare "0" — when zero is GOOD news. */
+  positive?: { label: string }
 }
 interface Insight { severity: 'critical' | 'warning' | 'healthy'; title: string; subtitle: string }
 interface OverdueInv { id: string; invoice_number: string; client_name: string; total: number; due_date: string | null }
@@ -43,10 +49,12 @@ export default function Dashboard() {
   const [overdueSum, setOverdueSum] = useState(0)
   const [insights, setInsights] = useState<Insight[]>([])
   const [daily, setDaily] = useState<number[]>([0, 0, 0, 0, 0, 0, 0])
+  const [dailyExp, setDailyExp] = useState<number[]>([0, 0, 0, 0, 0, 0, 0])
   const [weekSales, setWeekSales] = useState(0)
   const [weekExpenses, setWeekExpenses] = useState(0)
   const [ask, setAsk] = useState('')
   const [aiGreeting, setAiGreeting] = useState('')
+  const [activeDay, setActiveDay] = useState<number | null>(null)
 
   // Dynamic AI greeting — refreshed every 1 hour, cached in localStorage
   useEffect(() => {
@@ -80,7 +88,7 @@ export default function Dashboard() {
         supabase.from('whatsapp_messages').select('id', { count: 'exact', head: true }).eq('user_id', ownerId).eq('direction', 'inbound').gte('created_at', dayAgo),
         supabase.from('quotations').select('id', { count: 'exact', head: true }).eq('user_id', ownerId).eq('status', 'sent'),
         supabase.from('team_members').select('id', { count: 'exact', head: true }).eq('user_id', ownerId).eq('status', 'active'),
-        supabase.from('expenses').select('amount').eq('user_id', ownerId).eq('type', 'expense').gte('date', startMon),
+        supabase.from('expenses').select('amount,date').eq('user_id', ownerId).eq('type', 'expense').gte('date', startMon),
       ])
 
       const sum = (rows: any[] | null) => (rows || []).reduce((s, r) => s + Number(r.total || r.amount || 0), 0)
@@ -109,6 +117,15 @@ export default function Dashboard() {
       })
       setDaily(buckets)
       setWeekSales(buckets.reduce((s, v) => s + v, 0))
+
+      // weekly expense buckets (Mon-Sun) for the Sales-vs-Expenses chart
+      const expBuckets = [0, 0, 0, 0, 0, 0, 0]
+      ;(expWeek.data || []).forEach((e: any) => {
+        if (!e.date) return
+        const idx = (new Date(e.date).getDay() + 6) % 7
+        expBuckets[idx] += Number(e.amount || 0)
+      })
+      setDailyExp(expBuckets)
       setWeekExpenses(expensesWeek)
 
       // stats (enriched, dense)
@@ -122,11 +139,14 @@ export default function Dashboard() {
           to: '/app/reports',
         },
         {
-          label: 'Pending payments', value: pendingCount ? `${pendingCount} · ${formatINR(pendingSum, 0)}` : '—', count: pendingCount, icon: Wallet,
-          delta: pendingCount ? `${formatINR(pendingSum, 0)} outstanding` : 'All clear',
+          label: 'Pending payments', value: pendingCount ? formatINR(pendingSum, 0) : '—', count: pendingCount, icon: Wallet,
+          delta: pendingCount ? `${pendingCount} invoice${pendingCount > 1 ? 's' : ''} awaiting collection` : 'All clear',
           deltaTone: pendingCount ? 'bad' : 'good',
-          footer: pendingCount ? 'Awaiting collection' : 'Nothing pending', footerTone: pendingCount ? 'warning' : 'positive',
+          footer: 'Tap card to view invoices', footerTone: 'warning',
           to: '/app/invoices',
+          tone: pendingCount ? 'warning' : undefined,
+          action: pendingCount ? { label: 'Remind Debtors', query: 'Draft payment reminder messages for my customers with pending payments — polite, WhatsApp-ready.' } : undefined,
+          positive: { label: 'All Collected' },
         },
         {
           label: 'Low stock', value: `${lowStock}`, count: lowStock, icon: Package,
@@ -134,16 +154,17 @@ export default function Dashboard() {
           deltaTone: lowStock ? 'bad' : 'good',
           footer: lowStock ? 'Review inventory' : 'Levels healthy', footerTone: lowStock ? 'warning' : 'positive',
           to: '/app/products',
+          positive: { label: 'Inventory Optimal' },
         },
         {
-          label: 'Customer messages', value: `${messages}`, count: messages, icon: MessageCircle,
+          label: 'Unread Messages', value: `${messages}`, count: messages, icon: MessageCircle,
           delta: messages ? 'Awaiting reply' : 'Inbox empty',
           deltaTone: messages ? 'neutral' : 'good',
           footer: 'Since yesterday', footerTone: 'muted',
           to: '/app/customers',
         },
         {
-          label: 'Orders waiting', value: `${orders}`, count: orders, icon: FileSignature,
+          label: 'Pending Orders', value: `${orders}`, count: orders, icon: FileSignature,
           delta: orders ? 'Needs response' : 'None',
           deltaTone: orders ? 'neutral' : 'good',
           footer: 'Quotes sent', footerTone: 'muted',
@@ -195,9 +216,8 @@ export default function Dashboard() {
   const deltaCls = { good: 'text-positive', bad: 'text-negative', neutral: 'text-fg-subtle' } as const
 
   const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-  const maxDay = Math.max(1, ...daily)
+  const maxDay = Math.max(1, ...daily, ...dailyExp)
   const todayIdx = (new Date().getDay() + 6) % 7
-  const bestIdx = daily.indexOf(Math.max(...daily))
   const weekProfit = weekSales - weekExpenses
 
   return (
@@ -286,17 +306,33 @@ export default function Dashboard() {
       {/* STATS grid — dense, enriched */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         {stats.map((m) => {
-          const muted = m.count === 0
+          const good = m.count === 0 && !!m.positive
           return (
-            <Link key={m.label} to={m.to} className="card p-4 flex flex-col cursor-pointer hover:border-accent/40 transition-colors group">
+            <Link key={m.label} to={m.to} className={`card p-4 flex flex-col cursor-pointer transition-colors group ${m.tone && m.count > 0 ? 'border-warning/40 bg-warning/5' : 'hover:border-accent/40'}`}>
               <div className="flex items-center gap-1.5">
                 <m.icon className="w-[18px] h-[18px] text-fg-subtle" strokeWidth={1.75} />
                 <span className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle truncate">{m.label}</span>
                 <ArrowRight className="w-3.5 h-3.5 text-fg-subtle ml-auto opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
               </div>
-              <p className={`text-2xl font-bold tabular-nums mt-1.5 ${muted ? 'text-fg-subtle' : 'text-fg'}`}>{m.value}</p>
-              {m.delta && <p className={`text-[11px] font-medium mt-0.5 ${deltaCls[m.deltaTone || 'neutral']}`}>{m.delta}</p>}
-              <p className={`text-[11px] mt-auto pt-2 ${footerCls[m.footerTone]}`}>{m.footer}</p>
+              {good ? (
+                <div className="flex items-center gap-1.5 mt-2">
+                  <span className="w-5 h-5 rounded-full bg-positive/10 text-positive flex items-center justify-center flex-shrink-0"><Check className="w-3 h-3" strokeWidth={2.5} /></span>
+                  <p className="text-base font-bold text-positive leading-tight">{m.positive!.label}</p>
+                </div>
+              ) : (
+                <p className={`text-xl sm:text-2xl font-bold tabular-nums mt-1.5 leading-tight break-words ${m.count === 0 ? 'text-fg-subtle' : 'text-fg'}`}>{m.value}</p>
+              )}
+              {m.delta && !good && <p className={`text-[11px] font-medium mt-0.5 ${deltaCls[m.deltaTone || 'neutral']}`}>{m.delta}</p>}
+              {m.action && m.count > 0 ? (
+                <button
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/app/assistant?q=${encodeURIComponent(m.action!.query)}`) }}
+                  className="mt-2.5 mb-0.5 inline-flex items-center justify-center gap-1.5 bg-fg text-paper text-xs font-semibold rounded-control h-8 w-full hover:opacity-90 transition-opacity"
+                >
+                  <BellRing className="w-3.5 h-3.5" /> {m.action.label}
+                </button>
+              ) : (
+                <p className={`text-[11px] mt-auto pt-2 ${footerCls[m.footerTone]}`}>{m.footer}</p>
+              )}
             </Link>
           )
         })}
@@ -309,30 +345,49 @@ export default function Dashboard() {
             <span className="inline-flex items-center gap-1 text-xs font-medium text-fg-muted border border-line rounded-control px-2 py-1">This week <ChevronDown className="w-3 h-3" /></span>
           </div>
           <div className="grid grid-cols-3 gap-3 mb-4">
-            <div><p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Sales</p><p className="text-xl font-bold text-fg tabular-nums">{formatINR(weekSales, 0)}</p></div>
-            <div><p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Expenses</p><p className="text-xl font-bold text-fg tabular-nums">{formatINR(weekExpenses, 0)}</p></div>
+            <div><p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Sales</p><p className="text-xl font-bold text-accent tabular-nums">{formatINR(weekSales, 0)}</p></div>
+            <div><p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Expenses</p><p className="text-xl font-bold text-fg-muted tabular-nums">{formatINR(weekExpenses, 0)}</p></div>
             <div><p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Profit</p><p className={`text-xl font-bold tabular-nums ${weekProfit >= 0 ? 'text-positive' : 'text-negative'}`}>{formatINR(weekProfit, 0)}</p></div>
           </div>
-          {/* Mon–Sun bars */}
-          <div className="flex items-end justify-between gap-1.5 h-24">
+
+          {/* Legend */}
+          <div className="flex items-center gap-4 mb-2">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-fg-muted"><span className="w-2.5 h-2.5 rounded-[3px] bg-accent" /> Sales</span>
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-fg-muted"><span className="w-2.5 h-2.5 rounded-[3px]" style={{ background: 'rgb(var(--fg) / 0.18)' }} /> Expenses</span>
+            <span className="text-[11px] text-fg-subtle ml-auto hidden sm:block">Tap a day for details</span>
+          </div>
+
+          {/* Mon–Sun grouped bars · gridlines · tap-to-reveal tooltip */}
+          <div className="relative flex items-end justify-between gap-1.5 h-28" onMouseLeave={() => setActiveDay(null)}>
+            {[25, 50, 75].map((p) => (
+              <div key={p} className="absolute inset-x-0 border-t border-dashed border-line/70 pointer-events-none" style={{ bottom: `${p}%` }} />
+            ))}
             {daily.map((v, i) => {
-              const h = Math.max(4, Math.round((v / maxDay) * 100))
+              const e = dailyExp[i] || 0
+              const hs = Math.max(3, Math.round((v / maxDay) * 100))
+              const he = Math.max(3, Math.round((e / maxDay) * 100))
               const isToday = i === todayIdx
-              const isBest = i === bestIdx && v > 0
+              const active = activeDay === i
               return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
-                  <div className="w-full flex justify-center items-end" style={{ height: '100%' }}>
-                    <div
-                      className="w-full rounded-t"
-                      style={{
-                        height: `${h}%`,
-                        background: isToday ? 'transparent' : isBest ? 'rgb(var(--fg))' : 'rgb(var(--fg) / 0.18)',
-                        border: isToday ? '1.5px dashed rgb(var(--fg) / 0.5)' : 'none',
-                      }}
-                    />
+                <button
+                  key={i}
+                  onClick={() => setActiveDay(active ? null : i)}
+                  onMouseEnter={() => setActiveDay(i)}
+                  className="relative z-10 flex-1 h-full flex flex-col items-center justify-end min-w-0"
+                  aria-label={`${days[i]} — sales ${formatINR(v, 0)}, expenses ${formatINR(e, 0)}`}
+                >
+                  {active && (
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-20 card px-2.5 py-1.5 shadow-float whitespace-nowrap">
+                      <p className="text-[10px] font-bold text-fg">{days[i]} · Sales {formatINR(v, 0)}</p>
+                      <p className="text-[9px] text-fg-muted">Expenses {formatINR(e, 0)}</p>
+                    </div>
+                  )}
+                  <div className="w-full flex items-end justify-center gap-[3px] flex-1 min-h-0">
+                    <div className="w-[40%] rounded-t-[5px]" style={{ height: `${hs}%`, background: isToday ? 'rgb(var(--accent))' : 'rgb(var(--accent) / 0.55)' }} />
+                    <div className="w-[40%] rounded-t-[5px]" style={{ height: `${he}%`, background: 'rgb(var(--fg) / 0.18)' }} />
                   </div>
-                  <span className={`text-[9px] ${isToday ? 'text-fg font-bold' : 'text-fg-subtle'}`}>{days[i]}</span>
-                </div>
+                  <span className={`text-[9px] mt-1 ${isToday ? 'text-fg font-bold' : 'text-fg-subtle'}`}>{days[i]}</span>
+                </button>
               )
             })}
           </div>

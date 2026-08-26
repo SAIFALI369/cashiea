@@ -13,7 +13,7 @@ import { motion } from './motion'
 import Skeleton from './ui/Skeleton'
 import { Avatar } from './Avatar'
 import { useAuth } from '../context/AuthContext'
-import { Menu } from 'lucide-react'
+import { Menu, Settings } from 'lucide-react'
 
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -55,8 +55,12 @@ export default function AppLayout() {
           </div>
           <QueueBadge />
           <LiveClock />
-          <Link to="/app/account" aria-label="Open account" className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full">
+          <Link to="/app/account" aria-label="Open account & settings" className="relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full">
             <Avatar url={profile?.avatar_url} name={profile?.full_name} size={34} />
+            {/* Subtle gear badge — signals the avatar opens Settings/Account */}
+            <span className="absolute bottom-[3px] right-[3px] w-[16px] h-[16px] rounded-full bg-surface border border-line flex items-center justify-center shadow-soft">
+              <Settings className="w-2.5 h-2.5 text-fg-muted" />
+            </span>
           </Link>
         </header>
         )}
