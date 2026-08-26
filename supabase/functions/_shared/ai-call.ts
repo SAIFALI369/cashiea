@@ -152,8 +152,11 @@ export async function callAIWithFallback(
     return callAI(p, systemPrompt, prompt, maxTokens); // groq, anthropic, vercel_gateway
   };
 
-  // Fallback order: the classified route first, then Gemini (the designated
-  // fallback), then the remaining providers as an absolute last resort.
+  // Fallback order. OpenRouter (free-tier account, no credits) is deliberately
+  // NOT part of the working-provider cascade — its account-level failures must
+  // never surface to the owner. It is ONLY tried first for huge-context
+  // requests: stealth/ox-alpha is free and self-activates the moment the
+  // account's OpenRouter DATA POLICY allows it (openrouter.ai/settings/privacy).
   let order: string[];
   if (provider === "openrouter") {
     order = ["oxalpha", "gemini", "groq"];
@@ -163,17 +166,40 @@ export async function callAIWithFallback(
     const route = classifyRoute(systemPrompt, prompt, feature);
     order =
       route === "oxalpha" ? ["oxalpha", "gemini", "groq"] :
-      route === "groq" ? ["groq", "gemini", "oxalpha"] :
-                          ["gemini", "groq", "oxalpha"];
+      route === "groq" ? ["groq", "gemini"] :
+                          ["gemini", "groq"];
   }
 
+  // Multi-pass cascade. Free-tier limits (Groq per-minute tokens, Gemini
+  // per-minute requests) reset within seconds — so instead of failing the
+  // owner, we patiently retry: pass 1 → +6s pass 2 (reversed order) → +15s
+  // pass 3. A reply that takes 30-60s beats an error every time.
   let lastErr: unknown = null;
-  for (const p of order) {
-    try {
-      return await run(p);
-    } catch (err) {
-      lastErr = err;
+  const tryChain = async (chain: string[]): Promise<string | null> => {
+    for (const p of chain) {
+      try {
+        return await run(p);
+      } catch (err) {
+        lastErr = err;
+      }
     }
-  }
-  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+    return null;
+  };
+
+  let out = await tryChain(order);
+  if (out !== null) return out;
+
+  await new Promise((r) => setTimeout(r, 6000));
+  out = await tryChain([...order].reverse());
+  if (out !== null) return out;
+
+  await new Promise((r) => setTimeout(r, 15000));
+  out = await tryChain(order.includes("oxalpha") ? ["gemini", "groq"] : order);
+  if (out !== null) return out;
+
+  console.error(
+    `[ai-call] all providers failed for feature=${feature}:`,
+    lastErr instanceof Error ? lastErr.message : String(lastErr)
+  );
+  throw new Error("All AI providers are busy right now (free-tier limits). Please try again in a minute — Meraj will be right back.");
 }
