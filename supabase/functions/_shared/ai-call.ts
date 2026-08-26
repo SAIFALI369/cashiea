@@ -182,7 +182,7 @@ export async function callAIWithFallback(
   // account's OpenRouter DATA POLICY allows it (openrouter.ai/settings/privacy).
   let order: string[];
   if (provider === "openrouter") {
-    order = ["oxalpha", "gemini", "groq", "groq-oss"];
+    order = ["oxalpha", "gemini", "groq", "groq-oss", "groq-oss-lite"];
   } else if (provider === "anthropic" || provider === "vercel_gateway") {
     order = [provider, "gemini", "groq", "groq-oss"];
   } else {
@@ -191,7 +191,7 @@ export async function callAIWithFallback(
     // cascade steps through compound → gpt-oss-120b → gpt-oss-20b before/after
     // Gemini — ~5 independent free pools total. Chat effectively never fails.
     order =
-      route === "oxalpha" ? ["oxalpha", "gemini", "groq", "groq-oss"] :
+      route === "oxalpha" ? ["oxalpha", "gemini", "groq", "groq-oss", "groq-oss-lite"] :
       route === "groq" ? ["groq", "groq-oss", "gemini", "groq-oss-lite"] :
                           ["gemini", "groq", "groq-oss", "groq-oss-lite"];
   }
@@ -220,7 +220,7 @@ export async function callAIWithFallback(
   if (out !== null) return out;
 
   await new Promise((r) => setTimeout(r, 25000));
-  out = await tryChain(order.includes("oxalpha") ? ["gemini", "groq", "groq-oss"] : order);
+  out = await tryChain(order.includes("oxalpha") ? ["gemini", "groq", "groq-oss", "groq-oss-lite"] : order);
   if (out !== null) return out;
 
   console.error(
