@@ -205,6 +205,7 @@ async function buildMemory(supabase: any, userId: string): Promise<{ block: stri
   const block = `WHAT YOU ALREADY KNOW ABOUT THIS OWNER & THEIR SHOP (use it naturally — don't repeat unless asked):
 - Owner's name: ${ownerName || "(not known yet — ask or learn it)"}
 - Shop / business: ${p.company_name || "(not known yet)"}${p.shop_category ? ` — ${p.shop_category}` : ""}
+- YOUR ROLE FOR THIS SHOP (the owner set this at onboarding — BE this expert): ${typeof prefs.persona === "string" && prefs.persona ? prefs.persona : "(general retail business manager — adapt naturally to their trade)"}
 - Location: ${p.business_address || "(not set)"}
 - Business type you've learned: ${mem.business_type || "(not set)"}
 - About this business (learned): ${mem.summary || "(not learned yet — pick up details as the owner shares them)"}
@@ -303,7 +304,53 @@ Deno.serve(async (req) => {
     const limit = onTrial ? Math.max(profile.api_usage_limit, 500) : profile?.api_usage_limit || 50;
     if (profile && profile.api_usage_count >= limit) return json({ error: "Usage limit reached" }, 429);
 
-    const { message, briefing, scope, mode, confirm, pageContext, history, image } = await req.json();
+    const { message, briefing, scope, mode, confirm, pageContext, history, image, category, businessName, city, answers } = await req.json();
+
+    // ── ONBOARDING (3-page signup wizard) ─────────────────────────
+    // Page 2: Meraj drafts 3-5 zero-friction questions tailored to THIS trade.
+    if (mode === "onboarding_questions") {
+      const sys = `You are Meraj onboarding a new Indian shop owner into Cashiea. Shop: ${businessName || "new shop"} — Category: ${category || "retail"}${city ? ` — City: ${city}` : ""}. Draft 3-5 SHORT, easy, zero-friction questions that will help you serve this shop best. Rules: every question answerable in under 10 seconds; prefer "choice" questions with 2-5 short options; use "text" only when a list would limit the answer; ask about how they sell and bill, their customers, their top products, or their goal for the year — never ask for anything sensitive (no passwords, bank details, or ID numbers). Tailor every question to THIS trade (an unusual category like a medical lab must get trade-specific questions, not generic ones). Return ONLY JSON: {"questions":[{"q":"...","type":"choice","options":["..."]},{"q":"...","type":"text"}]}`;
+      let questions: any[] = [];
+      try {
+        const out = await callAIWithFallback("groq", sys, "Return the JSON now.", 900, "onboarding-questions");
+        const m = String(out).match(/\{[\s\S]*\}/);
+        if (m) { const parsed = JSON.parse(m[0]); if (Array.isArray(parsed.questions)) questions = parsed.questions; }
+      } catch { /* fall through to the deterministic set below */ }
+      if (!questions.length) {
+        questions = [
+          { q: `What are your 2-3 best-selling ${String(category || "product").toLowerCase()} items?`, type: "text" },
+          { q: "How do most customers pay you?", type: "choice", options: ["Cash", "UPI", "Card", "Mix of all"] },
+          { q: "Who are most of your customers?", type: "choice", options: ["Local families", "Shops & businesses", "Walk-in passerby", "Bulk buyers"] },
+        ];
+      }
+      try { await supabase.rpc("increment_api_usage", { user_uuid: user.id }); } catch { /* ignore */ }
+      return json({ questions: questions.slice(0, 5).filter((q: any) => q && q.q) });
+    }
+    // Page 3: Meraj builds his expert persona for this trade (e.g. pharmacy →
+    // doctor-style expert predicting seasonal medicine demand; hardware → CEO/salesman).
+    if (mode === "onboarding_persona") {
+      const sys = `You are configuring Meraj's expert identity for an Indian shop on Cashiea. Shop: ${businessName || "new shop"} — Category: ${category || "retail"}${city ? ` — City: ${city}` : ""}. What the owner told us: ${JSON.stringify(answers || {})}. Define Meraj's persona for THIS trade — deep domain expertise plus the right personality. Examples of the spirit (adapt, don't copy): a pharmacy gets a trusted doctor-and-pharmacist who predicts which medicines sell by season and locality; a hardware shop gets a sharp CEO-and-top-salesman who wins contractor and project deals; a grocery gets a fast-moving kirana operations expert; a restaurant gets a chef-operator. Adapt naturally for ANY category, including unusual ones — never generic. Also list 3-4 concrete ways he will proactively help, matched to the trade (seasonal/geographic demand prediction, pricing, stock, customer wins). Return ONLY JSON: {"headline":"Your <Trade> Expert (3-5 words)","persona":"3-4 sentences, third person, starting with 'Meraj is'","skills":["short skill","...","...","..."]}`;
+      let persona: any = null;
+      try {
+        const out = await callAIWithFallback("groq", sys, "Return the JSON now.", 900, "onboarding-persona");
+        const m = String(out).match(/\{[\s\S]*\}/);
+        if (m) persona = JSON.parse(m[0]);
+      } catch { /* fall through */ }
+      if (!persona || !persona.persona) {
+        persona = {
+          headline: `Your ${category || "Business"} Expert`,
+          persona: `Meraj is your dedicated ${String(category || "retail").toLowerCase()} business manager. He tracks your sales, stock, and customers every day, spots what sells and what stalls, and tells you plainly what to do next.`,
+          skills: ["Watches daily sales and profit", "Predicts seasonal demand", "Flags low stock before you run out", "Suggests customer follow-ups"],
+        };
+      }
+      try { await supabase.rpc("increment_api_usage", { user_uuid: user.id }); } catch { /* ignore */ }
+      return json({
+        headline: String(persona.headline || "").slice(0, 60),
+        persona: String(persona.persona || "").slice(0, 900),
+        skills: Array.isArray(persona.skills) ? persona.skills.slice(0, 4).map((s: any) => String(s).slice(0, 90)) : [],
+      });
+    }
+
     // Task-scoped conversations (e.g. Meraj opened from "Expenses"). Empty for general chat.
     const SCOPE_AREAS: Record<string, string> = {
       receipts: "bills, receipts, and GST invoices",

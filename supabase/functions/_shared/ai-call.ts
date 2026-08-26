@@ -41,7 +41,7 @@ const SPEED_MAX_CHARS = 10_000;
  * latency matters. Background/batch jobs (daily-brain, campaign, api-*, …)
  * deliberately route to Gemini instead — balanced quality, no rush.
  */
-const SPEED_FEATURES = new Set(["assistant", "assistant-memory", "quick-tasks"]);
+const SPEED_FEATURES = new Set(["assistant", "assistant-memory", "quick-tasks", "onboarding-questions", "onboarding-persona"]);
 
 type Route = "oxalpha" | "groq" | "gemini";
 

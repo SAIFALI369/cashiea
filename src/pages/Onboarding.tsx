@@ -1,76 +1,140 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import {
-  Sparkles, Store, ShoppingCart, Smartphone, ArrowRight, ArrowLeft,
-  Plus, X, Check, Loader2, Tag, Package, Clock,
-} from 'lucide-react'
+import { onboardingQuestions, onboardingPersona, type OnboardingQuestion, type OnboardingPersona } from '../lib/ai'
+import { MerajAvatar } from '../components/MerajAvatar'
+import { ArrowRight, Check, Loader2, MapPin, MessageCircle, Store, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const CATEGORIES = [
-  { value: 'Grocery', icon: '🛒', desc: 'Kirana, provisions, daily needs' },
-  { value: 'Electronics', icon: '📱', desc: 'Phones, gadgets, accessories' },
-  { value: 'Clothing', icon: '👕', desc: 'Apparel, fashion, textiles' },
-  { value: 'Pharmacy', icon: '💊', desc: 'Medicines, health, wellness' },
-  { value: 'Hardware', icon: '🔧', desc: 'Tools, building materials, paint' },
-  { value: 'Restaurant', icon: '🍽️', desc: 'Food, cafe, cloud kitchen' },
-  { value: 'Other', icon: '🏪', desc: 'Something else' },
+  { value: 'Grocery / Kirana', icon: '🛒' },
+  { value: 'Pharmacy', icon: '💊' },
+  { value: 'Hardware / Building material', icon: '🔧' },
+  { value: 'Electronics / Mobile', icon: '📱' },
+  { value: 'Clothing / Fashion', icon: '👕' },
+  { value: 'Restaurant / Bakery', icon: '🍽️' },
+  { value: 'Beauty / Cosmetics', icon: '💄' },
+  { value: 'Auto parts', icon: '🚗' },
+  { value: 'Stationery / Books', icon: '📚' },
+  { value: 'Agri supplies', icon: '🌾' },
+  { value: 'Jewellery', icon: '💍' },
+  { value: 'Other', icon: '🏪' },
 ]
 
-interface InvItem { name: string; quantity: string }
-
+/**
+ * Onboarding — the 3-page signup wizard.
+ *   Page 1: business basics (options-first, near-zero friction)
+ *   Page 2: Meraj himself drafts 3-5 quick questions for THIS trade
+ *   Page 3: Meraj becomes the shop's dedicated expert (pharmacy →
+ *           doctor-style expert w/ seasonal medicine predictions, hardware →
+ *           CEO/salesman, … — adapted even for custom categories)
+ * The persona is stored in business_memory.preferences.persona and injected
+ * into every future Meraj conversation by the ai-assistant edge function.
+ */
 export default function Onboarding() {
   const navigate = useNavigate()
   const { profile, ownerId, refreshProfile, loading: authLoading } = useAuth()
 
-  // Start from wherever the user left off (resume-on-reload)
   const initialStep = profile?.onboarding_step && profile.onboarding_step >= 1 && profile.onboarding_step <= 3
     ? profile.onboarding_step
     : 1
   const [step, setStep] = useState(initialStep)
   const [saving, setSaving] = useState(false)
 
-  // Step 1: category
+  // Page 1 — basics
+  const [name, setName] = useState(profile?.company_name || '')
   const [category, setCategory] = useState(profile?.shop_category || '')
-
-  // Step 2: 3 inventory items
-  const [items, setItems] = useState<InvItem[]>([
-    { name: '', quantity: '' },
-    { name: '', quantity: '' },
-    { name: '', quantity: '' },
-  ])
-
-  // Step 3: WhatsApp number (separate from login phone) + report time
+  const [customCategory, setCustomCategory] = useState('')
+  const [city, setCity] = useState('')
   const [whatsapp, setWhatsapp] = useState(profile?.whatsapp_number || profile?.phone || '')
-  const [reportTime, setReportTime] = useState('22:30')  // IST display; default 10:30 PM IST
 
-  // Wait for auth/profile to load before showing the wizard
+  // Page 2 — Meraj's questions
+  const [questions, setQuestions] = useState<OnboardingQuestion[]>([])
+  const [loadingQuestions, setLoadingQuestions] = useState(false)
+  const [answers, setAnswers] = useState<Record<string, string>>({})
+
+  // Page 3 — the persona reveal
+  const [persona, setPersona] = useState<OnboardingPersona | null>(null)
+  const [loadingPersona, setLoadingPersona] = useState(false)
+
+  const resolvedCategory = category === 'Other' ? customCategory.trim() : category
+  const fetchedStep = useRef<number>(0)
+
+  // Redirect if already done; resume at the saved step
   useEffect(() => {
-    if (authLoading) return
-    if (!profile) return
-    // If they already finished onboarding, skip straight to dashboard
-    if (profile.onboarding_step >= 4) {
-      navigate('/app', { replace: true })
-      return
-    }
-    // Resume at saved step
-    if (profile.onboarding_step >= 1 && profile.onboarding_step <= 3) {
-      setStep(profile.onboarding_step)
-      setCategory(profile.shop_category || '')
-      setWhatsapp(profile.whatsapp_number || profile.phone || '')
-    }
+    if (authLoading || !profile) return
+    if (profile.onboarding_step >= 4) { navigate('/app', { replace: true }); return }
+    setStep(profile.onboarding_step >= 1 && profile.onboarding_step <= 3 ? profile.onboarding_step : 1)
   }, [profile, authLoading, navigate])
 
-  // ── Step 1: save category ──────────────────────────────────────
+  // Fetch Meraj's questions when entering page 2 (once)
+  useEffect(() => {
+    if (step !== 2 || questions.length || loadingQuestions || fetchedStep.current === 2) return
+    fetchedStep.current = 2
+    ;(async () => {
+      setLoadingQuestions(true)
+      try {
+        const qs = await onboardingQuestions({ category: resolvedCategory || 'retail', businessName: name || undefined, city: city || undefined })
+        setQuestions(qs)
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Could not load questions — tap retry')
+      } finally { setLoadingQuestions(false) }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step])
+
+  // Build the persona when entering page 3 (once)
+  useEffect(() => {
+    if (step !== 3 || persona || loadingPersona || fetchedStep.current === 3) return
+    fetchedStep.current = 3
+    ;(async () => {
+      setLoadingPersona(true)
+      try {
+        const p = await onboardingPersona({ category: resolvedCategory || 'retail', businessName: name || undefined, city: city || undefined, answers })
+        setPersona(p)
+      } catch (e) {
+        // Deterministic fallback so onboarding never blocks
+        setPersona({
+          headline: `Your ${resolvedCategory || 'Business'} Expert`,
+          persona: `Meraj is your dedicated ${(resolvedCategory || 'retail').toLowerCase()} business manager. He tracks your sales, stock, and customers every day, spots what sells and what stalls, and tells you plainly what to do next.`,
+          skills: ['Watches daily sales and profit', 'Predicts seasonal demand', 'Flags low stock before you run out', 'Suggests customer follow-ups'],
+        })
+        toast.error(e instanceof Error ? e.message : 'Showing a default persona')
+      } finally { setLoadingPersona(false) }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step])
+
+  // Merge-patch business_memory (read → merge → upsert; only sent columns update)
+  const saveMemory = async (patch: { business_type?: string; facts?: string[]; preferences?: Record<string, any> }) => {
+    const { data: existing } = await supabase.from('business_memory').select('key_facts, preferences').eq('user_id', ownerId).maybeSingle()
+    const facts = [...(Array.isArray(existing?.key_facts) ? existing.key_facts : []), ...(patch.facts || [])]
+    const preferences = { ...((existing?.preferences && typeof existing.preferences === 'object') ? existing.preferences : {}), ...(patch.preferences || {}) }
+    const { error } = await supabase.from('business_memory').upsert({
+      user_id: ownerId,
+      ...(patch.business_type ? { business_type: patch.business_type } : {}),
+      key_facts: facts,
+      preferences,
+      last_updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' })
+    if (error) throw error
+  }
+
+  // ── Page 1: save basics ─────────────────────────────────────────
   const finishStep1 = async () => {
-    if (!category) return toast.error('Pick a category')
+    if (!category || (category === 'Other' && !customCategory.trim())) return toast.error('Pick your shop type')
     setSaving(true)
     try {
-      const { error } = await supabase.rpc('update_onboarding_step', {
-        step: 1, data: { shop_category: category },
-      })
+      const { error } = await supabase.rpc('update_onboarding_step', { step: 1, data: { shop_category: resolvedCategory } })
       if (error) throw error
+      // Name + city are direct profile fields the owner may always edit
+      const profilePatch: Record<string, string> = {}
+      if (name.trim()) profilePatch.company_name = name.trim()
+      if (city.trim()) profilePatch.business_address = city.trim()
+      if (Object.keys(profilePatch).length) {
+        await supabase.from('profiles').update(profilePatch).eq('id', ownerId)
+      }
       await refreshProfile()
       setStep(2)
     } catch (err) {
@@ -78,60 +142,38 @@ export default function Onboarding() {
     } finally { setSaving(false) }
   }
 
-  // ── Step 2: insert inventory items ─────────────────────────────
-  const updateItem = (i: number, field: keyof InvItem, val: string) => {
-    const next = [...items]; next[i] = { ...next[i], [field]: val }; setItems(next)
-  }
-  const addItem = () => setItems([...items, { name: '', quantity: '' }])
-  const removeItem = (i: number) => setItems(items.filter((_, idx) => idx !== i))
-
+  // ── Page 2: save Meraj's answers as business facts ─────────────
   const finishStep2 = async () => {
-    const valid = items.filter((it) => it.name.trim())
-    if (valid.length === 0) return toast.error('Add at least one product')
     setSaving(true)
     try {
-      // Insert the products
-      const rows = valid.map((it) => ({
-        user_id: ownerId,
-        name: it.name.trim(),
-        stock_quantity: Number(it.quantity) || 0,
-        category: 'general',
-        price: 0, cost: 0,
-      }))
-      const { error: insertErr } = await supabase.from('products').insert(rows)
-      if (insertErr) throw insertErr
-
-      // Mark step 2 done
-      const { error: rpcErr } = await supabase.rpc('update_onboarding_step', { step: 2, data: {} })
-      if (rpcErr) throw rpcErr
+      const facts = Object.entries(answers)
+        .filter(([, a]) => a && a.trim())
+        .map(([q, a]) => `${q} → ${a.trim()}`)
+      if (city.trim()) facts.unshift(`Located in ${city.trim()}`)
+      if (facts.length) await saveMemory({ business_type: resolvedCategory, facts })
+      const { error } = await supabase.rpc('update_onboarding_step', { step: 2, data: {} })
+      if (error) throw error
       await refreshProfile()
       setStep(3)
-      toast.success(`${valid.length} products added!`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed')
     } finally { setSaving(false) }
   }
 
-  // ── Step 3: WhatsApp number + report time + finish ────────────
+  // ── Page 3: store the persona, finish ───────────────────────────
   const finishStep3 = async () => {
-    if (!whatsapp.trim()) return toast.error('Enter a WhatsApp number')
     setSaving(true)
     try {
-      // Convert IST HH:MM -> UTC HH:MM (IST = UTC+5:30)
-      const [h, m] = reportTime.split(':').map(Number)
-      let utcMin = (h * 60 + m) - (5 * 60 + 30)
-      if (utcMin < 0) utcMin += 24 * 60
-      const utcH = Math.floor(utcMin / 60)
-      const utcM = utcMin % 60
-      const reportTimeUtc = `${String(utcH).padStart(2, '0')}:${String(utcM).padStart(2, '0')}`
-
+      if (persona) {
+        await saveMemory({ preferences: { persona: persona.persona, persona_headline: persona.headline, persona_skills: persona.skills, onboarded: true } })
+      }
       const { error } = await supabase.rpc('update_onboarding_step', {
         step: 3,
-        data: { whatsapp_number: whatsapp.trim(), report_time_utc: reportTimeUtc },
+        data: whatsapp.trim() ? { whatsapp_number: whatsapp.trim() } : {},
       })
       if (error) throw error
       await refreshProfile()
-      toast.success('You are all set! Welcome to Cashiea')
+      toast.success(`Welcome to Cashiea — ${persona?.headline || "you're all set"}!`)
       navigate('/app', { replace: true })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed')
@@ -140,179 +182,210 @@ export default function Onboarding() {
 
   if (authLoading || !profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950">
-        <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
+      <div className="min-h-screen flex items-center justify-center bg-surface">
+        <Loader2 className="w-8 h-8 animate-spin text-fg-subtle" />
       </div>
     )
   }
 
   const steps = [
-    { n: 1, label: 'Category' },
-    { n: 2, label: 'Products' },
-    { n: 3, label: 'WhatsApp' },
+    { n: 1, label: 'Your shop' },
+    { n: 2, label: 'Meraj asks' },
+    { n: 3, label: 'Meraj adapts' },
   ]
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col">
-      {/* Progress dots (Typeform-style) */}
-      <div className="pt-8 pb-4">
+    <div className="min-h-screen bg-surface flex flex-col">
+      {/* Progress */}
+      <div className="pt-8 pb-2 px-4">
         <div className="flex items-center justify-center gap-3">
           {steps.map((s, i) => (
             <div key={s.n} className="flex items-center">
-              <div className={`flex flex-col items-center gap-1.5`}>
+              <div className="flex flex-col items-center gap-1.5">
                 <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                  step > s.n ? 'bg-green-500 text-white' :
-                  step === s.n ? 'bg-brand-500 text-white scale-110' :
-                  'bg-slate-800 text-slate-500'
+                  step > s.n ? 'bg-positive text-paper' : step === s.n ? 'bg-accent text-accent-fg scale-110' : 'bg-surface-2 text-fg-subtle'
                 }`}>
                   {step > s.n ? <Check className="w-4 h-4" /> : s.n}
                 </div>
-                <span className={`text-xs ${step >= s.n ? 'text-slate-300' : 'text-slate-600'}`}>{s.label}</span>
+                <span className={`text-xs ${step >= s.n ? 'text-fg-muted' : 'text-fg-subtle'}`}>{s.label}</span>
               </div>
               {i < steps.length - 1 && (
-                <div className={`w-10 sm:w-16 h-0.5 mx-1.5 mb-5 ${step > s.n ? 'bg-green-500' : 'bg-slate-800'}`} />
+                <div className={`w-10 sm:w-16 h-0.5 mx-1.5 mb-5 ${step > s.n ? 'bg-positive' : 'bg-line'}`} />
               )}
             </div>
           ))}
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center px-4 pb-12">
+      <div className="flex-1 flex items-start sm:items-center justify-center px-4 py-6 pb-12 overflow-y-auto">
         <div className="w-full max-w-lg">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center mx-auto mb-3">
-              <Sparkles className="w-6 h-6 text-white" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Let\u2019s set up your shop</h1>
-            <p className="text-slate-400 text-sm mt-1">Takes under a minute \u2014 you\u2019re on step {step} of 3</p>
-          </div>
 
-          {/* Step 1: Category */}
+          {/* ── PAGE 1: business basics ── */}
           {step === 1 && (
-            <div className="card p-4 animate-fade-in">
-              <h2 className="font-semibold text-white mb-1 flex items-center gap-2">
-                <Tag className="w-5 h-5 text-brand-400" /> What do you sell?
-              </h2>
-              <p className="text-sm text-slate-400 mb-4">Pick the closest match. Helps us tailor reports & insights.</p>
-              <div className="grid sm:grid-cols-2 gap-2.5">
-                {CATEGORIES.map((c) => (
-                  <button
-                    key={c.value}
-                    onClick={() => setCategory(c.value)}
-                    className={`p-3 rounded-xl border text-left flex items-center gap-3 transition-all ${
-                      category === c.value ? 'border-brand-600 bg-brand-600/10' : 'border-slate-700 bg-slate-900/40 hover:border-slate-600'
-                    }`}
-                  >
-                    <span className="text-xl">{c.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-white text-sm">{c.value}</p>
-                      <p className="text-xs text-slate-500 truncate">{c.desc}</p>
-                    </div>
-                    {category === c.value && <Check className="w-4 h-4 text-brand-400 flex-shrink-0" />}
-                  </button>
-                ))}
+            <div className="animate-fade-in">
+              <div className="flex items-center gap-3 mb-5">
+                <span className="w-11 h-11 rounded-control bg-accent-soft text-accent flex items-center justify-center flex-shrink-0"><Store className="w-5 h-5" /></span>
+                <div>
+                  <h1 className="text-xl font-bold text-fg leading-tight">Tell us about your shop</h1>
+                  <p className="text-sm text-fg-muted">60 seconds — then Meraj takes over.</p>
+                </div>
               </div>
-              <button onClick={finishStep1} disabled={saving || !category} className="btn-primary w-full mt-5 py-3">
-                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Continue <ArrowRight className="w-5 h-5" /></>}
-              </button>
-            </div>
-          )}
 
-          {/* Step 2: First 3 products */}
-          {step === 2 && (
-            <div className="card p-4 animate-fade-in">
-              <h2 className="font-semibold text-white mb-1 flex items-center gap-2">
-                <Package className="w-5 h-5 text-brand-400" /> Add your first products
-              </h2>
-              <p className="text-sm text-slate-400 mb-4">Add at least one. You can do everything else later.</p>
-              <div className="space-y-2.5">
-                {items.map((it, i) => (
-                  <div key={i} className="flex gap-2">
-                    <input
-                      value={it.name}
-                      onChange={(e) => updateItem(i, 'name', e.target.value)}
-                      className="input-field flex-1"
-                      placeholder={`Product ${i + 1} name`}
-                    />
-                    <input
-                      type="number"
-                      value={it.quantity}
-                      onChange={(e) => updateItem(i, 'quantity', e.target.value)}
-                      className="input-field w-24"
-                      placeholder="Qty"
-                    />
-                    {items.length > 1 && (
-                      <button onClick={() => removeItem(i)} className="text-slate-500 hover:text-red-400 px-2">
-                        <X className="w-4 h-4" />
+              <div className="card p-5 space-y-5">
+                <div>
+                  <label className="label">Shop name</label>
+                  <input value={name} onChange={(e) => setName(e.target.value)} className="input-field" placeholder="e.g. Sharma Medical Store" />
+                </div>
+
+                <div>
+                  <label className="label">What kind of shop is it?</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {CATEGORIES.map((c) => (
+                      <button
+                        key={c.value}
+                        onClick={() => setCategory(c.value)}
+                        className={`flex flex-col items-center gap-1.5 rounded-control border p-3 transition-all active:scale-95 ${
+                          category === c.value ? 'border-accent bg-accent-soft text-accent' : 'border-line bg-surface text-fg-muted hover:border-accent/40'
+                        }`}
+                      >
+                        <span className="text-xl leading-none">{c.icon}</span>
+                        <span className="text-[11px] font-semibold text-center leading-tight">{c.value}</span>
                       </button>
-                    )}
+                    ))}
                   </div>
-                ))}
-              </div>
-              <button onClick={addItem} className="btn-ghost text-xs mt-3">
-                <Plus className="w-3.5 h-3.5" /> Add another
-              </button>
-              <div className="flex gap-2 mt-5">
-                <button onClick={() => setStep(1)} className="btn-secondary py-3">
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-                <button onClick={finishStep2} disabled={saving} className="btn-primary flex-1 py-3">
-                  {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Add & Continue <ArrowRight className="w-5 h-5" /></>}
+                  {category === 'Other' && (
+                    <input
+                      value={customCategory}
+                      onChange={(e) => setCustomCategory(e.target.value)}
+                      className="input-field mt-2"
+                      placeholder="Type your shop type — e.g. Medical lab, Photostudio…"
+                      autoFocus
+                    />
+                  )}
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="label"><MapPin className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />City <span className="text-fg-subtle font-normal">(optional)</span></label>
+                    <input value={city} onChange={(e) => setCity(e.target.value)} className="input-field" placeholder="e.g. Gaya" />
+                  </div>
+                  <div>
+                    <label className="label"><MessageCircle className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />WhatsApp <span className="text-fg-subtle font-normal">(optional)</span></label>
+                    <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="input-field" placeholder="For daily reports" inputMode="tel" />
+                  </div>
+                </div>
+
+                <button onClick={finishStep1} disabled={saving} className="btn-primary w-full">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Continue <ArrowRight className="w-4 h-4" /></>}
                 </button>
               </div>
             </div>
           )}
 
-          {/* Step 3: WhatsApp number + report time */}
+          {/* ── PAGE 2: Meraj's questions ── */}
+          {step === 2 && (
+            <div className="animate-fade-in">
+              <div className="flex items-center gap-3 mb-5">
+                <MerajAvatar state="idle" context="panel" size="md" />
+                <div>
+                  <h1 className="text-xl font-bold text-fg leading-tight">Meraj has a few quick questions</h1>
+                  <p className="text-sm text-fg-muted">Tap to answer — 30 seconds, skippable.</p>
+                </div>
+              </div>
+
+              <div className="card p-5">
+                {loadingQuestions ? (
+                  <div className="flex flex-col items-center justify-center py-10 gap-3">
+                    <MerajAvatar state="thinking" context="panel" size="md" />
+                    <p className="text-sm text-fg-muted">Meraj is thinking about your {resolvedCategory || 'shop'}…</p>
+                  </div>
+                ) : questions.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-3">
+                    <p className="text-sm text-fg-muted">Couldn't load the questions.</p>
+                    <button
+                      onClick={() => { fetchedStep.current = 0; setQuestions([]) }}
+                      className="btn-secondary text-sm"
+                    >
+                      <Sparkles className="w-4 h-4" /> Retry
+                  </button>
+                  </div>
+                ) : (
+                  <div className="space-y-5">
+                    {questions.map((q, i) => (
+                      <div key={i}>
+                        <p className="text-sm font-semibold text-fg mb-2">{i + 1}. {q.q}</p>
+                        {q.type === 'choice' && Array.isArray(q.options) && q.options.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {q.options.map((opt) => (
+                              <button
+                                key={opt}
+                                onClick={() => setAnswers((a) => ({ ...a, [q.q]: opt }))}
+                                className={`text-xs font-semibold rounded-full border px-3.5 py-2 transition-all active:scale-95 ${
+                                  answers[q.q] === opt ? 'border-accent bg-accent-soft text-accent' : 'border-line bg-surface text-fg-muted hover:border-accent/40'
+                                }`}
+                              >
+                                {opt}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <input
+                            value={answers[q.q] || ''}
+                            onChange={(e) => setAnswers((a) => ({ ...a, [q.q]: e.target.value }))}
+                            className="input-field"
+                            placeholder="Type a short answer…"
+                          />
+                        )}
+                      </div>
+                    ))}
+                    <button onClick={finishStep2} disabled={saving} className="btn-primary w-full">
+                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Continue <ArrowRight className="w-4 h-4" /></>}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── PAGE 3: Meraj becomes YOUR expert ── */}
           {step === 3 && (
-            <div className="card p-4 animate-fade-in">
-              <h2 className="font-semibold text-white mb-1 flex items-center gap-2">
-                <Smartphone className="w-5 h-5 text-brand-400" /> Where should we send alerts?
-              </h2>
-              <p className="text-sm text-slate-400 mb-4">
-                Daily closing reports, low-stock alerts, and payment notifications go to this WhatsApp number.
-                Separate from your login phone.
-              </p>
-              <div className="relative">
-                <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                <input
-                  type="tel"
-                  value={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.value)}
-                  className="input-field pl-11"
-                  placeholder="+91 98765 43210"
-                />
-              </div>
-
-              <div className="mt-4">
-                <label className="label flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-brand-400" /> Daily report time (IST)
-                </label>
-                <input
-                  type="time"
-                  value={reportTime}
-                  onChange={(e) => setReportTime(e.target.value)}
-                  className="input-field"
-                />
-                <p className="text-xs text-slate-500 mt-1">
-                  When should your daily sales report arrive each day? Default 10:30 PM IST. Change anytime in Settings.
-                </p>
-              </div>
-
-              <p className="text-xs text-slate-500 mt-2">
-                \u2709\ufe0f We\u2019ll never spam. You can change this anytime in Settings.
-              </p>
-              <div className="flex gap-2 mt-5">
-                <button onClick={() => setStep(2)} className="btn-secondary py-3">
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-                <button onClick={finishStep3} disabled={saving || !whatsapp.trim()} className="btn-primary flex-1 py-3">
-                  {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Finish Setup <Check className="w-5 h-5" /></>}
-                </button>
+            <div className="animate-fade-in">
+              <div className="card p-6 sm:p-8 text-center">
+                {loadingPersona || !persona ? (
+                  <div className="flex flex-col items-center justify-center py-10 gap-4">
+                    <MerajAvatar state="thinking" context="panel" size="lg" />
+                    <p className="text-sm text-fg-muted">
+                      Meraj is becoming your {resolvedCategory || 'business'} expert…
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-center mb-3">
+                      <MerajAvatar state="idle" context="panel" size="lg" />
+                    </div>
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-accent mb-1">Meraj is now</p>
+                    <h1 className="text-2xl font-bold text-fg leading-tight mb-3">{persona.headline}</h1>
+                    <p className="text-sm text-fg-muted leading-relaxed mb-5">{persona.persona}</p>
+                    {persona.skills.length > 0 && (
+                      <div className="text-left space-y-2 mb-6 max-w-sm mx-auto">
+                        {persona.skills.map((s, i) => (
+                          <div key={i} className="flex items-start gap-2.5">
+                            <span className="w-5 h-5 rounded-full bg-positive/10 text-positive flex items-center justify-center flex-shrink-0 mt-0.5"><Check className="w-3 h-3" /></span>
+                            <p className="text-sm text-fg">{s}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <button onClick={finishStep3} disabled={saving} className="btn-primary w-full">
+                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Start using Cashiea <ArrowRight className="w-4 h-4" /></>}
+                    </button>
+                    <p className="text-xs text-fg-subtle mt-3">Chat with Meraj anytime — he already knows your shop.</p>
+                  </>
+                )}
               </div>
             </div>
           )}
+
         </div>
       </div>
     </div>

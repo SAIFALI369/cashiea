@@ -180,6 +180,49 @@ export async function callBrain(mode: 'learn' | 'predict' | 'correct', extra: Re
 }
 
 /**
+ * ONBOARDING — the 3-page signup wizard talks to the ai-assistant edge function.
+ * Page 2: Meraj drafts 3-5 zero-friction questions tailored to the trade.
+ * Page 3: Meraj builds his expert persona for that trade.
+ */
+export interface OnboardingQuestion { q: string; type: 'text' | 'choice'; options?: string[] }
+
+export async function onboardingQuestions(input: { category: string; businessName?: string; city?: string }): Promise<OnboardingQuestion[]> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('You must be logged in.')
+  const res = await fetchWithRetry(AI_FUNCTION_URL.replace('ai-automation', 'ai-assistant'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ mode: 'onboarding_questions', ...input }),
+  })
+  const data = await res.json().catch(() => ({ error: 'Invalid response from server' }))
+  if (!res.ok) throw new Error(data?.error || `Request failed (HTTP ${res.status})`)
+  return (Array.isArray(data.questions) ? data.questions : []) as OnboardingQuestion[]
+}
+
+export interface OnboardingPersona { headline: string; persona: string; skills: string[] }
+
+export async function onboardingPersona(input: { category: string; businessName?: string; city?: string; answers: Record<string, string> }): Promise<OnboardingPersona> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('You must be logged in.')
+  const res = await fetchWithRetry(AI_FUNCTION_URL.replace('ai-automation', 'ai-assistant'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ mode: 'onboarding_persona', ...input }),
+  })
+  const data = await res.json().catch(() => ({ error: 'Invalid response from server' }))
+  if (!res.ok) throw new Error(data?.error || `Request failed (HTTP ${res.status})`)
+  return { headline: data.headline || 'Your Business Expert', persona: data.persona || '', skills: Array.isArray(data.skills) ? data.skills : [] }
+}
+
+/**
  * Kick off the Google OAuth flow — opens Google's consent screen.
  * Returns the authorize URL to redirect to, or null if OAuth isn't configured.
  */
