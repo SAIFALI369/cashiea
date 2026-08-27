@@ -7,7 +7,9 @@ import { askAssistant } from '../lib/ai'
 import { MerajMark } from '../components/MerajMark'
 import { useAuth } from '../context/AuthContext'
 import { MerajAvatar, deriveAvatarState } from '../components/MerajAvatar'
-import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft, Plus, MessageCircle, Zap } from 'lucide-react'
+import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft, Plus, MessageCircle, Zap, Wallet, Package, TrendingUp, Receipt, FileText, MessageSquareText, BarChart3 } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { formatINR } from '../lib/format'
 import toast from 'react-hot-toast'
 
 interface Msg { role: 'user' | 'meraj'; text: string; pending?: { type: string; input: any; preview: any }; media?: { type: string; thumb: string; url: string; alt: string; link?: string }[]; image?: string }
@@ -42,6 +44,97 @@ function TypewriterMessage({ text, onDone }: { text: string; onDone: () => void 
   return <span dangerouslySetInnerHTML={{ __html: render(text.slice(0, count)) + '\u258c' }} />
 }
 
+/* ── SmartReply: renders Meraj's markdown as visual components ──────────────
+   Detects patterns in the reply and upgrades them:
+   • Blockquotes (>) → WhatsApp-style draft bubbles with Edit / Send buttons
+   • Short "**Label:** ₹X" lines → KPI cards
+   • List items with stock context → traffic-light rows (green/yellow/red)
+   • Everything else → normal sanitized markdown                                  */
+function SmartReply({ text, onEditDraft, onSendDraft }: { text: string; onEditDraft?: (t: string) => void; onSendDraft?: (t: string) => void }) {
+  const blocks: string[] = text.split(/\n\n+/).filter((b) => b.trim())
+  return (
+    <>
+      {blocks.map((block, i) => {
+        const b = block.trim()
+        // 1) Blockquote(s) → WhatsApp draft bubble
+        if (b.startsWith('>')) {
+          const draft = b.split('\n').map((l) => l.replace(/^>\s?/, '')).join('\n').trim()
+          return (
+            <div key={i} className="my-3 rounded-2xl border border-positive/25 bg-positive/[0.04] p-3.5">
+              <div className="flex items-center gap-2 mb-2">
+                <MessageSquareText className="w-4 h-4 text-positive" />
+                <span className="text-[10px] font-bold uppercase tracking-wide text-positive">Draft message — ready to send</span>
+              </div>
+              <div className="rounded-xl rounded-tl-sm bg-positive/[0.08] border border-positive/20 px-3.5 py-2.5">
+                <p className="text-sm text-fg whitespace-pre-wrap leading-relaxed">{draft}</p>
+              </div>
+              {(onEditDraft || onSendDraft) && (
+                <div className="flex gap-2 mt-2.5">
+                  {onEditDraft && (
+                    <button onClick={() => onEditDraft(draft)} className="flex-1 h-8 text-xs font-semibold rounded-control border border-line text-fg-muted hover:text-fg hover:border-accent/40 transition-colors">
+                      Edit Message
+                    </button>
+                  )}
+                  {onSendDraft && (
+                    <button onClick={() => onSendDraft(draft)} className="flex-1 h-8 text-xs font-semibold rounded-control bg-fg text-paper hover:opacity-90 transition-opacity">
+                      Send Now
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        }
+        // 2) KPI row: 2-4 lines of "**Label:** ₹amount"
+        const kpiLines = b.split('\n').map((l) => l.replace(/^[-*]\s+/, '').trim())
+        const isKpi = kpiLines.length >= 2 && kpiLines.length <= 4 && kpiLines.every((l) => /^\*\*(.+?)\**\s*:?\s*₹?[\d,.]+/i.test(l))
+        if (isKpi) {
+          return (
+            <div key={i} className="my-2 grid grid-cols-2 gap-2 max-w-md">
+              {kpiLines.map((l, j) => {
+                const m = l.match(/\*\*(.+?):?\**\s*:?\s*(₹?[\d,.]+)/i)
+                if (!m) return null
+                return (
+                  <div key={j} className="rounded-control border border-line bg-surface px-3 py-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle truncate">{m[1]}</p>
+                    <p className="text-base font-bold text-fg tabular-nums leading-tight mt-0.5">{m[2]}</p>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        }
+        // 3) Traffic-light list: bullet items mentioning stock/qty context
+        const listItems = b.split('\n').filter((l) => /^[-*]\s+/.test(l))
+        const stocky = listItems.length >= 2 && listItems.some((l) => /stock|left|qty|quantity|units|pcs|reorder|inventory/i.test(l)) && !isKpi
+        if (stocky) {
+          return (
+            <div key={i} className="my-2 space-y-1.5">
+              {b.split('\n').map((l, j) => {
+                if (!/^[-*]\s+/.test(l)) {
+                  if (/^#{1,3}\s/.test(l)) return <p key={j} className="text-xs font-bold uppercase tracking-wide text-fg-subtle mt-2 mb-1" dangerouslySetInnerHTML={{ __html: render('**' + l.replace(/^#{1,3}\s+/, '') + '**') }} />
+                  return null
+                }
+                const item = l.replace(/^[-*]\s+/, '')
+                const low = /low|reorder|kam|running out/i.test(item)
+                const out = /out of stock|critical|0 left|finished|khali/i.test(item)
+                return (
+                  <div key={j} className="flex items-center gap-2.5 rounded-control border border-line bg-surface px-3 py-2">
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${out ? 'bg-negative' : low ? 'bg-warning' : 'bg-positive'}`} />
+                    <span className="text-sm text-fg flex-1 min-w-0" dangerouslySetInnerHTML={{ __html: render(item) }} />
+                  </div>
+                )
+              })}
+            </div>
+          )
+        }
+        // 4) Default: sanitized markdown
+        return <div key={i} dangerouslySetInnerHTML={{ __html: render(b) }} />
+      })}
+    </>
+  )
+}
+
 export default function AIAssistant() {
   const [params] = useSearchParams()
   const scope = params.get('scope') || undefined
@@ -56,7 +149,6 @@ export default function AIAssistant() {
   const [convos, setConvos] = useState<Convo[]>([])
   const [showHistory, setShowHistory] = useState(false)
   const [mode, setMode] = useState<'ask' | 'task'>('ask')
-  const [showMode, setShowMode] = useState(false)
 
   const [typing, setTyping] = useState(false)
   const lastIdx = messages.length - 1
@@ -70,10 +162,37 @@ export default function AIAssistant() {
   const recRef = useRef<any>(null)
   const [listening, setListening] = useState(false)
 
-  const { user } = useAuth()
+  const { user, profile, ownerId } = useAuth()
   const STORE = STORE_BASE + (user?.id ? '_' + user.id : '')
   const CURRENT_KEY = CURRENT_BASE + (user?.id ? '_' + user.id : '')
   const ACTIVE_KEY = ACTIVE_BASE + (user?.id ? '_' + user.id : '')
+
+  // ── Morning Briefing: live business snapshot for the empty state ──
+  interface Briefing { salesToday: number; pendingCount: number; pendingSum: number; lowStock: number }
+  const [briefing, setBriefing] = useState<Briefing | null>(null)
+  useEffect(() => {
+    if (!ownerId) return
+    let active = true
+    ;(async () => {
+      try {
+        const now = new Date()
+        const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+        const [tx, inv, prod] = await Promise.all([
+          supabase.from('transactions').select('total').eq('user_id', ownerId).eq('status', 'completed').gte('created_at', startToday),
+          supabase.from('invoices').select('total,status').eq('user_id', ownerId).in('status', ['sent', 'viewed', 'partial', 'overdue']),
+          supabase.from('products').select('stock_quantity,low_stock_threshold').eq('user_id', ownerId),
+        ])
+        if (!active) return
+        setBriefing({
+          salesToday: (tx.data || []).reduce((s: number, r: any) => s + Number(r.total || 0), 0),
+          pendingCount: (inv.data || []).length,
+          pendingSum: (inv.data || []).reduce((s: number, r: any) => s + Number(r.total || 0), 0),
+          lowStock: (prod.data || []).filter((p: any) => Number(p.stock_quantity) <= Number(p.low_stock_threshold)).length,
+        })
+      } catch { /* briefing is decorative — never block chat */ }
+    })()
+    return () => { active = false }
+  }, [ownerId])
   // Which conversation the current messages belong to (null = next send starts a new one).
   const activeIdRef = useRef<string | null>(null)
 
@@ -257,21 +376,150 @@ export default function AIAssistant() {
         <Link to="/app" className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2"><ArrowLeft className="w-5 h-5" strokeWidth={1.75} /></Link>
       </div>
 
+      {/* ── Segmented control: Ask | Task (the command-center toggle) ── */}
+      <div className="px-4 pt-3 pb-2 flex justify-center">
+        <div className="relative inline-flex rounded-full border border-line bg-surface-2 p-1 shadow-inner">
+          {(['ask', 'task'] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              className={`relative z-10 flex items-center gap-1.5 rounded-full px-5 h-8 text-xs font-bold transition-all ${
+                mode === m
+                  ? 'bg-surface text-fg shadow-[0_2px_8px_rgba(0,0,0,0.12)] scale-[1.02]'
+                  : 'text-fg-subtle hover:text-fg-muted'
+              }`}
+            >
+              {m === 'ask' ? <MessageCircle className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />}
+              {m === 'ask' ? 'Ask' : 'Task'}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Character + messages (full-height scroll) */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto scroll-area">
-        {/* Upper-middle: iPhone-style black bar + full-body robot under it */}
-        {!messages.length && (
-          <div className="flex flex-col items-center justify-center min-h-[50vh] px-6 text-center">
-            <p className="text-sm text-fg-muted max-w-xs mb-4">{scopeLabel ? `Ask me about ${scopeLabel.toLowerCase()} — I'll keep us focused there.` : 'Ask about sales, stock, customers — anything about your business.'}</p>
-            {!scopeLabel && (
-              <div className="flex flex-wrap gap-2 justify-center max-w-sm">
-                {["What's my pending payment?", 'Any items low on stock?', "Show today's sales", "Which customers haven't ordered recently?"].map((p) => (
-                  <button key={p} onClick={() => send(p)} className="text-xs font-medium text-fg bg-surface-2 border border-line rounded-full px-3 py-1.5 hover:bg-surface-3 hover:border-accent/40 active:scale-95 transition-all">{p}</button>
-                ))}
+        {/* ── Empty state: Morning Briefing dashboard (Ask mode) ── */}
+        {!messages.length && mode === 'ask' && (
+          <div className="px-4 pt-6 pb-4 max-w-3xl mx-auto w-full">
+            {/* Greeting */}
+            <div className="mb-5">
+              <h2 className="text-2xl font-bold text-fg leading-tight">
+                {new Date().getHours() < 12 ? 'Good Morning' : new Date().getHours() < 17 ? 'Good Afternoon' : 'Good Evening'}
+                {profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''} 👋
+              </h2>
+              <p className="text-sm text-fg-muted mt-1">
+                {briefing
+                  ? briefing.pendingCount > 0
+                    ? `Your store is running well — ${briefing.pendingCount} payment${briefing.pendingCount > 1 ? 's' : ''} to chase today.`
+                    : briefing.lowStock > 0
+                      ? `All bills collected — ${briefing.lowStock} item${briefing.lowStock > 1 ? 's' : ''} need restocking.`
+                      : 'Your store is running smoothly. Here is what to look at today.'
+                  : 'Here is what to look at today.'}
+              </p>
+            </div>
+
+            {/* KPI cards */}
+            <div className="grid grid-cols-3 gap-2.5 mb-4">
+              <div className="rounded-card border border-line bg-surface p-3.5 shadow-soft">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Today's Sales</span>
+                  <TrendingUp className="w-3.5 h-3.5 text-positive" />
+                </div>
+                <p className="text-lg font-bold text-fg tabular-nums leading-tight">{briefing ? formatINR(briefing.salesToday, 0) : '—'}</p>
               </div>
+              <div className="rounded-card border border-line bg-surface p-3.5 shadow-soft">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Pending Dues</span>
+                  <span className={`w-2 h-2 rounded-full ${briefing && briefing.pendingCount > 0 ? 'bg-negative' : 'bg-positive'}`} />
+                </div>
+                <p className="text-lg font-bold text-fg tabular-nums leading-tight">{briefing ? formatINR(briefing.pendingSum, 0) : '—'}</p>
+              </div>
+              <div className="rounded-card border border-line bg-surface p-3.5 shadow-soft">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Low Stock</span>
+                  <Package className={`w-3.5 h-3.5 ${briefing && briefing.lowStock > 0 ? 'text-warning' : 'text-positive'}`} />
+                </div>
+                <p className="text-lg font-bold text-fg tabular-nums leading-tight">{briefing ? (briefing.lowStock > 0 ? `${briefing.lowStock} items` : 'All good') : '—'}</p>
+              </div>
+            </div>
+
+            {/* Proactive insight card */}
+            {briefing && briefing.pendingCount > 0 && (
+              <button
+                onClick={() => send('Chase all my pending payments — draft polite WhatsApp reminders for each customer with dues')}
+                className="w-full text-left rounded-card border border-accent/30 bg-accent-soft/50 p-4 mb-4 shadow-soft hover:border-accent/50 transition-colors active:scale-[0.99]"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="w-10 h-10 rounded-control bg-accent/15 text-accent flex items-center justify-center flex-shrink-0"><Wallet className="w-5 h-5" /></span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-fg">Meraj noticed: {formatINR(briefing.pendingSum, 0)} is waiting</p>
+                    <p className="text-xs text-fg-muted mt-0.5">Tap to draft WhatsApp reminders for {briefing.pendingCount} customer{briefing.pendingCount > 1 ? 's' : ''} →</p>
+                  </div>
+                </div>
+              </button>
             )}
+            {briefing && briefing.pendingCount === 0 && briefing.lowStock > 0 && (
+              <button
+                onClick={() => send('Which items are low on stock and how much should I reorder?')}
+                className="w-full text-left rounded-card border border-warning/30 bg-warning/[0.06] p-4 mb-4 shadow-soft hover:border-warning/50 transition-colors active:scale-[0.99]"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="w-10 h-10 rounded-control bg-warning/15 text-warning flex items-center justify-center flex-shrink-0"><Package className="w-5 h-5" /></span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-fg">Meraj noticed: {briefing.lowStock} items running low</p>
+                    <p className="text-xs text-fg-muted mt-0.5">Tap to see reorder suggestions →</p>
+                  </div>
+                </div>
+              </button>
+            )}
+
+            {/* Quick action cards */}
+            <div className="grid grid-cols-2 gap-2.5">
+              {[
+                { icon: Wallet, label: 'Chase Payments', q: 'Chase all my pending payments — draft polite WhatsApp reminders for each customer with dues' },
+                { icon: Package, label: 'Restock Alert', q: 'Which items are low on stock and how much should I reorder?' },
+                { icon: TrendingUp, label: 'Boost Sales', q: 'How can I boost my sales this week? Give me 3 specific actions.' },
+                { icon: FileText, label: 'Daily Report', q: 'Draft my daily business report for today' },
+              ].map((a) => (
+                <button key={a.label} onClick={() => send(a.q)} className="flex items-center gap-3 rounded-card border border-line bg-surface p-3.5 shadow-soft hover:border-accent/40 active:scale-[0.98] transition-all">
+                  <span className="w-9 h-9 rounded-control bg-accent-soft text-accent flex items-center justify-center flex-shrink-0"><a.icon className="w-4.5 h-4.5" /></span>
+                  <span className="text-sm font-semibold text-fg">{a.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
+
+        {/* ── Empty state: Task action grid (Task mode) ── */}
+        {!messages.length && mode === 'task' && (
+          <div className="px-4 pt-6 pb-4 max-w-3xl mx-auto w-full">
+            <div className="mb-5">
+              <h2 className="text-xl font-bold text-fg leading-tight">What should Meraj do?</h2>
+              <p className="text-sm text-fg-muted mt-1">Pick an action — Meraj prepares it, you confirm, it's done.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              {[
+                { icon: Wallet, label: 'Chase Pending Payments', desc: 'Draft WhatsApp reminders', q: 'Chase all my pending payments — draft polite WhatsApp reminders for each customer with dues' },
+                { icon: Package, label: 'Restock Low Inventory', desc: 'Suggest reorder quantities', q: 'List my low stock items and create a reorder plan' },
+                { icon: FileText, label: 'Create Invoice', desc: 'GST bill in seconds', q: 'I want to create an invoice — ask me for the details' },
+                { icon: BarChart3, label: 'Draft Daily Report', desc: 'Full day summary', q: 'Draft my daily business report for today' },
+                { icon: Receipt, label: 'Scan Receipt', desc: 'Photo → bill entry', scan: true },
+                { icon: Sparkles, label: 'Add Products', desc: 'Bulk stock entry', q: 'I want to add products to my stock — ask me for the list' },
+              ].map((a) => (
+                <button
+                  key={a.label}
+                  onClick={() => (a.scan ? cameraRef.current?.click() : send(a.q!))}
+                  className="rounded-card border border-line bg-surface p-4 shadow-soft hover:border-accent/40 hover:shadow-float active:scale-[0.98] transition-all text-left"
+                >
+                  <span className="w-10 h-10 rounded-control bg-accent-soft text-accent flex items-center justify-center mb-2.5"><a.icon className="w-5 h-5" /></span>
+                  <p className="text-sm font-bold text-fg leading-tight">{a.label}</p>
+                  <p className="text-xs text-fg-subtle mt-0.5">{a.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
 
         <div className="px-4 pb-6 space-y-6 max-w-3xl mx-auto w-full">
           {messages.map((m, i) =>
@@ -286,8 +534,14 @@ export default function AIAssistant() {
               <div key={i} className="flex gap-3">
                 <span className="w-8 h-8 rounded-lg bg-accent-soft text-accent flex items-center justify-center flex-shrink-0 mt-0.5"><MerajMark size={18} /></span>
                 <div className="flex-1 min-w-0 pt-0.5">
-                  <div className="prose-content text-sm">
-                    {typing && i === lastIdx ? <TypewriterMessage text={m.text} onDone={() => setTyping(false)} /> : <span dangerouslySetInnerHTML={{ __html: render(m.text) }} />}
+                  <div className="text-sm">
+                    {typing && i === lastIdx
+                      ? <TypewriterMessage text={m.text} onDone={() => setTyping(false)} />
+                      : <SmartReply
+                          text={m.text}
+                          onEditDraft={(t) => { setInput(t); inputRef.current?.focus() }}
+                          onSendDraft={(t) => { setMode('task'); send(`Send this WhatsApp message: "${t.replace(/"/g, "'")}"`) }}
+                        />}
                   </div>
                   {m.media && m.media.length > 0 && (
                     <div className="mt-2 grid grid-cols-3 gap-1.5">
@@ -321,33 +575,8 @@ export default function AIAssistant() {
         </div>
       </div>
 
-      {/* Input bar with Task/Ask mode picker (Stage 1: UI + switching only) */}
-      <div className="border-t border-line p-3">
-        {/* mode picker + active-mode indicator */}
-        <div className="flex items-center gap-2 mb-2">
-          <div className="relative">
-            <button onClick={() => setShowMode((v) => !v)} className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors" aria-label="Switch mode">
-              <Plus className={`w-5 h-5 transition-transform duration-200 ${showMode ? 'rotate-45' : ''}`} strokeWidth={1.75} />
-            </button>
-            <AnimatePresence>
-              {showMode && (
-                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} className="absolute bottom-12 left-0 card p-1.5 w-52 shadow-float z-10">
-                  <button onClick={() => { setMode('ask'); setShowMode(false) }} className={`w-full flex items-start gap-2.5 px-3 py-2 rounded-xl text-left transition-colors hover:bg-surface-2 ${mode === 'ask' ? 'bg-surface-2' : ''}`}>
-                    <MessageCircle className="w-4 h-4 text-accent mt-0.5" />
-                    <div><p className="text-sm font-medium text-fg">Ask</p><p className="text-[11px] text-fg-subtle">Conversational · advisory</p></div>
-                  </button>
-                  <button onClick={() => { setMode('task'); setShowMode(false) }} className={`w-full flex items-start gap-2.5 px-3 py-2 rounded-xl text-left transition-colors hover:bg-surface-2 ${mode === 'task' ? 'bg-surface-2' : ''}`}>
-                    <Zap className="w-4 h-4 text-accent mt-0.5" />
-                    <div><p className="text-sm font-medium text-fg">Task</p><p className="text-[11px] text-fg-subtle">Create & do real actions</p></div>
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${mode === 'task' ? 'bg-accent-soft text-accent' : 'bg-surface-2 text-fg-muted'}`}>{mode === 'task' ? 'Task' : 'Ask'}</span>
-          <span className="text-[11px] text-fg-subtle">{mode === 'task' ? 'takes actions (asks before doing)' : 'conversational'}</span>
-        </div>
-
+      {/* ── Floating input bar ── */}
+      <div className="px-3 pb-3 pt-1 bg-gradient-to-t from-surface via-surface to-transparent">
         {pendingImage && (
           <div className="flex items-center gap-2 px-1 pb-2">
             <img src={pendingImage.preview} className="w-12 h-12 rounded-xl object-cover border border-line" alt="preview" />
@@ -355,14 +584,17 @@ export default function AIAssistant() {
             <button onClick={() => setPendingImage(null)} className="text-fg-subtle hover:text-negative"><X className="w-4 h-4" /></button>
           </div>
         )}
-        <div className="flex items-center gap-1.5 rounded-2xl border border-line bg-paper px-2 py-1.5 shadow-soft focus-within:border-accent/50 transition-colors">
-          <div className="relative lg:hidden">
-            <button onClick={() => setShowCam((s) => !s)} className="w-10 h-10 rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors" aria-label="Camera"><Camera className="w-[18px] h-[18px]" strokeWidth={1.75} /></button>
+        <div className="flex items-center gap-1.5 rounded-2xl border border-line bg-paper px-2 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.08)] focus-within:border-accent/50 transition-colors">
+          <div className="relative">
+            <button onClick={() => setShowCam((s) => !s)} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${showCam ? 'bg-accent-soft text-accent rotate-45' : 'text-fg-muted hover:text-fg hover:bg-surface-2'}`} aria-label="Add attachment">
+              <Plus className="w-[18px] h-[18px]" strokeWidth={2} />
+            </button>
             <AnimatePresence>
               {showCam && (
-                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} className="absolute bottom-12 left-0 card p-1.5 w-40 shadow-float z-10">
-                  <button onClick={() => galleryRef.current?.click()} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-fg hover:bg-surface-2"><ImageIcon className="w-4 h-4" /> Gallery</button>
-                  <button onClick={() => cameraRef.current?.click()} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-fg hover:bg-surface-2"><Camera className="w-4 h-4" /> Camera</button>
+                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} className="absolute bottom-12 left-0 card p-1.5 w-44 shadow-float z-10">
+                  <button onClick={() => cameraRef.current?.click()} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-fg hover:bg-surface-2"><Receipt className="w-4 h-4 text-accent" /> Scan Receipt</button>
+                  <button onClick={() => galleryRef.current?.click()} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-fg hover:bg-surface-2"><ImageIcon className="w-4 h-4 text-accent" /> Attach Photo</button>
+                  <button onClick={() => cameraRef.current?.click()} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-fg hover:bg-surface-2"><Camera className="w-4 h-4 text-accent" /> Take Photo</button>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -379,7 +611,7 @@ export default function AIAssistant() {
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             onKeyDown={(e) => e.key === 'Enter' && send()}
-            placeholder={mode === 'task' ? 'Do anything…' : 'Ask Meraj anything…'}
+            placeholder={mode === 'task' ? 'Tell Meraj what to do…' : 'Ask Meraj anything…'}
             className="flex-1 bg-transparent px-2 py-2 text-sm text-fg placeholder:text-fg-subtle outline-none min-w-0"
             disabled={loading}
           />
