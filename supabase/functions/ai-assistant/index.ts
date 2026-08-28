@@ -433,7 +433,11 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
     // WEB MEDIA (Pexels) — read-only, instant, no AI round-trip. Falls through
     // to the normal answer if nothing is found. NEVER triggers when the owner
     // attached their OWN photo — that must go to image analysis, not stock photos.
-    if (!image?.data && !confirm && wantsMedia(String(message || ""))) {
+    // Pexels stock-photo fast path — ONLY for "show me pictures of X" searches,
+    // never for "generate/create/make an image" (that's the AI image tool) or in task mode
+    const wantsGeneration = /\b(generate|create|make|draw|design|produce)\b/i.test(String(message || "")) &&
+      /\b(image|picture|photo|banner|poster|ad|advertisement|flyer|graphic|visual|logo)\b/i.test(String(message || ""));
+    if (!image?.data && !confirm && !wantsGeneration && mode !== "task" && wantsMedia(String(message || ""))) {
       const subject = extractMediaSubject(String(message || ""));
       const media = await fetchMedia(subject, Deno.env.get("PEXELS_API_KEY") || "");
       if (media.length) return json({ reply: `Here's what I found for "${subject}" 👇`, media });
