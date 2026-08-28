@@ -272,6 +272,7 @@ const ALL_TOOLS = [{ function_declarations: [
   { name: "add_products", description: "Add MULTIPLE products to the shop catalog in ONE go (bulk). Use when the owner shares a list of products to add — a pasted list, a stock sheet, or items read from a photo — typically 2-50 items. Prefer this over calling add_product repeatedly.", parameters: { type: "OBJECT", properties: { products: { type: "ARRAY", description: "The products to add", items: { type: "OBJECT", properties: { name: { type: "STRING", description: "Product name" }, price: { type: "NUMBER", description: "Selling price in rupees" }, sku: { type: "STRING" }, category: { type: "STRING" }, stock_quantity: { type: "NUMBER", description: "Units in stock" }, low_stock_threshold: { type: "NUMBER", description: "Reorder threshold" }, cost: { type: "NUMBER", description: "Cost price in rupees" } }, required: ["name", "price"] } } }, required: ["products"] } },
   { name: "add_customer", description: "Add a new customer to the customer list.", parameters: { type: "OBJECT", properties: { name: { type: "STRING", description: "Customer name" }, phone: { type: "STRING" }, email: { type: "STRING" }, company: { type: "STRING" } }, required: ["name"] } },
   { name: "send_whatsapp", description: "Send a WhatsApp message to a phone number — a staff member, customer, or anyone the owner names. Use when the owner asks to send, message, or WhatsApp someone.", parameters: { type: "OBJECT", properties: { to: { type: "STRING", description: "Recipient phone number with country code, e.g. 919876543210" }, message: { type: "STRING", description: "The message text to send" } }, required: ["to", "message"] } },
+  { name: "generate_image", description: "Generate an image using AI. Use when the owner asks to create, generate, make, or design an image, picture, photo, banner, poster, advertisement, or social media visual (Instagram, Facebook, etc.). Describe what the image should show clearly and visually.", parameters: { type: "OBJECT", properties: { prompt: { type: "STRING", description: "A clear, detailed description of what the image should show — style, colors, subject, setting" }, size: { type: "STRING", description: "Image shape: square (default, 1024x1024), banner (wide 1024x512), or portrait (512x1024)" } }, required: ["prompt"] } },
   { name: "sync_stock_from_sheet", description: "Read product/stock data from the owner's connected Google Sheet and prepare to update/add products in Cashiea. Shows a preview for the owner to confirm first.", parameters: { type: "OBJECT", properties: {}, required: [] } },
   { name: "export_to_sheet", description: "Export data from Cashiea (stock, customers, or sales) as rows appended to the owner's connected Google Sheet — or a new sheet if none is connected. Use when the owner asks to export, save, or write data to Google Sheets.", parameters: { type: "OBJECT", properties: { data_type: { type: "STRING", description: "What to export: stock, customers, or sales" } }, required: ["data_type"] } },
 ] }];
@@ -619,6 +620,55 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
         if (tn === "send_whatsapp") {
           if (!args.to || !args.message) return json({ reply: "I need a phone number and a message to send. Could you share those?" });
           return json({ reply: `I'll send this on WhatsApp:\n\n**To:** ${args.to}\n**Message:** ${args.message}\n\nTap **Send it** to confirm.`, pending: { type: "send_whatsapp", input: { to: String(args.to), message: String(args.message) }, preview: args } });
+        }
+        if (tn === "generate_image") {
+          // ── IMAGE GENERATION via Pollination.ai (free, no confirm needed) ──
+          const rawPrompt = String(args.prompt || "").trim();
+          if (!rawPrompt) return json({ reply: "Tell me what kind of image you want — describe the product, scene, or design." });
+
+          // Content safety filter
+          const BLOCKED = [
+            /\b(nude|naked|nsfw|porn|sex|xxx|erotic|explicit|topless|lingerie)\b/i,
+            /\b(kill|murder|violence|gore|blood|dismember|torture|suicide)\b/i,
+            /\b(gun|rifle|pistol|bomb|explosive|weapon)\b/i,
+            /\b(cocaine|heroin|meth|weed|cannabis|drug deal)\b/i,
+            /\b(nazi|swastika|terrorist|isis|hate speech|racist)\b/i,
+            /\b(child|minor|underage).*(sex|nude|naked)\b/i,
+          ];
+          const isBlocked = BLOCKED.some((re) => re.test(rawPrompt));
+          if (isBlocked) {
+            return json({ reply: "I can't generate that type of image. I create business-friendly visuals — product photos, banners, social media ads, and marketing designs. What else can I help you with?" });
+          }
+
+          // Enhance the prompt for commercial quality
+          const shopContext = mem2?.profile?.company_name || "";
+          const enhanced = `${rawPrompt}${shopContext ? `, for ${shopContext}` : ""}, professional commercial photography, high quality, clean modern aesthetic, vibrant colors, suitable for business marketing, no text overlays unless specifically requested`;
+
+          // Determine dimensions
+          const size = String(args.size || "square").toLowerCase();
+          const dims = size === "banner" ? { w: 1024, h: 512 } : size === "portrait" ? { w: 512, h: 1024 } : { w: 1024, h: 1024 };
+
+          // Build the Pollination URL (the edge function generates server-side,
+          // but the URL is directly accessible to the client too)
+          const encoded = encodeURIComponent(enhanced);
+          const seed = Math.floor(Math.random() * 1000000);
+          const imageUrl = `https://image.pollinations.ai/prompt/${encoded}?width=${dims.w}&height=${dims.h}&model=flux&nologo=true&seed=${seed}`;
+
+          // Verify the image actually generates (head request)
+          try {
+            const check = await fetch(imageUrl, { method: "HEAD" });
+            if (!check.ok) {
+              return json({ reply: "I couldn't generate that image right now — the image service is busy. Try again in a moment." });
+            }
+          } catch {
+            return json({ reply: "Image service is unreachable — check your connection and try again." });
+          }
+
+          try { await supabase.rpc("increment_api_usage", { user_uuid: user.id }); } catch { /* ignore */ }
+          return json({
+            reply: `Here's your image of **${rawPrompt.slice(0, 80)}** — ${dims.w}×${dims.h}${size === "banner" ? " (banner format)" : ""}. Tap to open the full size, or long-press to save.`,
+            images: [{ url: imageUrl, prompt: rawPrompt, width: dims.w, height: dims.h }],
+          });
         }
         if (tn === "sync_stock_from_sheet") {
           // Check if Google Sheets is connected

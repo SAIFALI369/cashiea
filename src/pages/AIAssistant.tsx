@@ -12,7 +12,7 @@ import { supabase } from '../lib/supabase'
 import { formatINR } from '../lib/format'
 import toast from 'react-hot-toast'
 
-interface Msg { role: 'user' | 'meraj'; text: string; pending?: { type: string; input: any; preview: any }; media?: { type: string; thumb: string; url: string; alt: string; link?: string }[]; image?: string }
+interface Msg { role: 'user' | 'meraj'; text: string; pending?: { type: string; input: any; preview: any }; media?: { type: string; thumb: string; url: string; alt: string; link?: string }[]; image?: string; images?: { url: string; prompt: string; width: number; height: number }[] }
 interface Convo { id: string; title: string; msgs: Msg[]; ts: number; scope?: string }
 
 const STORE_BASE = 'cashiea_meraj_convos'
@@ -265,7 +265,7 @@ export default function AIAssistant() {
     try {
       const res = await askAssistant(q || '(shared an image)', false, scope, sendMode, undefined, undefined, history, img || undefined)
       setPendingImage(null)
-        const done = [...next, { role: 'meraj' as const, text: res.reply, pending: res.pending, media: res.media }]
+        const done = [...next, { role: 'meraj' as const, text: res.reply, pending: res.pending, media: res.media, images: res.images }]
       setMessages(done)
       if (res.reply) setTyping(true)
       upsertConvo(done, q || 'Shared photo')
@@ -564,6 +564,23 @@ export default function AIAssistant() {
                           onSendDraft={(t) => { setMode('task'); send(`Send this WhatsApp message: "${t.replace(/"/g, "'")}"`) }}
                         />}
                   </div>
+                  {m.images && m.images.length > 0 && (
+                    <div className="mt-3 space-y-3">
+                      {m.images.map((img, j) => (
+                        <div key={j} className="rounded-card border border-line overflow-hidden shadow-soft">
+                          <a href={img.url} target="_blank" rel="noreferrer" className="block">
+                            <img src={img.url} alt={img.prompt} className="w-full max-h-96 object-contain bg-surface-2" loading="lazy" />
+                          </a>
+                          <div className="flex items-center justify-between px-3 py-2 bg-surface border-t border-line">
+                            <p className="text-xs text-fg-subtle truncate flex-1">{img.prompt.slice(0, 60)}</p>
+                            <a href={img.url} target="_blank" rel="noreferrer" download className="text-xs font-semibold text-accent hover:text-accent-strong transition-colors ml-2 flex-shrink-0">
+                              Open / Save
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {m.media && m.media.length > 0 && (
                     <div className="mt-2 grid grid-cols-3 gap-1.5">
                       {m.media.map((mi, j) => (

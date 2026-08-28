@@ -128,7 +128,7 @@ export async function askAssistant(
   pageContext?: { name: string; description: string },
   history?: { role: 'user' | 'meraj'; text: string }[],
   image?: { data: string; mimeType: string }
-): Promise<{ reply: string; pending?: any; executed?: any; media?: { type: string; thumb: string; url: string; alt: string; link?: string }[] }> {
+): Promise<{ reply: string; pending?: any; executed?: any; media?: { type: string; thumb: string; url: string; alt: string; link?: string }[]; images?: { url: string; prompt: string; width: number; height: number }[] }> {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('You must be logged in.')
 
@@ -155,7 +155,7 @@ export async function askAssistant(
   // Store in cache for next time
   if (cacheKey && data.reply) aiCacheSet(cacheKey, { reply: data.reply, pending: data.pending })
 
-  return data as { reply: string; pending?: any; executed?: any; media?: { type: string; thumb: string; url: string; alt: string; link?: string }[] }
+  return data as { reply: string; pending?: any; executed?: any; media?: { type: string; thumb: string; url: string; alt: string; link?: string }[]; images?: { url: string; prompt: string; width: number; height: number }[] }
 }
 
 /**
