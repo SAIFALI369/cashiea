@@ -41,7 +41,7 @@ jobs:
             echo "  ❌ $1 failed after 3 attempts"
             FAILED=1
           }
-          for f in ai-automation ai-assistant business-brain daily-brain quick-tasks google-oauth google-fetch integrations-api support-email campaign-send track api-generate-invoice api-draft-email create-checkout stripe-webhook daily-reports invoice-reminders quickbooks-oauth whatsapp-webhook whatsapp-send canva-oauth request-action scan-receipt; do
+          for f in ai-automation ai-assistant business-brain daily-brain quick-tasks google-oauth google-fetch integrations-api support-email campaign-send track api-generate-invoice api-draft-email create-checkout stripe-webhook daily-reports invoice-reminders quickbooks-oauth whatsapp-webhook whatsapp-send canva-oauth request-action scan-receipt voice-stt; do
             deploy_fn "$f"
           done
           echo ""
