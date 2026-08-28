@@ -96,7 +96,7 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
   const avatarState = deriveAvatarState({ listening, loading, speaking })
   const voiceStatus = listening ? 'Listening…' : loading ? 'Thinking…' : speaking ? 'Speaking…' : ''
 
-  const startVoice = () => {
+  const startVoice = async () => {
     if (!navigator.onLine) {
       const m = "Voice needs an internet connection. Please connect, or type your question."
       setVoiceMode(true); setVoiceReply(m); speak(m); setTimeout(() => setVoiceMode(false), 5500)

@@ -55,14 +55,15 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
   const avatarState = deriveAvatarState({ listening, loading: voiceLoading, speaking })
   const statusText = listening ? 'Listening…' : voiceLoading ? 'Thinking…' : speaking ? 'Speaking…' : ''
 
-  const startVoice = () => {
+  const startVoice = async () => {
     if (!navigator.onLine) {
       const m = "Voice needs an internet connection. Please connect, or type your question in Meraj."
       setVoiceActive(true); setVoiceReply(m); speak(m); setTimeout(() => setVoiceActive(false), 5500)
       return
     }
     setVoiceActive(true); setVoiceReply(''); setVoiceLoading(false)
-    const ok = startListening(
+    // MediaRecorder + Groq Whisper — works on ALL browsers (async)
+    const ok = await startListening(
       async (text) => {
         if (!navigator.onLine) {
           const m = "No internet connection right now. I'll answer as soon as you're back online."
