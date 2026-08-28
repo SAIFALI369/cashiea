@@ -18,6 +18,20 @@ interface Convo { id: string; title: string; msgs: Msg[]; ts: number; scope?: st
 const STORE_BASE = 'cashiea_meraj_convos'
 const CURRENT_BASE = 'cashiea_meraj_current'
 const ACTIVE_BASE = 'cashiea_meraj_active'
+// ── Rotating micro-greetings (2-4 words, fresh each visit, no emoji) ──
+const GREETINGS = [
+  "Welcome back, boss",
+  "Ready to grow?",
+  "Let's win today",
+  "Your shop, my watch",
+  "Kya scene hai?",
+  "Bazaar is waiting",
+  "Time to hustle",
+  "Growth mode: on",
+  "What's the plan?",
+  "Let's make it count",
+]
+
 const SCOPE_LABELS: Record<string, string> = {
   receipts: 'Receipts', reports: 'Reports', emails: 'Emails', whatsapp: 'WhatsApp',
   expenses: 'Expenses', profits: 'Profits', stocks: 'Stocks', tasks: 'Tasks',
@@ -170,6 +184,11 @@ export default function AIAssistant() {
   // ── Morning Briefing: live business snapshot for the empty state ──
   interface Briefing { salesToday: number; pendingCount: number; pendingSum: number; lowStock: number }
   const [briefing, setBriefing] = useState<Briefing | null>(null)
+  // Fresh greeting every page open (stable within the session)
+  const [greeting] = useState(() => {
+    try { return GREETINGS[Math.floor(Math.random() * GREETINGS.length)] }
+    catch { return GREETINGS[0] }
+  })
   useEffect(() => {
     if (!ownerId) return
     let active = true
@@ -290,7 +309,7 @@ export default function AIAssistant() {
   const confirmAction = async (pending: any) => {
     if (loading) return
     setLoading(true)
-    const confirmText = '✓ ' + (pending?.type === 'create_invoice' ? 'Create it' : pending?.type === 'send_whatsapp' ? 'Send it' : 'Add it')
+    const confirmText = '✓ ' + (pending?.type === 'create_invoice' ? 'Create it' : pending?.type === 'send_whatsapp' ? 'Send it' : pending?.type === 'sync_stock_from_sheet' ? 'Sync it' : pending?.type === 'export_to_sheet' ? 'Export it' : 'Add it')
     const base = [...messages, { role: 'user' as const, text: confirmText }]
     setMessages(base)
     try {
@@ -401,13 +420,16 @@ export default function AIAssistant() {
         {/* ── Empty state: Morning Briefing dashboard (Ask mode) ── */}
         {!messages.length && mode === 'ask' && (
           <div className="px-4 pt-6 pb-4 max-w-3xl mx-auto w-full">
-            {/* Greeting */}
-            <div className="mb-5">
-              <h2 className="text-2xl font-bold text-fg leading-tight">
-                {new Date().getHours() < 12 ? 'Good Morning' : new Date().getHours() < 17 ? 'Good Afternoon' : 'Good Evening'}
-                {profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''} 👋
-              </h2>
-              <p className="text-sm text-fg-muted mt-1">
+            {/* Greeting — Meraj mascot + fresh 2-4 word micro-greeting */}
+            <div className="flex items-start gap-3 mb-5">
+              <div className="flex-shrink-0 -mt-1">
+                <MerajAvatar state="idle" context="panel" size="md" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-xl font-bold text-fg leading-snug">{greeting}</h2>
+              </div>
+            </div>
+            <p className="text-sm text-fg-muted mb-5">
                 {briefing
                   ? briefing.pendingCount > 0
                     ? `Your store is running well — ${briefing.pendingCount} payment${briefing.pendingCount > 1 ? 's' : ''} to chase today.`
@@ -415,8 +437,7 @@ export default function AIAssistant() {
                       ? `All bills collected — ${briefing.lowStock} item${briefing.lowStock > 1 ? 's' : ''} need restocking.`
                       : 'Your store is running smoothly. Here is what to look at today.'
                   : 'Here is what to look at today.'}
-              </p>
-            </div>
+            </p>
 
             {/* KPI cards */}
             <div className="grid grid-cols-3 gap-2.5 mb-4">
@@ -554,7 +575,7 @@ export default function AIAssistant() {
                   )}
                   {m.pending && (
                     <div className="mt-3 flex gap-2">
-                      <button onClick={() => confirmAction(m.pending)} disabled={loading} className="btn-primary text-sm flex-1 h-9"><Sparkles className="w-4 h-4" /> {m.pending?.type === "create_invoice" ? "Create it" : m.pending?.type === "send_whatsapp" ? "Send it" : "Add it"}</button>
+                      <button onClick={() => confirmAction(m.pending)} disabled={loading} className="btn-primary text-sm flex-1 h-9"><Sparkles className="w-4 h-4" /> {m.pending?.type === "create_invoice" ? "Create it" : m.pending?.type === "send_whatsapp" ? "Send it" : m.pending?.type === "sync_stock_from_sheet" ? "Sync it" : m.pending?.type === "export_to_sheet" ? "Export it" : "Add it"}</button>
                       <button onClick={() => cancelAction(i)} className="btn-secondary text-sm h-9">Cancel</button>
                     </div>
                   )}

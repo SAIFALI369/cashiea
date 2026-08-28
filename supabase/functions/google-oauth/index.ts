@@ -35,7 +35,7 @@ function scopesFor(provider: string): string {
   const base = ["https://www.googleapis.com/auth/userinfo.email", "openid"];
   if (provider === "gmail") return [...base, "https://www.googleapis.com/auth/gmail.readonly"].join(" ");
   if (provider === "google_drive") return [...base, "https://www.googleapis.com/auth/drive.file"].join(" ");
-  return [...base, "https://www.googleapis.com/auth/spreadsheets.readonly"].join(" "); // google_sheets (default)
+  return [...base, "https://www.googleapis.com/auth/spreadsheets"].join(" "); // google_sheets (default)
 }
 
 /** HMAC-sign the OAuth state so callbacks can't be forged. */

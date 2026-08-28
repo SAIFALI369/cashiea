@@ -10,7 +10,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
 import { callGeminiToolCall, callGeminiWithImage } from "../_shared/ai-default.ts";
 import { callAIWithFallback } from "../_shared/ai-call.ts";
-import { refreshGoogleToken } from "../_shared/google.ts";
+import { refreshGoogleToken, fetchSheet, appendSheetRows, createSpreadsheet } from "../_shared/google.ts";
 import { getDriveToken, readDriveFile } from "../_shared/connectors/google-drive.ts";
 import { sendWhatsAppText } from "../_shared/whatsapp.ts";
 import { fetchNews, fetchMedia, wantsNews, wantsMedia, extractNewsTopic, extractMediaSubject } from "../_shared/web.ts";
@@ -272,6 +272,8 @@ const ALL_TOOLS = [{ function_declarations: [
   { name: "add_products", description: "Add MULTIPLE products to the shop catalog in ONE go (bulk). Use when the owner shares a list of products to add — a pasted list, a stock sheet, or items read from a photo — typically 2-50 items. Prefer this over calling add_product repeatedly.", parameters: { type: "OBJECT", properties: { products: { type: "ARRAY", description: "The products to add", items: { type: "OBJECT", properties: { name: { type: "STRING", description: "Product name" }, price: { type: "NUMBER", description: "Selling price in rupees" }, sku: { type: "STRING" }, category: { type: "STRING" }, stock_quantity: { type: "NUMBER", description: "Units in stock" }, low_stock_threshold: { type: "NUMBER", description: "Reorder threshold" }, cost: { type: "NUMBER", description: "Cost price in rupees" } }, required: ["name", "price"] } } }, required: ["products"] } },
   { name: "add_customer", description: "Add a new customer to the customer list.", parameters: { type: "OBJECT", properties: { name: { type: "STRING", description: "Customer name" }, phone: { type: "STRING" }, email: { type: "STRING" }, company: { type: "STRING" } }, required: ["name"] } },
   { name: "send_whatsapp", description: "Send a WhatsApp message to a phone number — a staff member, customer, or anyone the owner names. Use when the owner asks to send, message, or WhatsApp someone.", parameters: { type: "OBJECT", properties: { to: { type: "STRING", description: "Recipient phone number with country code, e.g. 919876543210" }, message: { type: "STRING", description: "The message text to send" } }, required: ["to", "message"] } },
+  { name: "sync_stock_from_sheet", description: "Read product/stock data from the owner's connected Google Sheet and prepare to update/add products in Cashiea. Shows a preview for the owner to confirm first.", parameters: { type: "OBJECT", properties: {}, required: [] } },
+  { name: "export_to_sheet", description: "Export data from Cashiea (stock, customers, or sales) as rows appended to the owner's connected Google Sheet — or a new sheet if none is connected. Use when the owner asks to export, save, or write data to Google Sheets.", parameters: { type: "OBJECT", properties: { data_type: { type: "STRING", description: "What to export: stock, customers, or sales" } }, required: ["data_type"] } },
 ] }];
 
 function computeInvoiceDraft(args: any) {
@@ -485,6 +487,83 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
         await supabase.rpc("increment_api_usage", { user_uuid: user.id });
         return json({ reply: `Done \u2014 **${i.name}** added to your customers. Find them in your Customers page.`, executed: { type: "customer" } });
       }
+      // ── EXECUTE a confirmed sheet → stock sync ──
+      if (confirm && confirm.type === "sync_stock_from_sheet" && confirm.input) {
+        try {
+          const products = (Array.isArray(confirm.input.products) ? confirm.input.products : []).filter((x: any) => x && x.name);
+          if (!products.length) return json({ reply: "No products found in that sheet — nothing to sync." });
+          // Upsert: update existing by name, insert new ones
+          const { data: existing } = await supabase.from("products").select("id,name").eq("user_id", user.id);
+          const existingMap = new Map((existing || []).map((p: any) => [p.name.toLowerCase().trim(), p.id]));
+          const toInsert = products.filter((p: any) => !existingMap.has(String(p.name).toLowerCase().trim()));
+          const toUpdate = products.filter((p: any) => existingMap.has(String(p.name).toLowerCase().trim()));
+          if (toInsert.length) {
+            const rows = toInsert.map((p: any) => ({ user_id: user.id, name: String(p.name).slice(0, 200), price: Number(p.price || 0), stock_quantity: Number(p.stock_quantity || 0), category: "imported" }));
+            const { error: ie } = await supabase.from("products").insert(rows);
+            if (ie) return json({ reply: `I couldn't insert the new products: ${ie.message}.` });
+          }
+          for (const p of toUpdate.slice(0, 50)) {
+            const id = existingMap.get(String(p.name).toLowerCase().trim());
+            if (id) {
+              await supabase.from("products").update({ price: Number(p.price || 0), stock_quantity: Number(p.stock_quantity || 0) }).eq("id", id);
+            }
+          }
+          await supabase.from("activity_logs").insert({ user_id: user.id, action_type: "summary", description: `Meraj synced ${products.length} products from Google Sheets`, time_saved_minutes: 10 + products.length, money_saved: 5, provider: "meraj-task" });
+          await supabase.rpc("increment_api_usage", { user_uuid: user.id });
+          return json({ reply: `Done \u2014 synced **${products.length} products** from your Google Sheet: **${toInsert.length} new** added, **${toUpdate.length} updated**. Find them all in your Stock page.`, executed: { type: "sheet_sync", count: products.length } });
+        } catch (ex) { return json({ reply: `Something went wrong during the sync: ${(ex as Error)?.message}.` }); }
+      }
+      // ── EXECUTE a confirmed Cashiea → sheet export ──
+      if (confirm && confirm.type === "export_to_sheet" && confirm.input) {
+        try {
+          const dataType = String(confirm.input.data_type || "stock");
+          // Gather the data from Cashiea
+          let header: string[] = [];
+          let rows: (string | number)[][] = [];
+          if (dataType === "stock") {
+            const { data: products } = await supabase.from("products").select("name,price,stock_quantity,category,low_stock_threshold").eq("user_id", user.id).limit(500);
+            header = ["Name", "Price", "Stock Qty", "Category", "Reorder At"];
+            rows = (products || []).map((p: any) => [p.name, p.price, p.stock_quantity, p.category || "", p.low_stock_threshold || ""]);
+          } else if (dataType === "customers") {
+            const { data: customers } = await supabase.from("customers").select("name,phone,email,total_spent,total_orders").eq("user_id", user.id).limit(500);
+            header = ["Name", "Phone", "Email", "Total Spent", "Orders"];
+            rows = (customers || []).map((c: any) => [c.name || "", c.phone || "", c.email || "", c.total_spent || 0, c.total_orders || 0]);
+          } else {
+            const now = new Date();
+            const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+            const { data: tx } = await supabase.from("transactions").select("total,items,payment_method,created_at").eq("user_id", user.id).eq("status", "completed").gte("created_at", startToday);
+            header = ["Time", "Total", "Payment", "Items"];
+            rows = (tx || []).map((t: any) => [new Date(t.created_at).toLocaleString("en-IN"), t.total, t.payment_method || "", (t.items || []).map((i: any) => `${i.name} x${i.quantity}`).join(", ")]);
+          }
+          if (!rows.length) return json({ reply: `You have no ${dataType} data yet to export.` });
+          // Get the Google token + spreadsheet
+          const { data: integration } = await supabase.from("integrations")
+            .select("status,metadata").eq("user_id", user.id).eq("provider", "google_sheets").maybeSingle();
+          if (!integration || integration.status !== "connected") {
+            return json({ reply: "Google Sheets isn't connected. Go to **Connect Apps**, connect Sheets, then ask me to export." });
+          }
+          const token = await refreshGoogleToken(supabase, { user_id: user.id, provider: "google_sheets", metadata: integration.metadata || {} });
+          if (!token) return json({ reply: "I couldn't refresh your Google token — try reconnecting from Connect Apps." });
+          let sid = integration.metadata?.spreadsheet_id as string | undefined;
+          let createdNew = false;
+          if (!sid) {
+            // Create a new spreadsheet and store its ID
+            const created = await createSpreadsheet(token, `Cashiea ${dataType.charAt(0).toUpperCase() + dataType.slice(1)} Export`);
+            if (!created.ok || !created.spreadsheetId) return json({ reply: `I couldn't create a new spreadsheet: ${created.error}` });
+            sid = created.spreadsheetId;
+            createdNew = true;
+            await supabase.from("integrations").update({ metadata: { ...integration.metadata, spreadsheet_id: sid, spreadsheet_url: created.url } }).eq("user_id", user.id).eq("provider", "google_sheets");
+          }
+          // Append header (if new sheet) + rows
+          const dataToAppend = createdNew ? [header, ...rows] : rows;
+          const result = await appendSheetRows(token, sid, "A1", dataToAppend);
+          if (!result.ok) return json({ reply: `I couldn't write to the sheet: ${result.error}` });
+          await supabase.from("activity_logs").insert({ user_id: user.id, action_type: "summary", description: `Meraj exported ${dataType} to Google Sheets (${rows.length} rows)`, time_saved_minutes: 10, money_saved: 5, provider: "meraj-task" });
+          await supabase.rpc("increment_api_usage", { user_uuid: user.id });
+          const url = `https://docs.google.com/spreadsheets/d/${sid}`;
+          return json({ reply: `Done \u2014 exported **${rows.length} ${dataType} rows** ${createdNew ? "to a new spreadsheet" : "to your Google Sheet"}.\n\n[Open in Google Sheets](${url})`, executed: { type: "sheet_export", rows: rows.length } });
+        } catch (ex) { return json({ reply: `Something went wrong during the export: ${(ex as Error)?.message}.` }); }
+      }
       // ── EXECUTE a confirmed WhatsApp send ──
       if (confirm && confirm.type === "send_whatsapp" && confirm.input) {
         const { to, message } = confirm.input;
@@ -540,6 +619,49 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
         if (tn === "send_whatsapp") {
           if (!args.to || !args.message) return json({ reply: "I need a phone number and a message to send. Could you share those?" });
           return json({ reply: `I'll send this on WhatsApp:\n\n**To:** ${args.to}\n**Message:** ${args.message}\n\nTap **Send it** to confirm.`, pending: { type: "send_whatsapp", input: { to: String(args.to), message: String(args.message) }, preview: args } });
+        }
+        if (tn === "sync_stock_from_sheet") {
+          // Check if Google Sheets is connected
+          const { data: integration } = await supabase.from("integrations")
+            .select("status,metadata").eq("user_id", user.id).eq("provider", "google_sheets").maybeSingle();
+          if (!integration || integration.status !== "connected") {
+            return json({ reply: "Google Sheets isn't connected yet. Go to **Connect Apps** (in the sidebar) and connect your Google account with Sheets, then ask me again — I'll pull your stock straight from there." });
+          }
+          const sid = integration.metadata?.spreadsheet_id;
+          if (!sid) {
+            return json({ reply: "Your Google Sheets is connected, but no spreadsheet is selected yet. Open **Connect Apps**, pick the spreadsheet with your stock data, then ask me to sync." });
+          }
+          // Read the sheet and prepare a preview
+          try {
+            const token = await refreshGoogleToken(supabase, { user_id: user.id, provider: "google_sheets", metadata: integration.metadata || {} });
+            if (!token) return json({ reply: "I couldn't refresh your Google token — try reconnecting Sheets from Connect Apps." });
+            const rows = await fetchSheet(token, sid, "A1:Z500");
+            if (!rows.length) return json({ reply: "That spreadsheet is empty — add your product rows (name, price, quantity) and ask me again." });
+            // Parse: look for name/price/quantity columns (flexible headers)
+            const headers = Object.keys(rows[0]).map((h) => h.toLowerCase().trim());
+            const nameIdx = headers.findIndex((h) => /name|product|item/.test(h));
+            const priceIdx = headers.findIndex((h) => /price|rate|mrp|cost/.test(h));
+            const qtyIdx = headers.findIndex((h) => /qty|quantity|stock|count/.test(h));
+            const parsed = rows.slice(1).map((r: any) => ({
+              name: String(r[Object.keys(r)[nameIdx >= 0 ? nameIdx : 0]] || "").trim(),
+              price: Number(String(r[Object.keys(r)[priceIdx >= 0 ? priceIdx : 1]] || "0").replace(/[^\d.]/g, "")) || 0,
+              stock_quantity: Number(String(r[Object.keys(r)[qtyIdx >= 0 ? qtyIdx : 2]] || "0").replace(/[^\d]/g, "")) || 0,
+            })).filter((p: any) => p.name && p.price > 0);
+            if (!parsed.length) return json({ reply: "I read the sheet but couldn't find product rows with a name and price. Make sure row 1 has headers (Name, Price, Quantity) and data starts from row 2." });
+            const preview = parsed.slice(0, 5).map((p: any) => `\u2022 ${p.name} \u2014 \u20b9${p.price}${p.stock_quantity ? ` (${p.stock_quantity} pcs)` : ""}`).join("\n");
+            const more = parsed.length > 5 ? `\n\u2022 \u2026 +${parsed.length - 5} more` : "";
+            return json({ reply: `I found **${parsed.length} products** in your Google Sheet:\n\n${preview}${more}\n\nTap **Sync it** to add/update all ${parsed.length} in your Cashiea stock.`, pending: { type: "sync_stock_from_sheet", input: { products: parsed, spreadsheet_id: sid }, preview: { count: parsed.length } } });
+          } catch (ex) {
+            return json({ reply: `I couldn't read the sheet: ${(ex as Error)?.message}. Try again, or check the spreadsheet is shared with the connected account.` });
+          }
+        }
+        if (tn === "export_to_sheet") {
+          const dataType = String(args.data_type || "stock").toLowerCase();
+          const validTypes = ["stock", "customers", "sales"];
+          if (!validTypes.includes(dataType)) {
+            return json({ reply: "I can export **stock**, **customers**, or **sales**. Which one?" });
+          }
+          return json({ reply: `I'll export your **${dataType}** to Google Sheets\n\nTap **Export it** to proceed.`, pending: { type: "export_to_sheet", input: { data_type: dataType }, preview: { data_type: dataType } } });
         }
       }
       return json({ reply: tr.value.text || "How can I help?" });

@@ -100,3 +100,83 @@ export async function fetchSheet(accessToken: string, spreadsheetId: string, ran
     return obj;
   });
 }
+
+// ─── SHEETS WRITE ──────────────────────────────────────────────────
+// Requires the full "spreadsheets" scope (not readonly) — the OAuth flow
+// now requests it. Existing users must reconnect once to get write access.
+
+/** Append rows to a Google Sheet (values are appended after the last row). */
+export async function appendSheetRows(
+  accessToken: string,
+  spreadsheetId: string,
+  range: string,
+  rows: (string | number)[][],
+): Promise<{ ok: boolean; updatedCells: number; error?: string }> {
+  try {
+    const res = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ values: rows }),
+      },
+    );
+    if (!res.ok) {
+      const err = await res.text();
+      return { ok: false, updatedCells: 0, error: err.slice(0, 300) };
+    }
+    const data = await res.json();
+    return { ok: true, updatedCells: data?.updates?.updatedCells || rows.flat().length };
+  } catch (err) {
+    return { ok: false, updatedCells: 0, error: (err as Error)?.message || "network error" };
+  }
+}
+
+/** Create a new Google Spreadsheet and return its ID + URL. */
+export async function createSpreadsheet(
+  accessToken: string,
+  title: string,
+): Promise<{ ok: boolean; spreadsheetId?: string; url?: string; error?: string }> {
+  try {
+    const res = await fetch("https://sheets.googleapis.com/v4/spreadsheets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ properties: { title } }),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      return { ok: false, error: err.slice(0, 300) };
+    }
+    const data = await res.json();
+    return { ok: true, spreadsheetId: data?.spreadsheetId, url: data?.spreadsheetUrl };
+  } catch (err) {
+    return { ok: false, error: (err as Error)?.message || "network error" };
+  }
+}
+
+/** Write (overwrite) a range in a Google Sheet. */
+export async function writeSheetRange(
+  accessToken: string,
+  spreadsheetId: string,
+  range: string,
+  rows: (string | number)[][],
+): Promise<{ ok: boolean; updatedCells: number; error?: string }> {
+  try {
+    const res = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ values: rows }),
+      },
+    );
+    if (!res.ok) {
+      const err = await res.text();
+      return { ok: false, updatedCells: 0, error: err.slice(0, 300) };
+    }
+    const data = await res.json();
+    return { ok: true, updatedCells: data?.updatedCells || rows.flat().length };
+  } catch (err) {
+    return { ok: false, updatedCells: 0, error: (err as Error)?.message || "network error" };
+  }
+}
