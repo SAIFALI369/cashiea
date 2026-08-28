@@ -47,13 +47,13 @@ const Slot = ({ item }: { item: Item }) => (
 export default function BottomNav({ onMore }: { onMore: () => void }) {
   const location = useLocation()
   const pageContext = (() => { const c = getPageContext(location.pathname); return c ? { name: c.name, description: c.description } : undefined })()
-  const { speak, stopSpeaking, speaking, startListening, stopListening, listening } = useSpeech()
+  const { speak, stopSpeaking, speaking, startListening, stopListening, listening, transcribing } = useSpeech()
   const [voiceActive, setVoiceActive] = useState(false)
   const [voiceLoading, setVoiceLoading] = useState(false)
   const [voiceReply, setVoiceReply] = useState('')
 
-  const avatarState = deriveAvatarState({ listening, loading: voiceLoading, speaking })
-  const statusText = listening ? 'Listening…' : voiceLoading ? 'Thinking…' : speaking ? 'Speaking…' : ''
+  const avatarState = deriveAvatarState({ listening, loading: voiceLoading || transcribing, speaking })
+  const statusText = listening ? 'Listening…' : transcribing ? 'Transcribing…' : voiceLoading ? 'Thinking…' : speaking ? 'Speaking…' : ''
 
   const startVoice = async () => {
     if (!navigator.onLine) {

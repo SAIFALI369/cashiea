@@ -7,7 +7,7 @@ import { askAssistant } from '../lib/ai'
 import { MerajMark } from '../components/MerajMark'
 import { useAuth } from '../context/AuthContext'
 import { MerajAvatar, deriveAvatarState } from '../components/MerajAvatar'
-import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft, Plus, MessageCircle, Zap, Wallet, Package, TrendingUp, Receipt, FileText, MessageSquareText, BarChart3 } from 'lucide-react'
+import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft, Plus, MessageCircle, Zap, Wallet, Package, TrendingUp, Receipt, FileText, MessageSquareText, BarChart3, Download, Pencil } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { formatINR } from '../lib/format'
 import toast from 'react-hot-toast'
@@ -56,6 +56,148 @@ function TypewriterMessage({ text, onDone }: { text: string; onDone: () => void 
     return () => clearInterval(id)
   }, [text])
   return <span dangerouslySetInnerHTML={{ __html: render(text.slice(0, count)) + '\u258c' }} />
+}
+
+// ── GeneratedImage: renders an AI-generated image with proper loading state ──
+// Shows "Generating your image..." (blinking) while the Pollination URL
+// generates the image (5-15s), then displays it. Tap to open full screen
+// with download / edit / regenerate controls.
+function GeneratedImage({ img, onRegenerate }: { img: { url: string; prompt: string; width: number; height: number }; onRegenerate?: (newPrompt: string) => void }) {
+  const [loaded, setLoaded] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const [fullscreen, setFullscreen] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editText, setEditText] = useState('')
+
+  if (failed) {
+    return (
+      <div className="mt-3 rounded-card border border-negative/30 bg-negative/[0.04] p-6 text-center">
+        <p className="text-sm text-negative font-semibold">Image failed to generate</p>
+        <p className="text-xs text-fg-muted mt-1">The image service was busy. Try asking Meraj again.</p>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <div className="mt-3 rounded-card border border-line overflow-hidden shadow-soft">
+        {!loaded ? (
+          <div className="flex flex-col items-center justify-center py-16 bg-surface-2">
+            <motion.div
+              animate={{ opacity: [0.4, 1, 0.4] }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+              className="flex flex-col items-center gap-3"
+            >
+              <Loader2 className="w-8 h-8 animate-spin text-accent" />
+              <p className="text-sm font-semibold text-accent">Generating your image…</p>
+              <p className="text-xs text-fg-subtle">{img.width}×{img.height} · AI is drawing</p>
+            </motion.div>
+          </div>
+        ) : null}
+        <button
+          onClick={() => loaded && setFullscreen(true)}
+          className={`block w-full ${!loaded ? 'hidden' : ''}`}
+        >
+          <img
+            src={img.url}
+            alt={img.prompt}
+            className="w-full max-h-[400px] object-contain bg-surface-2"
+            onLoad={() => setLoaded(true)}
+            onError={() => setFailed(true)}
+          />
+        </button>
+        {loaded && (
+          <div className="flex items-center justify-between px-3 py-2 bg-surface border-t border-line">
+            <p className="text-xs text-fg-subtle truncate flex-1">{img.prompt.slice(0, 50)}</p>
+            <span className="text-[10px] font-semibold text-accent">{img.width}×{img.height}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Full-screen viewer with download / edit / regenerate */}
+      {fullscreen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-50 bg-black/90 flex flex-col"
+          onClick={() => { setFullscreen(false); setEditing(false) }}
+        >
+          {/* Top bar: close · download · edit */}
+          <div className="flex items-center justify-between px-4 py-3 safe-area-pt" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => { setFullscreen(false); setEditing(false) }} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white">
+              <X className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-2">
+              <a
+                href={img.url}
+                download
+                target="_blank"
+                rel="noreferrer"
+                className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+                aria-label="Download image"
+              >
+                <Download className="w-5 h-5" />
+              </a>
+              <button
+                onClick={() => { setEditing(!editing); setEditText(editText || img.prompt) }}
+                className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors"
+                aria-label="Edit image"
+              >
+                <Pencil className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Image */}
+          <div className="flex-1 flex items-center justify-center overflow-hidden px-4" onClick={() => setFullscreen(false)}>
+            <img src={img.url} alt={img.prompt} className="max-w-full max-h-full object-contain rounded-lg" />
+          </div>
+
+          {/* Edit panel */}
+          {editing && (
+            <motion.div
+              initial={{ y: 100 }}
+              animate={{ y: 0 }}
+              className="bg-surface border-t border-line p-4 safe-area-pb"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-xs font-semibold text-fg mb-2">Describe what to change:</p>
+              <div className="flex items-center gap-2">
+                <input
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  placeholder="e.g., make it brighter, add text '50% OFF'…"
+                  className="flex-1 rounded-control border border-line bg-paper px-3 py-2.5 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-accent/50"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && editText.trim() && onRegenerate) {
+                      onRegenerate(editText.trim())
+                      setFullscreen(false)
+                      setEditing(false)
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    if (editText.trim() && onRegenerate) {
+                      onRegenerate(editText.trim())
+                      setFullscreen(false)
+                      setEditing(false)
+                    }
+                  }}
+                  className="w-11 h-11 rounded-control bg-fg text-paper flex items-center justify-center flex-shrink-0 hover:opacity-90 transition-opacity"
+                  aria-label="Regenerate with changes"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-[10px] text-fg-subtle mt-2">Tap send to regenerate with your changes combined with the original prompt.</p>
+            </motion.div>
+          )}
+        </motion.div>
+      )}
+    </>
+  )
 }
 
 /* ── SmartReply: renders Meraj's markdown as visual components ──────────────
@@ -567,17 +709,11 @@ export default function AIAssistant() {
                   {m.images && m.images.length > 0 && (
                     <div className="mt-3 space-y-3">
                       {m.images.map((img, j) => (
-                        <div key={j} className="rounded-card border border-line overflow-hidden shadow-soft">
-                          <a href={img.url} target="_blank" rel="noreferrer" className="block">
-                            <img src={img.url} alt={img.prompt} className="w-full max-h-96 object-contain bg-surface-2" loading="lazy" />
-                          </a>
-                          <div className="flex items-center justify-between px-3 py-2 bg-surface border-t border-line">
-                            <p className="text-xs text-fg-subtle truncate flex-1">{img.prompt.slice(0, 60)}</p>
-                            <a href={img.url} target="_blank" rel="noreferrer" download className="text-xs font-semibold text-accent hover:text-accent-strong transition-colors ml-2 flex-shrink-0">
-                              Open / Save
-                            </a>
-                          </div>
-                        </div>
+                        <GeneratedImage
+                          key={j}
+                          img={img}
+                          onRegenerate={(newPrompt) => { setMode('task'); send(`Generate an image: ${newPrompt}`) }}
+                        />
                       ))}
                     </div>
                   )}

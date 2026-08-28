@@ -13,6 +13,7 @@ import { motion } from './motion'
 import Skeleton from './ui/Skeleton'
 import { Avatar } from './Avatar'
 import { useAuth } from '../context/AuthContext'
+import { getPageContext } from '../lib/pageContext'
 import { Menu, Settings } from 'lucide-react'
 
 export default function AppLayout() {
@@ -37,6 +38,14 @@ export default function AppLayout() {
     return () => { window.removeEventListener('scroll', reset); window.removeEventListener('touchstart', reset); clearTimeout(fadeTimer.current) }
   }, [isAssistant])
 
+  // ── Page name for the header (replaces 'Cashiea' on non-dashboard pages) ──
+  const pageHeaderName = (() => {
+    const path = location.pathname
+    if (path === '/app' || path === '/app/assistant' || path === '/app/onboarding') return 'Cashiea'
+    const ctx = getPageContext(path)
+    return ctx?.name || 'Cashiea'
+  })()
+
   return (
     // Assistant: definite viewport height so its message list scrolls on mobile.
     <div className={isAssistant ? 'h-dvh flex overflow-hidden bg-slate-950' : 'min-h-screen flex bg-slate-950'}>
@@ -51,7 +60,7 @@ export default function AppLayout() {
             <Menu className="w-6 h-6" />
           </button>
           <div style={{ opacity: hdrOpacity, transition: 'opacity 0.4s ease' }} className="flex-1 min-w-0">
-            <span className="font-bold text-white">Cashiea</span>
+            <span className="font-bold text-white">{pageHeaderName}</span>
           </div>
           <QueueBadge />
           <LiveClock />

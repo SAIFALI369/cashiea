@@ -55,6 +55,7 @@ function pickBestVoice(): SpeechSynthesisVoice | null {
 export function useSpeech() {
   const [speaking, setSpeaking] = useState(false)
   const [listening, setListening] = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
 
   const ttsSupported = typeof window !== 'undefined' && 'speechSynthesis' in window
   // MediaRecorder works on ALL modern browsers (unlike SpeechRecognition)
@@ -131,6 +132,7 @@ export function useSpeech() {
     try { mediaRecorderRef.current?.stop() } catch { /* ignore */ }
     cleanupStream()
     setListening(false)
+    setTranscribing(false)
   }, [cleanupStream])
 
   /**
@@ -178,7 +180,10 @@ export function useSpeech() {
         recorder.onstop = async () => {
           cleanupStream()
           setListening(false)
-          if (cancelledRef.current) return
+          // IMMEDIATELY show "Transcribing…" — the user stopped talking and
+          // deserves feedback within 200ms, not 2-4s later when Whisper returns
+          setTranscribing(true)
+          if (cancelledRef.current) { setTranscribing(false); return }
 
           // 3) Assemble the audio blob
           const audioBlob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' })
@@ -215,9 +220,11 @@ export function useSpeech() {
               return
             }
             const text = (data.text || '').trim()
+            setTranscribing(false)
             if (text) onResult(text)
             else onError?.("I couldn't hear that clearly — try again.")
           } catch (err) {
+            setTranscribing(false)
             onError?.(err instanceof Error ? err.message : 'Speech processing failed.')
           }
         }
@@ -263,6 +270,7 @@ export function useSpeech() {
     startListening,
     stopListening,
     listening,
+    transcribing,
     sttSupported,
     ttsSupported,
   }
