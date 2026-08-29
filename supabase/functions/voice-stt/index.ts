@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
 
     // ── Get the audio ──
     const body = await req.json();
-    const { audio, mimeType } = body;
+    const { audio, mimeType, language } = body;
     if (!audio) return json({ error: "audio (base64) required" }, 400);
 
     // Decode base64 → binary
@@ -44,8 +44,12 @@ Deno.serve(async (req) => {
     formData.append("file", audioBlob, "speech.webm");
     formData.append("model", "whisper-large-v3-turbo");
     formData.append("response_format", "json");
-    // Language hint: auto-detect (Whisper handles Hinglish/Hindi/English natively)
-    // formData.append("language", "hi"); // uncomment to force Hindi
+    // Language: auto-detect handles Hindi + English + Hinglish mixed natively.
+    // Only force a language if the user explicitly chose one.
+    const requestedLang = body.language;
+    if (requestedLang && requestedLang !== "auto") {
+      formData.append("language", requestedLang);
+    }
 
     const res = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
       method: "POST",

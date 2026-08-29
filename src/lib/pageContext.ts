@@ -28,6 +28,10 @@ const PAGE_CONTEXT: Record<string, PageContextInfo> = {
     name: 'Suppliers',
     description: 'your suppliers / vendors — their names and any outstanding amounts you owe them',
   },
+  '/app/khata': {
+    name: 'Khata',
+    description: 'your digital udhaar book — credit given to customers, pending amounts, collection history',
+  },
   '/app/invoices': {
     name: 'Receipts & Invoices',
     description: 'your bills and GST invoices — invoice numbers, customer names, line items, totals, tax, discount, and status (draft / paid)',

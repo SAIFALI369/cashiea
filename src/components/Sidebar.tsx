@@ -5,10 +5,12 @@ import { supabase } from '../lib/supabase'
 import clsx from 'clsx'
 import ThemeToggle from './ThemeToggle'
 import { Avatar } from './Avatar'
-import { CashieaLogo } from './CashieaLogo'
-import { usePendingApprovals } from '../lib/approvals'
 import {
-  LayoutDashboard, ShoppingCart, Receipt, FileSignature, Users, Truck,
+  CashieaLogo } from './CashieaLogo'
+import {
+  usePendingApprovals } from '../lib/approvals'
+import {
+  LayoutDashboard, BookOpen, ShoppingCart, Receipt, FileSignature, Users, Truck,
   Sparkles, ListChecks, FileBarChart, MessageCircle, Mail, ScrollText, Database,
   Package, Wallet, History, AlertOctagon, UsersRound,
   Settings as SettingsIcon, Plug, Key, CreditCard, Network, Shield, LifeBuoy,
@@ -25,6 +27,7 @@ const CORE: Section[] = [
   { label: 'Sell', items: [
     { to: '/app/pos', label: 'New Sale', icon: ShoppingCart },
     { to: '/app/invoices', label: 'Bills', icon: Receipt },
+    { to: '/app/khata', label: 'Khata', icon: BookOpen },
     { to: '/app/quotations', label: 'Quotations', icon: FileSignature },
   ]},
   { label: 'Shop', items: [

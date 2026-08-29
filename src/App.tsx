@@ -13,6 +13,7 @@ const Landing = lazy(() => import('./pages/Landing'))
 const Login = lazy(() => import('./pages/auth/Login'))
 const Signup = lazy(() => import('./pages/auth/Signup'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Khata = lazy(() => import('./pages/Khata'))
 const Invoices = lazy(() => import('./pages/Invoices'))
 const Reports = lazy(() => import('./pages/Reports'))
 const DataEntryPage = lazy(() => import('./pages/DataEntry'))
@@ -101,6 +102,7 @@ function App() {
           <Route path="integrations" element={<Integrations />} />
           <Route path="connect-apps" element={<ConnectApps />} />
           <Route path="invoices" element={<Invoices />} />
+          <Route path="khata" element={<Khata />} />
           <Route path="reports" element={<Reports />} />
           <Route path="data-entry" element={<DataEntryPage />} />
           <Route path="summaries" element={<Summaries />} />
