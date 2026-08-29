@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { DropZone } from '../components/DropZone'
 import { useSearchParams, Link } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
@@ -749,7 +750,24 @@ export default function AIAssistant() {
         </div>
       </div>
 
-      {/* ── Floating input bar ── */}
+      {/* ── Floating input bar — accepts drag-and-drop images ── */}
+      <DropZone
+        onFile={async (file: File) => {
+          if (!file.type.startsWith('image/')) return
+          try {
+            const dataUrl = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = rej; r.readAsDataURL(file) })
+            const img = await new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataUrl })
+            const maxSize = 1024; const scale = Math.min(1, maxSize / Math.max(img.width, img.height))
+            const canvas = document.createElement('canvas'); canvas.width = img.width * scale; canvas.height = img.height * scale
+            canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
+            const resized = canvas.toDataURL('image/jpeg', 0.8)
+            setPendingImage({ data: resized.split(',')[1], mimeType: 'image/jpeg', preview: resized })
+            toast.success('Image attached — send it to Meraj.')
+          } catch { toast.error('Could not process the image.') }
+        }}
+        accept="image/*"
+        label="Drop image here"
+      >
       <div className="px-3 pb-3 pt-1 bg-gradient-to-t from-surface via-surface to-transparent">
         {pendingImage && (
           <div className="flex items-center gap-2 px-1 pb-2">
@@ -794,6 +812,8 @@ export default function AIAssistant() {
           </button>
         </div>
       </div>
+
+      </DropZone>
 
       {/* History sheet — last 5 conversations */}
       <AnimatePresence>

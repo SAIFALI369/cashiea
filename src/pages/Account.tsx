@@ -1,3 +1,4 @@
+import { DropZone } from '../components/DropZone'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -156,7 +157,12 @@ export default function Account() {
       <div className="card p-5 sm:p-6 mb-5">
         <div className="flex items-center gap-5">
           <div className="relative flex-shrink-0">
-            <Avatar url={profile?.avatar_url} name={displayName} size={88} />
+            <DropZone onFile={(f) => {
+              const fakeEvent = { target: { files: [f], value: '' } } as any
+              onFile(fakeEvent)
+            }} accept="image/*" label="Drop photo" className="rounded-full">
+              <Avatar url={profile?.avatar_url} name={displayName} size={88} />
+            </DropZone>
             {(
               <button
                 onClick={onPickFile}

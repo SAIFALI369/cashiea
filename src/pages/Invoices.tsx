@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -10,9 +11,11 @@ import {
 import { generateInvoicePdf } from '../lib/invoice-pdf'
 import type { Invoice, InvoiceItem } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
+import { ContextMenu, useContextMenu, type ContextMenuItem } from '../components/ContextMenu'
+import { SwipeActions } from '../components/SwipeToDelete'
 import EmptyState from '../components/ui/EmptyState'
 import { Avatar } from '../components/Avatar'
-import { FileText, Sparkles, Loader2, Trash2, Plus, Smartphone, MessageCircle, Send, QrCode, Check, Clock, Copy, Zap, X, Download, FileDown } from 'lucide-react'
+import { FileText, Sparkles, Loader2, Trash2, Plus, Smartphone, MessageCircle, Send, QrCode, Check, Clock, Copy, Zap, X, Download, FileDown , Pencil, CheckCircle2, CheckSquare, Square} from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const statusColor: Record<string, string> = {
@@ -33,6 +36,9 @@ export default function Invoices() {
   const [showForm, setShowForm] = useState(false)
   const [shareInv, setShareInv] = useState<Invoice | null>(null)
   const [statusFilter, setStatusFilter] = useState<'all' | 'unpaid' | 'paid' | 'overdue'>('all')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [lastClickedId, setLastClickedId] = useState<string | null>(null)
+  const { menu, onContextMenu, close: closeMenu, isOpen: menuOpen } = useContextMenu()
 
   useEffect(() => { loadInvoices() }, [])
 
@@ -139,9 +145,40 @@ export default function Invoices() {
     }).eq('id', inv.id)
     if (!error) {
       setInvoices(invoices.map((i) => i.id === inv.id ? { ...i, status: 'paid', paid_at: new Date().toISOString() } : i))
-      toast.success('Marked as paid ✅')
     }
   }
+
+  // ── Multi-select: click selects, Shift+click selects a range ──
+  const handleInvoiceClick = (e: React.MouseEvent, invId: string) => {
+    if (e.shiftKey && lastClickedId) {
+      const ids = filteredInvoices.map((i) => i.id)
+      const start = ids.indexOf(lastClickedId)
+      const end = ids.indexOf(invId)
+      if (start !== -1 && end !== -1) {
+        const range = ids.slice(Math.min(start, end), Math.max(start, end) + 1)
+        setSelectedIds((prev) => {
+          const next = new Set(prev)
+          range.forEach((id) => next.add(id))
+          return next
+        })
+      }
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        if (next.has(invId)) next.delete(invId)
+        else next.add(invId)
+        return next
+      })
+    }
+    setLastClickedId(invId)
+  }
+
+  const clearSelection = () => { setSelectedIds(new Set()); setLastClickedId(null) }
+
+  const getBulkMenuItems = (): ContextMenuItem[] => [
+    { label: `Mark ${selectedIds.size} as paid`, icon: <CheckCircle2 className="w-4 h-4" />, onClick: () => { selectedIds.forEach((id) => { const inv = invoices.find((i) => i.id === id); if (inv) markPaid(inv) }); clearSelection() } },
+    { label: 'Clear selection', icon: <X className="w-4 h-4" />, onClick: clearSelection },
+  ]
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from('invoices').delete().eq('id', id)
@@ -261,10 +298,27 @@ export default function Invoices() {
             {filteredInvoices.length === 0 ? (
               <p className="text-sm text-fg-muted text-center py-10">No {statusFilter} invoices.</p>
             ) : filteredInvoices.map((inv) => (
-              <div key={inv.id} className="card p-4">
+              <SwipeActions
+                key={inv.id}
+                actions={[
+                  { icon: <CheckCircle2 className="w-4 h-4" />, label: 'Paid', color: 'bg-positive', onClick: () => markPaid(inv) },
+                  { icon: <Trash2 className="w-4 h-4" />, label: 'Delete', color: 'bg-negative', onClick: () => handleDelete(inv.id) },
+                ]}
+              >
+              <div
+                key={inv.id}
+                className={`card p-4 cursor-pointer transition-colors ${selectedIds.has(inv.id) ? 'border-accent bg-accent-soft/30' : ''}`}
+                onClick={(e) => handleInvoiceClick(e, inv.id)}
+                onContextMenu={(e) => { e.preventDefault(); onContextMenu(e) }}
+              >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0 flex items-start gap-2.5">
-                    <Avatar name={inv.client_name} size={32} className="mt-0.5 flex-shrink-0" />
+                    {selectedIds.size > 0 && (
+                    <span className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-1 ${selectedIds.has(inv.id) ? 'bg-accent border-accent' : 'border-line'}`}>
+                      {selectedIds.has(inv.id) && <CheckCircle2 className="w-3 h-3 text-accent-fg" />}
+                    </span>
+                  )}
+                  <Avatar name={inv.client_name} size={32} className="mt-0.5 flex-shrink-0" />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-bold text-white">{inv.invoice_number}</h3>
@@ -303,6 +357,7 @@ export default function Invoices() {
                 <button onClick={() => handleDelete(inv.id)} className="btn-ghost text-xs text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
               </div>
+            </SwipeActions>
             ))}
           </div>
         </>
@@ -346,10 +401,37 @@ export default function Invoices() {
           </div>
         </div>
       )}
+
+      {/* Bulk action bar — shows when items are selected */}
+      {selectedIds.size > 0 && (
+        <motion.div
+          initial={{ y: 100 }}
+          animate={{ y: 0 }}
+          className="fixed bottom-24 lg:bottom-8 inset-x-4 lg:left-72 lg:right-8 z-30"
+        >
+          <div className="card p-3 flex items-center gap-3 shadow-float">
+            <span className="text-sm font-bold text-fg">{selectedIds.size} selected</span>
+            <button onClick={() => { selectedIds.forEach((id) => { const inv = invoices.find((i) => i.id === id); if (inv) markPaid(inv) }); clearSelection() }} className="btn-primary text-xs h-8 px-3">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Mark Paid
+            </button>
+            <button onClick={clearSelection} className="btn-secondary text-xs h-8 px-3">
+              <X className="w-3.5 h-3.5" /> Clear
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Right-click context menu */}
+      <ContextMenu
+        open={menuOpen}
+        x={menu?.x}
+        y={menu?.y}
+        onClose={closeMenu}
+        items={getBulkMenuItems()}
+      />
     </div>
   )
 }
-
 
 // Client-side UPI QR code — generates locally, no external service
 function UpiQrCode({ params }: { params: any }) {
