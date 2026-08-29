@@ -5,9 +5,11 @@ import { createClient } from '@supabase/supabase-js'
 // CI/Vercel env vars (which were previously stuck on the abandoned old
 // project with dead Auth). The anon key is public-safe (RLS-protected).
 // To switch projects later, change these two constants.
-const SUPABASE_URL = 'https://prwvaetatdidsugczluv.supabase.co'
-const SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByd3ZhZXRhdGRpZHN1Z2N6bHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NDUzNTgsImV4cCI6MjEwMTQyMTM1OH0.OasYlwTZh-Uvpv69hbfTq60VPtj6DN2OFQIj1GPlc30'
+// Environment variables first (enables self-hosting + key rotation).
+// Falls back to the production project so existing deployments keep working.
+// The anon key is public-safe (protected by Row Level Security).
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://prwvaetatdidsugczluv.supabase.co'
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByd3ZhZXRhdGRpZHN1Z2N6bHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NDUzNTgsImV4cCI6MjEwMTQyMTM1OH0.OasYlwTZh-Uvpv69hbfTq60VPtj6DN2OFQIj1GPlc30'
 
 export const supabaseConfigured = true
 

@@ -66,7 +66,7 @@ export default function ApiKeys() {
 
   const loadKeys = async () => {
     setLoading(true)
-    const { data } = await supabase.from('api_keys').select('*').order('created_at', { ascending: false })
+    const { data } = await supabase.from('api_keys').select('*').eq('user_id', ownerId).order('created_at', { ascending: false })
     setKeys((data as ApiKey[]) || [])
     setLoading(false)
   }
@@ -94,7 +94,7 @@ export default function ApiKeys() {
 
   const handleDelete = async (id: string) => {
     if (confirmRevoke !== id) { setConfirmRevoke(id); return } // two-tap confirm
-    const { error } = await supabase.from('api_keys').delete().eq('id', id)
+    const { error } = await supabase.from('api_keys').delete().eq('id', id).eq('user_id', ownerId)
     if (!error) {
       setKeys(keys.filter((k) => k.id !== id))
       setConfirmRevoke(null)

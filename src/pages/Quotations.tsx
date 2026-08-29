@@ -90,7 +90,7 @@ export default function Quotations() {
     if (!error) { setQuotes(quotes.filter((q) => q.id !== id)); toast.success('Deleted') }
   }
 
-  const statusColor: Record<string, string> = { sent: 'bg-blue-500/15 text-blue-400', accepted: 'bg-green-500/15 text-green-400', converted: 'bg-purple-500/15 text-purple-400', rejected: 'bg-red-500/15 text-red-400', draft: 'bg-slate-700 text-slate-400', expired: 'bg-slate-700 text-slate-400' }
+  const statusColor: Record<string, string> = { sent: 'bg-blue-500/15 text-blue-400', accepted: 'bg-green-500/15 text-green-400', converted: 'bg-purple-500/15 text-purple-400', rejected: 'bg-red-500/15 text-red-400', draft: 'bg-surface-3 text-fg-muted', expired: 'bg-surface-3 text-fg-muted' }
 
   return (
     <div className="animate-fade-in">
@@ -99,7 +99,7 @@ export default function Quotations() {
       {showForm && (
         <div className="card p-4 mb-6 animate-slide-up">
           <div className="grid sm:grid-cols-2 gap-4 mb-4">
-            <div><label className="label">Customer</label><select value={form.customer_id} onChange={(e) => selectCustomer(e.target.value)} className="input-field"><option value="">Walk-in / type name</option>{customers.map((c) => <option key={c.id} value={c.id} className="bg-slate-900">{c.name}</option>)}</select></div>
+            <div><label className="label">Customer</label><select value={form.customer_id} onChange={(e) => selectCustomer(e.target.value)} className="input-field"><option value="">Walk-in / type name</option>{customers.map((c) => <option key={c.id} value={c.id} className="bg-surface">{c.name}</option>)}</select></div>
             <div><label className="label">Or customer name</label><input value={form.customer_name} onChange={(e) => setForm({ ...form, customer_name: e.target.value })} className="input-field" placeholder="Customer name" /></div>
             <div><label className="label">Tax %</label><input type="number" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: e.target.value })} className="input-field" placeholder="18" /></div>
             <div><label className="label">Valid until</label><input type="date" value={form.valid_until} onChange={(e) => setForm({ ...form, valid_until: e.target.value })} className="input-field" /></div>
@@ -114,10 +114,10 @@ export default function Quotations() {
             </div>
           ))}
           <button onClick={addItem} className="btn-ghost text-xs"><Plus className="w-3.5 h-3.5" /> Add item</button>
-          <div className="space-y-1 mt-3 border-t border-slate-800 pt-3 text-sm">
-            <div className="flex justify-between text-slate-400"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
-            <div className="flex justify-between text-slate-400"><span>Tax</span><span>₹{taxAmount.toFixed(2)}</span></div>
-            <div className="flex justify-between text-lg font-bold text-white"><span>Total</span><span>₹{total.toFixed(2)}</span></div>
+          <div className="space-y-1 mt-3 border-t border-line pt-3 text-sm">
+            <div className="flex justify-between text-fg-muted"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
+            <div className="flex justify-between text-fg-muted"><span>Tax</span><span>₹{taxAmount.toFixed(2)}</span></div>
+            <div className="flex justify-between text-lg font-bold text-fg"><span>Total</span><span>₹{total.toFixed(2)}</span></div>
           </div>
           <div className="flex justify-end gap-3 mt-3"><button onClick={() => setShowForm(false)} className="btn-secondary text-sm">Cancel</button><button onClick={create} className="btn-primary text-sm">Create Quotation</button></div>
         </div>
@@ -138,13 +138,13 @@ export default function Quotations() {
           {quotes.map((q) => (
             <div key={q.id} className="card p-4 flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <div className="flex items-center gap-2"><span className="font-mono text-sm text-white">{q.quote_number}</span><span className={`text-xs px-2 py-0.5 rounded-full ${statusColor[q.status]}`}>{q.status}</span></div>
-                <p className="text-xs text-slate-500 mt-0.5">{q.customer_name} · {q.items?.length || 0} items · {new Date(q.created_at).toLocaleDateString()}</p>
+                <div className="flex items-center gap-2"><span className="font-mono text-sm text-fg">{q.quote_number}</span><span className={`text-xs px-2 py-0.5 rounded-full ${statusColor[q.status]}`}>{q.status}</span></div>
+                <p className="text-xs text-fg-subtle mt-0.5">{q.customer_name} · {q.items?.length || 0} items · {new Date(q.created_at).toLocaleDateString()}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                <span className="font-semibold text-white">{formatINR(Number(q.total), 0)}</span>
+                <span className="font-semibold text-fg">{formatINR(Number(q.total), 0)}</span>
                 {(q.status === 'sent' || q.status === 'accepted') && <button onClick={() => convertToInvoice(q)} className="btn-primary text-xs whitespace-nowrap">Convert <ArrowRight className="w-3 h-3" /></button>}
-                <button onClick={() => del(q.id)} className="text-slate-500 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
+                <button onClick={() => del(q.id)} className="text-fg-subtle hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
               </div>
             </div>
           ))}

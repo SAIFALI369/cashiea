@@ -11,11 +11,11 @@ export default function EmptyState({
 }) {
   return (
     <div className="card p-12 text-center animate-fade-in">
-      <div className="w-16 h-16 rounded-xl bg-slate-800 flex items-center justify-center mx-auto mb-4">
-        <Icon className="w-8 h-8 text-slate-500" />
+      <div className="w-16 h-16 rounded-xl bg-surface-2 flex items-center justify-center mx-auto mb-4">
+        <Icon className="w-8 h-8 text-fg-subtle" />
       </div>
-      <h3 className="text-lg font-semibold text-white mb-1">{title}</h3>
-      <p className="text-sm text-slate-400 max-w-sm mx-auto">{description}</p>
+      <h3 className="text-lg font-semibold text-fg mb-1">{title}</h3>
+      <p className="text-sm text-fg-muted max-w-sm mx-auto">{description}</p>
     </div>
   )
 }

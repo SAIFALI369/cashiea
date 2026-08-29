@@ -100,8 +100,8 @@ export default function Suppliers() {
       />
 
       <div className="flex gap-2 mb-4">
-        <button onClick={() => setTab('suppliers')} className={`flex-1 p-2.5 rounded-xl border text-sm font-medium ${tab === 'suppliers' ? 'border-brand-600 bg-brand-600/15 text-white' : 'border-slate-700 text-slate-400'}`}>Suppliers ({suppliers.length})</button>
-        <button onClick={() => setTab('orders')} className={`flex-1 p-2.5 rounded-xl border text-sm font-medium ${tab === 'orders' ? 'border-brand-600 bg-brand-600/15 text-white' : 'border-slate-700 text-slate-400'}`}>Purchase Orders ({pos.length})</button>
+        <button onClick={() => setTab('suppliers')} className={`flex-1 p-2.5 rounded-xl border text-sm font-medium ${tab === 'suppliers' ? 'border-brand-600 bg-brand-600/15 text-fg' : 'border-line text-fg-muted'}`}>Suppliers ({suppliers.length})</button>
+        <button onClick={() => setTab('orders')} className={`flex-1 p-2.5 rounded-xl border text-sm font-medium ${tab === 'orders' ? 'border-brand-600 bg-brand-600/15 text-fg' : 'border-line text-fg-muted'}`}>Purchase Orders ({pos.length})</button>
       </div>
 
       {loading ? (
@@ -129,12 +129,12 @@ export default function Suppliers() {
                 <div key={s.id} className="card p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0"><Truck className="w-5 h-5 text-brand-400" /></div>
-                      <div className="min-w-0"><h3 className="font-semibold text-white truncate">{s.name}</h3>{s.contact_person && <p className="text-xs text-slate-500 truncate">{s.contact_person}</p>}</div>
+                      <div className="w-10 h-10 rounded-xl bg-surface-2 flex items-center justify-center flex-shrink-0"><Truck className="w-5 h-5 text-brand-400" /></div>
+                      <div className="min-w-0"><h3 className="font-semibold text-fg truncate">{s.name}</h3>{s.contact_person && <p className="text-xs text-fg-subtle truncate">{s.contact_person}</p>}</div>
                     </div>
-                    <button onClick={() => deleteSupplier(s.id)} className="text-slate-500 hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => deleteSupplier(s.id)} className="text-fg-subtle hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
                   </div>
-                  <div className="flex flex-wrap gap-3 mt-3 text-xs text-slate-400">
+                  <div className="flex flex-wrap gap-3 mt-3 text-xs text-fg-muted">
                     {s.phone && <span>{s.phone}</span>}
                     {s.email && <span className="truncate">{s.email}</span>}
                     {s.gstin && <span className="font-mono">GST: {s.gstin}</span>}
@@ -150,7 +150,7 @@ export default function Suppliers() {
           {showPO && (
             <div className="card p-4 mb-6 animate-slide-up">
               <div className="grid sm:grid-cols-2 gap-4 mb-4">
-                <div><label className="label">Supplier *</label><select value={poForm.supplier_id} onChange={(e) => setPoForm({ ...poForm, supplier_id: e.target.value })} className="input-field"><option value="">Select...</option>{suppliers.map((s) => <option key={s.id} value={s.id} className="bg-slate-900">{s.name}</option>)}</select></div>
+                <div><label className="label">Supplier *</label><select value={poForm.supplier_id} onChange={(e) => setPoForm({ ...poForm, supplier_id: e.target.value })} className="input-field"><option value="">Select...</option>{suppliers.map((s) => <option key={s.id} value={s.id} className="bg-surface">{s.name}</option>)}</select></div>
                 <div><label className="label">Expected date</label><input type="date" value={poForm.expected_date} onChange={(e) => setPoForm({ ...poForm, expected_date: e.target.value })} className="input-field" /></div>
               </div>
               <label className="label">Items</label>
@@ -163,7 +163,7 @@ export default function Suppliers() {
                 </div>
               ))}
               <button onClick={addPOItem} className="btn-ghost text-xs"><Plus className="w-3.5 h-3.5" /> Add item</button>
-              <div className="flex justify-between items-center mt-4 border-t border-slate-800 pt-3"><span className="text-sm text-slate-400">Total</span><span className="text-xl font-bold text-white">₹{poTotal.toFixed(2)}</span></div>
+              <div className="flex justify-between items-center mt-4 border-t border-line pt-3"><span className="text-sm text-fg-muted">Total</span><span className="text-xl font-bold text-fg">₹{poTotal.toFixed(2)}</span></div>
               <div className="flex justify-end gap-3 mt-3"><button onClick={() => setShowPO(false)} className="btn-secondary text-sm">Cancel</button><button onClick={createPO} className="btn-primary text-sm">Create PO</button></div>
             </div>
           )}
@@ -173,8 +173,8 @@ export default function Suppliers() {
             <div className="space-y-2">
               {pos.map((po) => (
                 <div key={po.id} className="card p-4 flex items-center justify-between">
-                  <div><div className="flex items-center gap-2"><span className="font-mono text-sm text-white">{po.po_number}</span><span className={`text-xs px-2 py-0.5 rounded-full ${po.status === 'received' ? 'bg-green-500/15 text-green-400' : po.status === 'ordered' ? 'bg-blue-500/15 text-blue-400' : 'bg-slate-700 text-slate-400'}`}>{po.status}</span></div><p className="text-xs text-slate-500 mt-0.5">{supplierName(po.supplier_id)} · {po.items?.length || 0} items · {new Date(po.created_at).toLocaleDateString()}</p></div>
-                  <div className="flex items-center gap-3"><span className="font-semibold text-white">₹{Number(po.total).toFixed(0)}</span>{po.status === 'ordered' && <button onClick={() => markReceived(po)} className="btn-secondary text-xs">Mark received</button>}</div>
+                  <div><div className="flex items-center gap-2"><span className="font-mono text-sm text-fg">{po.po_number}</span><span className={`text-xs px-2 py-0.5 rounded-full ${po.status === 'received' ? 'bg-green-500/15 text-green-400' : po.status === 'ordered' ? 'bg-blue-500/15 text-blue-400' : 'bg-surface-3 text-fg-muted'}`}>{po.status}</span></div><p className="text-xs text-fg-subtle mt-0.5">{supplierName(po.supplier_id)} · {po.items?.length || 0} items · {new Date(po.created_at).toLocaleDateString()}</p></div>
+                  <div className="flex items-center gap-3"><span className="font-semibold text-fg">₹{Number(po.total).toFixed(0)}</span>{po.status === 'ordered' && <button onClick={() => markReceived(po)} className="btn-secondary text-xs">Mark received</button>}</div>
                 </div>
               ))}
             </div>

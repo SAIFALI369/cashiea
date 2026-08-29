@@ -24,7 +24,7 @@ const statusColor: Record<string, string> = {
   viewed: 'bg-blue-500/15 text-blue-400',
   sent: 'bg-blue-500/15 text-blue-400',
   overdue: 'bg-red-500/15 text-red-400',
-  draft: 'bg-slate-700 text-slate-400',
+  draft: 'bg-surface-3 text-fg-muted',
 }
 
 export default function Invoices() {
@@ -44,7 +44,7 @@ export default function Invoices() {
 
   const loadInvoices = async () => {
     setLoading(true)
-    const { data } = await supabase.from('invoices').select('*').order('created_at', { ascending: false })
+    const { data } = await supabase.from('invoices').select('*').eq('user_id', ownerId).order('created_at', { ascending: false })
     setInvoices((data as Invoice[]) || [])
     setLoading(false)
   }
@@ -142,7 +142,7 @@ export default function Invoices() {
   const markPaid = async (inv: Invoice) => {
     const { error } = await supabase.from('invoices').update({
       status: 'paid', paid_at: new Date().toISOString(),
-    }).eq('id', inv.id)
+    }).eq('id', inv.id).eq('user_id', ownerId)
     if (!error) {
       setInvoices(invoices.map((i) => i.id === inv.id ? { ...i, status: 'paid', paid_at: new Date().toISOString() } : i))
     }
@@ -181,7 +181,7 @@ export default function Invoices() {
   ]
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from('invoices').delete().eq('id', id)
+    const { error } = await supabase.from('invoices').delete().eq('id', id).eq('user_id', ownerId)
     if (!error) { setInvoices(invoices.filter((i) => i.id !== id)); toast.success('Deleted') }
   }
 
@@ -239,9 +239,9 @@ export default function Invoices() {
       {/* Unpaid summary */}
       {invoices.length > 0 && (
         <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className="card p-5"><p className="text-xl font-bold text-amber-400">₹{unpaidTotal.toFixed(0)}</p><p className="text-xs text-slate-400">Unpaid</p></div>
-          <div className="card p-5"><p className="text-xl font-bold text-white">{unpaid.length}</p><p className="text-xs text-slate-400">Unpaid invoices</p></div>
-          <div className="card p-5"><p className="text-xl font-bold text-red-400">{overdueCount}</p><p className="text-xs text-slate-400">Overdue</p></div>
+          <div className="card p-5"><p className="text-xl font-bold text-amber-400">₹{unpaidTotal.toFixed(0)}</p><p className="text-xs text-fg-muted">Unpaid</p></div>
+          <div className="card p-5"><p className="text-xl font-bold text-fg">{unpaid.length}</p><p className="text-xs text-fg-muted">Unpaid invoices</p></div>
+          <div className="card p-5"><p className="text-xl font-bold text-red-400">{overdueCount}</p><p className="text-xs text-fg-muted">Overdue</p></div>
         </div>
       )}
 
@@ -264,7 +264,7 @@ export default function Invoices() {
       {/* Quick invoice (mobile-first) */}
       {showQuick && (
         <div className="card p-4 mb-6 animate-slide-up border-brand-700/40">
-          <h3 className="font-semibold text-white mb-3 flex items-center gap-2"><Zap className="w-4 h-4 text-amber-400" /> Quick Invoice — 30 seconds</h3>
+          <h3 className="font-semibold text-fg mb-3 flex items-center gap-2"><Zap className="w-4 h-4 text-amber-400" /> Quick Invoice — 30 seconds</h3>
           <div className="grid grid-cols-2 gap-3">
             <input value={quick.name} onChange={(e) => setQuick({ ...quick, name: e.target.value })} className="input-field col-span-2" placeholder="Customer name *" />
             <input value={quick.phone} onChange={(e) => setQuick({ ...quick, phone: e.target.value })} className="input-field" placeholder="Phone (for WhatsApp)" />
@@ -273,7 +273,7 @@ export default function Invoices() {
             <input type="number" value={quick.price} onChange={(e) => setQuick({ ...quick, price: e.target.value })} className="input-field" placeholder="Price ₹ *" />
           </div>
           <div className="flex justify-between items-center mt-3">
-            <span className="text-sm text-slate-400">Total: <span className="text-white font-bold text-lg">₹{((Number(quick.qty) || 1) * (Number(quick.price) || 0)).toFixed(0)}</span></span>
+            <span className="text-sm text-fg-muted">Total: <span className="text-fg font-bold text-lg">₹{((Number(quick.qty) || 1) * (Number(quick.price) || 0)).toFixed(0)}</span></span>
             <button onClick={handleQuickCreate} disabled={generating} className="btn-primary text-sm">
               {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Create & Share
             </button>
@@ -321,31 +321,31 @@ export default function Invoices() {
                   <Avatar name={inv.client_name} size={32} className="mt-0.5 flex-shrink-0" />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-bold text-white">{inv.invoice_number}</h3>
+                        <h3 className="font-bold text-fg">{inv.invoice_number}</h3>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor[inv.status]}`}>{inv.status}</span>
-                        {inv.reminder_count > 0 && <span className="text-xs text-slate-500">({inv.reminder_count} reminders)</span>}
+                        {inv.reminder_count > 0 && <span className="text-xs text-fg-subtle">({inv.reminder_count} reminders)</span>}
                       </div>
-                      <p className="text-slate-400 text-sm mt-0.5">{inv.client_name}{inv.client_phone && ` · ${inv.client_phone}`}</p>
+                      <p className="text-fg-muted text-sm mt-0.5">{inv.client_name}{inv.client_phone && ` · ${inv.client_phone}`}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-xl font-bold text-white">₹{inv.total.toFixed(2)}</p>
-                    {inv.due_date && <p className="text-xs text-slate-500">Due {inv.due_date}</p>}
+                    <p className="text-xl font-bold text-fg">₹{inv.total.toFixed(2)}</p>
+                    {inv.due_date && <p className="text-xs text-fg-subtle">Due {inv.due_date}</p>}
                   </div>
                 </div>
 
                 {/* Items */}
-                <div className="mt-3 border-t border-slate-800 pt-3 space-y-1">
+                <div className="mt-3 border-t border-line pt-3 space-y-1">
                   {inv.items.map((it, i) => (
                     <div key={i} className="flex justify-between text-sm">
-                      <span className="text-slate-300">{it.description} <span className="text-slate-500">× {it.quantity}</span></span>
-                      <span className="text-slate-400">₹{(it.quantity * it.unit_price).toFixed(0)}</span>
+                      <span className="text-fg-muted">{it.description} <span className="text-fg-subtle">× {it.quantity}</span></span>
+                      <span className="text-fg-muted">₹{(it.quantity * it.unit_price).toFixed(0)}</span>
                     </div>
                   ))}
                 </div>
 
               {/* Actions */}
-              <div className="flex gap-2 overflow-x-auto scroll-area pb-1 mt-3 pt-3 border-t border-slate-800 [&>button]:flex-shrink-0">
+              <div className="flex gap-2 overflow-x-auto scroll-area pb-1 mt-3 pt-3 border-t border-line [&>button]:flex-shrink-0">
                 <button onClick={() => setShareInv(inv)} className="btn-ghost text-xs"><QrCode className="w-3.5 h-3.5" /> Pay / Share</button>
                 <button onClick={() => downloadPdf(inv)} disabled={downloadingPdf === inv.id} className="btn-ghost text-xs">
                   {downloadingPdf === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />} PDF
@@ -368,8 +368,8 @@ export default function Invoices() {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setShareInv(null)}>
           <div className="card w-full max-w-sm rounded-t-2xl sm:rounded-xl p-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-white">{shareInv.invoice_number} · ₹{shareInv.total.toFixed(0)}</h3>
-              <button onClick={() => setShareInv(null)} className="text-slate-500 hover:text-white"><X className="w-5 h-5" /></button>
+              <h3 className="font-bold text-fg">{shareInv.invoice_number} · ₹{shareInv.total.toFixed(0)}</h3>
+              <button onClick={() => setShareInv(null)} className="text-fg-subtle hover:text-fg"><X className="w-5 h-5" /></button>
             </div>
 
             {upiLink(shareInv) ? (
@@ -377,7 +377,7 @@ export default function Invoices() {
                 {/* UPI QR */}
                 <div className="text-center mb-4">
                   <UpiQrCode params={upiParams(shareInv)!!} />
-                  <p className="text-xs text-slate-400 mt-2">Scan with any UPI app to pay ₹{shareInv.total}</p>
+                  <p className="text-xs text-fg-muted mt-2">Scan with any UPI app to pay ₹{shareInv.total}</p>
                 </div>
                 <a href={upiLink(shareInv)!} className="btn-primary w-full mb-2"><Smartphone className="w-4 h-4" /> Open UPI app to pay</a>
               </>
@@ -388,11 +388,11 @@ export default function Invoices() {
             )}
 
             {/* Share channels */}
-            <p className="text-xs text-slate-500 mb-2 mt-2">Send this invoice</p>
+            <p className="text-xs text-fg-subtle mb-2 mt-2">Send this invoice</p>
             <div className="grid grid-cols-4 gap-2">
               <button onClick={() => share('whatsapp', shareInv)} className="p-3 rounded-xl bg-green-500/10 text-green-400 hover:bg-green-500/20 flex flex-col items-center gap-1"><MessageCircle className="w-5 h-5" /><span className="text-xs">WhatsApp</span></button>
               <button onClick={() => share('sms', shareInv)} className="p-3 rounded-xl bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 flex flex-col items-center gap-1"><MessageCircle className="w-5 h-5" /><span className="text-xs">SMS</span></button>
-              <button onClick={() => share('copy', shareInv)} className="p-3 rounded-xl bg-slate-700/50 text-slate-300 hover:bg-slate-700 flex flex-col items-center gap-1"><Copy className="w-5 h-5" /><span className="text-xs">Copy</span></button>
+              <button onClick={() => share('copy', shareInv)} className="p-3 rounded-xl bg-surface-3/50 text-fg-muted hover:bg-surface-3 flex flex-col items-center gap-1"><Copy className="w-5 h-5" /><span className="text-xs">Copy</span></button>
               <button onClick={() => downloadPdf(shareInv)} disabled={downloadingPdf === shareInv.id} className="p-3 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 flex flex-col items-center gap-1">
                 {downloadingPdf === shareInv.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileDown className="w-5 h-5" />}
                 <span className="text-xs">PDF</span>

@@ -4,6 +4,8 @@ import { useAuth } from './context/AuthContext'
 import { supabaseConfigured } from './lib/supabase'
 import ProtectedRoute from './components/ProtectedRoute'
 import AppLayout from './components/AppLayout'
+import ErrorBoundary from './components/ErrorBoundary'
+import NotFound from './pages/NotFound'
 import SetupScreen from './components/SetupScreen'
 
 // ── Route-level code splitting: each page is its own chunk. ──
@@ -63,6 +65,7 @@ function App() {
   }
 
   return (
+    <ErrorBoundary>
     <Suspense fallback={<FullPageFallback />}>
       <Routes>
         {/* Public */}
@@ -120,9 +123,10 @@ function App() {
         </Route>
 
         {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
+    </ErrorBoundary>
   )
 }
 

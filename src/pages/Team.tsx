@@ -76,20 +76,20 @@ export default function Team() {
           <div key={r.value} className="card p-4">
             <div className="flex items-center gap-2 mb-1">
               <r.icon className={`w-5 h-5 ${r.color}`} />
-              <h3 className="font-semibold text-white text-sm">{r.label}</h3>
+              <h3 className="font-semibold text-fg text-sm">{r.label}</h3>
             </div>
-            <p className="text-xs text-slate-400">{r.desc}</p>
+            <p className="text-xs text-fg-muted">{r.desc}</p>
           </div>
         ))}
       </div>
 
       {showForm && (
         <div className="card p-4 mb-6 animate-slide-up">
-          <h3 className="font-semibold text-white mb-4">Invite a team member</h3>
+          <h3 className="font-semibold text-fg mb-4">Invite a team member</h3>
           <div className="grid sm:grid-cols-3 gap-4">
             <div><label className="label">Email *</label><input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field" placeholder="staff@shop.com" /></div>
             <div><label className="label">Name</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field" placeholder="Ramesh" /></div>
-            <div><label className="label">Role</label><select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as TeamRole })} className="input-field">{ROLES.map((r) => <option key={r.value} value={r.value} className="bg-slate-900">{r.label}</option>)}</select></div>
+            <div><label className="label">Role</label><select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as TeamRole })} className="input-field">{ROLES.map((r) => <option key={r.value} value={r.value} className="bg-surface">{r.label}</option>)}</select></div>
           </div>
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => setShowForm(false)} className="btn-secondary text-sm">Cancel</button>
@@ -107,10 +107,10 @@ export default function Team() {
           {/* Owner row */}
           <div className="card p-4 border-amber-600/30 bg-amber-600/5 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center"><Crown className="w-5 h-5 text-white" /></div>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center"><Crown className="w-5 h-5 text-fg" /></div>
               <div>
-                <p className="font-semibold text-white">{profile?.full_name} <span className="text-xs text-amber-400">(you)</span></p>
-                <p className="text-xs text-slate-500">{profile?.company_name}</p>
+                <p className="font-semibold text-fg">{profile?.full_name} <span className="text-xs text-amber-400">(you)</span></p>
+                <p className="text-xs text-fg-subtle">{profile?.company_name}</p>
               </div>
             </div>
             <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">Owner</span>
@@ -121,10 +121,10 @@ export default function Team() {
             return (
               <div key={m.id} className="card p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center flex-shrink-0"><Icon className={`w-5 h-5 ${roleColor[m.role]}`} /></div>
+                  <div className="w-10 h-10 rounded-full bg-surface-2 flex items-center justify-center flex-shrink-0"><Icon className={`w-5 h-5 ${roleColor[m.role]}`} /></div>
                   <div className="min-w-0">
-                    <p className="font-semibold text-white truncate">{m.name || m.member_email}</p>
-                    <p className="text-xs text-slate-500 truncate">{m.member_email}</p>
+                    <p className="font-semibold text-fg truncate">{m.name || m.member_email}</p>
+                    <p className="text-xs text-fg-subtle truncate">{m.member_email}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
@@ -133,7 +133,7 @@ export default function Team() {
                     m.status === 'revoked' ? 'bg-red-500/15 text-red-400' :
                     'bg-amber-500/15 text-amber-400'
                   }`}>{m.status}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 capitalize hidden sm:inline">{m.role}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-surface-3 text-fg-muted capitalize hidden sm:inline">{m.role}</span>
                   {m.status !== 'revoked'
                     ? <button onClick={() => revoke(m.id)} className="btn-ghost text-xs text-amber-400"><X className="w-3.5 h-3.5" /></button>
                     : <button onClick={() => removeMember(m.id)} className="btn-ghost text-xs text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>}

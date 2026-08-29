@@ -196,9 +196,9 @@ export default function POS() {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Product grid */}
           <div className="lg:col-span-2">
-            <div className="card p-4 sticky top-4 z-10 mb-4 bg-slate-900/80 backdrop-blur">
+            <div className="card p-4 sticky top-4 z-10 mb-4 bg-surface/80 backdrop-blur">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-fg-subtle" />
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -220,7 +220,7 @@ export default function POS() {
                     key={cat}
                     onClick={() => setActiveCategory(cat)}
                     className={`px-3 py-1 rounded-full text-xs font-medium capitalize transition-all border ${
-                      activeCategory === cat ? 'border-brand-600 bg-brand-600/20 text-brand-300' : 'border-slate-700 text-slate-400 hover:text-white'
+                      activeCategory === cat ? 'border-brand-600 bg-brand-600/20 text-brand-300' : 'border-line text-fg-muted hover:text-fg'
                     }`}
                   >
                     {cat}
@@ -238,12 +238,12 @@ export default function POS() {
                   className="card p-4 text-left hover:border-brand-600 transition-all hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed group"
                 >
                   <div className="flex items-start justify-between">
-                    <h3 className="font-semibold text-white text-sm leading-tight">{p.name}</h3>
+                    <h3 className="font-semibold text-fg text-sm leading-tight">{p.name}</h3>
                     {p.stock_quantity <= p.low_stock_threshold && (
                       <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400">{p.stock_quantity} left</span>
                     )}
                   </div>
-                  {p.sku && <p className="text-xs text-slate-500 mt-0.5">{p.sku}</p>}
+                  {p.sku && <p className="text-xs text-fg-subtle mt-0.5">{p.sku}</p>}
                   <p className="text-lg font-bold text-brand-400 mt-2">${p.price.toFixed(2)}</p>
                 </button>
               ))}
@@ -254,7 +254,7 @@ export default function POS() {
           <div className="lg:col-span-1">
             <div className="card p-5 sticky top-4">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-bold text-white flex items-center gap-2"><Receipt className="w-5 h-5 text-brand-400" /> Current Sale</h2>
+                <h2 className="font-bold text-fg flex items-center gap-2"><Receipt className="w-5 h-5 text-brand-400" /> Current Sale</h2>
                 {cart.length > 0 && (
                   <button onClick={() => setCart([])} className="text-xs text-red-400 hover:text-red-300">Clear</button>
                 )}
@@ -263,60 +263,60 @@ export default function POS() {
               {/* Customer */}
               <button
                 onClick={() => setShowCustomerPicker(true)}
-                className="w-full flex items-center gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-700 hover:border-brand-600 transition-colors text-left mb-4"
+                className="w-full flex items-center gap-2 p-2.5 rounded-xl bg-surface/60 border border-line hover:border-brand-600 transition-colors text-left mb-4"
               >
                 <UserCircle className="w-5 h-5 text-brand-400 flex-shrink-0" />
                 {selectedCustomer ? (
                   <div className="min-w-0">
-                    <p className="text-sm text-white truncate">{selectedCustomer.name}</p>
-                    <p className="text-xs text-slate-500">{selectedCustomer.total_orders} prior orders · {formatINR(selectedCustomer.total_spent, 0)} spent</p>
+                    <p className="text-sm text-fg truncate">{selectedCustomer.name}</p>
+                    <p className="text-xs text-fg-subtle">{selectedCustomer.total_orders} prior orders · {formatINR(selectedCustomer.total_spent, 0)} spent</p>
                   </div>
                 ) : (
-                  <span className="text-sm text-slate-500">Walk-in customer (optional)</span>
+                  <span className="text-sm text-fg-subtle">Walk-in customer (optional)</span>
                 )}
                 {selectedCustomer && (
-                  <X className="w-4 h-4 text-slate-500 hover:text-white ml-auto" onClick={(e) => { e.stopPropagation(); setSelectedCustomer(null) }} />
+                  <X className="w-4 h-4 text-fg-subtle hover:text-fg ml-auto" onClick={(e) => { e.stopPropagation(); setSelectedCustomer(null) }} />
                 )}
               </button>
 
               {cart.length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-8">Tap products to add them to the sale</p>
+                <p className="text-sm text-fg-subtle text-center py-8">Tap products to add them to the sale</p>
               ) : (
                 <>
                   <div className="space-y-2 max-h-64 overflow-y-auto mb-4">
                     {cart.map((line) => (
-                      <div key={line.product_id} className="flex items-center gap-2 bg-slate-900/60 rounded-lg p-2">
+                      <div key={line.product_id} className="flex items-center gap-2 bg-surface/60 rounded-lg p-2">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-white truncate">{line.name}</p>
-                          <p className="text-xs text-slate-500">{formatINR(line.unit_price)} ea</p>
+                          <p className="text-sm text-fg truncate">{line.name}</p>
+                          <p className="text-xs text-fg-subtle">{formatINR(line.unit_price)} ea</p>
                         </div>
                         <div className="flex items-center gap-1">
-                          <button onClick={() => changeQty(line.product_id, -1)} className="w-11 h-11 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center active:scale-95 transition-transform"><Minus className="w-4 h-4" /></button>
-                          <span className="w-6 text-center text-sm text-white">{line.quantity}</span>
-                          <button onClick={() => changeQty(line.product_id, 1)} className="w-11 h-11 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center active:scale-95 transition-transform"><Plus className="w-4 h-4" /></button>
+                          <button onClick={() => changeQty(line.product_id, -1)} className="w-11 h-11 rounded-lg bg-surface-2 hover:bg-surface-3 flex items-center justify-center active:scale-95 transition-transform"><Minus className="w-4 h-4" /></button>
+                          <span className="w-6 text-center text-sm text-fg">{line.quantity}</span>
+                          <button onClick={() => changeQty(line.product_id, 1)} className="w-11 h-11 rounded-lg bg-surface-2 hover:bg-surface-3 flex items-center justify-center active:scale-95 transition-transform"><Plus className="w-4 h-4" /></button>
                         </div>
-                        <span className="text-sm font-semibold text-white w-16 text-right">{formatINR(line.quantity * line.unit_price)}</span>
-                        <button onClick={() => removeLine(line.product_id)} className="text-slate-500 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                        <span className="text-sm font-semibold text-fg w-16 text-right">{formatINR(line.quantity * line.unit_price)}</span>
+                        <button onClick={() => removeLine(line.product_id)} className="text-fg-subtle hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
                       </div>
                     ))}
                   </div>
 
-                  <div className="space-y-1.5 text-sm border-t border-slate-800 pt-3">
-                    <div className="flex justify-between text-slate-400"><span>Subtotal</span><span>{formatINR(subtotal)}</span></div>
-                    <div className="flex justify-between items-center text-slate-400">
+                  <div className="space-y-1.5 text-sm border-t border-line pt-3">
+                    <div className="flex justify-between text-fg-muted"><span>Subtotal</span><span>{formatINR(subtotal)}</span></div>
+                    <div className="flex justify-between items-center text-fg-muted">
                       <span>Discount</span>
-                      <input type="number" min={0} value={discount || ''} onChange={(e) => setDiscount(Math.max(0, Number(e.target.value)))} className="w-20 px-2 py-0.5 bg-slate-900 border border-slate-700 rounded text-right text-white text-sm" placeholder="0" />
+                      <input type="number" min={0} value={discount || ''} onChange={(e) => setDiscount(Math.max(0, Number(e.target.value)))} className="w-20 px-2 py-0.5 bg-surface border border-line rounded text-right text-fg text-sm" placeholder="0" />
                     </div>
-                    <div className="flex justify-between items-center text-slate-400">
+                    <div className="flex justify-between items-center text-fg-muted">
                       <span>Tax %</span>
-                      <input type="number" min={0} value={taxRate || ''} onChange={(e) => setTaxRate(Math.max(0, Number(e.target.value)))} className="w-20 px-2 py-0.5 bg-slate-900 border border-slate-700 rounded text-right text-white text-sm" placeholder="0" />
+                      <input type="number" min={0} value={taxRate || ''} onChange={(e) => setTaxRate(Math.max(0, Number(e.target.value)))} className="w-20 px-2 py-0.5 bg-surface border border-line rounded text-right text-fg text-sm" placeholder="0" />
                     </div>
                   </div>
 
                   {/* Payment method */}
                   <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 mt-3">
                     {(['cash', 'card', 'upi', 'wallet', 'other'] as PaymentMethod[]).map((m) => (
-                      <button key={m} onClick={() => setPaymentMethod(m)} className={`py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${paymentMethod === m ? 'bg-brand-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>{m}</button>
+                      <button key={m} onClick={() => setPaymentMethod(m)} className={`py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${paymentMethod === m ? 'bg-brand-600 text-fg' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}>{m}</button>
                     ))}
                   </div>
 
@@ -334,7 +334,7 @@ export default function POS() {
       {showCustomerPicker && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowCustomerPicker(false)}>
           <div className="card p-4 w-full max-w-md max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold text-white mb-3">Select customer</h3>
+            <h3 className="font-bold text-fg mb-3">Select customer</h3>
             <input
               autoFocus
               placeholder="Search customers..."
@@ -342,7 +342,7 @@ export default function POS() {
               value={customerSearch}
               onChange={(e) => setCustomerSearch(e.target.value)}
             />
-            <button onClick={() => { setSelectedCustomer(null); setShowCustomerPicker(false) }} className="w-full p-2.5 rounded-lg hover:bg-slate-800 text-left text-sm text-slate-400 mb-1">🚶 Walk-in (no customer)</button>
+            <button onClick={() => { setSelectedCustomer(null); setShowCustomerPicker(false) }} className="w-full p-2.5 rounded-lg hover:bg-surface-2 text-left text-sm text-fg-muted mb-1">🚶 Walk-in (no customer)</button>
             {customers
               .filter((c) => {
                 if (!customerSearch) return true
@@ -350,9 +350,9 @@ export default function POS() {
                 return c.name?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q) || c.phone?.includes(q)
               })
               .map((c) => (
-              <button key={c.id} onClick={() => { setSelectedCustomer(c); setShowCustomerPicker(false) }} className="w-full p-2.5 rounded-lg hover:bg-slate-800 text-left">
-                <p className="text-sm text-white">{c.name}</p>
-                <p className="text-xs text-slate-500">{c.email || c.phone || 'No contact'}</p>
+              <button key={c.id} onClick={() => { setSelectedCustomer(c); setShowCustomerPicker(false) }} className="w-full p-2.5 rounded-lg hover:bg-surface-2 text-left">
+                <p className="text-sm text-fg">{c.name}</p>
+                <p className="text-xs text-fg-subtle">{c.email || c.phone || 'No contact'}</p>
               </button>
             ))}
           </div>
@@ -366,9 +366,9 @@ export default function POS() {
             <div className="w-16 h-16 rounded-full bg-green-500/15 flex items-center justify-center mx-auto mb-4">
               <Receipt className="w-8 h-8 text-green-400" />
             </div>
-            <h3 className="text-xl font-bold text-white mb-1">Sale Complete!</h3>
-            <p className="text-sm text-slate-400 mb-4">Receipt {lastReceipt.number}</p>
-            <p className="text-3xl font-extrabold text-white mb-6">{formatINR(lastReceipt.total)}</p>
+            <h3 className="text-xl font-bold text-fg mb-1">Sale Complete!</h3>
+            <p className="text-sm text-fg-muted mb-4">Receipt {lastReceipt.number}</p>
+            <p className="text-3xl font-extrabold text-fg mb-6">{formatINR(lastReceipt.total)}</p>
             <button onClick={() => setLastReceipt(null)} className="btn-primary w-full">New Sale</button>
           </div>
         </div>

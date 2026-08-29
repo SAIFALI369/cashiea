@@ -48,19 +48,19 @@ export default function AppLayout() {
 
   return (
     // Assistant: definite viewport height so its message list scrolls on mobile.
-    <div className={isAssistant ? 'h-dvh flex overflow-hidden bg-slate-950' : 'min-h-screen flex bg-slate-950'}>
+    <div className={isAssistant ? 'h-dvh flex overflow-hidden bg-paper' : 'min-h-screen flex bg-paper'}>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0">
         <OfflineBanner />
         {/* Mobile header — menu · brand (fades) · sync state · account */}
         {!isAssistant && (
-        <header className="lg:hidden sticky top-0 z-30 bg-slate-900/80 backdrop-blur border-b border-slate-800 px-4 py-2 flex items-center gap-3 safe-area-pt">
+        <header className="lg:hidden sticky top-0 z-30 bg-surface/80 backdrop-blur border-b border-line px-4 py-2 flex items-center gap-3 safe-area-pt">
           <button onClick={() => setSidebarOpen(true)} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-muted hover:text-fg">
             <Menu className="w-6 h-6" />
           </button>
           <div style={{ opacity: hdrOpacity, transition: 'opacity 0.4s ease' }} className="flex-1 min-w-0">
-            <span className="font-bold text-white">{pageHeaderName}</span>
+            <span className="font-bold text-fg">{pageHeaderName}</span>
           </div>
           <QueueBadge />
           <LiveClock />

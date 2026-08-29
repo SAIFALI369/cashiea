@@ -31,7 +31,7 @@ export default function Reports() {
 
   const loadReports = async () => {
     setLoading(true)
-    const { data } = await supabase.from('reports').select('*').order('created_at', { ascending: false })
+    const { data } = await supabase.from('reports').select('*').eq('user_id', ownerId).order('created_at', { ascending: false })
     setReports((data as Report[]) || [])
     setLoading(false)
   }
@@ -118,21 +118,21 @@ export default function Reports() {
                 className={`p-3 rounded-xl border text-left transition-all ${
                   reportType === t.value
                     ? 'border-brand-600 bg-brand-600/15'
-                    : 'border-slate-700 bg-slate-900/50 hover:border-slate-600'
+                    : 'border-line bg-surface/50 hover:border-line'
                 }`}
               >
-                <div className="font-semibold text-white text-sm">{t.label}</div>
-                <div className="text-xs text-slate-400 mt-0.5">{t.hint}</div>
+                <div className="font-semibold text-fg text-sm">{t.label}</div>
+                <div className="text-xs text-fg-muted mt-0.5">{t.hint}</div>
               </button>
             ))}
           </div>
 
           {/* Show the sections the AI will produce, so the user knows what to expect */}
-          <div className="bg-slate-900/60 rounded-xl p-3 mb-4 border border-slate-800">
-            <p className="text-xs text-slate-500 mb-1.5">Sections the AI will generate:</p>
+          <div className="bg-surface/60 rounded-xl p-3 mb-4 border border-line">
+            <p className="text-xs text-fg-subtle mb-1.5">Sections the AI will generate:</p>
             <div className="flex flex-wrap gap-1.5">
               {activeType.sections.map((s) => (
-                <span key={s} className="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-slate-300">{s}</span>
+                <span key={s} className="text-xs px-2 py-0.5 rounded-md bg-surface-2 text-fg-muted">{s}</span>
               ))}
             </div>
           </div>
@@ -172,20 +172,20 @@ export default function Reports() {
             <div key={report.id} className="card overflow-hidden">
               <button
                 onClick={() => setExpandedId(expandedId === report.id ? null : report.id)}
-                className="w-full p-5 flex items-center justify-between text-left hover:bg-slate-800/30 transition-colors"
+                className="w-full p-5 flex items-center justify-between text-left hover:bg-surface-2/30 transition-colors"
               >
                 <div>
-                  <h3 className="font-semibold text-white">{report.title}</h3>
+                  <h3 className="font-semibold text-fg">{report.title}</h3>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs px-2 py-0.5 rounded-full bg-brand-600/15 text-brand-300 capitalize">{report.report_type}</span>
-                    <span className="text-xs text-slate-500">{new Date(report.created_at).toLocaleDateString()}</span>
+                    <span className="text-xs text-fg-subtle">{new Date(report.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
-                <ChevronDown className={`w-5 h-5 text-slate-500 transition-transform ${expandedId === report.id ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-5 h-5 text-fg-subtle transition-transform ${expandedId === report.id ? 'rotate-180' : ''}`} />
               </button>
 
               {expandedId === report.id && report.generated_content && (
-                <div className="border-t border-slate-800">
+                <div className="border-t border-line">
                   <div className="flex justify-end gap-2 p-3">
                     <button onClick={() => handleCopy(report.generated_content!)} className="btn-ghost text-xs"><Copy className="w-3.5 h-3.5" /> Copy</button>
                     <button onClick={() => handleDelete(report.id)} className="btn-ghost text-xs text-red-400 hover:text-red-300"><Trash2 className="w-3.5 h-3.5" /> Delete</button>

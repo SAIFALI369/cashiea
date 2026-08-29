@@ -86,24 +86,24 @@ export default function Accounts() {
 
       {/* Overview cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="card p-4"><div className="flex items-center gap-2 mb-1"><TrendingUp className="w-4 h-4 text-green-400" /><span className="text-xs text-slate-400">Today's Income</span></div><p className="text-xl font-bold text-green-400">₹{todayIncome.toFixed(0)}</p></div>
-        <div className="card p-4"><div className="flex items-center gap-2 mb-1"><TrendingDown className="w-4 h-4 text-red-400" /><span className="text-xs text-slate-400">Today's Expenses</span></div><p className="text-xl font-bold text-red-400">₹{todayExpenses.toFixed(0)}</p></div>
-        <div className="card p-4"><span className="text-xs text-slate-400 block mb-1">Month Income</span><p className="text-xl font-bold text-green-400">₹{monthIncome.toFixed(0)}</p></div>
-        <div className="card p-4"><span className="text-xs text-slate-400 block mb-1">Month Expenses</span><p className="text-xl font-bold text-red-400">₹{monthExpenses.toFixed(0)}</p><p className="text-xs text-slate-500 mt-0.5">Net: ₹{(monthIncome - monthExpenses).toFixed(0)}</p></div>
+        <div className="card p-4"><div className="flex items-center gap-2 mb-1"><TrendingUp className="w-4 h-4 text-green-400" /><span className="text-xs text-fg-muted">Today's Income</span></div><p className="text-xl font-bold text-green-400">₹{todayIncome.toFixed(0)}</p></div>
+        <div className="card p-4"><div className="flex items-center gap-2 mb-1"><TrendingDown className="w-4 h-4 text-red-400" /><span className="text-xs text-fg-muted">Today's Expenses</span></div><p className="text-xl font-bold text-red-400">₹{todayExpenses.toFixed(0)}</p></div>
+        <div className="card p-4"><span className="text-xs text-fg-muted block mb-1">Month Income</span><p className="text-xl font-bold text-green-400">₹{monthIncome.toFixed(0)}</p></div>
+        <div className="card p-4"><span className="text-xs text-fg-muted block mb-1">Month Expenses</span><p className="text-xl font-bold text-red-400">₹{monthExpenses.toFixed(0)}</p><p className="text-xs text-fg-subtle mt-0.5">Net: ₹{(monthIncome - monthExpenses).toFixed(0)}</p></div>
       </div>
 
       {showForm && (
         <div className="card p-4 mb-6 animate-slide-up">
           <div className="flex gap-2 mb-4">
-            <button onClick={() => setForm({ ...form, type: 'expense' })} className={`flex-1 py-2 rounded-xl text-sm font-medium ${form.type === 'expense' ? 'bg-red-500/20 text-red-400 border border-red-600/40' : 'bg-slate-800 text-slate-400'}`}>💸 Expense</button>
-            <button onClick={() => setForm({ ...form, type: 'income' })} className={`flex-1 py-2 rounded-xl text-sm font-medium ${form.type === 'income' ? 'bg-green-500/20 text-green-400 border border-green-600/40' : 'bg-slate-800 text-slate-400'}`}>💰 Income</button>
+            <button onClick={() => setForm({ ...form, type: 'expense' })} className={`flex-1 py-2 rounded-xl text-sm font-medium ${form.type === 'expense' ? 'bg-red-500/20 text-red-400 border border-red-600/40' : 'bg-surface-2 text-fg-muted'}`}>💸 Expense</button>
+            <button onClick={() => setForm({ ...form, type: 'income' })} className={`flex-1 py-2 rounded-xl text-sm font-medium ${form.type === 'income' ? 'bg-green-500/20 text-green-400 border border-green-600/40' : 'bg-surface-2 text-fg-muted'}`}>💰 Income</button>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
-            <div><label className="label">Category</label><select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="input-field">{categories.map((c) => <option key={c} value={c} className="bg-slate-900">{c}</option>)}</select></div>
+            <div><label className="label">Category</label><select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="input-field">{categories.map((c) => <option key={c} value={c} className="bg-surface">{c}</option>)}</select></div>
             <div><label className="label">Amount (₹) *</label><input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="input-field" placeholder="5000" /></div>
             <div className="sm:col-span-2"><label className="label">Description *</label><input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="input-field" placeholder="Shop rent" /></div>
             <div><label className="label">Date</label><input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="input-field" /></div>
-            <div><label className="label">Payment method</label><select value={form.payment_method} onChange={(e) => setForm({ ...form, payment_method: e.target.value })} className="input-field"><option value="cash" className="bg-slate-900">Cash</option><option value="bank" className="bg-slate-900">Bank</option><option value="upi" className="bg-slate-900">UPI</option><option value="card" className="bg-slate-900">Card</option></select></div>
+            <div><label className="label">Payment method</label><select value={form.payment_method} onChange={(e) => setForm({ ...form, payment_method: e.target.value })} className="input-field"><option value="cash" className="bg-surface">Cash</option><option value="bank" className="bg-surface">Bank</option><option value="upi" className="bg-surface">UPI</option><option value="card" className="bg-surface">Card</option></select></div>
           </div>
           <div className="flex justify-end gap-3 mt-4"><button onClick={() => setShowForm(false)} className="btn-secondary text-sm">Cancel</button><button onClick={save} className="btn-primary text-sm">Save Entry</button></div>
         </div>
@@ -119,9 +119,9 @@ export default function Accounts() {
             <div key={e.id} className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3 min-w-0">
                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${e.type === 'income' ? 'bg-green-500/15' : 'bg-red-500/15'}`}>{e.type === 'income' ? <TrendingUp className="w-4 h-4 text-green-400" /> : <TrendingDown className="w-4 h-4 text-red-400" />}</div>
-                <div className="min-w-0"><p className="text-sm text-white truncate">{e.description}</p><p className="text-xs text-slate-500">{e.category} · {e.date} · {e.payment_method}</p></div>
+                <div className="min-w-0"><p className="text-sm text-fg truncate">{e.description}</p><p className="text-xs text-fg-subtle">{e.category} · {e.date} · {e.payment_method}</p></div>
               </div>
-              <div className="flex items-center gap-3 flex-shrink-0"><span className={`font-semibold ${e.type === 'income' ? 'text-green-400' : 'text-red-400'}`}>{e.type === 'income' ? '+' : '−'}₹{Number(e.amount).toFixed(0)}</span><button onClick={() => del(e.id)} className="text-slate-500 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button></div>
+              <div className="flex items-center gap-3 flex-shrink-0"><span className={`font-semibold ${e.type === 'income' ? 'text-green-400' : 'text-red-400'}`}>{e.type === 'income' ? '+' : '−'}₹{Number(e.amount).toFixed(0)}</span><button onClick={() => del(e.id)} className="text-fg-subtle hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button></div>
             </div>
           ))}
         </div>

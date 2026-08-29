@@ -33,7 +33,7 @@ export default function DataEntryPage() {
 
   const loadEntries = async () => {
     setLoading(true)
-    const { data } = await supabase.from('data_entries').select('*').order('created_at', { ascending: false })
+    const { data } = await supabase.from('data_entries').select('*').eq('user_id', ownerId).order('created_at', { ascending: false })
     setEntries((data as DataEntry[]) || [])
     setLoading(false)
   }
