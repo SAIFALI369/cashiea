@@ -16,7 +16,7 @@
 
 import { jsPDF } from 'jspdf'
 import type { Invoice, Profile } from './types'
-import { buildUpiLink, buildUpiQrUrl } from './payments'
+import { buildUpiLink } from './payments'
 
 // Page constants (A4 in mm)
 const PAGE = { w: 210, h: 297, margin: 15 }
@@ -214,13 +214,17 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
     doc.text(`Or pay to: ${upiId}`, PAGE.margin + 5, y + 19)
     doc.text(`Amount: ${formatINR(invoice.total)}`, PAGE.margin + 5, y + 24)
 
-    // Fetch QR code image and embed it
+    // Client-side QR generation — no external service, no network fetch
     try {
-      const qrUrl = buildUpiQrUrl({
+      const QRCode = (await import('qrcode')).default
+      const upiLink = buildUpiLink({
         payeeVpa: upiId, payeeName: businessName,
         amount: Number(invoice.total), reference: invoice.invoice_number,
       })
-      const qrImg = await fetchImageAsDataUrl(qrUrl)
+      const qrImg = await QRCode.toDataURL(upiLink, {
+        width: 240, margin: 1, errorCorrectionLevel: 'M',
+        color: { dark: '#000000', light: '#FFFFFF' },
+      })
       if (qrImg) {
         doc.addImage(qrImg, 'PNG', PAGE.w - PAGE.margin - 26, y + 4, 22, 22)
       }

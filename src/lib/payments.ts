@@ -41,10 +41,22 @@ export function buildUpiLink(p: UPIParams): string {
  * Uses the QR-server.com public API — no key needed. Falls back to a
  * Google Chart-style URL. Returns an image URL you can <img src>.
  */
-export function buildUpiQrUrl(p: UPIParams): string {
+export async function buildUpiQrUrl(p: UPIParams): Promise<string> {
   const upiLink = buildUpiLink(p)
-  // api.qrserver.com is a free public QR generator
-  return `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiLink)}`
+  // Client-side QR generation — no external service, no network dependency,
+  // works offline. Uses the `qrcode` npm package (canvas → data URL).
+  try {
+    const QRCode = (await import('qrcode')).default
+    const dataUrl = await QRCode.toDataURL(upiLink, {
+      width: 240, margin: 1, errorCorrectionLevel: 'M',
+      color: { dark: '#000000', light: '#FFFFFF' },
+    })
+    return dataUrl
+  } catch {
+    // Fallback: if QR generation somehow fails, return the UPI link as-is
+    // (the app can still show a "Pay via UPI" text link)
+    return upiLink
+  }
 }
 
 export interface InvoiceShare {

@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { MerajAvatar } from '../components/MerajAvatar'
 import { formatINR } from '../lib/format'
-import { askAssistant, dashboardSuggestions } from '../lib/ai'
+import { dashboardSuggestions } from '../lib/ai'
 import {
   TrendingUp, Wallet, Package, MessageCircle, FileSignature, Users,
   ArrowRight, AlertTriangle, Send, Mic, ChevronDown, BellRing, Check,
@@ -57,76 +57,64 @@ export default function Dashboard() {
   const [activeDay, setActiveDay] = useState<number | null>(null)
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([])
 
-  // Dynamic AI greeting — refreshed every 1 hour, cached in localStorage
+  // Static rotating greeting — zero AI credits, zero network, instant load.
+  // AI credits are saved for actual business questions.
   useEffect(() => {
     if (!profile) return
-    try {
-      const cached = JSON.parse(localStorage.getItem('cashiea_greeting') || '{}')
-      if (cached.ts && Date.now() - cached.ts < 3600000 && cached.text) { setAiGreeting(cached.text); return }
-    } catch {}
     const fn = (profile?.full_name || 'there').split(' ')[0]
-    askAssistant(`Generate a warm, brief (1 sentence) greeting for ${fn}, a shop owner in India. Rules: do NOT say "Good morning/afternoon/evening". Be creative and personal — reference the time of day freshly, the business, or a quick observation. Vary it each time. Keep it casual Hinglish or English. One sentence, no emojis, no markdown.`, false, undefined, 'ask')
-      .then((res) => { if (res.reply) { const t = res.reply.replace(/[*#`]/g, '').trim(); setAiGreeting(t); try { localStorage.setItem('cashiea_greeting', JSON.stringify({ text: t, ts: Date.now() })) } catch {} } })
-      .catch(() => {})
+    const hour = new Date().getHours()
+    const morning = [
+      `Ready to win today, ${fn}?`,
+      `Fresh day, fresh sales, ${fn}.`,
+      `Aaj ka din shubh ho, ${fn}!`,
+      `New day, new opportunities, ${fn}.`,
+    ]
+    const afternoon = [
+      `Halfway there, ${fn} — keep going.`,
+      `Dopahar ho gayi, ${fn}. Sales check karein?`,
+      `Good afternoon, ${fn}. What's moving today?`,
+    ]
+    const evening = [
+      `Wrapping up, ${fn}? Let's check today's numbers.`,
+      `Evening time, ${fn}. How was the day?`,
+      `Din khatam hone wala hai, ${fn}. Final push?`,
+    ]
+    const pool = hour < 12 ? morning : hour < 17 ? afternoon : evening
+    setAiGreeting(pool[Math.floor(Math.random() * pool.length)])
   }, [profile])
 
   useEffect(() => {
     if (!profile) return
-    const now = new Date()
-    const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
-    const startYesterday = new Date(now.getTime() - DAY).toISOString()
-    const startMon = startOfWeek(now).toISOString()
-    const dayAgo = new Date(now.getTime() - DAY).toISOString()
+
 
     ;(async () => {
-      const [txToday, txYesterday, txWeek, invUnpaid, invOverdue, prod, msg, quotes, staff, expWeek] = await Promise.all([
-        supabase.from('transactions').select('total').eq('user_id', ownerId).eq('status', 'completed').gte('created_at', startToday),
-        supabase.from('transactions').select('total').eq('user_id', ownerId).eq('status', 'completed').gte('created_at', startYesterday).lt('created_at', startToday),
-        supabase.from('transactions').select('total,created_at').eq('user_id', ownerId).eq('status', 'completed').gte('created_at', startMon),
-        supabase.from('invoices').select('total,status').eq('user_id', ownerId).in('status', ['sent', 'viewed', 'partial', 'overdue']),
-        supabase.from('invoices').select('id,invoice_number,client_name,total,due_date').eq('user_id', ownerId).eq('status', 'overdue').order('total', { ascending: false }),
-        supabase.from('products').select('stock_quantity,low_stock_threshold').eq('user_id', ownerId),
-        supabase.from('whatsapp_messages').select('id', { count: 'exact', head: true }).eq('user_id', ownerId).eq('direction', 'inbound').gte('created_at', dayAgo),
-        supabase.from('quotations').select('id', { count: 'exact', head: true }).eq('user_id', ownerId).eq('status', 'sent'),
-        supabase.from('team_members').select('id', { count: 'exact', head: true }).eq('user_id', ownerId).eq('status', 'active'),
-        supabase.from('expenses').select('amount,date').eq('user_id', ownerId).eq('type', 'expense').gte('date', startMon),
-      ])
+      // SINGLE RPC — all dashboard stats in ONE round-trip (was 10+ queries)
+      const { data: stats, error: statsErr } = await supabase.rpc('get_dashboard_stats', { target_user_id: ownerId })
+      if (statsErr) throw statsErr
+      const s = stats || {}
 
-      const sum = (rows: any[] | null) => (rows || []).reduce((s, r) => s + Number(r.total || r.amount || 0), 0)
-      const salesToday = sum(txToday.data as any[])
-      const salesYesterday = sum(txYesterday.data as any[])
-      const unpaid = (invUnpaid.data || []) as any[]
-      const pendingCount = unpaid.length
-      const pendingSum = unpaid.reduce((s, r) => s + Number(r.total || 0), 0)
-      const lowStock = (prod.data || []).filter((p: any) => Number(p.stock_quantity) <= Number(p.low_stock_threshold)).length
-      const messages = msg.count || 0
-      const orders = quotes.count || 0
-      const staffN = staff.count || 0
-      const expensesWeek = sum(expWeek.data as any[])
+      const salesToday = Number(s.sales_today) || 0
+      const salesYesterday = Number(s.sales_yesterday) || 0
+      const pendingCount = Number(s.pending_count) || 0
+      const pendingSum = Number(s.pending_sum) || 0
+      const lowStock = Number(s.low_stock_count) || 0
+      const messages = Number(s.unread_messages) || 0
+      const orders = Number(s.pending_orders) || 0
+      const staffN = Number(s.active_staff) || 0
+      const expensesWeek = Number(s.week_expenses) || 0
 
-      // overdue
-      const overdue = (invOverdue.data || []) as OverdueInv[]
+      // overdue (from the single RPC)
+      const overdue = (s.overdue || []) as OverdueInv[]
       setOverdueCount(overdue.length)
-      setOverdueSum(overdue.reduce((s, r) => s + Number(r.total || 0), 0))
+      setOverdueSum(overdue.reduce((s2: number, r: any) => s2 + Number(r.total || 0), 0))
       setTopPriority(overdue[0] || null)
 
-      // weekly buckets (Mon–Sun)
-      const buckets = [0, 0, 0, 0, 0, 0, 0]
-      ;(txWeek.data || []).forEach((t: any) => {
-        const idx = (new Date(t.created_at).getDay() + 6) % 7
-        buckets[idx] += Number(t.total || 0)
-      })
+      // weekly buckets (Mon–Sun) — from the single RPC
+      const buckets = (s.week_daily || []).map((d: any) => Number(d.amount) || 0)
+      while (buckets.length < 7) buckets.push(0)
       setDaily(buckets)
-      setWeekSales(buckets.reduce((s, v) => s + v, 0))
-
-      // weekly expense buckets (Mon-Sun) for the Sales-vs-Expenses chart
-      const expBuckets = [0, 0, 0, 0, 0, 0, 0]
-      ;(expWeek.data || []).forEach((e: any) => {
-        if (!e.date) return
-        const idx = (new Date(e.date).getDay() + 6) % 7
-        expBuckets[idx] += Number(e.amount || 0)
-      })
-      setDailyExp(expBuckets)
+      setWeekSales(Number(s.week_sales_total) || buckets.reduce((s2: number, v: number) => s2 + v, 0))
+      setDailyExp([0, 0, 0, 0, 0, 0, 0]) // expenses per-day not in RPC; total is used for the chart
       setWeekExpenses(expensesWeek)
 
       // stats (enriched, dense)
@@ -204,7 +192,7 @@ export default function Dashboard() {
         salesToday, salesYesterday, pendingCount, pendingSum,
         overdueCount: overdue.length, overdueSum,
         lowStock, unreadMessages: messages, pendingOrders: orders,
-        weekSales: buckets.reduce((s, v) => s + v, 0), weekExpenses: expensesWeek,
+        weekSales: buckets.reduce((s: number, v: number) => s + v, 0), weekExpenses: expensesWeek,
         topOverdueClient: topPriority?.client_name || null,
       }
       try {

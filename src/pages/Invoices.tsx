@@ -321,7 +321,7 @@ export default function Invoices() {
               <>
                 {/* UPI QR */}
                 <div className="text-center mb-4">
-                  <img src={buildUpiQrUrl(upiParams(shareInv)!!)} alt="UPI QR" className="w-48 h-48 mx-auto rounded-xl bg-white p-2" />
+                  <UpiQrCode params={upiParams(shareInv)!!} />
                   <p className="text-xs text-slate-400 mt-2">Scan with any UPI app to pay ₹{shareInv.total}</p>
                 </div>
                 <a href={upiLink(shareInv)!} className="btn-primary w-full mb-2"><Smartphone className="w-4 h-4" /> Open UPI app to pay</a>
@@ -348,4 +348,24 @@ export default function Invoices() {
       )}
     </div>
   )
+}
+
+
+// Client-side UPI QR code — generates locally, no external service
+function UpiQrCode({ params }: { params: any }) {
+  const [qrDataUrl, setQrDataUrl] = useState<string>('')
+  useEffect(() => {
+    let active = true
+    ;(async () => {
+      try {
+        const QRCode = (await import('qrcode')).default
+        const link = `upi://pay?pa=${encodeURIComponent(params.payeeVpa)}&pn=${encodeURIComponent(params.payeeName)}&am=${params.amount}&cu=INR${params.reference ? `&tn=${encodeURIComponent(params.reference)}` : ''}`
+        const url = await QRCode.toDataURL(link, { width: 240, margin: 1, errorCorrectionLevel: 'M' })
+        if (active) setQrDataUrl(url)
+      } catch { /* QR failed */ }
+    })()
+    return () => { active = false }
+  }, [params])
+  if (!qrDataUrl) return <div className="w-48 h-48 mx-auto rounded-xl bg-white p-2 flex items-center justify-center"><div className="w-8 h-8 border-4 border-slate-300 border-t-slate-600 rounded-full animate-spin" /></div>
+  return <img src={qrDataUrl} alt="UPI QR" className="w-48 h-48 mx-auto rounded-xl bg-white p-2" />
 }

@@ -38,7 +38,7 @@ describe('buildUpiLink', () => {
 describe('buildUpiQrUrl', () => {
   it('builds a QR-server URL with the encoded UPI link', () => {
     const url = buildUpiQrUrl({ payeeVpa: 'shop@paytm', payeeName: 'Shop', amount: 200 })
-    expect(url.startsWith('https://api.qrserver.com/')).toBe(true)
+    expect(url.startsWith('data:image/png;base64,')).toBe(true)
     expect(url).toContain('size=240x240')
     expect(url).toContain('upi%3A%2F%2Fpay')
   })
