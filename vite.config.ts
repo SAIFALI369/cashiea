@@ -44,12 +44,8 @@ const PWA_OPTIONS = {
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  // Force the LIVE Supabase project into the build regardless of what
-  // CI/Vercel env vars say (they were stuck on the abandoned old project).
-  define: {
-    'import.meta.env.VITE_SUPABASE_URL': JSON.stringify('https://prwvaetatdidsugczluv.supabase.co'),
-    'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByd3ZhZXRhdGRpZHN1Z2N6bHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NDUzNTgsImV4cCI6MjEwMTQyMTM1OH0.OasYlwTZh-Uvpv69hbfTq60VPtj6DN2OFQIj1GPlc30'),
-  },
+  // Env vars come from .env.local (dev) or Vercel env vars (production).
+  // Nothing is hardcoded — credentials are rotatable without code changes.
   plugins: [
     react(),
     ...(PWA_ENABLED ? [VitePWA(PWA_OPTIONS)] : []),

@@ -1,24 +1,30 @@
 import { createClient } from '@supabase/supabase-js'
 
-// ── Production Supabase project (hardcoded) ──────────────────────────
-// Pointed explicitly at the LIVE project so the app works regardless of
-// CI/Vercel env vars (which were previously stuck on the abandoned old
-// project with dead Auth). The anon key is public-safe (RLS-protected).
-// To switch projects later, change these two constants.
-// Environment variables first (enables self-hosting + key rotation).
-// Falls back to the production project so existing deployments keep working.
-// The anon key is public-safe (protected by Row Level Security).
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://prwvaetatdidsugczluv.supabase.co'
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByd3ZhZXRhdGRpZHN1Z2N6bHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NDUzNTgsImV4cCI6MjEwMTQyMTM1OH0.OasYlwTZh-Uvpv69hbfTq60VPtj6DN2OFQIj1GPlc30'
+// ── Supabase configuration ─────────────────────────────────────────
+// Credentials come from environment variables ONLY — nothing is hardcoded.
+// This enables key rotation, self-hosting, and multi-environment builds.
+//
+// Setup:
+//   Local dev:  copy .env.example → .env.local and fill in your values
+//   Production: set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY in Vercel
+//
+// The anon key is public-safe by design (protected by Row Level Security),
+// but we still keep it in env vars so it can be rotated without a code change.
 
-export const supabaseConfigured = true
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || ''
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
+export const supabaseConfigured = !!(SUPABASE_URL && SUPABASE_ANON_KEY)
+
+export const supabase = createClient(
+  SUPABASE_URL || 'https://placeholder.supabase.co',
+  SUPABASE_ANON_KEY || 'placeholder-key',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+    },
   },
-})
+)
 
-// URL of the deployed edge function
 export const AI_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/ai-automation`
