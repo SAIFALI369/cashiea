@@ -14,6 +14,7 @@ import Skeleton from './ui/Skeleton'
 import { Avatar } from './Avatar'
 import { useAuth } from '../context/AuthContext'
 import { getPageContext } from '../lib/pageContext'
+import { useKeyboardShortcuts } from '../lib/useKeyboardShortcuts'
 import { Menu, Settings } from 'lucide-react'
 
 export default function AppLayout() {

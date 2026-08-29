@@ -13,7 +13,7 @@ import { supabase } from '../lib/supabase'
 import { formatINR } from '../lib/format'
 import toast from 'react-hot-toast'
 
-interface Msg { role: 'user' | 'meraj'; text: string; pending?: { type: string; input: any; preview: any }; media?: { type: string; thumb: string; url: string; alt: string; link?: string }[]; image?: string; images?: { url: string; prompt: string; width: number; height: number }[] }
+interface Msg { role: 'user' | 'meraj'; text: string; ts?: number; pending?: { type: string; input: any; preview: any }; media?: { type: string; thumb: string; url: string; alt: string; link?: string }[]; image?: string; images?: { url: string; prompt: string; width: number; height: number }[] }
 interface Convo { id: string; title: string; msgs: Msg[]; ts: number; scope?: string }
 
 const STORE_BASE = 'cashiea_meraj_convos'
@@ -401,19 +401,19 @@ export default function AIAssistant() {
     // When an image is shared, use Task mode so Meraj analyses it + proposes a
     // real action (create bill / sale / quotation) instead of just describing it.
     const sendMode: 'ask' | 'task' = img ? 'task' : mode
-    const next = [...messages, { role: 'user' as const, text: q, image: img ? img.preview : undefined }]
+    const next = [...messages, { role: 'user' as const, text: q, image: img ? img.preview : undefined, ts: Date.now() }]
     setMessages(next)
     setLoading(true)
     const history = messages.slice(-10).map((m) => ({ role: m.role, text: m.text }))
     try {
       const res = await askAssistant(q || '(shared an image)', false, scope, sendMode, undefined, undefined, history, img || undefined)
       setPendingImage(null)
-        const done = [...next, { role: 'meraj' as const, text: res.reply, pending: res.pending, media: res.media, images: res.images }]
+        const done = [...next, { role: 'meraj' as const, text: res.reply, pending: res.pending, media: res.media, images: res.images, ts: Date.now() }]
       setMessages(done)
       if (res.reply) setTyping(true)
       upsertConvo(done, q || 'Shared photo')
     } catch (e) {
-      setMessages([...next, { role: 'meraj' as const, text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.') }])
+      setMessages([...next, { role: 'meraj' as const, text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.'), ts: Date.now() }])
     } finally {
       setLoading(false)
     }
@@ -491,7 +491,7 @@ export default function AIAssistant() {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SR) { toast.error('Voice input not supported on this browser.'); return }
     if (recRef.current) { try { recRef.current.stop() } catch { /* ignore */ } }
-    const rec = new SR(); rec.lang = 'hi-IN'; rec.interimResults = false; rec.maxAlternatives = 1
+    const rec = new SR(); rec.lang = localStorage.getItem('cashiea_voice_lang') || 'hi-IN'; rec.interimResults = false; rec.maxAlternatives = 1
     rec.onstart = () => setListening(true); rec.onend = () => setListening(false)
     rec.onerror = (e: any) => { setListening(false); const er = String(e?.error || ''); if (er === 'not-allowed' || er === 'service-not-allowed') toast.error('Microphone access is blocked — allow it in your browser settings.'); else if (er === 'no-speech') toast.error("I couldn't hear that clearly — try again."); else if (er && er !== 'aborted') toast.error('Microphone error — please try again.') }
     rec.onresult = (e: any) => { const t = e.results[0][0].transcript; setInput((p) => (p ? p + ' ' : '') + t) }
@@ -689,9 +689,12 @@ export default function AIAssistant() {
           {messages.map((m, i) =>
             m.role === 'user' ? (
               <div key={i} className="flex justify-end">
+                <div>
                 <div className="bg-surface-2/70 rounded-2xl rounded-br-md px-4 py-2.5 max-w-[75%]">
-                {m.image && <img src={m.image} alt="sent" className="rounded-xl mb-2 max-h-52 w-auto max-w-full object-cover" />}
-                {m.text && <p className="text-sm text-fg whitespace-pre-wrap">{m.text}</p>}
+                  {m.image && <img src={m.image} alt="sent" className="rounded-xl mb-2 max-h-52 w-auto max-w-full object-cover" />}
+                  {m.text && <p className="text-sm text-fg whitespace-pre-wrap">{m.text}</p>}
+                </div>
+                {m.ts && <p className="text-[10px] text-fg-subtle mt-1 text-right pr-1">{new Date(m.ts).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</p>}
               </div>
               </div>
             ) : (
@@ -727,6 +730,7 @@ export default function AIAssistant() {
                       ))}
                     </div>
                   )}
+                  {m.ts && <p className="text-[10px] text-fg-subtle mt-1.5">{new Date(m.ts).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</p>}
                   {m.pending && (
                     <div className="mt-3 flex gap-2">
                       <button onClick={() => confirmAction(m.pending)} disabled={loading} className="btn-primary text-sm flex-1 h-9"><Sparkles className="w-4 h-4" /> {m.pending?.type === "create_invoice" ? "Create it" : m.pending?.type === "send_whatsapp" ? "Send it" : m.pending?.type === "sync_stock_from_sheet" ? "Sync it" : m.pending?.type === "export_to_sheet" ? "Export it" : "Add it"}</button>

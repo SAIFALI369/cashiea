@@ -301,7 +301,18 @@ export default function Invoices() {
           </div>
           <div className="space-y-3">
             {filteredInvoices.length === 0 ? (
-              <p className="text-sm text-fg-muted text-center py-10">No {statusFilter} invoices.</p>
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-16 h-16 rounded-full bg-surface-2 flex items-center justify-center mb-4">
+                  <FileText className="w-8 h-8 text-fg-subtle" />
+                </div>
+                <p className="text-base font-semibold text-fg">No {statusFilter} invoices</p>
+                <p className="text-sm text-fg-muted mt-1 max-w-xs">
+                  {statusFilter === 'overdue' ? "Great news — nothing overdue! All your bills are collected or current." : statusFilter === 'unpaid' ? "All invoices are paid. Create a new one from the POS counter." : "Switch filters or create your first invoice."}
+                </p>
+                <button onClick={() => setStatusFilter('all')} className="btn-secondary text-xs h-9 px-4 mt-4">
+                  View all invoices
+                </button>
+              </div>
             ) : filteredInvoices.slice(0, visibleCount).map((inv) => (
               <SwipeActions
                 key={inv.id}

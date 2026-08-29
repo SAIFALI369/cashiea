@@ -109,7 +109,12 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
       const canvas = document.createElement('canvas'); canvas.width = img.width * scale; canvas.height = img.height * scale
       canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
       const resized = canvas.toDataURL('image/jpeg', 0.8)
-      sessionStorage.setItem('cashiea_pending_photo', resized)
+      try {
+        sessionStorage.setItem('cashiea_pending_photo', resized)
+      } catch (storageErr) {
+        toast.error('Could not save the photo — storage is full or private mode is on. Try again in a normal window.')
+        return
+      }
       toast.dismiss('cam')
       navigate('/app/assistant?photo=true')
     } catch { toast.error('Could not process the photo.'); toast.dismiss('cam') }

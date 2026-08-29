@@ -1,3 +1,17 @@
+
+const VOICE_LANGUAGES = [
+  { value: 'hi-IN', label: 'Hindi / Hinglish' },
+  { value: 'en-IN', label: 'English (India)' },
+  { value: 'ta-IN', label: 'தமிழ் (Tamil)' },
+  { value: 'bn-IN', label: 'বাংলা (Bengali)' },
+  { value: 'te-IN', label: 'తెలుగు (Telugu)' },
+  { value: 'mr-IN', label: 'मराठी (Marathi)' },
+  { value: 'gu-IN', label: 'ગુજરાતી (Gujarati)' },
+  { value: 'kn-IN', label: 'ಕನ್ನಡ (Kannada)' },
+  { value: 'ml-IN', label: 'മലയാളം (Malayalam)' },
+  { value: 'pa-IN', label: 'ਪੰਜਾਬੀ (Punjabi)' },
+]
+
 import { validateGstin, validateUpiId, validatePhone } from '../lib/validation'
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
@@ -68,6 +82,7 @@ export default function SettingsPage() {
   const [businessAddress, setBusinessAddress] = useState(profile?.business_address || '')
   const [businessState, setBusinessState] = useState(profile?.business_state || '')
   const [upiId, setUpiId] = useState(profile?.upi_id || '')
+  const [voiceLang, setVoiceLang] = useState(localStorage.getItem('cashiea_voice_lang') || 'hi-IN')
   const [dailyBriefing, setDailyBriefing] = useState(profile?.daily_briefing !== false)
   const [reportTime, setReportTime] = useState(() => {
     if (!profile?.report_time_utc) return '22:30'

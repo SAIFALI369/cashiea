@@ -60,7 +60,7 @@ export default function Customers() {
   const openDetail = async (c: Customer) => {
     setSelected(c)
     setLoadingOrders(true)
-    const { data } = await supabase.from('transactions').select('*').eq('customer_id', c.id).order('created_at', { ascending: false }).limit(20)
+    const { data } = await supabase.from('transactions').select('*').eq('user_id', ownerId).eq('customer_id', c.id).order('created_at', { ascending: false }).limit(20)
     setOrders((data as Transaction[]) || [])
     setLoadingOrders(false)
   }
