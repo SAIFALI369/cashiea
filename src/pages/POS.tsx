@@ -1,4 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
+import { BarcodeScanner } from '../components/BarcodeScanner'
+import { ScanLine } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { offlineInsert } from '../lib/mutations'
@@ -20,6 +22,7 @@ export default function POS() {
   const [loading, setLoading] = useState(true)
   const [cart, setCart] = useState<CartLine[]>([])
   const [search, setSearch] = useState('')
+  const [showScanner, setShowScanner] = useState(false)
   const [activeCategory, setActiveCategory] = useState('all')
   const [taxRate, setTaxRate] = useState(0)
   const [discount, setDiscount] = useState(0)
@@ -48,6 +51,23 @@ export default function POS() {
     const set = new Set(products.map((p) => p.category || 'general'))
     return ['all', ...Array.from(set)]
   }, [products])
+
+  // Handle barcode detection — find the product by SKU/barcode and add to cart
+  const handleBarcodeDetect = async (code: string) => {
+    setShowScanner(false)
+    // Search by SKU first, then by name
+    const prod = products.find((p: any) =>
+      p.sku === code ||
+      p.sku?.includes(code) ||
+      p.name?.toLowerCase().includes(code.toLowerCase())
+    )
+    if (prod) {
+      addToCart(prod)
+    } else {
+      // Not in catalog — show in search so the owner can create it
+      setSearch(code)
+    }
+  }
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
@@ -183,7 +203,15 @@ export default function POS() {
                   onChange={(e) => setSearch(e.target.value)}
                   className="input-field pl-11"
                   placeholder="Search by product name or SKU..."
+                  onKeyDown={(e) => e.key === 'Enter' && search.trim() && handleBarcodeDetect(search.trim())}
                 />
+                <button
+                  onClick={() => setShowScanner(true)}
+                  className="w-11 h-11 rounded-control border border-line bg-surface flex items-center justify-center text-accent hover:bg-accent-soft transition-colors flex-shrink-0"
+                  aria-label="Scan barcode"
+                >
+                  <ScanLine className="w-5 h-5" />
+                </button>
               </div>
               <div className="flex flex-wrap gap-1.5 mt-3">
                 {categories.map((cat) => (
@@ -306,7 +334,8 @@ export default function POS() {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowCustomerPicker(false)}>
           <div className="card p-4 w-full max-w-md max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-bold text-white mb-3">Select customer</h3>
-            <input autoFocus placeholder="Search customers..." className="input-field mb-3" onChange={(e) => {
+            <input autoFocus placeholder="Search customers..." className="input-field mb-3" onChange={(e) =>
+{
               const q = e.target.value.toLowerCase()
               // simple client filter
               const list = customers.filter((c) => c.name.toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q) || (c.phone || '').includes(q))
@@ -336,6 +365,13 @@ export default function POS() {
             <button onClick={() => setLastReceipt(null)} className="btn-primary w-full">New Sale</button>
           </div>
         </div>
+      )}
+      {/* Barcode scanner overlay */}
+      {showScanner && (
+        <BarcodeScanner
+          onDetect={handleBarcodeDetect}
+          onClose={() => setShowScanner(false)}
+        />
       )}
     </div>
   )

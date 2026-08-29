@@ -12,55 +12,62 @@ import {
   Sparkles, ListChecks, FileBarChart, MessageCircle, Mail, ScrollText, Database,
   Package, Wallet, History, AlertOctagon, UsersRound,
   Settings as SettingsIcon, Plug, Key, CreditCard, Network, Shield, LifeBuoy,
-  UserCircle, Bell, ShieldCheck, Lightbulb, X, LogOut,
+  UserCircle, Bell, ShieldCheck, Lightbulb, X, LogOut, ChevronDown, ChevronRight,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 interface Item { to: string; label: string; icon: LucideIcon; end?: boolean; badge?: boolean; ai?: boolean }
 interface Section { label: string; items: Item[] }
 
-// Grouped nav — clear sections instead of one flat list.
-const SECTIONS: Section[] = [
+// ── CORE NAVIGATION (always visible — the 80% the shop owner uses daily) ──
+const CORE: Section[] = [
   { label: 'Today', items: [{ to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true }] },
-  { label: 'Sales', items: [
+  { label: 'Sell', items: [
     { to: '/app/pos', label: 'New Sale', icon: ShoppingCart },
     { to: '/app/invoices', label: 'Bills', icon: Receipt },
     { to: '/app/quotations', label: 'Quotations', icon: FileSignature },
   ]},
-  { label: 'Customers', items: [
+  { label: 'Shop', items: [
+    { to: '/app/products', label: 'Stock', icon: Package },
     { to: '/app/customers', label: 'Customers', icon: Users },
+    { to: '/app/assistant', label: 'Meraj', icon: Sparkles, ai: true },
+  ]},
+  { label: 'Money', items: [
+    { to: '/app/accounts', label: 'Accounts', icon: Wallet },
+    { to: '/app/reports', label: 'Reports', icon: FileBarChart },
+  ]},
+  { label: 'Settings', items: [
+    { to: '/app/settings', label: 'Settings', icon: SettingsIcon },
+  ]},
+]
+
+// ── MORE TOOLS (collapsed by default — power features, rarely used daily) ──
+const MORE: Section[] = [
+  { label: 'Suppliers & Team', items: [
     { to: '/app/suppliers', label: 'Suppliers', icon: Truck },
+    { to: '/app/team', label: 'Staff', icon: UsersRound },
   ]},
   { label: 'AI Tools', items: [
-    { to: '/app/assistant', label: 'Meraj', icon: Sparkles, ai: true },
     { to: '/app/brain', label: 'Tasks', icon: ListChecks },
-    { to: '/app/reports', label: 'Reports', icon: FileBarChart },
     { to: '/app/campaigns', label: 'Campaigns', icon: MessageCircle },
     { to: '/app/email-assistant', label: 'Email', icon: Mail },
     { to: '/app/summaries', label: 'Summaries', icon: ScrollText },
     { to: '/app/data-entry', label: 'Data Entry', icon: Database },
   ]},
-  { label: 'Business', items: [
-    { to: '/app/products', label: 'Stock', icon: Package },
-    { to: '/app/accounts', label: 'Accounts', icon: Wallet },
+  { label: 'Advanced', items: [
     { to: '/app/activity', label: 'Activity', icon: History },
     { to: '/app/failed-jobs', label: 'Pending', icon: AlertOctagon, badge: true },
+    { to: '/app/notifications', label: 'Notifications', icon: Bell },
+    { to: '/app/suggestions', label: 'Suggestions', icon: Lightbulb },
+    { to: '/app/permissions', label: 'Permissions', icon: ShieldCheck },
   ]},
-  { label: 'Team', items: [{ to: '/app/team', label: 'Staff', icon: UsersRound }] },
-  { label: 'Settings', items: [
-    { to: '/app/settings', label: 'Settings', icon: SettingsIcon },
-    { to: '/app/connect-apps', label: 'Connections', icon: Plug },
+  { label: 'Connections', items: [
+    { to: '/app/connect-apps', label: 'Connect Apps', icon: Plug },
+    { to: '/app/integrations', label: 'Integrations', icon: Network },
     { to: '/app/api-keys', label: 'API Keys', icon: Key },
     { to: '/app/subscription', label: 'Subscription', icon: CreditCard },
-    { to: '/app/integrations', label: 'Integrations', icon: Network },
     { to: '/app/compliance', label: 'Compliance', icon: Shield },
     { to: '/app/support', label: 'Support', icon: LifeBuoy },
-  ]},
-  { label: 'Account', items: [
-    { to: '/app/account', label: 'Account', icon: UserCircle },
-    { to: '/app/notifications', label: 'Notifications', icon: Bell },
-    { to: '/app/permissions', label: 'Permissions', icon: ShieldCheck },
-    { to: '/app/suggestions', label: 'Suggestions', icon: Lightbulb },
     { to: '/app/about', label: 'About', icon: UserCircle },
   ]},
 ]
@@ -69,6 +76,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
   const { profile, ownerId, signOut } = useAuth()
   const navigate = useNavigate()
   const [failedCount, setFailedCount] = useState(0)
+  const [showMore, setShowMore] = useState(false)
   const { count: pendingApprovals } = usePendingApprovals()
 
   useEffect(() => {
@@ -133,12 +141,38 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         </div>
 
         <nav className="flex-1 overflow-y-auto scroll-area px-3 py-4 space-y-5">
-          {SECTIONS.map((section) => (
+          {/* Core — always visible */}
+          {CORE.map((section) => (
             <div key={section.label}>
               <p className="px-3 mb-1.5 text-[10px] font-bold tracking-[0.12em] uppercase text-fg-subtle">{section.label}</p>
               <div className="space-y-0.5">{section.items.map(renderItem)}</div>
             </div>
           ))}
+
+          {/* More Tools — collapsed by default, expands on tap */}
+          <div>
+            <button
+              onClick={() => setShowMore((v) => !v)}
+              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-control text-sm font-semibold text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors"
+              aria-expanded={showMore}
+            >
+              {showMore ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+              <span>More Tools</span>
+              {failedCount > 0 && (
+                <span className="ml-auto bg-negative text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{failedCount > 9 ? '9+' : failedCount}</span>
+              )}
+            </button>
+            {showMore && (
+              <div className="space-y-4 mt-2 pl-2 border-l border-line/50">
+                {MORE.map((section) => (
+                  <div key={section.label}>
+                    <p className="px-3 mb-1.5 text-[10px] font-bold tracking-[0.12em] uppercase text-fg-subtle">{section.label}</p>
+                    <div className="space-y-0.5">{section.items.map(renderItem)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </nav>
 
         <div className="p-3 border-t border-line">

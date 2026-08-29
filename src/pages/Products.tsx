@@ -11,7 +11,7 @@ import EmptyState from '../components/ui/EmptyState'
 import { Package, Plus, Loader2, Trash2, AlertTriangle, Search, MapPin, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const empty = { name: '', description: '', sku: '', category: 'general', price: '', cost: '', stock_quantity: '', low_stock_threshold: '5' }
+const empty = { name: '', description: '', sku: '', category: 'general', price: '', cost: '', stock_quantity: '', low_stock_threshold: '5', hsn_code: '', gst_rate: '0' }
 
 export default function Products() {
   const { profile, ownerId } = useAuth()
@@ -64,7 +64,7 @@ export default function Products() {
     try {
       const prod = {
         name: form.name, description: form.description || null, sku: form.sku || null,
-        category: form.category || 'general', price: Number(form.price) || 0, cost: Number(form.cost) || 0,
+        category: form.category || 'general', price: Number(form.price) || 0, cost: Number(form.cost) || 0, hsn_code: form.hsn_code || null, gst_rate: Number(form.gst_rate) || 0,
         stock_quantity: Number(form.stock_quantity) || 0, low_stock_threshold: Number(form.low_stock_threshold) || 5,
       }
       if (isOwner) {
@@ -153,6 +153,22 @@ export default function Products() {
             <div><label className="label">Description</label><input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="input-field" placeholder="Optional" /></div>
             <div><label className="label">Price (₹) *</label><input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="input-field" placeholder="299" /></div>
             <div><label className="label">Cost (₹)</label><input type="number" step="0.01" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} className="input-field" placeholder="125" /></div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="label">HSN Code</label>
+                <input value={form.hsn_code} onChange={(e) => setForm({ ...form, hsn_code: e.target.value })} className="input-field" placeholder="e.g. 3004" inputMode="numeric" />
+              </div>
+              <div>
+                <label className="label">GST Rate</label>
+                <select value={form.gst_rate} onChange={(e) => setForm({ ...form, gst_rate: e.target.value })} className="input-field">
+                  <option value="0">0% (Exempt)</option>
+                  <option value="5">5%</option>
+                  <option value="12">12%</option>
+                  <option value="18">18%</option>
+                  <option value="28">28%</option>
+                </select>
+              </div>
+            </div>
             <div><label className="label">Stock quantity</label><input type="number" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} className="input-field" placeholder="100" /></div>
             <div><label className="label">Low-stock alert at</label><input type="number" value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} className="input-field" placeholder="5" /></div>
           </div>

@@ -173,7 +173,20 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
   }
 
   doc.setTextColor(...COLOR.slate)
-  doc.text(`Tax (GST ${invoice.tax_rate}%)`, totalsX, y)
+  // GST breakdown — CGST/SGST for intra-state, IGST for inter-state
+    if ((invoice as any).is_interstate) {
+      doc.text(`IGST (${invoice.tax_rate}%)`, totalsX, y)
+      y += 5
+      doc.text(formatINR(invoice.tax_amount), PAGE.w - PAGE.margin, y, { align: 'right' })
+    } else {
+      const cgst = invoice.tax_amount / 2
+      const sgst = invoice.tax_amount / 2
+      doc.text(`CGST (${invoice.tax_rate / 2}%)`, totalsX, y)
+      doc.text(formatINR(cgst), PAGE.w - PAGE.margin, y, { align: 'right' })
+      y += 5
+      doc.text(`SGST (${invoice.tax_rate / 2}%)`, totalsX, y)
+      doc.text(formatINR(sgst), PAGE.w - PAGE.margin, y, { align: 'right' })
+    }
   doc.setTextColor(...COLOR.dark)
   doc.text(formatINR(invoice.tax_amount), PAGE.w - PAGE.margin, y, { align: 'right' })
   y += rowH + 1
