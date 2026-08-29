@@ -1,11 +1,10 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense } from 'react'
 import { useAuth } from './context/AuthContext'
 import { supabaseConfigured } from './lib/supabase'
 import ProtectedRoute from './components/ProtectedRoute'
 import AppLayout from './components/AppLayout'
 import SetupScreen from './components/SetupScreen'
-import Lenis from 'lenis'
 
 // ── Route-level code splitting: each page is its own chunk. ──
 const Landing = lazy(() => import('./pages/Landing'))
@@ -58,16 +57,6 @@ function FullPageFallback() {
 
 function App() {
   const { user } = useAuth()
-
-  // App-wide smooth (momentum) scrolling.
-  useEffect(() => {
-    if (window.matchMedia('(pointer: coarse)').matches) return // native scroll on touch (smoother on mobile)
-    const lenis = new Lenis({ duration: 1.1, smoothWheel: true })
-    let raf = 0
-    const loop = (t: number) => { lenis.raf(t); raf = requestAnimationFrame(loop) }
-    raf = requestAnimationFrame(loop)
-    return () => { cancelAnimationFrame(raf); lenis.destroy() }
-  }, [])
 
   if (!supabaseConfigured) {
     return <SetupScreen />

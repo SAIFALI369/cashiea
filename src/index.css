@@ -166,3 +166,7 @@
 .prose-content strong { @apply font-semibold text-fg; }
 .prose-content code { @apply bg-surface-2 px-1.5 py-0.5 rounded text-accent text-sm font-mono; }
 .prose-content a { @apply text-accent underline underline-offset-2; }
+
+/* Safe area insets for notched devices */
+.safe-area-pt { padding-top: env(safe-area-inset-top); }
+.safe-area-pb { padding-bottom: env(safe-area-inset-bottom); }

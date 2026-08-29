@@ -134,7 +134,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
                 {voiceLoading && <Loader2 className="w-3 h-3 animate-spin" />}{statusText}
               </span>
             )}
-            <button onClick={cancelVoice} aria-label="Close Meraj" className="w-8 h-8 rounded-full bg-surface border border-line text-fg-muted hover:text-negative flex items-center justify-center active:scale-95 transition-transform shadow-float">
+            <button onClick={cancelVoice} aria-label="Close Meraj" title="Close Meraj" className="w-8 h-8 rounded-full bg-surface border border-line text-fg-muted hover:text-negative flex items-center justify-center active:scale-95 transition-transform shadow-float">
               <X className="w-4 h-4" />
             </button>
             <button onClick={() => (listening ? cancelVoice() : startVoice())} aria-label="Tap to talk to Meraj" className="active:scale-95 transition-transform">
@@ -158,7 +158,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
             <button
               onClick={startVoice}
               className="flex flex-col items-center justify-center gap-0.5 min-h-[56px]"
-              aria-label="Talk to Meraj"
+              aria-label="Talk to Meraj" title="Talk to Meraj"
             >
               <span className={`w-12 h-12 -mt-6 rounded-full ring-4 ring-surface flex items-center justify-center active:scale-95 transition-all shadow-[0_6px_20px_-4px_rgb(var(--accent))] ${listening || speaking ? 'bg-accent text-accent-fgl border-2 border-accent' : 'bg-accent-strong text-accent-fg'}`}>
                 <MerajAvatar state={voiceActive ? avatarState : 'idle'} size="sm" context="floating" />
@@ -170,7 +170,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
           {RIGHT.map((it) => <Slot key={it.to} item={it} />)}
 
           {/* Camera — simple flat scan button (only the center Meraj pops out) */}
-          <button onClick={onCamera} className="flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] text-accent transition-colors active:scale-95" aria-label="Scan photo">
+          <button onClick={onCamera} className="flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] text-accent transition-colors active:scale-95" aria-label="Scan photo" title="Scan photo">
             <Camera className="w-[22px] h-[22px]" strokeWidth={1.75} />
             <span className="text-[10px] font-semibold">Scan</span>
           </button>

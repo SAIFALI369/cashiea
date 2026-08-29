@@ -77,6 +77,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
   const navigate = useNavigate()
   const [failedCount, setFailedCount] = useState(0)
   const [showMore, setShowMore] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const { count: pendingApprovals } = usePendingApprovals()
 
   useEffect(() => {
@@ -100,6 +101,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
       onClick={onClose}
       className={({ isActive }) => clsx(
         'group flex items-center gap-3 rounded-control font-medium text-sm transition-colors min-h-[40px] px-3 py-2',
+        collapsed && 'lg:justify-center lg:px-2',
         isActive
           ? 'bg-accent-soft text-accent'
           : item.ai
@@ -108,7 +110,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
       )}
     >
       <item.icon className="w-[18px] h-[18px] flex-shrink-0" strokeWidth={1.75} />
-      <span className="flex-1 truncate">{item.label}</span>
+      <span className={clsx("flex-1 truncate", collapsed && "lg:hidden")}>{item.label}</span>
       {item.ai && <span className="text-[9px] font-bold tracking-wide px-1.5 py-0.5 rounded-full bg-accent text-accent-fg">AI</span>}
       {item.badge && failedCount > 0 && (
         <span className="bg-negative text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{failedCount > 9 ? '9+' : failedCount}</span>
@@ -123,20 +125,24 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
     <>
       {isOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={onClose} />}
       <aside className={clsx(
-        'fixed lg:sticky top-0 left-0 z-50 h-screen w-72 bg-paper border-r border-line flex flex-col transition-transform duration-300',
+        'fixed lg:sticky top-0 left-0 z-50 h-screen bg-paper border-r border-line flex flex-col transition-all duration-300',
+        collapsed ? 'w-[68px]' : 'w-72',
         isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       )}>
         <div className="flex items-center justify-between p-5 border-b border-line">
           <div className="flex items-center gap-2.5">
             <CashieaLogo size={36} />
             <div className="min-w-0">
-              <h1 className="font-bold text-fg text-lg leading-none">Cashiea</h1>
-              <p className="text-xs text-fg-subtle mt-0.5 truncate max-w-[140px]">{profile?.company_name || 'AI Platform'}</p>
+              <h1 className={clsx("font-bold text-fg text-lg leading-none", collapsed && "lg:hidden")}>Cashiea</h1>
+              <p className={clsx("text-xs text-fg-subtle mt-0.5 truncate max-w-[140px]", collapsed && "lg:hidden")}>{profile?.company_name || 'AI Platform'}</p>
             </div>
           </div>
           <div className="flex items-center gap-1">
             <ThemeToggle />
-            <button onClick={onClose} className="lg:hidden icon-btn" aria-label="Close menu"><X className="w-5 h-5" /></button>
+            <button onClick={() => setCollapsed((v) => !v)} className="hidden lg:flex icon-btn" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+              <ChevronRight className={clsx('w-4 h-4 transition-transform duration-300', collapsed ? '' : 'rotate-180')} />
+            </button>
+            <button onClick={onClose} className="lg:hidden icon-btn" aria-label="Close menu" title="Close menu"><X className="w-5 h-5" /></button>
           </div>
         </div>
 
@@ -144,7 +150,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
           {/* Core — always visible */}
           {CORE.map((section) => (
             <div key={section.label}>
-              <p className="px-3 mb-1.5 text-[10px] font-bold tracking-[0.12em] uppercase text-fg-subtle">{section.label}</p>
+              <p className={clsx("px-3 mb-1.5 text-[10px] font-bold tracking-[0.12em] uppercase text-fg-subtle", collapsed && "lg:hidden")}>{section.label}</p>
               <div className="space-y-0.5">{section.items.map(renderItem)}</div>
             </div>
           ))}
@@ -166,7 +172,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
               <div className="space-y-4 mt-2 pl-2 border-l border-line/50">
                 {MORE.map((section) => (
                   <div key={section.label}>
-                    <p className="px-3 mb-1.5 text-[10px] font-bold tracking-[0.12em] uppercase text-fg-subtle">{section.label}</p>
+                    <p className={clsx("px-3 mb-1.5 text-[10px] font-bold tracking-[0.12em] uppercase text-fg-subtle", collapsed && "lg:hidden")}>{section.label}</p>
                     <div className="space-y-0.5">{section.items.map(renderItem)}</div>
                   </div>
                 ))}
@@ -179,7 +185,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
           <NavLink to="/app/account" onClick={onClose} className="flex items-center gap-2.5 p-2 rounded-control hover:bg-surface-2 transition-colors">
             <Avatar url={profile?.avatar_url} name={profile?.full_name} size={36} />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-fg truncate">{profile?.full_name || 'User'}</p>
+              <p className={clsx("text-sm font-medium text-fg truncate", collapsed && "lg:hidden")}>{profile?.full_name || 'User'}</p>
               <p className="text-[11px] text-fg-subtle truncate">Owner · Edit account</p>
             </div>
           </NavLink>

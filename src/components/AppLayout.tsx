@@ -55,7 +55,7 @@ export default function AppLayout() {
         <OfflineBanner />
         {/* Mobile header — menu · brand (fades) · sync state · account */}
         {!isAssistant && (
-        <header className="lg:hidden sticky top-0 z-30 bg-slate-900/80 backdrop-blur border-b border-slate-800 px-4 py-2 flex items-center gap-3">
+        <header className="lg:hidden sticky top-0 z-30 bg-slate-900/80 backdrop-blur border-b border-slate-800 px-4 py-2 flex items-center gap-3 safe-area-pt">
           <button onClick={() => setSidebarOpen(true)} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-muted hover:text-fg">
             <Menu className="w-6 h-6" />
           </button>
@@ -77,7 +77,7 @@ export default function AppLayout() {
         {/* Content — extra bottom padding on mobile so the bottom nav never covers it */}
         <main className={isAssistant
           ? 'flex-1 min-w-0 flex flex-col min-h-0'
-          : 'flex-1 px-4 pt-4 pb-28 sm:px-5 sm:pt-5 lg:p-8 lg:pb-8 max-w-7xl mx-auto w-full'}>
+          : 'flex-1 px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+72px)] sm:px-5 sm:pt-5 lg:p-8 lg:pb-8 max-w-[1600px] mx-auto w-full'}>
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 6 }}
@@ -110,3 +110,4 @@ export default function AppLayout() {
     </div>
   )
 }
+

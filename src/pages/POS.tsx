@@ -23,6 +23,7 @@ export default function POS() {
   const [cart, setCart] = useState<CartLine[]>([])
   const [search, setSearch] = useState('')
   const [showScanner, setShowScanner] = useState(false)
+  const [customerSearch, setCustomerSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState('all')
   const [taxRate, setTaxRate] = useState(0)
   const [discount, setDiscount] = useState(0)
@@ -290,9 +291,9 @@ export default function POS() {
                           <p className="text-xs text-slate-500">{formatINR(line.unit_price)} ea</p>
                         </div>
                         <div className="flex items-center gap-1">
-                          <button onClick={() => changeQty(line.product_id, -1)} className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 flex items-center justify-center"><Minus className="w-3 h-3" /></button>
+                          <button onClick={() => changeQty(line.product_id, -1)} className="w-11 h-11 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center active:scale-95 transition-transform"><Minus className="w-4 h-4" /></button>
                           <span className="w-6 text-center text-sm text-white">{line.quantity}</span>
-                          <button onClick={() => changeQty(line.product_id, 1)} className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 flex items-center justify-center"><Plus className="w-3 h-3" /></button>
+                          <button onClick={() => changeQty(line.product_id, 1)} className="w-11 h-11 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center active:scale-95 transition-transform"><Plus className="w-4 h-4" /></button>
                         </div>
                         <span className="text-sm font-semibold text-white w-16 text-right">{formatINR(line.quantity * line.unit_price)}</span>
                         <button onClick={() => removeLine(line.product_id)} className="text-slate-500 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -313,7 +314,7 @@ export default function POS() {
                   </div>
 
                   {/* Payment method */}
-                  <div className="grid grid-cols-5 gap-1 mt-3">
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 mt-3">
                     {(['cash', 'card', 'upi', 'wallet', 'other'] as PaymentMethod[]).map((m) => (
                       <button key={m} onClick={() => setPaymentMethod(m)} className={`py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${paymentMethod === m ? 'bg-brand-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}>{m}</button>
                     ))}
@@ -334,15 +335,21 @@ export default function POS() {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowCustomerPicker(false)}>
           <div className="card p-4 w-full max-w-md max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-bold text-white mb-3">Select customer</h3>
-            <input autoFocus placeholder="Search customers..." className="input-field mb-3" onChange={(e) =>
-{
-              const q = e.target.value.toLowerCase()
-              // simple client filter
-              const list = customers.filter((c) => c.name.toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q) || (c.phone || '').includes(q))
-              setCustomers(list.length || !q ? customers : list)
-            }} />
+            <input
+              autoFocus
+              placeholder="Search customers..."
+              className="input-field mb-3"
+              value={customerSearch}
+              onChange={(e) => setCustomerSearch(e.target.value)}
+            />
             <button onClick={() => { setSelectedCustomer(null); setShowCustomerPicker(false) }} className="w-full p-2.5 rounded-lg hover:bg-slate-800 text-left text-sm text-slate-400 mb-1">🚶 Walk-in (no customer)</button>
-            {customers.map((c) => (
+            {customers
+              .filter((c) => {
+                if (!customerSearch) return true
+                const q = customerSearch.toLowerCase()
+                return c.name?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q) || c.phone?.includes(q)
+              })
+              .map((c) => (
               <button key={c.id} onClick={() => { setSelectedCustomer(c); setShowCustomerPicker(false) }} className="w-full p-2.5 rounded-lg hover:bg-slate-800 text-left">
                 <p className="text-sm text-white">{c.name}</p>
                 <p className="text-xs text-slate-500">{c.email || c.phone || 'No contact'}</p>
