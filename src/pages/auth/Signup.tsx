@@ -1,3 +1,4 @@
+import { validatePassword, validateEmail, validatePhone } from '../../lib/validation'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
@@ -68,7 +69,12 @@ export default function Signup() {
     setError('')
     if (!fullName.trim() || !shopName.trim() || !phone.trim()) { setError('Please fill in all required fields.'); return }
     if (!agree) { setError('Please accept the Terms to continue.'); return }
-    if (password.length < 6) { setError('Password must be at least 6 characters.'); return }
+    const pwCheck = validatePassword(password)
+    if (!pwCheck.valid) { setError(pwCheck.message || 'Invalid password'); return }
+    const emailCheck = validateEmail(email)
+    if (!emailCheck.valid) { setError(emailCheck.message || 'Invalid email'); return }
+    const phoneCheck = validatePhone(phone)
+    if (!phoneCheck.valid) { setError(phoneCheck.message || 'Invalid phone'); return }
     setLoading(true)
     try {
       await signUp(email, password, fullName, shopName, phone)

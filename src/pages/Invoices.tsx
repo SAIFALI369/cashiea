@@ -1,3 +1,4 @@
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
@@ -35,7 +36,10 @@ export default function Invoices() {
   const [prompt, setPrompt] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [shareInv, setShareInv] = useState<Invoice | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<'all' | 'unpaid' | 'paid' | 'overdue'>('all')
+  const PAGE_SIZE = 30
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [lastClickedId, setLastClickedId] = useState<string | null>(null)
   const { menu, onContextMenu, close: closeMenu, isOpen: menuOpen } = useContextMenu()
@@ -181,6 +185,7 @@ export default function Invoices() {
   ]
 
   const handleDelete = async (id: string) => {
+    setConfirmDelete(null)
     const { error } = await supabase.from('invoices').delete().eq('id', id).eq('user_id', ownerId)
     if (!error) { setInvoices(invoices.filter((i) => i.id !== id)); toast.success('Deleted') }
   }
@@ -297,12 +302,12 @@ export default function Invoices() {
           <div className="space-y-3">
             {filteredInvoices.length === 0 ? (
               <p className="text-sm text-fg-muted text-center py-10">No {statusFilter} invoices.</p>
-            ) : filteredInvoices.map((inv) => (
+            ) : filteredInvoices.slice(0, visibleCount).map((inv) => (
               <SwipeActions
                 key={inv.id}
                 actions={[
                   { icon: <CheckCircle2 className="w-4 h-4" />, label: 'Paid', color: 'bg-positive', onClick: () => markPaid(inv) },
-                  { icon: <Trash2 className="w-4 h-4" />, label: 'Delete', color: 'bg-negative', onClick: () => handleDelete(inv.id) },
+                  { icon: <Trash2 className="w-4 h-4" />, label: 'Delete', color: 'bg-negative', onClick: () => setConfirmDelete(inv.id) },
                 ]}
               >
               <div
@@ -354,7 +359,7 @@ export default function Invoices() {
                 {inv.status !== 'paid' && inv.status !== 'draft' && (
                   <button onClick={() => markPaid(inv)} className="btn-ghost text-xs text-green-400"><Check className="w-3.5 h-3.5" /> Mark paid</button>
                 )}
-                <button onClick={() => handleDelete(inv.id)} className="btn-ghost text-xs text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setConfirmDelete(inv.id)} className="btn-ghost text-xs text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
               </div>
             </SwipeActions>
@@ -422,6 +427,16 @@ export default function Invoices() {
       )}
 
       {/* Right-click context menu */}
+      {/* Delete confirmation */}
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Delete invoice?"
+        message="This invoice will be permanently removed. This cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
+        onClose={() => setConfirmDelete(null)}
+      />
+
       <ContextMenu
         open={menuOpen}
         x={menu?.x}
@@ -429,6 +444,15 @@ export default function Invoices() {
         onClose={closeMenu}
         items={getBulkMenuItems()}
       />
+
+      {visibleCount < filteredInvoices.length && (
+        <button
+          onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
+          className="btn-secondary w-full text-sm h-11 mt-4"
+        >
+          Show {Math.min(PAGE_SIZE, filteredInvoices.length - visibleCount)} more ({visibleCount} of {filteredInvoices.length})
+        </button>
+      )}
     </div>
   )
 }

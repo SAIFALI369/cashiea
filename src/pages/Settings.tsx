@@ -1,3 +1,4 @@
+import { validateGstin, validateUpiId, validatePhone } from '../lib/validation'
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -105,7 +106,19 @@ export default function SettingsPage() {
     setSavingNotes(false)
   }
 
+  const [gstinError, setGstinError] = useState<string | null>(null)
+  const [upiError, setUpiError] = useState<string | null>(null)
+
+  const validateFields = () => {
+    const g = validateGstin(gstin)
+    const u = validateUpiId(upiId)
+    setGstinError(g.valid ? null : g.message || null)
+    setUpiError(u.valid ? null : u.message || null)
+    return g.valid && u.valid
+  }
+
   const handleSave = async () => {
+    if (!validateFields()) { toast.error('Please fix the errors first'); return }
     setSaving(true)
     try {
       const { error } = await supabase
@@ -156,7 +169,10 @@ export default function SettingsPage() {
           <div className="grid sm:grid-cols-2 gap-4">
             <Field label="Full name"><input value={fullName} onChange={(e) => setFullName(e.target.value)} className="input-field" placeholder="Jane Doe" /></Field>
             <Field label="Business name"><input value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="input-field" placeholder="Sharma General Store" /></Field>
-            <Field label="GSTIN"><input value={gstin} onChange={(e) => setGstin(e.target.value)} className="input-field font-mono" placeholder="22AAAAA0000A1Z5" /></Field>
+            <Field label="GSTIN">
+            <input value={gstin} onChange={(e) => { setGstin(e.target.value); setGstinError(null) }} className={`input-field font-mono ${gstinError ? 'border-negative' : ''}`} placeholder="22AAAAA0000A1Z5" />
+            {gstinError && <p className="text-xs text-negative mt-1">{gstinError}</p>}
+          </Field>
             <Field label="State"><input value={businessState} onChange={(e) => setBusinessState(e.target.value)} className="input-field" placeholder="Bihar" /></Field>
             <Field label="Business address"><input value={businessAddress} onChange={(e) => setBusinessAddress(e.target.value)} className="input-field" placeholder="123 Main St, City" /></Field>
             <Field label="UPI ID" hint="For instant invoice payments"><input value={upiId} onChange={(e) => setUpiId(e.target.value)} className="input-field font-mono" placeholder="myshop@okhdfcbank" /></Field>

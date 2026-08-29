@@ -1,3 +1,5 @@
+import { useDebounce } from '../lib/useDebounce'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useCan } from '../lib/permissions'
@@ -19,8 +21,12 @@ export default function Products() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState<Product | null>(null)
   const [form, setForm] = useState(empty)
   const [search, setSearch] = useState('')
+  const PAGE_SIZE = 50
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const debouncedSearch = useDebounce(search, 250)
   const [saving, setSaving] = useState(false)
   const [popular, setPopular] = useState<Product[]>([])
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out'>('all')
@@ -85,6 +91,7 @@ export default function Products() {
   }
 
   const handleDelete = async (p: Product) => {
+    setConfirmDelete(null) // close dialog first
     try {
       if (isOwner) {
         const { error } = await supabase.from('products').delete().eq('id', p.id)
@@ -112,7 +119,7 @@ export default function Products() {
   }
 
   const filtered = products.filter((p) => {
-    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || (p.sku || '').toLowerCase().includes(search.toLowerCase())
+    const matchSearch = !search || p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) || (p.sku || '').toLowerCase().includes(debouncedSearch.toLowerCase())
     if (!matchSearch) return false
     if (stockFilter === 'low') return p.stock_quantity <= p.low_stock_threshold && p.stock_quantity > 0
     if (stockFilter === 'out') return p.stock_quantity === 0
@@ -209,7 +216,7 @@ export default function Products() {
                 <button onClick={() => setSearch('')} className="text-xs font-semibold text-accent hover:underline">View all</button>
               </div>
               <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scroll-area">
-                {popular.map((p) => (
+                {popular.slice(0, visibleCount).map((p) => (
                   <button key={p.id} onClick={() => setSearch(p.name)} className="card p-3 flex-shrink-0 w-36 text-left active:scale-[0.98] transition-transform">
                     <div className="w-9 h-9 rounded-control bg-accent-soft text-accent flex items-center justify-center mb-2"><Package className="w-5 h-5" /></div>
                     <p className="text-sm font-semibold text-fg truncate">{p.name}</p>
@@ -247,12 +254,32 @@ export default function Products() {
                       <button onClick={() => restock(p, 1)} className="w-7 h-7 rounded-control bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-fg-muted">+</button>
                     </div>
                   </div>
-                  <button onClick={() => handleDelete(p)} className="text-fg-subtle hover:text-negative ml-2"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => setConfirmDelete(p)} className="text-fg-subtle hover:text-negative ml-2"><Trash2 className="w-4 h-4" /></button>
                 </div>
               )
             })}
           </div>
         </>
+      )}
+
+      {/* Delete confirmation */}
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title="Delete product?"
+        message={`"${confirmDelete?.name}" will be permanently removed from your stock.`}
+        confirmLabel="Delete"
+        onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
+        onClose={() => setConfirmDelete(null)}
+      />
+
+      {/* Load more */}
+      {visibleCount < filtered.length && (
+        <button
+          onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
+          className="btn-secondary w-full text-sm h-11"
+        >
+          Show {Math.min(PAGE_SIZE, filtered.length - visibleCount)} more ({visibleCount} of {filtered.length})
+        </button>
       )}
     </div>
   )

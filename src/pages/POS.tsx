@@ -1,3 +1,5 @@
+import { ConfirmDialog } from '../components/ConfirmDialog'
+import { useDebounce } from '../lib/useDebounce'
 import { useEffect, useState, useMemo } from 'react'
 import { BarcodeScanner } from '../components/BarcodeScanner'
 import { ScanLine } from 'lucide-react'
@@ -22,7 +24,9 @@ export default function POS() {
   const [loading, setLoading] = useState(true)
   const [cart, setCart] = useState<CartLine[]>([])
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 250)
   const [showScanner, setShowScanner] = useState(false)
+  const [confirmClear, setConfirmClear] = useState(false)
   const [customerSearch, setCustomerSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState('all')
   const [taxRate, setTaxRate] = useState(0)
@@ -74,8 +78,8 @@ export default function POS() {
     return products.filter((p) => {
       const matchCat = activeCategory === 'all' || p.category === activeCategory
       const matchSearch = !search ||
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        (p.sku || '').toLowerCase().includes(search.toLowerCase())
+        p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        (p.sku || '').toLowerCase().includes(debouncedSearch.toLowerCase())
       return matchCat && matchSearch
     })
   }, [products, activeCategory, search])
@@ -244,7 +248,7 @@ export default function POS() {
                     )}
                   </div>
                   {p.sku && <p className="text-xs text-fg-subtle mt-0.5">{p.sku}</p>}
-                  <p className="text-lg font-bold text-brand-400 mt-2">${p.price.toFixed(2)}</p>
+                  <p className="text-lg font-bold text-brand-400 mt-2">{formatINR(p.price)}</p>
                 </button>
               ))}
             </div>
@@ -256,7 +260,7 @@ export default function POS() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-bold text-fg flex items-center gap-2"><Receipt className="w-5 h-5 text-brand-400" /> Current Sale</h2>
                 {cart.length > 0 && (
-                  <button onClick={() => setCart([])} className="text-xs text-red-400 hover:text-red-300">Clear</button>
+                  <button onClick={() => setConfirmClear(true)} className="text-xs text-red-400 hover:text-red-300">Clear</button>
                 )}
               </div>
 
@@ -380,6 +384,17 @@ export default function POS() {
           onClose={() => setShowScanner(false)}
         />
       )}
+
+      {/* Clear cart confirmation */}
+      <ConfirmDialog
+        open={confirmClear}
+        title="Clear entire cart?"
+        message={`${cart.length} item${cart.length !== 1 ? 's' : ''} will be removed. This cannot be undone.`}
+        confirmLabel="Clear cart"
+        danger={true}
+        onConfirm={() => { setCart([]); setConfirmClear(false) }}
+        onClose={() => setConfirmClear(false)}
+      />
     </div>
   )
 }
