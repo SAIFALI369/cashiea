@@ -65,7 +65,6 @@ const EXPECTED_EDGE_FUNCTIONS = [
   'stripe-webhook',
   'support-email',
   'invoice-reminders',
-  'quickbooks-oauth',
   'quick-tasks',
   'daily-reports',
   'integrations-api',

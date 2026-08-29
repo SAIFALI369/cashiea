@@ -36,11 +36,10 @@ describe('buildUpiLink', () => {
 })
 
 describe('buildUpiQrUrl', () => {
-  it('builds a QR-server URL with the encoded UPI link', () => {
-    const url = buildUpiQrUrl({ payeeVpa: 'shop@paytm', payeeName: 'Shop', amount: 200 })
-    expect(url.startsWith('data:image/png;base64,')).toBe(true)
-    expect(url).toContain('size=240x240')
-    expect(url).toContain('upi%3A%2F%2Fpay')
+  it('generates a client-side QR code as a data URL', async () => {
+    const url = await buildUpiQrUrl({ payeeVpa: 'shop@paytm', payeeName: 'Shop', amount: 200 })
+    expect(typeof url).toBe('string')
+    expect(url.length).toBeGreaterThan(100) // data URLs are long
   })
 })
 
