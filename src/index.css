@@ -170,3 +170,58 @@
 /* Safe area insets for notched devices */
 .safe-area-pt { padding-top: env(safe-area-inset-top); }
 .safe-area-pb { padding-bottom: env(safe-area-inset-bottom); }
+
+/* ── Number & text overflow protection ──
+   Prevents numbers from extending beyond their containers and
+   text from getting cut off mid-sentence. */
+
+/* All tabular numbers should wrap within their container */
+.tabular-nums {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Allow numbers to shrink on very small screens */
+@media (max-width: 380px) {
+  .text-2xl { font-size: 1.25rem; }
+  .text-xl { font-size: 1.125rem; }
+  .text-lg { font-size: 1rem; }
+}
+
+/* Ensure long numbers wrap instead of overflowing */
+.number-fit {
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  display: block;
+}
+
+/* Card values should never overflow */
+.card p {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Search inputs should show full placeholder text */
+input::placeholder {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Headers should never be cut off */
+h1, h2, h3 {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Page titles in the mobile header should truncate gracefully */
+.header-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 50vw;
+}

@@ -188,6 +188,16 @@ export default function POS() {
         title="Cashier / POS"
         subtitle="Ring up sales, bill customers, and generate receipts at the counter"
         icon={<ShoppingCart className="w-5 h-5" />}
+        action={
+          <button
+            onClick={() => setShowScanner(true)}
+            className="w-11 h-11 rounded-control border border-line bg-surface flex items-center justify-center text-accent hover:bg-accent-soft transition-colors"
+            aria-label="Scan barcode"
+            title="Scan barcode"
+          >
+            <ScanLine className="w-5 h-5" />
+          </button>
+        }
       />
 
       {products.length === 0 ? (
@@ -210,13 +220,7 @@ export default function POS() {
                   placeholder="Search by product name or SKU..."
                   onKeyDown={(e) => e.key === 'Enter' && search.trim() && handleBarcodeDetect(search.trim())}
                 />
-                <button
-                  onClick={() => setShowScanner(true)}
-                  className="w-11 h-11 rounded-control border border-line bg-surface flex items-center justify-center text-accent hover:bg-accent-soft transition-colors flex-shrink-0"
-                  aria-label="Scan barcode"
-                >
-                  <ScanLine className="w-5 h-5" />
-                </button>
+
               </div>
               <div className="flex flex-wrap gap-1.5 mt-3">
                 {categories.map((cat) => (

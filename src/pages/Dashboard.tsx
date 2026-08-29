@@ -243,7 +243,7 @@ export default function Dashboard() {
   const weekProfit = weekSales - weekExpenses
 
   return (
-    <div className="animate-fade-in space-y-5">
+    <div className="animate-fade-in space-y-6 lg:space-y-8">
       {/* GREETING — bare page text, no card */}
       <div>
         <h1 className="text-2xl font-semibold text-fg leading-tight">{aiGreeting || `Welcome back, ${firstName}.`}</h1>
@@ -252,7 +252,7 @@ export default function Dashboard() {
 
       {/* TOP PRIORITY — overdue hero */}
       {topPriority && (
-        <section className="card p-4 sm:p-5 border-negative/30">
+        <section className="card p-5 sm:p-6 border-negative/30">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex items-start gap-3 min-w-0 flex-1">
               <span className="w-9 h-9 rounded-control bg-negative/10 text-negative flex items-center justify-center flex-shrink-0"><AlertTriangle className="w-5 h-5" /></span>
@@ -281,7 +281,7 @@ export default function Dashboard() {
 
       {/* MERAJ INSIGHTS */}
       {insights.length > 0 && (
-        <section className="card p-4 sm:p-5">
+        <section className="card p-5 sm:p-6">
           <div className="flex items-center gap-3 mb-3">
             <MerajAvatar state="idle" context="icon" size="sm" className="flex-shrink-0" />
             <div className="min-w-0">
@@ -289,7 +289,7 @@ export default function Dashboard() {
               <p className="text-[11px] text-fg-subtle">A quick look at your business</p>
             </div>
           </div>
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {insights.map((it, i) => (
               <div key={i} className="flex items-start gap-2.5">
                 <span className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${sevDot[it.severity]}`} />
@@ -326,7 +326,7 @@ export default function Dashboard() {
       </section>
 
       {/* STATS grid — dense, enriched */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {stats.map((m) => {
           const good = m.count === 0 && !!m.positive
           return (
@@ -342,7 +342,7 @@ export default function Dashboard() {
                   <p className="text-base font-bold text-positive leading-tight">{m.positive!.label}</p>
                 </div>
               ) : (
-                <p className={`text-xl sm:text-2xl font-bold tabular-nums mt-1.5 leading-tight break-words ${m.count === 0 ? 'text-fg-subtle' : 'text-fg'}`}>{m.value}</p>
+                <p className={`text-xl sm:text-2xl font-bold tabular-nums number-fit mt-1.5 leading-tight ${m.count === 0 ? 'text-fg-subtle' : 'text-fg'}`}>{m.value}</p>
               )}
               {m.delta && !good && <p className={`text-[11px] font-medium mt-0.5 ${deltaCls[m.deltaTone || 'neutral']}`}>{m.delta}</p>}
               {m.action && m.count > 0 ? (
@@ -366,7 +366,7 @@ export default function Dashboard() {
             <h2 className="text-lg font-bold text-fg">Business at a glance</h2>
             <span className="inline-flex items-center gap-1 text-xs font-medium text-fg-muted border border-line rounded-control px-2 py-1">This week <ChevronDown className="w-3 h-3" /></span>
           </div>
-          <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-5">
             <div><p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Sales</p><p className="text-xl font-bold text-accent tabular-nums">{formatINR(weekSales, 0)}</p></div>
             <div><p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Expenses</p><p className="text-xl font-bold text-fg-muted tabular-nums">{formatINR(weekExpenses, 0)}</p></div>
             <div><p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Profit</p><p className={`text-xl font-bold tabular-nums ${weekProfit >= 0 ? 'text-positive' : 'text-negative'}`}>{formatINR(weekProfit, 0)}</p></div>

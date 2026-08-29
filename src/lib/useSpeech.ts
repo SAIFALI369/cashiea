@@ -187,7 +187,7 @@ export function useSpeech() {
 
           // 3) Assemble the audio blob
           const audioBlob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' })
-          if (audioBlob.size < 1000) {
+          if (audioBlob.size < 100) {
             onError?.("I couldn't hear that clearly — try speaking a bit louder.")
             return
           }
@@ -212,7 +212,7 @@ export function useSpeech() {
                 Authorization: `Bearer ${session.access_token}`,
                 apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
               },
-              body: JSON.stringify({ audio: base64, mimeType: mimeType || 'audio/webm' }),
+              body: JSON.stringify({ audio: base64, mimeType: mimeType || 'audio/webm', language: localStorage.getItem('cashiea_voice_lang') || 'auto' }),
             })
             const data = await res.json().catch(() => ({ error: 'Invalid response' }))
             if (!res.ok) {
@@ -229,13 +229,14 @@ export function useSpeech() {
           }
         }
 
-        // 5) Start recording — auto-stop after 12 seconds (safety)
-        recorder.start()
+        // 5) Start recording — send data chunks every 250ms (prevents mobile
+        // browser buffering issues) + auto-stop after 15s safety
+        recorder.start(250)
         setTimeout(() => {
           try {
             if (recorder.state === 'recording') recorder.stop()
           } catch { /* already stopped */ }
-        }, 12000)
+        }, 15000)
 
         return true
       } catch (err) {
