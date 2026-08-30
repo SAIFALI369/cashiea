@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react'
 import { Plus, Trash2, Wallet } from 'lucide-react'
 import { formatINR } from '../../lib/format'
 import { tenderStatus, type TenderLine } from '../../lib/pos'
-import { buildUpiQrUrl } from '../../lib/payments'
 import type { PaymentMethod } from '../../lib/types'
+import { UpiQr } from '../UpiQr'
 
 const METHODS: PaymentMethod[] = ['cash', 'upi', 'card', 'wallet', 'other']
 const METHOD_LABEL: Record<PaymentMethod, string> = { cash: 'Cash', upi: 'UPI', card: 'Card', wallet: 'Wallet', other: 'Other' }
@@ -14,7 +13,7 @@ const nextId = () => `t${++tenderSeq}-${Date.now().toString(36)}`
 /**
  * SplitPayment — multiple tender lines on one sale (cash + UPI, cash
  * + card …). Live remaining / change; checkout is blocked by the
- * parent until tenders cover the total. UPI lines can show a QR the
+ * parent until tenders cover the total. UPI lines show a QR the
  * customer scans at the counter; the cashier confirms receipt and the
  * tender is recorded.
  */
@@ -28,21 +27,8 @@ export function SplitPayment({
   payeeName: string
   receiptRef: string
 }) {
-  const [qr, setQr] = useState<string | null>(null)
   const status = tenderStatus(total, tenders)
   const upiAmount = tenders.filter((t) => t.method === 'upi').reduce((s, t) => s + (t.amount || 0), 0)
-
-  useEffect(() => {
-    let alive = true
-    if (upiId && upiAmount > 0) {
-      buildUpiQrUrl({ payeeVpa: upiId, payeeName, amount: upiAmount, reference: receiptRef, note: `Payment ${receiptRef}` })
-        .then((url) => { if (alive) setQr(url) })
-        .catch(() => { if (alive) setQr(null) })
-    } else {
-      setQr(null)
-    }
-    return () => { alive = false }
-  }, [upiId, upiAmount, payeeName, receiptRef])
 
   const update = (id: string, patch: Partial<TenderLine>) =>
     onChange(tenders.map((t) => (t.id === id ? { ...t, ...patch } : t)))
@@ -106,14 +92,21 @@ export function SplitPayment({
         </span>
       </div>
 
-      {/* UPI QR — the customer scans; the cashier confirms receipt */}
-      {qr && (
+      {/* UPI QR — the customer scans; the cashier confirms receipt.
+          Loading, error and copy states live inside UpiQr. */}
+      {upiId && upiAmount > 0 && (
         <div className="flex items-center gap-3 p-2.5 rounded-xl bg-surface-2 border border-line">
-          <img src={qr} alt="UPI payment QR" className="w-24 h-24 rounded-lg bg-white p-1" />
+          <UpiQr
+            upiId={upiId}
+            payeeName={payeeName}
+            amount={upiAmount}
+            reference={receiptRef}
+            note={`Payment ${receiptRef}`}
+            size={112}
+          />
           <div className="text-xs text-fg-muted">
             <p className="font-semibold text-fg">Customer scans to pay {formatINR(upiAmount)}</p>
             <p className="mt-1">Confirm the payment in your UPI app, then complete the sale.</p>
-            {upiId && <p className="mt-1 text-fg-subtle">{upiId}</p>}
           </div>
         </div>
       )}

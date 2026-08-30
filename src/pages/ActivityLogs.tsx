@@ -90,7 +90,7 @@ export default function ActivityLogs() {
             key={f}
             onClick={() => setFilter(f)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all border ${
-              filter === f ? 'border-brand-600 bg-brand-600/20 text-brand-300' : 'border-slate-700 text-slate-400 hover:text-white'
+              filter === f ? 'border-accent-strong bg-accent-strong/20 text-brand-300' : 'border-slate-700 text-slate-400 hover:text-white'
             }`}
           >
             {f}

@@ -143,7 +143,7 @@ export default function EmailAssistant() {
               onClick={() => setEmailType(t.value)}
               className={`p-3 rounded-xl border text-left transition-all ${
                 emailType === t.value
-                  ? 'border-brand-600 bg-brand-600/15'
+                  ? 'border-accent-strong bg-accent-strong/15'
                   : 'border-slate-700 bg-slate-900/50 hover:border-slate-600'
               }`}
             >
@@ -184,7 +184,7 @@ export default function EmailAssistant() {
                 onClick={() => setTone(t)}
                 className={`px-3.5 py-1.5 rounded-full text-sm font-medium capitalize transition-all border ${
                   tone === t
-                    ? 'border-brand-600 bg-brand-600/20 text-brand-300'
+                    ? 'border-accent-strong bg-accent-strong/20 text-brand-300'
                     : 'border-slate-700 text-slate-400 hover:border-slate-600 hover:text-white'
                 }`}
               >

@@ -1,16 +1,20 @@
 import { useDebounce } from '../lib/useDebounce'
 import { ConfirmDialog } from '../components/ConfirmDialog'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useCan } from '../lib/permissions'
 import { requestAction } from '../lib/approvals'
 import { supabase } from '../lib/supabase'
 import { offlineInsert } from '../lib/mutations'
 import { formatINR } from '../lib/format'
+import { validateHsn, validatePrice } from '../lib/validation'
+import { categoryHints, normalizeCategory } from '../lib/categories'
 import type { Product } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
-import { Package, Plus, Loader2, Trash2, AlertTriangle, Search, MapPin, ChevronDown, X } from 'lucide-react'
+import { CategoryCombobox } from '../components/products/CategoryCombobox'
+import { ImportCsvModal } from '../components/products/ImportCsvModal'
+import { Package, Plus, Loader2, Trash2, AlertTriangle, Search, MapPin, ChevronDown, X, FileSpreadsheet } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { ProductUnit } from '../lib/types'
 
@@ -24,8 +28,10 @@ export default function Products() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<Product | null>(null)
   const [form, setForm] = useState(empty)
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [search, setSearch] = useState('')
   const PAGE_SIZE = 50
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
@@ -36,6 +42,11 @@ export default function Products() {
 
   // Wait for the profile to resolve (direct page loads race auth restore).
   useEffect(() => { if (ownerId) loadProducts() }, [ownerId])
+
+  const categories = useMemo(
+    () => Array.from(new Set(products.map((p) => p.category || 'general'))).sort((a, b) => a.localeCompare(b)),
+    [products],
+  )
 
   const loadProducts = async () => {
     setLoading(true)
@@ -68,8 +79,55 @@ export default function Products() {
     setLoading(false)
   }
 
+  // ── Inline validation (fires on blur, blocks save) ─────────────
+
+  const skuOwner = useMemo(() => {
+    const lower = form.sku.trim().toLowerCase()
+    if (!lower) return null
+    return products.find((p) => (p.sku || '').toLowerCase() === lower) || null
+  }, [form.sku, products])
+
+  const errors = useMemo(() => {
+    const e: Record<string, string> = {}
+    if (!form.name.trim()) e.name = 'Product name is required'
+    if (form.price === '') e.price = 'Selling price is required'
+    else {
+      const v = validatePrice(form.price)
+      if (!v.valid) e.price = v.message!
+    }
+    if (form.cost !== '' && !Number.isFinite(Number(form.cost))) e.cost = 'Cost must be a number'
+    if (form.stock_quantity !== '' && (!Number.isFinite(Number(form.stock_quantity)) || Number(form.stock_quantity) < 0)) e.stock_quantity = 'Stock must be zero or more'
+    if (form.low_stock_threshold !== '' && (!Number.isFinite(Number(form.low_stock_threshold)) || Number(form.low_stock_threshold) < 0)) e.low_stock_threshold = 'Alert level must be zero or more'
+    if (form.hsn_code.trim()) {
+      const v = validateHsn(form.hsn_code)
+      if (!v.valid) e.hsn_code = v.message!
+    }
+    if (form.sku.trim()) {
+      if (/\s/.test(form.sku.trim())) e.sku = 'SKU cannot contain spaces — use hyphens (e.g. AATA-10)'
+      else if (form.sku.trim().length > 48) e.sku = 'SKU is too long'
+      else if (skuOwner) e.sku = `This SKU is already used by "${skuOwner.name}"`
+    }
+    return e
+  }, [form, skuOwner])
+
+  const touch = (field: string) => setTouched((t) => ({ ...t, [field]: true }))
+  const fieldError = (field: string) => (touched[field] ? errors[field] : undefined)
+
+  const setField = (field: keyof typeof empty, value: string) => {
+    setForm((f) => ({ ...f, [field]: value }))
+    // Clear the error state as soon as the user starts fixing it.
+    setTouched((t) => (t[field] && !errors[field] ? t : { ...t, [field]: false }))
+  }
+
+  // Placeholders adapt to the selected category.
+  const hints = categoryHints(form.category)
+
   const handleSave = async () => {
+    // Validate everything on save — fields not yet blurred get marked.
+    setTouched({ name: true, price: true, cost: true, stock_quantity: true, low_stock_threshold: true, hsn_code: true, sku: true })
     if (!form.name.trim()) return toast.error('Product name is required')
+    if (Object.keys(errors).length) return toast.error('Fix the highlighted fields first')
+
     setSaving(true)
     try {
       // Multi-unit pricing: the base unit mirrors the main price; extra
@@ -84,8 +142,11 @@ export default function Products() {
           : null
 
       const prod = {
-        name: form.name, description: form.description || null, sku: form.sku || null,
-        category: form.category || 'general', price: Number(form.price) || 0, cost: Number(form.cost) || 0, hsn_code: form.hsn_code || null, gst_rate: Number(form.gst_rate) || 0,
+        name: form.name.trim(), description: form.description || null, sku: form.sku.trim() || null,
+        // Reuse the existing spelling for case-insensitive matches so
+        // "Electronics" and "electronics" stay one category.
+        category: normalizeCategory(form.category || 'general', categories) || 'general',
+        price: Number(form.price) || 0, cost: Number(form.cost) || 0, hsn_code: form.hsn_code.trim() || null, gst_rate: Number(form.gst_rate) || 0,
         stock_quantity: Number(form.stock_quantity) || 0, low_stock_threshold: Number(form.low_stock_threshold) || 5,
         units,
       }
@@ -98,7 +159,7 @@ export default function Products() {
         await requestAction({ capability: 'products:manage', action_type: 'product.add', target: 'products', payload: prod, summary: `Add product "${prod.name}" — price ${prod.price}, ${prod.stock_quantity} in stock`, money_related: false })
         toast.success('Sent to the owner for approval')
       }
-      setForm(empty); setShowForm(false)
+      setForm(empty); setTouched({}); setShowForm(false)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Save failed')
     } finally {
@@ -144,13 +205,20 @@ export default function Products() {
   const lowStockCount = products.filter((p) => p.stock_quantity <= p.low_stock_threshold).length
   const inventoryValue = products.reduce((s, p) => s + p.cost * p.stock_quantity, 0)
 
+  const err = (field: string) => fieldError(field) ? <p className="text-xs text-negative mt-1" role="alert">{fieldError(field)}</p> : null
+
   return (
     <div className="animate-fade-in">
       <PageHeader
         title="Products & Inventory"
         subtitle="Manage what you sell — catalog, pricing, and stock levels"
         icon={<Package className="w-5 h-5" />}
-        action={<button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showForm ? 'Close' : 'Add Product'}</button>}
+        action={
+          <div className="flex gap-2">
+            <button onClick={() => setShowImport(true)} className="btn-secondary text-sm"><FileSpreadsheet className="w-4 h-4" /> Import</button>
+            <button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showForm ? 'Close' : 'Add Product'}</button>
+          </div>
+        }
       />
 
       {!isOwner && (
@@ -170,20 +238,40 @@ export default function Products() {
         <div className="card p-4 mb-6 animate-slide-up">
           <h2 className="font-semibold text-fg mb-4">New Product</h2>
           <div className="grid sm:grid-cols-2 gap-4">
-            <div><label className="label">Name *</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field" placeholder="Wireless Mouse" /></div>
-            <div><label className="label">SKU</label><input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} className="input-field" placeholder="WM-001" /></div>
-            <div><label className="label">Category</label><input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="input-field" placeholder="Electronics" /></div>
-            <div><label className="label">Description</label><input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="input-field" placeholder="Optional" /></div>
-            <div><label className="label">Price (₹) *</label><input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} className="input-field" placeholder="299" /></div>
-            <div><label className="label">Cost (₹)</label><input type="number" step="0.01" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} className="input-field" placeholder="125" /></div>
+            <div>
+              <label className="label">Name *</label>
+              <input value={form.name} onChange={(e) => setField('name', e.target.value)} onBlur={() => touch('name')} className={`input-field ${fieldError('name') ? 'border-negative' : ''}`} placeholder={hints.name} aria-invalid={!!fieldError('name')} />
+              {err('name')}
+            </div>
+            <div>
+              <label className="label">SKU</label>
+              <input value={form.sku} onChange={(e) => setField('sku', e.target.value)} onBlur={() => touch('sku')} className={`input-field ${fieldError('sku') ? 'border-negative' : ''}`} placeholder={hints.sku} aria-invalid={!!fieldError('sku')} />
+              {err('sku')}
+            </div>
+            <div>
+              <label className="label">Category</label>
+              <CategoryCombobox value={form.category} onChange={(v) => setField('category', v)} categories={categories} />
+            </div>
+            <div><label className="label">Description</label><input value={form.description} onChange={(e) => setField('description', e.target.value)} className="input-field" placeholder="Optional" /></div>
+            <div>
+              <label className="label">Price (₹) *</label>
+              <input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} onBlur={() => touch('price')} className={`input-field ${fieldError('price') ? 'border-negative' : ''}`} placeholder="299" aria-invalid={!!fieldError('price')} />
+              {err('price')}
+            </div>
+            <div>
+              <label className="label">Cost (₹)</label>
+              <input type="number" step="0.01" value={form.cost} onChange={(e) => setField('cost', e.target.value)} onBlur={() => touch('cost')} className={`input-field ${fieldError('cost') ? 'border-negative' : ''}`} placeholder="125" aria-invalid={!!fieldError('cost')} />
+              {err('cost')}
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="label">HSN Code</label>
-                <input value={form.hsn_code} onChange={(e) => setForm({ ...form, hsn_code: e.target.value })} className="input-field" placeholder="e.g. 3004" inputMode="numeric" />
+                <input value={form.hsn_code} onChange={(e) => setField('hsn_code', e.target.value)} onBlur={() => touch('hsn_code')} className={`input-field ${fieldError('hsn_code') ? 'border-negative' : ''}`} placeholder={hints.hsn} inputMode="numeric" aria-invalid={!!fieldError('hsn_code')} />
+                {err('hsn_code')}
               </div>
               <div>
                 <label className="label">GST Rate</label>
-                <select value={form.gst_rate} onChange={(e) => setForm({ ...form, gst_rate: e.target.value })} className="input-field">
+                <select value={form.gst_rate} onChange={(e) => setField('gst_rate', e.target.value)} className="input-field">
                   <option value="0">0% (Exempt)</option>
                   <option value="5">5%</option>
                   <option value="12">12%</option>
@@ -192,18 +280,26 @@ export default function Products() {
                 </select>
               </div>
             </div>
-            <div><label className="label">Stock quantity</label><input type="number" step="0.01" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} className="input-field" placeholder="100" /></div>
-            <div><label className="label">Low-stock alert at</label><input type="number" value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} className="input-field" placeholder="5" /></div>
+            <div>
+              <label className="label">Stock quantity{hints.unit ? <span className="text-fg-subtle font-normal"> ({hints.unit})</span> : null}</label>
+              <input type="number" step="0.01" value={form.stock_quantity} onChange={(e) => setField('stock_quantity', e.target.value)} onBlur={() => touch('stock_quantity')} className={`input-field ${fieldError('stock_quantity') ? 'border-negative' : ''}`} placeholder="100" aria-invalid={!!fieldError('stock_quantity')} />
+              {err('stock_quantity')}
+            </div>
+            <div>
+              <label className="label">Low-stock alert at</label>
+              <input type="number" value={form.low_stock_threshold} onChange={(e) => setField('low_stock_threshold', e.target.value)} onBlur={() => touch('low_stock_threshold')} className={`input-field ${fieldError('low_stock_threshold') ? 'border-negative' : ''}`} placeholder="5" aria-invalid={!!fieldError('low_stock_threshold')} />
+              {err('low_stock_threshold')}
+            </div>
 
             {/* Multi-unit pricing — optional, kirana-style */}
             <div className="sm:col-span-2 border-t border-line pt-4">
               <label className="label">Pricing units (optional)</label>
-              <p className="text-xs text-fg-subtle mb-2 -mt-1">Sell one SKU per piece, per kg, per dozen — with its own price. Stock is tracked in the base unit.</p>
+              <p className="text-xs text-fg-subtle mb-2 -mt-1">Sell one SKU per piece, per kg, per dozen — with its own price. Stock is tracked in the base unit{hints.unit ? ` (${hints.unit})` : ''}.</p>
               <input
                 value={form.unitBase}
-                onChange={(e) => setForm({ ...form, unitBase: e.target.value })}
+                onChange={(e) => setField('unitBase', e.target.value)}
                 className="input-field mb-2"
-                placeholder="Base unit name — e.g. kg, piece, litre (optional)"
+                placeholder={`Base unit name${hints.unit ? ` — e.g. ${hints.unit}` : ' — e.g. kg, piece, litre'} (optional)`}
                 aria-label="Base unit name"
               />
               {form.extraUnits.map((u, i) => (
@@ -250,7 +346,7 @@ export default function Products() {
             </div>
           </div>
           <div className="flex justify-end gap-3 mt-4">
-            <button onClick={() => { setShowForm(false); setForm(empty) }} className="btn-secondary text-sm">Cancel</button>
+            <button onClick={() => { setShowForm(false); setForm(empty); setTouched({}) }} className="btn-secondary text-sm">Cancel</button>
             <button onClick={handleSave} disabled={saving} className="btn-primary text-sm">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Product'}</button>
           </div>
         </div>
@@ -259,7 +355,7 @@ export default function Products() {
       {loading ? (
         <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>
       ) : products.length === 0 ? (
-        <EmptyState icon={Package} title="No products yet" description="Add your products here — name, price, and stock. Then ring them up at the POS counter." />
+        <EmptyState icon={Package} title="No products yet" description="Add products one by one, or import your whole catalog from a CSV — the template is inside the Import button." />
       ) : (
         <>
           <div className="relative mb-4">
@@ -304,7 +400,7 @@ export default function Products() {
               const statusCls = status === 'out' ? 'bg-negative/15 text-negative' : status === 'low' ? 'bg-warning/15 text-warning' : 'bg-positive/15 text-positive'
               const margin = p.price > 0 ? (((p.price - p.cost) / p.price) * 100).toFixed(0) : '—'
               return (
-                <div key={p.id} className="card p-4 flex items-center gap-4">
+                <div key={p.id} className="card p-4 flex items-center gap-3">
                   <div className="w-9 h-9 rounded-control bg-surface-2 flex items-center justify-center flex-shrink-0">
                     <Package className="w-5 h-5 text-accent" />
                   </div>
@@ -317,21 +413,32 @@ export default function Products() {
                     </div>
                     <p className="text-sm text-accent mt-0.5">₹{p.price.toFixed(2)} <span className="text-fg-subtle">· {margin}% margin</span>{p.units?.[0]?.unit ? <span className="text-fg-subtle"> · per {p.units[0].unit}</span> : null}</p>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap ${statusCls}`}>{statusLabel}</span>
                     <div className="flex items-center gap-1">
-                      <button onClick={() => restock(p, -1)} className="w-7 h-7 rounded-control bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-fg-muted">−</button>
+                      <button onClick={() => restock(p, -1)} aria-label={`Remove one ${p.units?.[0]?.unit || 'unit'} of ${p.name} from stock`} className="w-11 h-11 rounded-control bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-fg-muted active:scale-95 transition-transform text-lg">−</button>
                       <span className="w-16 text-center text-sm font-semibold text-fg">{p.stock_quantity}<span className="text-[10px] font-normal text-fg-subtle ml-0.5">{p.units?.[0]?.unit || 'pcs'}</span></span>
-                      <button onClick={() => restock(p, 1)} className="w-7 h-7 rounded-control bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-fg-muted">+</button>
+                      <button onClick={() => restock(p, 1)} aria-label={`Add one ${p.units?.[0]?.unit || 'unit'} of ${p.name} to stock`} className="w-11 h-11 rounded-control bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-fg-muted active:scale-95 transition-transform text-lg">+</button>
                     </div>
                   </div>
-                  <button onClick={() => setConfirmDelete(p)} className="text-fg-subtle hover:text-negative ml-2"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => setConfirmDelete(p)} aria-label={`Delete ${p.name}`} className="w-11 h-11 rounded-xl flex items-center justify-center text-fg-subtle hover:text-negative hover:bg-negative/10 flex-shrink-0">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               )
             })}
           </div>
         </>
       )}
+
+      {/* CSV import */}
+      <ImportCsvModal
+        open={showImport}
+        ownerId={ownerId || ''}
+        products={products}
+        onImported={() => loadProducts()}
+        onClose={() => setShowImport(false)}
+      />
 
       {/* Delete confirmation */}
       <ConfirmDialog

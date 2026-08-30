@@ -95,7 +95,7 @@ export default function Subscription() {
       <div className="card p-4 mb-8 bg-gradient-to-r from-brand-900/30 to-transparent">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-brand-600/20 border border-brand-700/50 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-accent-strong/20 border border-accent-strong/50 flex items-center justify-center">
               <Crown className="w-6 h-6 text-brand-400" />
             </div>
             <div>
@@ -124,14 +124,14 @@ export default function Subscription() {
               key={key}
               className={`card p-4 relative ${
                 isCurrent
-                  ? 'border-brand-600 ring-1 ring-brand-600/50'
+                  ? 'border-accent-strong ring-1 ring-accent-strong/50'
                   : isPopular
-                  ? 'border-brand-700/50'
+                  ? 'border-accent-strong/50'
                   : ''
               }`}
             >
               {isPopular && !isCurrent && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-brand-600 text-white text-xs font-bold whitespace-nowrap">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-accent-strong text-white text-xs font-bold whitespace-nowrap">
                   Most Popular
                 </div>
               )}
@@ -169,7 +169,7 @@ export default function Subscription() {
                   isCurrent
                     ? 'bg-slate-800 text-slate-500 cursor-default'
                     : plan.price > PLANS[currentPlan].price
-                    ? 'bg-gradient-to-r from-brand-600 to-brand-500 text-white hover:from-brand-500 hover:to-brand-400'
+                    ? 'bg-gradient-to-r from-accent-strong to-brand-500 text-white hover:from-brand-500 hover:to-brand-400'
                     : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
                 }`}
               >

@@ -100,8 +100,8 @@ export default function Suppliers() {
       />
 
       <div className="flex gap-2 mb-4">
-        <button onClick={() => setTab('suppliers')} className={`flex-1 p-2.5 rounded-xl border text-sm font-medium ${tab === 'suppliers' ? 'border-brand-600 bg-brand-600/15 text-fg' : 'border-line text-fg-muted'}`}>Suppliers ({suppliers.length})</button>
-        <button onClick={() => setTab('orders')} className={`flex-1 p-2.5 rounded-xl border text-sm font-medium ${tab === 'orders' ? 'border-brand-600 bg-brand-600/15 text-fg' : 'border-line text-fg-muted'}`}>Purchase Orders ({pos.length})</button>
+        <button onClick={() => setTab('suppliers')} className={`flex-1 p-2.5 rounded-xl border text-sm font-medium ${tab === 'suppliers' ? 'border-accent-strong bg-accent-strong/15 text-fg' : 'border-line text-fg-muted'}`}>Suppliers ({suppliers.length})</button>
+        <button onClick={() => setTab('orders')} className={`flex-1 p-2.5 rounded-xl border text-sm font-medium ${tab === 'orders' ? 'border-accent-strong bg-accent-strong/15 text-fg' : 'border-line text-fg-muted'}`}>Purchase Orders ({pos.length})</button>
       </div>
 
       {loading ? (

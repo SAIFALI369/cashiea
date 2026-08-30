@@ -121,7 +121,7 @@ export default function Integrations() {
       <PageHeader title="Integrations" subtitle="Connect your apps so the AI can learn your business" icon={<Plug className="w-5 h-5" />} />
 
       {/* Info banner */}
-      <div className="card p-5 mb-6 bg-gradient-to-r from-brand-600/10 to-transparent border-brand-700/30">
+      <div className="card p-5 mb-6 bg-gradient-to-r from-accent-strong/10 to-transparent border-accent-strong/30">
         <div className="flex items-start gap-3">
           <Sparkles className="w-5 h-5 text-brand-400 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-slate-300">
@@ -133,7 +133,7 @@ export default function Integrations() {
 
       {/* Paste-data quick feed */}
       {showPaste && (
-        <div className="card p-4 mb-6 animate-slide-up border-brand-700/40">
+        <div className="card p-4 mb-6 animate-slide-up border-accent-strong/40">
           <h3 className="font-semibold text-white mb-1">Paste data from {PROVIDERS.find((x) => x.id === showPaste)?.name}</h3>
           <p className="text-sm text-slate-400 mb-3">Export from the app and paste here. The AI will learn your business from it right now.</p>
           <textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)} rows={6} className="input-field resize-none font-mono text-sm" placeholder="Paste products, customer list, sales data, or any business info..." />

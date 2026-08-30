@@ -27,7 +27,7 @@ export default function CaseStudy() {
       <nav className="border-b border-slate-800/50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-accent-strong flex items-center justify-center">
               <ShoppingCart className="w-5 h-5 text-white" />
             </div>
             <span className="font-bold text-white">Cashiea</span>
@@ -37,7 +37,7 @@ export default function CaseStudy() {
       </nav>
 
       <article className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
-        <span className="inline-block px-3 py-1 rounded-full bg-brand-600/15 text-brand-300 text-xs font-semibold mb-4">CASE STUDY</span>
+        <span className="inline-block px-3 py-1 rounded-full bg-accent-strong/15 text-brand-300 text-xs font-semibold mb-4">CASE STUDY</span>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight mb-3">
           How a neighborhood retailer tripled checkout speed and grew repeat customers 27%
         </h1>
@@ -59,7 +59,7 @@ export default function CaseStudy() {
             "Checkout got 3× faster, I finally know who my customers are, and win-back campaigns bring people back every week. Cashiea runs my counter and my growth."
           </p>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white font-bold">M</div>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-500 to-accent-strong flex items-center justify-center text-white font-bold">M</div>
             <div>
               <p className="font-semibold text-white">Maya Chen</p>
               <p className="text-sm text-slate-400">Owner, Bright Goods Store</p>
@@ -76,7 +76,7 @@ export default function CaseStudy() {
               ))}
             </ul>
           </div>
-          <div className="card p-4 border-brand-700/40">
+          <div className="card p-4 border-accent-strong/40">
             <h2 className="font-bold text-white mb-4 text-green-400">After</h2>
             <ul className="space-y-3">
               {after.map((a) => (

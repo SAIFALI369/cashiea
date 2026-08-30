@@ -123,7 +123,7 @@ export default function Summaries() {
               onClick={() => setSummaryType(type.value)}
               className={`p-3 rounded-xl border text-center transition-all ${
                 summaryType === type.value
-                  ? 'border-brand-600 bg-brand-600/15 text-white'
+                  ? 'border-accent-strong bg-accent-strong/15 text-white'
                   : 'border-slate-700 bg-slate-900/50 text-slate-400 hover:border-slate-600'
               }`}
             >

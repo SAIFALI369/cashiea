@@ -127,7 +127,7 @@ export default function AIBrain() {
       />
 
       {/* About My Business — the living summary */}
-      <div className="card p-4 mb-6 bg-gradient-to-br from-brand-600/10 to-transparent">
+      <div className="card p-4 mb-6 bg-gradient-to-br from-accent-strong/10 to-transparent">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold text-white flex items-center gap-2"><Sparkles className="w-5 h-5 text-brand-400" /> About My Business</h2>
           {memory?.last_updated_at && <span className="text-xs text-slate-500">Updated {new Date(memory.last_updated_at).toLocaleString()}</span>}
@@ -145,7 +145,7 @@ export default function AIBrain() {
         ) : (
           <>
             {memory.business_type && (
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-600/15 text-brand-300 text-xs font-medium mb-3">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent-strong/15 text-brand-300 text-xs font-medium mb-3">
                 <TrendingUp className="w-3.5 h-3.5" /> {memory.business_type}
               </div>
             )}

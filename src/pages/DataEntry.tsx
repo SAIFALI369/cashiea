@@ -185,10 +185,10 @@ export default function DataEntryPage() {
 
       {/* Mode toggle */}
       <div className="flex gap-2 mb-4">
-        <button onClick={() => setMode('single')} className={`flex-1 p-3 rounded-xl border text-sm font-medium transition-all ${mode === 'single' ? 'border-brand-600 bg-brand-600/15 text-white' : 'border-slate-700 text-slate-400 hover:text-white'}`}>
+        <button onClick={() => setMode('single')} className={`flex-1 p-3 rounded-xl border text-sm font-medium transition-all ${mode === 'single' ? 'border-accent-strong bg-accent-strong/15 text-white' : 'border-slate-700 text-slate-400 hover:text-white'}`}>
           <Database className="w-4 h-4 inline mr-1.5" /> Single Record
         </button>
-        <button onClick={() => setMode('batch')} className={`flex-1 p-3 rounded-xl border text-sm font-medium transition-all ${mode === 'batch' ? 'border-brand-600 bg-brand-600/15 text-white' : 'border-slate-700 text-slate-400 hover:text-white'}`}>
+        <button onClick={() => setMode('batch')} className={`flex-1 p-3 rounded-xl border text-sm font-medium transition-all ${mode === 'batch' ? 'border-accent-strong bg-accent-strong/15 text-white' : 'border-slate-700 text-slate-400 hover:text-white'}`}>
           <Layers className="w-4 h-4 inline mr-1.5" /> Batch (200+ at once)
         </button>
       </div>

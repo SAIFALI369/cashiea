@@ -6,25 +6,26 @@ import { supabase } from '../lib/supabase'
 import { offlineInsert } from '../lib/mutations'
 import { callAI, parseAIJson } from '../lib/ai'
 import {
-  buildUpiLink, buildUpiQrUrl, buildInvoiceMessage,
+  buildUpiLink, buildInvoiceMessage,
   buildWhatsappLink, buildSmsLink, copyToClipboard, type UPIParams,
 } from '../lib/payments'
 import { generateInvoicePdf } from '../lib/invoice-pdf'
 import type { Invoice, InvoiceItem } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
-import { ContextMenu, useContextMenu, type ContextMenuItem } from '../components/ContextMenu'
-import { SwipeActions } from '../components/SwipeToDelete'
+import { MoreMenu } from '../components/MoreMenu'
+import { UpiQr } from '../components/UpiQr'
+import { RecurringModal } from '../components/invoices/RecurringModal'
 import EmptyState from '../components/ui/EmptyState'
 import { Avatar } from '../components/Avatar'
-import { FileText, Sparkles, Loader2, Trash2, Plus, Smartphone, MessageCircle, Send, QrCode, Check, Clock, Copy, Zap, X, Download, FileDown , Pencil, CheckCircle2, CheckSquare, Square} from 'lucide-react'
+import { FileText, Sparkles, Loader2, Trash2, Plus, Smartphone, MessageCircle, Send, QrCode, Check, Clock, Copy, Zap, X, Download, FileDown, Pencil, CheckCircle2, CheckSquare, Square, Repeat, Share2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const statusColor: Record<string, string> = {
-  paid: 'bg-green-500/15 text-green-400',
-  partial: 'bg-amber-500/15 text-amber-400',
-  viewed: 'bg-blue-500/15 text-blue-400',
-  sent: 'bg-blue-500/15 text-blue-400',
-  overdue: 'bg-red-500/15 text-red-400',
+  paid: 'bg-positive/15 text-positive',
+  partial: 'bg-warning/15 text-warning',
+  viewed: 'bg-info/15 text-info',
+  sent: 'bg-info/15 text-info',
+  overdue: 'bg-negative/15 text-negative',
   draft: 'bg-surface-3 text-fg-muted',
 }
 
@@ -38,13 +39,15 @@ export default function Invoices() {
   const [shareInv, setShareInv] = useState<Invoice | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<'all' | 'unpaid' | 'paid' | 'overdue'>('all')
+  const [showRecurring, setShowRecurring] = useState(false)
+  const [recurringSeed, setRecurringSeed] = useState<Invoice | null>(null)
   const PAGE_SIZE = 30
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [lastClickedId, setLastClickedId] = useState<string | null>(null)
-  const { menu, onContextMenu, close: closeMenu, isOpen: menuOpen } = useContextMenu()
 
-  useEffect(() => { loadInvoices() }, [])
+  // Wait for the profile to resolve (direct page loads race auth restore).
+  useEffect(() => { if (ownerId) loadInvoices() }, [ownerId])
 
   const loadInvoices = async () => {
     setLoading(true)
@@ -78,7 +81,7 @@ export default function Invoices() {
       if (profile?.upi_id) {
         paymentLink = buildUpiLink({
           payeeVpa: profile.upi_id,
-          payeeName: profile.company_name || profile.full_name || 'My Shop',
+          payeeName: profile?.company_name || profile?.full_name || 'My Shop',
           amount: total,
           reference: invoiceNumber,
           note: `Invoice ${invoiceNumber}`,
@@ -100,7 +103,7 @@ export default function Invoices() {
       if (error) throw error
       setInvoices([data as Invoice, ...invoices])
       setPrompt(''); setShowForm(false)
-      toast.success('Invoice generated! ✅')
+      toast.success('Invoice generated')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Generation failed')
     } finally { setGenerating(false) }
@@ -129,7 +132,7 @@ export default function Invoices() {
     setInvoices([data as Invoice, ...invoices])
     setQuick({ name: '', phone: '', item: '', qty: '1', price: '' })
     setShowQuick(false)
-    toast.success('Invoice created — share it now!')
+    toast.success('Invoice created — share it now')
     setShareInv(data as Invoice)
   }
 
@@ -152,8 +155,19 @@ export default function Invoices() {
     }
   }
 
-  // ── Multi-select: click selects, Shift+click selects a range ──
-  const handleInvoiceClick = (e: React.MouseEvent, invId: string) => {
+  // ── Selection: visible checkboxes + tap on card; Shift+click for
+  //    ranges still works on desktop. Card actions never select. ──
+  const toggleSelected = (invId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(invId)) next.delete(invId)
+      else next.add(invId)
+      return next
+    })
+    setLastClickedId(invId)
+  }
+
+  const handleCardClick = (e: React.MouseEvent, invId: string) => {
     if (e.shiftKey && lastClickedId) {
       const ids = filteredInvoices.map((i) => i.id)
       const start = ids.indexOf(lastClickedId)
@@ -167,22 +181,22 @@ export default function Invoices() {
         })
       }
     } else {
-      setSelectedIds((prev) => {
-        const next = new Set(prev)
-        if (next.has(invId)) next.delete(invId)
-        else next.add(invId)
-        return next
-      })
+      toggleSelected(invId)
     }
-    setLastClickedId(invId)
   }
 
   const clearSelection = () => { setSelectedIds(new Set()); setLastClickedId(null) }
 
-  const getBulkMenuItems = (): ContextMenuItem[] => [
-    { label: `Mark ${selectedIds.size} as paid`, icon: <CheckCircle2 className="w-4 h-4" />, onClick: () => { selectedIds.forEach((id) => { const inv = invoices.find((i) => i.id === id); if (inv) markPaid(inv) }); clearSelection() } },
-    { label: 'Clear selection', icon: <X className="w-4 h-4" />, onClick: clearSelection },
-  ]
+  const selectAllVisible = () => {
+    setSelectedIds(new Set(filteredInvoices.slice(0, visibleCount).map((i) => i.id)))
+  }
+
+  const bulkMarkPaid = async () => {
+    const targets = invoices.filter((i) => selectedIds.has(i.id) && i.status !== 'paid')
+    for (const inv of targets) await markPaid(inv)
+    toast.success(`${targets.length} invoice${targets.length !== 1 ? 's' : ''} marked paid`)
+    clearSelection()
+  }
 
   const handleDelete = async (id: string) => {
     setConfirmDelete(null)
@@ -198,7 +212,7 @@ export default function Invoices() {
     })
     if (channel === 'whatsapp') window.open(buildWhatsappLink(inv.client_phone || undefined, msg), '_blank')
     else if (channel === 'sms') window.location.href = buildSmsLink(inv.client_phone || undefined, msg)
-    else copyToClipboard(msg).then((ok) => ok ? toast.success('Copied!') : toast.error('Copy failed'))
+    else copyToClipboard(msg).then((ok) => ok ? toast.success('Copied') : toast.error('Copy failed'))
   }
 
   // Download a professional PDF invoice (generated in-browser via jsPDF)
@@ -214,6 +228,17 @@ export default function Invoices() {
       setDownloadingPdf(null)
     }
   }
+
+  // Per-card ⋮ menu — replaces swipe actions on touch screens.
+  const cardMenu = (inv: Invoice) => [
+    ...(inv.status !== 'paid' && inv.status !== 'draft'
+      ? [{ label: 'Mark paid', icon: <CheckCircle2 className="w-4 h-4" />, onClick: () => markPaid(inv) }]
+      : []),
+    { label: 'Download PDF', icon: <FileDown className="w-4 h-4" />, onClick: () => downloadPdf(inv) },
+    { label: 'Pay / Share', icon: <Share2 className="w-4 h-4" />, onClick: () => setShareInv(inv) },
+    { label: 'Make recurring', icon: <Repeat className="w-4 h-4" />, onClick: () => { setRecurringSeed(inv); setShowRecurring(true) } },
+    { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, danger: true, onClick: () => setConfirmDelete(inv.id) },
+  ]
 
   // Stats
   const unpaid = invoices.filter((i) => i.status !== 'paid' && i.status !== 'draft')
@@ -235,6 +260,7 @@ export default function Invoices() {
         icon={<FileText className="w-5 h-5" />}
         action={
           <div className="flex gap-2">
+            <button onClick={() => { setRecurringSeed(null); setShowRecurring(true) }} className="btn-secondary text-sm"><Repeat className="w-4 h-4" /> Recurring</button>
             <button onClick={() => setShowQuick(!showQuick)} className="btn-secondary text-sm"><Zap className="w-4 h-4" /> Quick</button>
             <button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showForm ? 'Close' : 'AI Invoice'}</button>
           </div>
@@ -244,16 +270,16 @@ export default function Invoices() {
       {/* Unpaid summary */}
       {invoices.length > 0 && (
         <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className="card p-5"><p className="text-xl font-bold text-amber-400">₹{unpaidTotal.toFixed(0)}</p><p className="text-xs text-fg-muted">Unpaid</p></div>
+          <div className="card p-5"><p className="text-xl font-bold text-warning">₹{unpaidTotal.toFixed(0)}</p><p className="text-xs text-fg-muted">Unpaid</p></div>
           <div className="card p-5"><p className="text-xl font-bold text-fg">{unpaid.length}</p><p className="text-xs text-fg-muted">Unpaid invoices</p></div>
-          <div className="card p-5"><p className="text-xl font-bold text-red-400">{overdueCount}</p><p className="text-xs text-fg-muted">Overdue</p></div>
+          <div className="card p-5"><p className="text-xl font-bold text-negative">{overdueCount}</p><p className="text-xs text-fg-muted">Overdue</p></div>
         </div>
       )}
 
       {/* AI invoice form */}
       {showForm && (
         <div className="card p-4 mb-6 animate-slide-up">
-          <label className="label flex items-center gap-2"><Sparkles className="w-4 h-4 text-brand-400" /> Describe your invoice</label>
+          <label className="label flex items-center gap-2"><Sparkles className="w-4 h-4 text-accent" /> Describe your invoice</label>
           <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={3} className="input-field resize-none"
             placeholder="e.g. Invoice for Ramesh: 5 bags cement ₹400 each, 10 bricks ₹8 each. Tax 18%. Due 7 days. Phone 9876543210" />
           <div className="flex justify-end gap-3 mt-4">
@@ -268,8 +294,8 @@ export default function Invoices() {
 
       {/* Quick invoice (mobile-first) */}
       {showQuick && (
-        <div className="card p-4 mb-6 animate-slide-up border-brand-700/40">
-          <h3 className="font-semibold text-fg mb-3 flex items-center gap-2"><Zap className="w-4 h-4 text-amber-400" /> Quick Invoice — 30 seconds</h3>
+        <div className="card p-4 mb-6 animate-slide-up">
+          <h3 className="font-semibold text-fg mb-3 flex items-center gap-2"><Zap className="w-4 h-4 text-warning" /> Quick Invoice — 30 seconds</h3>
           <div className="grid grid-cols-2 gap-3">
             <input value={quick.name} onChange={(e) => setQuick({ ...quick, name: e.target.value })} className="input-field col-span-2" placeholder="Customer name *" />
             <input value={quick.phone} onChange={(e) => setQuick({ ...quick, phone: e.target.value })} className="input-field" placeholder="Phone (for WhatsApp)" />
@@ -288,16 +314,28 @@ export default function Invoices() {
 
       {/* Invoice list */}
       {loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-brand-500" /></div>
+        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>
       ) : invoices.length === 0 ? (
         <EmptyState icon={FileText} title="No invoices yet" description="Use Quick Invoice (30 sec on phone), or describe one with AI. Share via WhatsApp and collect via UPI." />
       ) : (
         <>
-          {/* Filter tabs */}
-          <div className="flex gap-2 mb-5 overflow-x-auto scroll-area">
-            {([['all', 'All'], ['unpaid', 'Unpaid'], ['paid', 'Paid'], ['overdue', 'Overdue']] as const).map(([key, label]) => (
-              <button key={key} onClick={() => setStatusFilter(key)} className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${statusFilter === key ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}>{label}</button>
-            ))}
+          {/* Filter tabs + selection controls */}
+          <div className="flex items-center gap-2 mb-5">
+            <div className="flex gap-2 overflow-x-auto scroll-area flex-1">
+              {([['all', 'All'], ['unpaid', 'Unpaid'], ['paid', 'Paid'], ['overdue', 'Overdue']] as const).map(([key, label]) => (
+                <button key={key} onClick={() => setStatusFilter(key)} className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${statusFilter === key ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}>{label}</button>
+              ))}
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              <button
+                onClick={selectedIds.size > 0 ? clearSelection : selectAllVisible}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${selectedIds.size > 0 ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}
+                aria-label={selectedIds.size > 0 ? 'Clear selection' : 'Select all visible invoices'}
+              >
+                {selectedIds.size > 0 ? <X className="w-3.5 h-3.5" /> : <CheckSquare className="w-3.5 h-3.5" />}
+                {selectedIds.size > 0 ? 'Clear' : 'Select all'}
+              </button>
+            </div>
           </div>
           <div className="space-y-3">
             {filteredInvoices.length === 0 ? (
@@ -307,46 +345,47 @@ export default function Invoices() {
                 </div>
                 <p className="text-base font-semibold text-fg">No {statusFilter} invoices</p>
                 <p className="text-sm text-fg-muted mt-1 max-w-xs">
-                  {statusFilter === 'overdue' ? "Great news — nothing overdue! All your bills are collected or current." : statusFilter === 'unpaid' ? "All invoices are paid. Create a new one from the POS counter." : "Switch filters or create your first invoice."}
+                  {statusFilter === 'overdue' ? 'Nothing overdue — all your bills are collected or current.' : statusFilter === 'unpaid' ? 'All invoices are paid. Create a new one from the POS counter.' : 'Switch filters or create your first invoice.'}
                 </p>
                 <button onClick={() => setStatusFilter('all')} className="btn-secondary text-xs h-9 px-4 mt-4">
                   View all invoices
                 </button>
               </div>
             ) : filteredInvoices.slice(0, visibleCount).map((inv) => (
-              <SwipeActions
-                key={inv.id}
-                actions={[
-                  { icon: <CheckCircle2 className="w-4 h-4" />, label: 'Paid', color: 'bg-positive', onClick: () => markPaid(inv) },
-                  { icon: <Trash2 className="w-4 h-4" />, label: 'Delete', color: 'bg-negative', onClick: () => setConfirmDelete(inv.id) },
-                ]}
-              >
               <div
                 key={inv.id}
                 className={`card p-4 cursor-pointer transition-colors ${selectedIds.has(inv.id) ? 'border-accent bg-accent-soft/30' : ''}`}
-                onClick={(e) => handleInvoiceClick(e, inv.id)}
-                onContextMenu={(e) => { e.preventDefault(); onContextMenu(e) }}
+                onClick={(e) => handleCardClick(e, inv.id)}
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0 flex items-start gap-2.5">
-                    {selectedIds.size > 0 && (
-                    <span className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-1 ${selectedIds.has(inv.id) ? 'bg-accent border-accent' : 'border-line'}`}>
-                      {selectedIds.has(inv.id) && <CheckCircle2 className="w-3 h-3 text-accent-fg" />}
-                    </span>
-                  )}
-                  <Avatar name={inv.client_name} size={32} className="mt-0.5 flex-shrink-0" />
+                    {/* Always-visible selection checkbox — 44px target */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleSelected(inv.id) }}
+                      className={`w-11 h-11 -ml-2 -mt-2 flex items-center justify-center flex-shrink-0 rounded-xl ${selectedIds.has(inv.id) ? 'text-accent' : 'text-fg-subtle hover:text-fg'}`}
+                      aria-label={selectedIds.has(inv.id) ? `Unselect ${inv.invoice_number}` : `Select ${inv.invoice_number}`}
+                      aria-pressed={selectedIds.has(inv.id)}
+                    >
+                      {selectedIds.has(inv.id) ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                    </button>
+                    <Avatar name={inv.client_name} size={32} className="mt-0.5 flex-shrink-0" />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-bold text-fg">{inv.invoice_number}</h3>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor[inv.status]}`}>{inv.status}</span>
+                        {inv.recurring_id && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-accent-soft text-accent-strong flex items-center gap-1"><Repeat className="w-3 h-3" /> recurring</span>}
                         {inv.reminder_count > 0 && <span className="text-xs text-fg-subtle">({inv.reminder_count} reminders)</span>}
                       </div>
                       <p className="text-fg-muted text-sm mt-0.5">{inv.client_name}{inv.client_phone && ` · ${inv.client_phone}`}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xl font-bold text-fg">₹{inv.total.toFixed(2)}</p>
-                    {inv.due_date && <p className="text-xs text-fg-subtle">Due {inv.due_date}</p>}
+                  <div className="flex items-start gap-1">
+                    <div className="text-right">
+                      <p className="text-xl font-bold text-fg">₹{inv.total.toFixed(2)}</p>
+                      {inv.due_date && <p className="text-xs text-fg-subtle">Due {inv.due_date}</p>}
+                    </div>
+                    {/* ⋮ menu — replaces swipe actions */}
+                    <MoreMenu items={cardMenu(inv)} label={`Actions for ${inv.invoice_number}`} />
                   </div>
                 </div>
 
@@ -360,20 +399,15 @@ export default function Invoices() {
                   ))}
                 </div>
 
-              {/* Actions */}
-              <div className="flex gap-2 overflow-x-auto scroll-area pb-1 mt-3 pt-3 border-t border-line [&>button]:flex-shrink-0">
-                <button onClick={() => setShareInv(inv)} className="btn-ghost text-xs"><QrCode className="w-3.5 h-3.5" /> Pay / Share</button>
-                <button onClick={() => downloadPdf(inv)} disabled={downloadingPdf === inv.id} className="btn-ghost text-xs">
-                  {downloadingPdf === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />} PDF
-                </button>
-                <button onClick={() => share('whatsapp', inv)} className="btn-ghost text-xs text-green-400"><MessageCircle className="w-3.5 h-3.5" /> WhatsApp</button>
-                {inv.status !== 'paid' && inv.status !== 'draft' && (
-                  <button onClick={() => markPaid(inv)} className="btn-ghost text-xs text-green-400"><Check className="w-3.5 h-3.5" /> Mark paid</button>
-                )}
-                <button onClick={() => setConfirmDelete(inv.id)} className="btn-ghost text-xs text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                {/* Quick actions — menu (⋮) holds the full set */}
+                <div className="flex gap-2 overflow-x-auto scroll-area pb-1 mt-3 pt-3 border-t border-line [&>button]:flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <button onClick={() => setShareInv(inv)} className="btn-ghost text-xs h-11"><QrCode className="w-3.5 h-3.5" /> Pay / Share</button>
+                  <button onClick={() => downloadPdf(inv)} disabled={downloadingPdf === inv.id} className="btn-ghost text-xs h-11">
+                    {downloadingPdf === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />} PDF
+                  </button>
+                  <button onClick={() => share('whatsapp', inv)} className="btn-ghost text-xs h-11 text-positive"><MessageCircle className="w-3.5 h-3.5" /> WhatsApp</button>
+                </div>
               </div>
-              </div>
-            </SwipeActions>
             ))}
           </div>
         </>
@@ -385,31 +419,36 @@ export default function Invoices() {
           <div className="card w-full max-w-sm rounded-t-2xl sm:rounded-xl p-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-fg">{shareInv.invoice_number} · ₹{shareInv.total.toFixed(0)}</h3>
-              <button onClick={() => setShareInv(null)} className="text-fg-subtle hover:text-fg"><X className="w-5 h-5" /></button>
+              <button onClick={() => setShareInv(null)} className="w-11 h-11 -mr-2 -mt-2 rounded-xl flex items-center justify-center text-fg-subtle hover:text-fg"><X className="w-5 h-5" /></button>
             </div>
 
             {upiLink(shareInv) ? (
               <>
-                {/* UPI QR */}
-                <div className="text-center mb-4">
-                  <UpiQrCode params={upiParams(shareInv)!!} />
-                  <p className="text-xs text-fg-muted mt-2">Scan with any UPI app to pay ₹{shareInv.total}</p>
+                {/* UPI QR — loading, error and fallback states handled inside */}
+                <div className="flex justify-center mb-4">
+                  <UpiQr
+                    upiId={merchantUpi}
+                    payeeName={merchantName}
+                    amount={shareInv.total}
+                    reference={shareInv.invoice_number}
+                    note={`Invoice ${shareInv.invoice_number}`}
+                  />
                 </div>
                 <a href={upiLink(shareInv)!} className="btn-primary w-full mb-2"><Smartphone className="w-4 h-4" /> Open UPI app to pay</a>
               </>
             ) : (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-600/30 text-xs text-amber-200 mb-4">
-                Set your UPI ID in Settings to generate payment links & QR codes for instant collection.
+              <div className="p-3 rounded-xl bg-warning/10 border border-warning/30 text-xs text-fg mb-4">
+                Set your UPI ID in Settings to generate payment links and QR codes for instant collection.
               </div>
             )}
 
             {/* Share channels */}
             <p className="text-xs text-fg-subtle mb-2 mt-2">Send this invoice</p>
             <div className="grid grid-cols-4 gap-2">
-              <button onClick={() => share('whatsapp', shareInv)} className="p-3 rounded-xl bg-green-500/10 text-green-400 hover:bg-green-500/20 flex flex-col items-center gap-1"><MessageCircle className="w-5 h-5" /><span className="text-xs">WhatsApp</span></button>
-              <button onClick={() => share('sms', shareInv)} className="p-3 rounded-xl bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 flex flex-col items-center gap-1"><MessageCircle className="w-5 h-5" /><span className="text-xs">SMS</span></button>
+              <button onClick={() => share('whatsapp', shareInv)} className="p-3 rounded-xl bg-positive/10 text-positive hover:bg-positive/20 flex flex-col items-center gap-1"><MessageCircle className="w-5 h-5" /><span className="text-xs">WhatsApp</span></button>
+              <button onClick={() => share('sms', shareInv)} className="p-3 rounded-xl bg-info/10 text-info hover:bg-info/20 flex flex-col items-center gap-1"><MessageCircle className="w-5 h-5" /><span className="text-xs">SMS</span></button>
               <button onClick={() => share('copy', shareInv)} className="p-3 rounded-xl bg-surface-3/50 text-fg-muted hover:bg-surface-3 flex flex-col items-center gap-1"><Copy className="w-5 h-5" /><span className="text-xs">Copy</span></button>
-              <button onClick={() => downloadPdf(shareInv)} disabled={downloadingPdf === shareInv.id} className="p-3 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 flex flex-col items-center gap-1">
+              <button onClick={() => downloadPdf(shareInv)} disabled={downloadingPdf === shareInv.id} className="p-3 rounded-xl bg-negative/10 text-negative hover:bg-negative/20 flex flex-col items-center gap-1">
                 {downloadingPdf === shareInv.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileDown className="w-5 h-5" />}
                 <span className="text-xs">PDF</span>
               </button>
@@ -418,7 +457,16 @@ export default function Invoices() {
         </div>
       )}
 
-      {/* Bulk action bar — shows when items are selected */}
+      {/* Recurring invoices manager */}
+      <RecurringModal
+        open={showRecurring}
+        ownerId={ownerId || ''}
+        seed={recurringSeed}
+        onDone={() => loadInvoices()}
+        onClose={() => { setShowRecurring(false); setRecurringSeed(null) }}
+      />
+
+      {/* Bulk action bar — Select all / Clear / bulk actions */}
       {selectedIds.size > 0 && (
         <motion.div
           initial={{ y: 100 }}
@@ -426,18 +474,21 @@ export default function Invoices() {
           className="fixed bottom-24 lg:bottom-8 inset-x-4 lg:left-72 lg:right-8 z-30"
         >
           <div className="card p-3 flex items-center gap-3 shadow-float">
-            <span className="text-sm font-bold text-fg">{selectedIds.size} selected</span>
-            <button onClick={() => { selectedIds.forEach((id) => { const inv = invoices.find((i) => i.id === id); if (inv) markPaid(inv) }); clearSelection() }} className="btn-primary text-xs h-8 px-3">
+            <span className="text-sm font-bold text-fg whitespace-nowrap">{selectedIds.size} selected</span>
+            <div className="flex-1" />
+            <button onClick={bulkMarkPaid} className="btn-primary text-xs h-11 px-4">
               <CheckCircle2 className="w-3.5 h-3.5" /> Mark Paid
             </button>
-            <button onClick={clearSelection} className="btn-secondary text-xs h-8 px-3">
+            <button onClick={selectAllVisible} className="btn-secondary text-xs h-11 px-4">
+              <CheckSquare className="w-3.5 h-3.5" /> Select all
+            </button>
+            <button onClick={clearSelection} className="btn-secondary text-xs h-11 px-4">
               <X className="w-3.5 h-3.5" /> Clear
             </button>
           </div>
         </motion.div>
       )}
 
-      {/* Right-click context menu */}
       {/* Delete confirmation */}
       <ConfirmDialog
         open={!!confirmDelete}
@@ -446,14 +497,6 @@ export default function Invoices() {
         confirmLabel="Delete"
         onConfirm={() => confirmDelete && handleDelete(confirmDelete)}
         onClose={() => setConfirmDelete(null)}
-      />
-
-      <ContextMenu
-        open={menuOpen}
-        x={menu?.x}
-        y={menu?.y}
-        onClose={closeMenu}
-        items={getBulkMenuItems()}
       />
 
       {visibleCount < filteredInvoices.length && (
@@ -466,23 +509,4 @@ export default function Invoices() {
       )}
     </div>
   )
-}
-
-// Client-side UPI QR code — generates locally, no external service
-function UpiQrCode({ params }: { params: any }) {
-  const [qrDataUrl, setQrDataUrl] = useState<string>('')
-  useEffect(() => {
-    let active = true
-    ;(async () => {
-      try {
-        const QRCode = (await import('qrcode')).default
-        const link = `upi://pay?pa=${encodeURIComponent(params.payeeVpa)}&pn=${encodeURIComponent(params.payeeName)}&am=${params.amount}&cu=INR${params.reference ? `&tn=${encodeURIComponent(params.reference)}` : ''}`
-        const url = await QRCode.toDataURL(link, { width: 240, margin: 1, errorCorrectionLevel: 'M' })
-        if (active) setQrDataUrl(url)
-      } catch { /* QR failed */ }
-    })()
-    return () => { active = false }
-  }, [params])
-  if (!qrDataUrl) return <div className="w-48 h-48 mx-auto rounded-xl bg-white p-2 flex items-center justify-center"><div className="w-8 h-8 border-4 border-slate-300 border-t-slate-600 rounded-full animate-spin" /></div>
-  return <img src={qrDataUrl} alt="UPI QR" className="w-48 h-48 mx-auto rounded-xl bg-white p-2" />
 }

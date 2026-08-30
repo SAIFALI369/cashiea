@@ -19,7 +19,7 @@ export default function Terms() {
 
       <article className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
         <div className="flex items-center gap-3 mb-8">
-          <div className="w-12 h-12 rounded-xl bg-brand-600/15 border border-brand-700/40 flex items-center justify-center">
+          <div className="w-12 h-12 rounded-xl bg-accent-strong/15 border border-accent-strong/40 flex items-center justify-center">
             <FileText className="w-6 h-6 text-brand-400" />
           </div>
           <div>

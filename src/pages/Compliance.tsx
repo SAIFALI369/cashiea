@@ -35,7 +35,7 @@ export default function Compliance() {
       <h2 className="text-lg font-semibold text-white mb-4">Certifications & Standards</h2>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
         {certifications.map((c) => (
-          <div key={c.name} className="card p-5 hover:border-brand-700/50 transition-all">
+          <div key={c.name} className="card p-5 hover:border-accent-strong/50 transition-all">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center">
                 <c.icon className={`w-5 h-5 ${c.color}`} />

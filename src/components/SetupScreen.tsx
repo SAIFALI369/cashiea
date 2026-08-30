@@ -13,7 +13,7 @@ export default function SetupScreen() {
           <AlertTriangle className="w-8 h-8 text-amber-400" />
         </div>
         <div className="flex items-center justify-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-accent-strong flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-white" />
           </div>
           <span className="font-bold text-white text-lg">Cashiea</span>
