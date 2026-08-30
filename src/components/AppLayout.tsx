@@ -15,6 +15,7 @@ import { Avatar } from './Avatar'
 import { useAuth } from '../context/AuthContext'
 import { getPageContext } from '../lib/pageContext'
 import { useKeyboardShortcuts } from '../lib/useKeyboardShortcuts'
+import { useSwipeNavigation } from '../lib/useSwipeNavigation'
 import { Menu, Settings } from 'lucide-react'
 
 export default function AppLayout() {
@@ -22,6 +23,8 @@ export default function AppLayout() {
   const location = useLocation()
   const { profile, ownerId } = useAuth()
   useDailyIntelligence(ownerId)
+  // Swipe left/right between Today → New Sale → Customers → Scan (mobile).
+  useSwipeNavigation()
   // The Meraj assistant page is full-bleed and scrolls internally; other pages
   // keep the padded, max-width shell + native body scroll.
   const isAssistant = location.pathname.startsWith('/app/assistant')

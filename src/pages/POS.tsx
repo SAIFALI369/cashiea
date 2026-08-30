@@ -82,7 +82,11 @@ export default function POS() {
 
   const frequentLoaded = useRef(false)
 
-  useEffect(() => { loadData() }, [])
+  // Load when the profile resolves — NOT on first paint. Opening the app
+  // directly on /app/pos (reload, restore, pull-to-refresh) used to fire the
+  // query with a null owner before auth finished, leaving POS permanently
+  // stuck on the empty state.
+  useEffect(() => { if (ownerId) loadData() }, [ownerId])
 
   // View preference persists per user.
   useEffect(() => {
@@ -605,8 +609,11 @@ export default function POS() {
       ) : (
         <>
           <div className="grid lg:grid-cols-3 gap-6">
-            {/* Product grid */}
-            <div className="lg:col-span-2">
+            {/* Product grid — min-w-0 lets the grid item shrink below its
+                content, so horizontally-scrollable rows (category chips,
+                frequent tiles) scroll inside the card instead of blowing
+                the page out to desktop width on phones. */}
+            <div className="lg:col-span-2 min-w-0">
               {/* Frequent items — fastest path to a repeat sale */}
               {frequent.length >= 3 && (
                 <div className="mb-3">
@@ -690,7 +697,7 @@ export default function POS() {
             </div>
 
             {/* Cart — desktop column */}
-            <div className="lg:col-span-1 hidden lg:block">
+            <div className="lg:col-span-1 hidden lg:block min-w-0">
               <div className="card sticky top-4 overflow-hidden">
                 <CartContents variant="desktop" {...cartProps} />
               </div>

@@ -155,7 +155,10 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         aria-label="Primary"
       >
-        <div className="grid grid-cols-5 max-w-md mx-auto items-center">
+        {/* Full width on every screen size — the 5 destinations spread
+            evenly; no empty flanks on tablets, landscape phones, or
+            desktop-width windows below the lg sidebar breakpoint. */}
+        <div className="grid grid-cols-5 w-full items-center">
           {LEFT.map((it) => <Slot key={it.to} item={it} />)}
 
           {/* Center — VOICE Meraj (tap to talk) */}

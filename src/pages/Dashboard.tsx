@@ -3,11 +3,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { MerajAvatar } from '../components/MerajAvatar'
+import { motion } from '../components/motion'
 import { formatINR } from '../lib/format'
 import { dashboardSuggestions } from '../lib/ai'
 import {
   TrendingUp, Wallet, Package, MessageCircle, FileSignature, Users,
-  ArrowRight, AlertTriangle, Send, Mic, ChevronDown, BellRing, Check,
+  ArrowRight, AlertTriangle, Send, Mic, ChevronDown, BellRing, Check, X, Sparkles,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -56,6 +57,19 @@ export default function Dashboard() {
   const [aiGreeting, setAiGreeting] = useState('')
   const [activeDay, setActiveDay] = useState<number | null>(null)
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([])
+  // Quick bar (suggestion pills) — swipe it away or tap X; it stays away
+  // until brought back. One preference per device.
+  const [showQuickBar, setShowQuickBar] = useState(() => {
+    try { return localStorage.getItem('cashiea_quickbar_hidden') !== '1' } catch { return true }
+  })
+  const hideQuickBar = () => {
+    setShowQuickBar(false)
+    try { localStorage.setItem('cashiea_quickbar_hidden', '1') } catch { /* ignore */ }
+  }
+  const restoreQuickBar = () => {
+    setShowQuickBar(true)
+    try { localStorage.removeItem('cashiea_quickbar_hidden') } catch { /* ignore */ }
+  }
 
   // Static rotating greeting — zero AI credits, zero network, instant load.
   // AI credits are saved for actual business questions.
@@ -316,13 +330,40 @@ export default function Dashboard() {
           <button type="button" onClick={() => navigate('/app/assistant')} aria-label="Voice" className="w-8 h-8 rounded-control text-fg-muted hover:text-fg hover:bg-surface-2 flex items-center justify-center flex-shrink-0"><Mic className="w-4 h-4" /></button>
           <button type="submit" aria-label="Send" className="w-8 h-8 rounded-control bg-fg text-paper flex items-center justify-center flex-shrink-0 hover:opacity-90 transition-opacity"><Send className="w-4 h-4" /></button>
         </form>
-        {/* Suggestion pills — horizontal, wraps */}
-        <div className="flex flex-wrap gap-2 mt-2.5">
-          {suggestions.map((s) => (
-            <button key={s} onClick={() => goAsk(s)} className="text-xs font-medium text-fg-muted bg-surface-2 border border-line rounded-full px-3 py-1.5 hover:text-fg hover:border-accent/40 transition-colors">{s}</button>
-          ))}
-          <button onClick={() => navigate('/app/assistant')} className="text-xs font-medium text-accent bg-surface-2 border border-line rounded-full px-3 py-1.5 hover:border-accent/40 transition-colors inline-flex items-center gap-1">More <ChevronDown className="w-3 h-3" /></button>
-        </div>
+        {/* Quick bar — suggestion pills. Swipe (or tap X) to take it away;
+            it comes back from the small restore chip. */}
+        {showQuickBar ? (
+          <motion.div
+            data-no-swipe-nav
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.35}
+            onDragEnd={(_, info) => {
+              if (Math.abs(info.offset.x) > 64) hideQuickBar()
+            }}
+            className="relative flex flex-wrap gap-2 mt-2.5 touch-pan-y"
+          >
+            {suggestions.map((s) => (
+              <button key={s} onClick={() => goAsk(s)} className="text-xs font-medium text-fg-muted bg-surface-2 border border-line rounded-full px-3 py-1.5 hover:text-fg hover:border-accent/40 transition-colors">{s}</button>
+            ))}
+            <button onClick={() => navigate('/app/assistant')} className="text-xs font-medium text-accent bg-surface-2 border border-line rounded-full px-3 py-1.5 hover:border-accent/40 transition-colors inline-flex items-center gap-1">More <ChevronDown className="w-3 h-3" /></button>
+            <button
+              onClick={hideQuickBar}
+              aria-label="Hide suggestions"
+              title="Hide suggestions (swipe works too)"
+              className="w-6 h-6 rounded-full flex items-center justify-center text-fg-subtle hover:text-fg hover:bg-surface-2 flex-shrink-0"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </motion.div>
+        ) : (
+          <button
+            onClick={restoreQuickBar}
+            className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-medium text-fg-subtle hover:text-fg bg-surface-2 border border-line rounded-full px-3 py-1.5 transition-colors"
+          >
+            <Sparkles className="w-3 h-3" /> Show suggestions
+          </button>
+        )}
       </section>
 
       {/* STATS grid — dense, enriched */}

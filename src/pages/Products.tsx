@@ -34,7 +34,8 @@ export default function Products() {
   const [popular, setPopular] = useState<Product[]>([])
   const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out'>('all')
 
-  useEffect(() => { loadProducts() }, [])
+  // Wait for the profile to resolve (direct page loads race auth restore).
+  useEffect(() => { if (ownerId) loadProducts() }, [ownerId])
 
   const loadProducts = async () => {
     setLoading(true)
