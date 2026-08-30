@@ -10,10 +10,13 @@ import { formatINR } from '../lib/format'
 import type { Product } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
-import { Package, Plus, Loader2, Trash2, AlertTriangle, Search, MapPin, ChevronDown } from 'lucide-react'
+import { Package, Plus, Loader2, Trash2, AlertTriangle, Search, MapPin, ChevronDown, X } from 'lucide-react'
 import toast from 'react-hot-toast'
+import type { ProductUnit } from '../lib/types'
 
-const empty = { name: '', description: '', sku: '', category: 'general', price: '', cost: '', stock_quantity: '', low_stock_threshold: '5', hsn_code: '', gst_rate: '0' }
+interface ExtraUnitRow { unit: string; price: string; factor: string }
+
+const empty = { name: '', description: '', sku: '', category: 'general', price: '', cost: '', stock_quantity: '', low_stock_threshold: '5', hsn_code: '', gst_rate: '0', unitBase: '', extraUnits: [] as ExtraUnitRow[] }
 
 export default function Products() {
   const { profile, ownerId } = useAuth()
@@ -68,10 +71,22 @@ export default function Products() {
     if (!form.name.trim()) return toast.error('Product name is required')
     setSaving(true)
     try {
+      // Multi-unit pricing: the base unit mirrors the main price; extra
+      // units (500g, dozen …) each carry their own price and consume a
+      // fraction of base stock.
+      const extraUnits: ProductUnit[] = form.extraUnits
+        .filter((u) => u.unit.trim())
+        .map((u) => ({ unit: u.unit.trim(), price: Number(u.price) || 0, factor: Math.max(0.001, Number(u.factor) || 1) }))
+      const units: ProductUnit[] | null =
+        extraUnits.length > 0 || form.unitBase.trim()
+          ? [{ unit: form.unitBase.trim() || 'piece', price: Number(form.price) || 0, factor: 1 }, ...extraUnits]
+          : null
+
       const prod = {
         name: form.name, description: form.description || null, sku: form.sku || null,
         category: form.category || 'general', price: Number(form.price) || 0, cost: Number(form.cost) || 0, hsn_code: form.hsn_code || null, gst_rate: Number(form.gst_rate) || 0,
         stock_quantity: Number(form.stock_quantity) || 0, low_stock_threshold: Number(form.low_stock_threshold) || 5,
+        units,
       }
       if (isOwner) {
         const { data, error } = await offlineInsert('products', { user_id: ownerId, ...prod })
@@ -176,8 +191,62 @@ export default function Products() {
                 </select>
               </div>
             </div>
-            <div><label className="label">Stock quantity</label><input type="number" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} className="input-field" placeholder="100" /></div>
+            <div><label className="label">Stock quantity</label><input type="number" step="0.01" value={form.stock_quantity} onChange={(e) => setForm({ ...form, stock_quantity: e.target.value })} className="input-field" placeholder="100" /></div>
             <div><label className="label">Low-stock alert at</label><input type="number" value={form.low_stock_threshold} onChange={(e) => setForm({ ...form, low_stock_threshold: e.target.value })} className="input-field" placeholder="5" /></div>
+
+            {/* Multi-unit pricing — optional, kirana-style */}
+            <div className="sm:col-span-2 border-t border-line pt-4">
+              <label className="label">Pricing units (optional)</label>
+              <p className="text-xs text-fg-subtle mb-2 -mt-1">Sell one SKU per piece, per kg, per dozen — with its own price. Stock is tracked in the base unit.</p>
+              <input
+                value={form.unitBase}
+                onChange={(e) => setForm({ ...form, unitBase: e.target.value })}
+                className="input-field mb-2"
+                placeholder="Base unit name — e.g. kg, piece, litre (optional)"
+                aria-label="Base unit name"
+              />
+              {form.extraUnits.map((u, i) => (
+                <div key={i} className="flex gap-2 mb-2">
+                  <input
+                    value={u.unit}
+                    onChange={(e) => setForm({ ...form, extraUnits: form.extraUnits.map((x, j) => j === i ? { ...x, unit: e.target.value } : x) })}
+                    className="input-field flex-1"
+                    placeholder="Unit — e.g. 500g, dozen"
+                    aria-label="Unit name"
+                  />
+                  <input
+                    type="number" min={0} step="0.01"
+                    value={u.price}
+                    onChange={(e) => setForm({ ...form, extraUnits: form.extraUnits.map((x, j) => j === i ? { ...x, price: e.target.value } : x) })}
+                    className="input-field w-24"
+                    placeholder="Price"
+                    aria-label="Unit price"
+                  />
+                  <input
+                    type="number" min={0.001} step="0.001"
+                    value={u.factor}
+                    onChange={(e) => setForm({ ...form, extraUnits: form.extraUnits.map((x, j) => j === i ? { ...x, factor: e.target.value } : x) })}
+                    className="input-field w-28"
+                    placeholder="Base qty"
+                    aria-label="Base units consumed per unit"
+                    title="How much base stock one unit uses — 500g on a kg product is 0.5"
+                  />
+                  <button
+                    onClick={() => setForm({ ...form, extraUnits: form.extraUnits.filter((_, j) => j !== i) })}
+                    className="w-10 h-10 rounded-xl flex items-center justify-center text-fg-subtle hover:text-negative flex-shrink-0"
+                    aria-label="Remove unit"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => setForm({ ...form, extraUnits: [...form.extraUnits, { unit: '', price: '', factor: '1' }] })}
+                className="text-xs font-semibold text-accent hover:underline"
+              >
+                + Add unit
+              </button>
+            </div>
           </div>
           <div className="flex justify-end gap-3 mt-4">
             <button onClick={() => { setShowForm(false); setForm(empty) }} className="btn-secondary text-sm">Cancel</button>
@@ -243,14 +312,15 @@ export default function Products() {
                       <h3 className="font-semibold text-fg">{p.name}</h3>
                       <span className="text-xs px-1.5 py-0.5 rounded bg-surface-2 text-fg-subtle capitalize">{p.category}</span>
                       {p.sku && <span className="text-xs text-fg-subtle">{p.sku}</span>}
+                      {p.units && p.units.length > 1 && <span className="text-xs px-1.5 py-0.5 rounded bg-accent-soft text-accent-strong">{p.units.length} units</span>}
                     </div>
-                    <p className="text-sm text-accent mt-0.5">₹{p.price.toFixed(2)} <span className="text-fg-subtle">· {margin}% margin</span></p>
+                    <p className="text-sm text-accent mt-0.5">₹{p.price.toFixed(2)} <span className="text-fg-subtle">· {margin}% margin</span>{p.units?.[0]?.unit ? <span className="text-fg-subtle"> · per {p.units[0].unit}</span> : null}</p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap ${statusCls}`}>{statusLabel}</span>
                     <div className="flex items-center gap-1">
                       <button onClick={() => restock(p, -1)} className="w-7 h-7 rounded-control bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-fg-muted">−</button>
-                      <span className="w-16 text-center text-sm font-semibold text-fg">{p.stock_quantity}<span className="text-[10px] font-normal text-fg-subtle ml-0.5">pcs</span></span>
+                      <span className="w-16 text-center text-sm font-semibold text-fg">{p.stock_quantity}<span className="text-[10px] font-normal text-fg-subtle ml-0.5">{p.units?.[0]?.unit || 'pcs'}</span></span>
                       <button onClick={() => restock(p, 1)} className="w-7 h-7 rounded-control bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-fg-muted">+</button>
                     </div>
                   </div>

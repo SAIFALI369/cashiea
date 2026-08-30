@@ -105,6 +105,10 @@
     scroll-behavior: smooth;
   }
 
+  /* Hide scrollbars on horizontal chip/tile rows (chips, frequent items) */
+  .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; height: 0; width: 0; }
+
   .card {
     @apply bg-surface border border-line rounded-card shadow-soft
            transition-[transform,box-shadow,border-color] duration-150 ease-out;

@@ -171,6 +171,16 @@ export interface CampaignRecipient {
 // ─── Subscription plans ─────────────────────────────────────────
 
 // ─── Retail POS entities ────────────────────────────────────────
+/** Alternative pricing unit on the same SKU, e.g. 500g at ₹30 on a kg-tracked product. */
+export interface ProductUnit {
+  /** Display label shown in the unit picker ('kg', '500g', 'dozen'). */
+  unit: string
+  /** Sell price for ONE of this unit. */
+  price: number
+  /** Base stock units consumed per unit sold (0.5 → half a base unit). */
+  factor: number
+}
+
 export interface Product {
   id: string
   user_id: string
@@ -183,6 +193,10 @@ export interface Product {
   stock_quantity: number
   low_stock_threshold: number
   active: boolean
+  /** Multi-unit pricing options; null/empty = single base unit only. */
+  units: ProductUnit[] | null
+  hsn_code: string | null
+  gst_rate: number | null
   created_at: string
   updated_at: string
 }
@@ -210,6 +224,18 @@ export interface TransactionItem {
   name: string
   quantity: number
   unit_price: number
+  /** Pricing unit label, e.g. 'kg' / '500g' / 'dozen'. Absent = base unit. */
+  unit?: string | null
+  /** Base units per pricing unit (0.5 for a 500g unit on a kg-tracked SKU). */
+  factor?: number | null
+  /** GST % applied to this line (from product.gst_rate or sale default). */
+  gst_rate?: number | null
+  /** True when the entered unit price already includes GST. */
+  price_includes_tax?: boolean
+  /** Flat ₹ discount applied to this line. */
+  line_discount?: number | null
+  /** Why this line was discounted (shows up in Reports). */
+  line_discount_note?: string | null
 }
 
 export type PaymentMethod = 'cash' | 'card' | 'upi' | 'wallet' | 'other'
@@ -225,10 +251,52 @@ export interface Transaction {
   tax_amount: number
   discount: number
   total: number
-  payment_method: PaymentMethod
+  payment_method: PaymentMethod | 'split'
   status: 'completed' | 'refunded' | 'void'
   notes: string | null
   served_by: string | null
+  /** Why the cart-level discount was given (shows up in Reports). */
+  discount_reason: string | null
+  /** Required reason a completed sale was voided / returned. */
+  void_reason: string | null
+  voided_at: string | null
+  voided_by: string | null
+  created_at: string
+}
+
+/** One tender line of a (possibly split) payment — cash + UPI on one sale. */
+export interface SalePayment {
+  id: string
+  user_id: string
+  transaction_id: string
+  method: PaymentMethod
+  amount: number
+  /** UPI reference / txn id, when captured. */
+  reference: string | null
+  created_at: string
+}
+
+/** A parked sale the cashier can resume exactly where they left it. */
+export interface HeldCart {
+  id: string
+  user_id: string
+  label: string | null
+  /** Full cart snapshot: lines + customer + totals context. */
+  cart: Record<string, unknown>
+  total: number
+  created_at: string
+  updated_at: string
+}
+
+/** End-of-day cash count: expected vs counted, with variance. */
+export interface CashSession {
+  id: string
+  user_id: string
+  session_date: string
+  expected_cash: number
+  counted_cash: number
+  variance: number
+  notes: string | null
   created_at: string
 }
 
