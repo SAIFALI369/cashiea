@@ -42,6 +42,8 @@ export interface Invoice {
   client_name: string
   client_email: string | null
   client_address: string | null
+  /** Buyer GSTIN — required on B2B tax invoices (Rule 46(h)). */
+  client_gstin: string | null
   items: InvoiceItem[]
   subtotal: number
   tax_rate: number

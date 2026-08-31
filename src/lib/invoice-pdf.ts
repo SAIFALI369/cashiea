@@ -19,6 +19,7 @@
 import { jsPDF } from 'jspdf'
 import type { Invoice, Profile } from './types'
 import { buildUpiLink } from './payments'
+import { amountInIndianWords, gstinState } from './india-compliance'
 
 // Page constants (A4 in mm)
 const PAGE = { w: 210, h: 297, margin: 15 }
@@ -93,11 +94,14 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
     doc.text(headerLines.slice(3).join('  •  '), headerTextX, 27)
   }
 
-  // "INVOICE" label, top-right
+  // Document heading — "TAX INVOICE" when GST-registered (Rule 46(a));
+  // a plain "INVOICE" for unregistered businesses, which must not
+  // charge or show GST.
+  const isTaxInvoice = !!gstin
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(23)
+  doc.setFontSize(isTaxInvoice ? 18 : 23)
   doc.setTextColor(...COLOR.white)
-  doc.text('INVOICE', PAGE.w - PAGE.margin - 30, 18, { align: 'right' })
+  doc.text(isTaxInvoice ? 'TAX INVOICE' : 'INVOICE', PAGE.w - PAGE.margin - 30, 18, { align: 'right' })
   doc.setFontSize(9.5)
   doc.text(invoice.invoice_number, PAGE.w - PAGE.margin - 30, 24, { align: 'right' })
 
@@ -117,7 +121,9 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
   doc.setTextColor(...COLOR.muted)
+  const clientGstin = (invoice as any).client_gstin || ''
   const clientLines: string[] = []
+  if (clientGstin) clientLines.push(`GSTIN: ${clientGstin}${gstinState(clientGstin) ? ` (${gstinState(clientGstin)})` : ''}`)
   if (invoice.client_email) clientLines.push(invoice.client_email)
   if (invoice.client_phone) clientLines.push(invoice.client_phone)
   if (invoice.client_address) clientLines.push(invoice.client_address)
@@ -130,6 +136,8 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
   ]
   if (invoice.due_date) detailRows.push(['Due date', invoice.due_date])
   if ((invoice as any).place_of_supply) detailRows.push(['Place of supply', (invoice as any).place_of_supply])
+  else if (isTaxInvoice && gstinState(gstin)) detailRows.push(['Place of supply', gstinState(gstin) || ''])
+  if (isTaxInvoice) detailRows.push(['Reverse charge', 'No'])
   detailRows.push(['Status', invoice.status === 'paid' ? 'PAID' : invoice.status.toUpperCase()])
   if (invoice.paid_at) detailRows.push(['Paid on', new Date(invoice.paid_at).toLocaleDateString('en-IN')])
   detailRows.forEach(([k, v], i) => {
@@ -238,6 +246,14 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
   doc.text('TOTAL', totalsX, y + 3.5)
   doc.text(formatINR(invoice.total), PAGE.w - PAGE.margin, y + 3.5, { align: 'right' })
   y += 15
+
+  // Total in words — mandatory on tax invoices (Rule 46).
+  doc.setFont('helvetica', 'italic')
+  doc.setFontSize(8.5)
+  doc.setTextColor(...COLOR.muted)
+  const wordsLine = doc.splitTextToSize(`(${amountInIndianWords(Number(invoice.total))})`, PAGE.w - 2 * PAGE.margin) as string[]
+  doc.text(wordsLine, PAGE.margin, y)
+  y += wordsLine.length * 4 + 3
 
   // ─── Payment details + UPI QR ─────────────────────────────────
   const paymentStartY = y

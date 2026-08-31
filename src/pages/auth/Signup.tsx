@@ -21,6 +21,23 @@ function Logo({ size = 32 }: { size?: number }) {
 
 const C = { bg: 'rgb(var(--paper))', bgCard: 'rgb(var(--surface))', border: 'rgb(var(--line))', blue: 'rgb(var(--accent))', blueDark: 'rgb(var(--accent-strong))', blueLight: 'rgb(var(--gold))', green: 'rgb(var(--positive))', text: 'rgb(var(--fg))', textBody: 'rgb(var(--fg-muted))', muted: 'rgb(var(--fg-subtle))', red: 'rgb(var(--negative))', amber: 'rgb(var(--warning))' }
 
+// ── Defined at MODULE scope on purpose ─────────────────────────────
+// Defined inside the component before, every keystroke remounted the
+// <input>, dropping focus and dismissing the mobile keyboard.
+function Input({ icon: Icon, focusProps, ...props }: any) {
+  return (
+    <div className="relative">
+      <Icon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors z-10" style={{ color: C.muted }} />
+      <input
+        {...props}
+        {...focusProps}
+        className={`${FOCUS_SCROLL_CLASS} w-full pl-12 pr-4 py-3.5 rounded-xl text-base outline-none transition-all duration-200`}
+        style={{ background: 'rgb(var(--surface))', border: `1px solid ${C.border}`, color: C.text }}
+      />
+    </div>
+  )
+}
+
 // Password strength calculator
 function getStrength(pwd: string): { label: string; color: string; pct: number } {
   if (!pwd) return { label: '', color: C.border, pct: 0 }
@@ -89,19 +106,6 @@ export default function Signup() {
       setLoading(false)
     }
   }
-
-  // Reusable input
-  const Input = ({ icon: Icon, ...props }: any) => (
-    <div className="relative">
-      <Icon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors z-10" style={{ color: C.muted }} />
-      <input
-        {...props}
-        {...focusProps}
-        className={`${FOCUS_SCROLL_CLASS} w-full pl-12 pr-4 py-3.5 rounded-xl text-base outline-none transition-all duration-200`}
-        style={{ background: 'rgb(var(--surface))', border: `1px solid ${C.border}`, color: C.text }}
-      />
-    </div>
-  )
 
   if (needsConfirmation) {
     return (
@@ -190,11 +194,11 @@ export default function Signup() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-semibold mb-1.5" style={{ color: C.text }}>Your Name *</label>
-                <Input icon={User} type="text" required value={fullName} onChange={(e: any) => setFullName(e.target.value)} placeholder="Ramesh Kumar" autoComplete="name" />
+                <Input icon={User} focusProps={focusProps} type="text" required value={fullName} onChange={(e: any) => setFullName(e.target.value)} placeholder="Ramesh Kumar" autoComplete="name" />
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-1.5" style={{ color: C.text }}>Shop Name *</label>
-                <Input icon={Store} type="text" required value={shopName} onChange={(e: any) => setShopName(e.target.value)} placeholder="Sharma Store" autoComplete="organization" />
+                <Input icon={Store} focusProps={focusProps} type="text" required value={shopName} onChange={(e: any) => setShopName(e.target.value)} placeholder="Sharma Store" autoComplete="organization" />
               </div>
             </div>
 
@@ -202,18 +206,18 @@ export default function Signup() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-semibold mb-1.5" style={{ color: C.text }}>Phone *</label>
-                <Input icon={Phone} type="tel" required value={phone} onChange={(e: any) => setPhone(e.target.value)} placeholder="+91 98765 43210" autoComplete="tel" inputMode="tel" />
+                <Input icon={Phone} focusProps={focusProps} type="tel" required value={phone} onChange={(e: any) => setPhone(e.target.value)} placeholder="+91 98765 43210" autoComplete="tel" inputMode="tel" />
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-1.5" style={{ color: C.text }}>City</label>
-                <Input icon={MapPin} type="text" value={city} onChange={(e: any) => setCity(e.target.value)} placeholder="Gaya" autoComplete="address-level2" />
+                <Input icon={MapPin} focusProps={focusProps} type="text" value={city} onChange={(e: any) => setCity(e.target.value)} placeholder="Gaya" autoComplete="address-level2" />
               </div>
             </div>
 
             {/* Email */}
             <div>
               <label className="block text-sm font-semibold mb-1.5" style={{ color: C.text }}>Email *</label>
-              <Input icon={Mail} type="email" required value={email} onChange={(e: any) => setEmail(e.target.value)} placeholder="you@shop.com" autoComplete="email" inputMode="email" />
+              <Input icon={Mail} focusProps={focusProps} type="email" required value={email} onChange={(e: any) => setEmail(e.target.value)} placeholder="you@shop.com" autoComplete="email" inputMode="email" />
             </div>
 
             {/* Password */}

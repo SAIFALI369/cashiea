@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { validateGstin } from '../lib/validation'
 import { offlineInsert } from '../lib/mutations'
 import { callAI, parseAIJson } from '../lib/ai'
 import {
@@ -65,7 +66,8 @@ export default function Invoices() {
       const { result } = await callAI({ task_type: 'invoice', prompt, provider: profile?.ai_provider })
       const parsed = parseAIJson<{
         invoice_number: string; client_name: string; client_email?: string
-        client_phone?: string; client_address?: string; items: InvoiceItem[]
+        client_phone?: string; client_address?: string; client_gstin?: string
+        items: InvoiceItem[]
         tax_rate?: number; due_date?: string; notes?: string
       }>(result)
       if (!parsed) throw new Error('Could not parse invoice. Try again.')
@@ -96,6 +98,7 @@ export default function Invoices() {
         client_email: parsed.client_email || null,
         client_phone: parsed.client_phone || null,
         client_address: parsed.client_address || null,
+        client_gstin: (parsed.client_gstin || '').toUpperCase() || null,
         items, subtotal, tax_rate: taxRate, tax_amount: taxAmount, total,
         status: 'draft', due_date: parsed.due_date || null,
         notes: parsed.notes || null, payment_link: paymentLink,
@@ -112,9 +115,10 @@ export default function Invoices() {
 
   // ── Quick invoice (mobile-optimized 30-second flow) ────────────
   const [showQuick, setShowQuick] = useState(false)
-  const [quick, setQuick] = useState({ name: '', phone: '', item: '', qty: '1', price: '' })
+  const [quick, setQuick] = useState({ name: '', phone: '', gstin: '', item: '', qty: '1', price: '' })
   const handleQuickCreate = async () => {
     if (!quick.name || !quick.item || !quick.price) return toast.error('Fill name, item, and price')
+    if (quick.gstin.trim() && !validateGstin(quick.gstin).valid) return toast.error('Enter a valid 15-character GSTIN')
     setGenerating(true)
     const qty = Number(quick.qty) || 1
     const price = Number(quick.price)
@@ -124,6 +128,7 @@ export default function Invoices() {
       user_id: ownerId,
       invoice_number: invoiceNumber,
       client_name: quick.name, client_phone: quick.phone || null,
+      client_gstin: quick.gstin.trim().toUpperCase() || null,
       items: [{ description: quick.item, quantity: qty, unit_price: price }],
       subtotal: total, tax_rate: 0, tax_amount: 0, total,
       status: 'sent',
@@ -131,7 +136,7 @@ export default function Invoices() {
     setGenerating(false)
     if (error) return toast.error(error.message)
     setInvoices([data as Invoice, ...invoices])
-    setQuick({ name: '', phone: '', item: '', qty: '1', price: '' })
+    setQuick({ name: '', phone: '', gstin: '', item: '', qty: '1', price: '' })
     setShowQuick(false)
     toast.success('Invoice created — share it now')
     setShareInv(data as Invoice)
@@ -300,6 +305,7 @@ export default function Invoices() {
           <div className="grid grid-cols-2 gap-3">
             <input value={quick.name} onChange={(e) => setQuick({ ...quick, name: e.target.value })} className="input-field col-span-2" placeholder="Customer name *" />
             <input value={quick.phone} onChange={(e) => setQuick({ ...quick, phone: e.target.value })} className="input-field" placeholder="Phone (for WhatsApp)" />
+            <input value={quick.gstin} onChange={(e) => setQuick({ ...quick, gstin: e.target.value })} className="input-field font-mono uppercase" placeholder="Buyer GSTIN (B2B, optional)" inputMode="numeric" aria-label="Buyer GSTIN" />
             <input value={quick.item} onChange={(e) => setQuick({ ...quick, item: e.target.value })} className="input-field" placeholder="Item / service *" />
             <input type="number" value={quick.qty} onChange={(e) => setQuick({ ...quick, qty: e.target.value })} className="input-field w-24" placeholder="Qty" />
             <input type="number" value={quick.price} onChange={(e) => setQuick({ ...quick, price: e.target.value })} className="input-field" placeholder="Price ₹ *" />

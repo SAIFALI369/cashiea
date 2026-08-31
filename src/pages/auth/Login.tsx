@@ -22,6 +22,25 @@ function Logo({ size = 32 }: { size?: number }) {
 
 const C = { bg: 'rgb(var(--paper))', bgCard: 'rgb(var(--surface))', border: 'rgb(var(--line))', blue: 'rgb(var(--accent))', blueDark: 'rgb(var(--accent-strong))', blueLight: 'rgb(var(--gold))', green: 'rgb(var(--positive))', text: 'rgb(var(--fg))', textBody: 'rgb(var(--fg-muted))', muted: 'rgb(var(--fg-subtle))', red: 'rgb(var(--negative))' }
 
+// ── Defined at MODULE scope on purpose ─────────────────────────────
+// When this lived inside the Login component, every keystroke changed
+// the component's identity, React remounted the <input>, focus was
+// lost and the mobile keyboard dismissed after typing one letter.
+// A stable component keeps the input (and the keyboard) alive.
+function Field({ icon: Icon, focusProps, ...props }: any) {
+  return (
+    <div className="relative group">
+      <Icon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors" style={{ color: C.muted }} />
+      <input
+        {...props}
+        {...focusProps}
+        className={`${FOCUS_SCROLL_CLASS} w-full pl-12 pr-4 py-3.5 rounded-xl text-base outline-none transition-all duration-200`}
+        style={{ background: 'rgb(var(--surface))', border: `1px solid ${C.border}`, color: C.text }}
+      />
+    </div>
+  )
+}
+
 export default function Login() {
   const { signIn } = useAuth()
   const navigate = useNavigate()
@@ -68,19 +87,6 @@ export default function Login() {
       setResetting(false)
     }
   }
-
-  // Input field component with focus glow + mobile keyboard fix
-  const Field = ({ icon: Icon, ...props }: any) => (
-    <div className="relative group">
-      <Icon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors" style={{ color: C.muted }} />
-      <input
-        {...props}
-        {...focusProps}
-        className={`${FOCUS_SCROLL_CLASS} w-full pl-12 pr-4 py-3.5 rounded-xl text-base outline-none transition-all duration-200`}
-        style={{ background: 'rgb(var(--surface))', border: `1px solid ${C.border}`, color: C.text }}
-      />
-    </div>
-  )
 
   return (
     <div className="flex" style={{ background: C.bg, minHeight: '100dvh' }}>
@@ -148,7 +154,7 @@ export default function Login() {
             {/* Email */}
             <div>
               <label className="block text-sm font-semibold mb-1.5" style={{ color: C.text }}>Email Address</label>
-              <Field icon={Mail} type="email" required value={email} onChange={(e: any) => setEmail(e.target.value)} placeholder="your@shop.com" autoComplete="email" inputMode="email" />
+              <Field icon={Mail} focusProps={focusProps} type="email" required value={email} onChange={(e: any) => setEmail(e.target.value)} placeholder="your@shop.com" autoComplete="email" inputMode="email" />
             </div>
 
             {/* Password */}

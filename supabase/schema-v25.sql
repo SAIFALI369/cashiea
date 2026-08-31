@@ -196,3 +196,6 @@ where lower(p.category) = c.key
 select cron.schedule('mark-overdue-invoices', '15 0 * * *', $$select public.mark_overdue_invoices();$$);
 -- 06:30 IST — generate due recurring invoices
 select cron.schedule('generate-recurring-invoices', '30 0 * * *', $$select public.generate_recurring_invoices();$$);
+
+-- ── v25.1: buyer GSTIN for B2B tax invoices (Rule 46(h)) ────────
+alter table public.invoices add column if not exists client_gstin text;

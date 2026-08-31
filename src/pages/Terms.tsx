@@ -1,132 +1,102 @@
-import { Link } from 'react-router-dom'
-import PageHeader from '../components/ui/PageHeader'
-import { FileText, Mail, ArrowLeft } from 'lucide-react'
+import { FileSignature, Mail, Scale } from 'lucide-react'
+import { useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 
 const SUPPORT_EMAIL = 'supportcashiea@gmail.com'
-const updated = 'July 18, 2026'
-
-export default function Terms() {
-  return (
-    <div className="min-h-screen bg-slate-950">
-      <nav className="border-b border-line/50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-white font-bold">
-            <FileText className="w-5 h-5 text-accent" /> Cashiea
-          </Link>
-          <Link to="/" className="btn-ghost text-sm"><ArrowLeft className="w-4 h-4" /> Home</Link>
-        </div>
-      </nav>
-
-      <article className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-12 h-12 rounded-xl bg-accent-strong/15 border border-accent-strong/40 flex items-center justify-center">
-            <FileText className="w-6 h-6 text-accent" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-white">Terms of Use</h1>
-            <p className="text-sm text-slate-500">Last updated: {updated}</p>
-          </div>
-        </div>
-
-        <div className="card p-4 sm:p-5 space-y-6 text-slate-300 leading-relaxed text-sm sm:text-base">
-          <p className="text-slate-400">Welcome to Cashiea. These Terms of Use ("Terms") govern your access to and use of the Cashiea cashier, point-of-sale, customer management, and related services (the "Service"). By creating an account or using the Service, you agree to be bound by these Terms. If you do not agree, please do not use the Service.</p>
-
-          <Section title="1. Eligibility & Account">
-            <p>You must be at least 16 years old and able to form a binding contract to use the Service. You are responsible for maintaining the confidentiality of your login credentials and for all activity under your account. You agree to provide accurate information and to keep it current. You may not share your account or transfer it without our consent.</p>
-          </Section>
-
-          <Section title="2. The Service">
-            <p>Cashiea provides tools for retail and small businesses, including point-of-sale billing, product and inventory management, customer relationship management, quotations, invoices, accounts, supplier and purchase order tracking, AI-assisted content and reports, and marketing campaigns. We may add, change, or discontinue features at any time, and we are not liable to you or any third party for such changes.</p>
-          </Section>
-
-          <Section title="3. Acceptable Use">
-            <p>You agree not to:</p>
-            <ul>
-              <li>Use the Service for any unlawful purpose or in violation of any law.</li>
-              <li>Enter, store, or transmit content that is fraudulent, infringing, defamatory, harmful, or that you do not have the right to use.</li>
-              <li>Attempt to access, probe, or disrupt the Service’s systems, security, or other users’ data.</li>
-              <li>Reverse engineer, decompile, or scrape the Service.</li>
-              <li>Use the Service to send spam, unsolicited marketing, or communications that violate applicable laws (including anti-spam and consumer-protection laws).</li>
-              <li>Resell or sublicense access to the Service without our written permission.</li>
-            </ul>
-          </Section>
-
-          <Section title="4. Your Content & Responsibilities">
-            <p>"Content" means all data you submit to the Service, including products, customers, transactions, invoices, and documents. You retain all rights to your Content and are solely responsible for it. You represent that you have the necessary rights to any Content you submit and that it does not violate these Terms or the rights of any third party.</p>
-            <p>You are solely responsible for the accuracy of any AI-generated output (invoices, codes, reports, emails, summaries) and for verifying it before relying on or sending it. AI output is provided as assistance only and may contain errors.</p>
-            <p>If your business handles personal or sensitive data (such as customer information), you are responsible for complying with applicable privacy laws, including obtaining any necessary consents from your customers.</p>
-          </Section>
-
-          <Section title="5. Payments & Subscriptions">
-            <p>Some features require a paid subscription. Subscription fees are billed in advance on a recurring basis (monthly) through our payment processor, Stripe. By subscribing, you authorize us to charge the applicable fees to your payment method until you cancel.</p>
-            <p>You may cancel at any time; cancellation takes effect at the end of your current billing period and fees already paid are non-refundable except where required by law. We may change our fees upon reasonable notice. Taxes, if any, are your responsibility.</p>
-            <Sub>Free trial</Sub>
-            <p>We may offer a free trial with limited features. Trial eligibility, duration, and limits are determined at our discretion and may change.</p>
-          </Section>
-
-          <Section title="6. Refunds">
-            <p>Except where required by law, subscription fees are non-refundable. If you believe you have been charged in error, please contact us at <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent hover:text-accent-strong">{SUPPORT_EMAIL}</a> within 14 days of the charge, and we will review your request.</p>
-          </Section>
-
-          <Section title="7. Intellectual Property">
-            <p>The Service, including its software, design, features, and branding, is owned by Cashiea and protected by intellectual property laws. These Terms do not grant you any right to use our trademarks, logos, or trade names. Your Content remains yours, as stated above.</p>
-            <p>To the extent the Service uses your data to operate features you request (such as generating an AI report), you grant us a limited license to process that data solely to provide the Service to you.</p>
-          </Section>
-
-          <Section title="8. Third-Party Services">
-            <p>The Service integrates with third-party providers (such as Supabase, Stripe, AI providers, and email delivery services) whose terms and policies also apply. We are not responsible for the actions or availability of third-party services, and your use of them is at your own risk.</p>
-          </Section>
-
-          <Section title="9. Disclaimers">
-            <p>The Service is provided "as is" and "as available" without warranties of any kind, whether express or implied. We do not warrant that the Service will be uninterrupted, error-free, secure, or that any result (including AI-generated content, calculations, or reports) will be accurate or reliable. You use the Service at your own risk.</p>
-            <p>Cashiea is a business tool and is not accounting, tax, legal, or medical advice. You should consult qualified professionals for such matters.</p>
-          </Section>
-
-          <Section title="10. Limitation of Liability">
-            <p>To the maximum extent permitted by law, in no event will Cashiea or its affiliates be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits, data, business, or goodwill, arising out of or related to the Service, whether based on warranty, contract, tort (including negligence), or any other theory, even if we have been advised of the possibility of such damages.</p>
-            <p>Our total liability for any claim arising from the Service is limited to the amount you paid us in the 12 months preceding the claim, or USD $50, whichever is greater.</p>
-          </Section>
-
-          <Section title="11. Indemnification">
-            <p>You agree to indemnify and hold Cashiea and its affiliates harmless from any claims, damages, losses, or expenses (including reasonable legal fees) arising from your Content, your use of the Service, your violation of these Terms, or your violation of any law or third-party rights.</p>
-          </Section>
-
-          <Section title="12. Termination">
-            <p>You may delete your account at any time. We may suspend or terminate your access to the Service if you violate these Terms, fail to pay fees, or if we determine that doing so protects the Service, our users, or the public. Upon termination, your right to use the Service ends. Sections that by their nature should survive termination (including those on liability, indemnification, and intellectual property) will remain in effect.</p>
-          </Section>
-
-          <Section title="13. Governing Law & Disputes">
-            <p>These Terms are governed by the laws of India, without regard to conflict-of-law principles. You agree to the exclusive jurisdiction of the courts located in Patna, Bihar, India for any dispute arising from these Terms or the Service, except that we may seek injunctive relief in any court of competent jurisdiction to protect our intellectual property.</p>
-          </Section>
-
-          <Section title="14. Changes to These Terms">
-            <p>We may modify these Terms from time to time. If we make material changes, we will notify you (such as by email or a notice in the Service) and post the updated Terms with a new "Last updated" date. Your continued use of the Service after changes take effect constitutes acceptance of the updated Terms.</p>
-          </Section>
-
-          <Section title="15. Contact">
-            <p>If you have questions about these Terms, please contact us:</p>
-            <div className="flex items-center gap-2 mt-2 text-accent">
-              <Mail className="w-4 h-4" />
-              <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-accent-strong">{SUPPORT_EMAIL}</a>
-            </div>
-          </Section>
-        </div>
-
-        <p className="text-center text-sm text-slate-600 mt-8">© 2026 Cashiea. All rights reserved.</p>
-      </article>
-    </div>
-  )
-}
+const updated = '31 August 2026'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div>
-      <h2 className="text-lg font-bold text-white mb-3">{title}</h2>
-      <div className="space-y-2">{children}</div>
-    </div>
+    <section className="card p-5 sm:p-6">
+      <h2 className="text-lg font-bold text-fg mb-3">{title}</h2>
+      <div className="space-y-2 text-sm text-fg-muted leading-relaxed">{children}</div>
+    </section>
   )
 }
 
-function Sub({ children }: { children: React.ReactNode }) {
-  return <p className="font-semibold text-slate-200 mt-3 mb-1">{children}</p>
+export default function Terms() {
+  const { pathname } = useLocation()
+  useEffect(() => { window.scrollTo(0, 0) }, [pathname])
+
+  return (
+    <div className="animate-fade-in max-w-2xl xl:max-w-3xl mx-auto px-4 py-10">
+      <div className="mb-8">
+        <div className="w-12 h-12 rounded-xl bg-accent-soft text-accent border border-accent-strong/30 flex items-center justify-center mb-4"><FileSignature className="w-6 h-6" /></div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-fg">Terms of Use</h1>
+        <p className="text-sm text-fg-subtle mt-1">Last updated: {updated}</p>
+      </div>
+
+      <div className="space-y-4">
+        <Section title="1. The agreement">
+          <p>These Terms govern your use of Cashiea — a business management application for Indian retail shops, including the Meraj AI assistant ("the Service"). By creating an account you accept these Terms on behalf of yourself and, where you act for a business, on behalf of that business. If you do not accept them, do not use the Service.</p>
+        </Section>
+
+        <Section title="2. Eligibility and accounts">
+          <p>You must be at least 18 years old and legally able to bind the business you register. You are responsible for the accuracy of your business details, for keeping your password secure, and for everything done through your account, including actions by staff members you invite. Tell us immediately about any unauthorised access.</p>
+        </Section>
+
+        <Section title="3. The Service and Meraj (AI)">
+          <p>Cashiea provides billing and GST-compliant invoicing tools, inventory, customer records, udhaar (khata) tracking, reports, reminders and the Meraj AI assistant that can draft documents and perform actions <strong className="text-fg">only after you confirm them</strong>.</p>
+          <p><strong className="text-fg">AI disclaimer:</strong> Meraj's outputs are machine-generated assistance. They may contain errors. They are <strong className="text-fg">not professional tax, legal or accounting advice</strong>. You remain solely responsible for your statutory obligations — including GST registration, the correctness of every invoice you issue, GST return filings and income tax. Verify anything that affects money or compliance with a Chartered Accountant or tax professional before acting on it.</p>
+        </Section>
+
+        <Section title="4. Your data and your customers' data">
+          <p>Your business data belongs to you. You grant us a limited licence to process it solely to provide the Service (see our Privacy Policy). When you store customer or supplier details, you confirm you have a lawful right to do so. Nothing in these Terms transfers ownership of your data to us.</p>
+        </Section>
+
+        <Section title="5. Acceptable use">
+          <p>You agree not to: use the Service for any unlawful purpose; store or send content that is illegal, infringing or fraudulent; attempt to access other users' data, probe or breach the Service's security, or reverse-engineer it; resell or provide it to third parties as a competing service; or abuse the AI or messaging features (including spamming customers on WhatsApp, which also breaches Meta's policies). We may suspend accounts that create legal or security risk for us or other users.</p>
+        </Section>
+
+        <Section title="6. Plans, fees and GST">
+          <p>Cashiea offers a free plan and paid plans displayed in the app. Fees are in Indian Rupees. Where Cashiea is required to charge GST on its subscription fees, GST applies in addition at the applicable rate and is shown on your invoice/tax invoice. Payments are processed by our payment provider; we do not store your card details. Plans currently in early access may run in demo mode — you will never be charged without an explicit action from you.</p>
+        </Section>
+
+        <Section title="7. Third-party services">
+          <p>The Service connects to services you choose — WhatsApp (Meta), Google, UPI apps and AI providers. Those connections are governed by the respective providers' terms, and their availability is outside our control. UPI payments go directly between your customer and your own UPI ID; Cashiea is not a payment gateway and never holds your money.</p>
+        </Section>
+
+        <Section title="8. Availability and changes">
+          <p>We aim for reliable service, but we do not promise uninterrupted access. We may add, change or discontinue features; where a change is material and adverse we will give you reasonable notice in the app. Offline sales you record sync automatically when your connection returns — but treat the sync status shown in the app as the truth about what has been saved.</p>
+        </Section>
+
+        <Section title="9. Disclaimers">
+          <p>The Service is provided "as is" and "as available". To the extent permitted by law, we disclaim warranties of merchantability, fitness for a particular purpose and non-infringement. We do not warrant that the Service will be error-free, that AI output will be accurate, or that data loss will never occur — you are encouraged to export your data periodically (Reports → Excel/PDF).</p>
+        </Section>
+
+        <Section title="10. Limitation of liability">
+          <p>To the maximum extent permitted by applicable law, Cashiea's total aggregate liability arising from or relating to the Service is limited to the fees you paid us in the 12 months before the claim (or ₹1,000, whichever is higher). We are not liable for indirect, incidental or consequential losses, lost profits, or lost data beyond the last available backup. Nothing in these Terms limits liability that cannot be limited under Indian law, including liability for fraud or for death or personal injury caused by negligence.</p>
+        </Section>
+
+        <Section title="11. Indemnity">
+          <p>You agree to indemnify Cashiea against claims, losses and reasonable legal costs arising from your use of the Service — including invoices you issue, messages you send, content you store, and your breach of tax or other legal obligations.</p>
+        </Section>
+
+        <Section title="12. Termination">
+          <p>You may close your account at any time; your data is erased as described in the Privacy Policy. We may suspend or terminate accounts that breach these Terms, remain unpaid, or create legal risk, after notice where practicable. On termination your right to use the Service ends and outstanding fees (if any) become due.</p>
+        </Section>
+
+        <Section title="13. Governing law and disputes">
+          <p>These Terms are governed by the laws of India. Any dispute will first be raised with us at {SUPPORT_EMAIL} so we can try to resolve it within 30 days. If unresolved, it is subject to the exclusive jurisdiction of the competent courts of India.</p>
+        </Section>
+
+        <Section title="14. Changes to these Terms">
+          <p>We may update these Terms as the Service evolves. Material changes will be announced in the app with a new "Last updated" date. Continuing to use the Service after changes take effect means you accept the updated Terms; if you do not, you may close your account.</p>
+        </Section>
+
+        <Section title="15. Contact">
+          <p>Questions about these Terms: <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent hover:text-accent-strong">{SUPPORT_EMAIL}</a></p>
+        </Section>
+
+        <div className="card p-5 flex items-start gap-3 bg-surface/60">
+          <Scale className="w-5 h-5 text-fg-subtle flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-fg-subtle leading-relaxed">
+            These Terms are drafted for an Indian SaaS offering under the Indian Contract Act, 1872, the Information Technology Act, 2000 and the Consumer Protection Act, 2019 (including the E-Commerce Rules, 2020), and work alongside our Privacy Policy, which implements the DPDP Act, 2023 and DPDP Rules, 2025.
+          </p>
+        </div>
+
+        <p className="text-center text-xs text-fg-subtle flex items-center justify-center gap-1.5"><Mail className="w-3 h-3" /> {SUPPORT_EMAIL}</p>
+      </div>
+    </div>
+  )
 }

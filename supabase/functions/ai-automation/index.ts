@@ -31,17 +31,22 @@ const SYSTEM_PROMPTS: Record<string, string> = {
 };
 
 // Per-report-type prompt framing (genuine structural differences)
+// India context for every generated report: Indian currency and number
+// formatting, GST-aware analysis, legally careful phrasing.
+const INDIA_REPORT_CONTEXT =
+  "You are writing for an Indian retail shop owner. Use \u20B9 (rupee) for all amounts and Indian number grouping (lakh/crore) where natural. Remember GST: revenue figures from sales data are typically GST-inclusive unless stated otherwise, GST collected is a liability not income, and CGST/SGST applies intra-state while IGST applies inter-state. Amounts and tax conclusions are informational, not professional advice.\n\n";
+
 function frameReportPrompt(reportType: string, title: string, data: string): string {
   const t = title || `${reportType} Report`;
   switch (reportType) {
     case "financial":
-      return `Create a FINANCIAL REPORT titled "${t}". Structure it as:\n1. Executive Summary\n2. Revenue Analysis\n3. Expense Breakdown\n4. Profitability & Margins\n5. Cash Flow Highlights\n6. Recommendations\n\nFocus on numbers, ratios, and financial health. Data:\n${data}`;
+      return `${INDIA_REPORT_CONTEXT}Create a FINANCIAL REPORT titled "${t}". Structure it as:\n1. Executive Summary\n2. Revenue Analysis\n3. Expense Breakdown\n4. Profitability & Margins\n5. Cash Flow Highlights\n6. Recommendations\n\nFocus on numbers, ratios, and financial health. Data:\n${data}`;
     case "sales":
-      return `Create a SALES REPORT titled "${t}". Structure it as:\n1. Executive Summary\n2. Pipeline Overview\n3. Win/Loss Analysis\n4. Top Performers & Products\n5. Conversion Funnel\n6. Forecast & Recommendations\n\nFocus on deals, conversion rates, and revenue drivers. Data:\n${data}`;
+      return `${INDIA_REPORT_CONTEXT}Create a SALES REPORT titled "${t}". Structure it as:\n1. Executive Summary\n2. Pipeline Overview\n3. Win/Loss Analysis\n4. Top Performers & Products\n5. Conversion Funnel\n6. Forecast & Recommendations\n\nFocus on deals, conversion rates, and revenue drivers. Data:\n${data}`;
     case "operations":
-      return `Create an OPERATIONS REPORT titled "${t}". Structure it as:\n1. Executive Summary\n2. Throughput & Efficiency\n3. Bottlenecks & Issues\n4. Resource Utilization\n5. Quality Metrics\n6. Process Improvement Recommendations\n\nFocus on efficiency, cycle times, and operational health. Data:\n${data}`;
+      return `${INDIA_REPORT_CONTEXT}Create an OPERATIONS REPORT titled "${t}". Structure it as:\n1. Executive Summary\n2. Throughput & Efficiency\n3. Bottlenecks & Issues\n4. Resource Utilization\n5. Quality Metrics\n6. Process Improvement Recommendations\n\nFocus on efficiency, cycle times, and operational health. Data:\n${data}`;
     default:
-      return `Create a CUSTOM business report titled "${t}" with an Executive Summary, Findings, and Recommendations sections based on this data:\n${data}`;
+      return `${INDIA_REPORT_CONTEXT}Create a CUSTOM business report titled "${t}" with an Executive Summary, Findings, and Recommendations sections based on this data:\n${data}`;
   }
 }
 

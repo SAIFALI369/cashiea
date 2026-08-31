@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MerajAvatar } from '../components/MerajAvatar'
 import { MerajMark } from '../components/MerajMark'
-import { ArrowRight, ArrowDown, ChevronDown, Check, Menu, X, Sparkles, Receipt, Package, Users, Wallet, MessageCircle, FileBarChart } from 'lucide-react'
+import { ArrowRight, ArrowDown, ChevronDown, Check, Menu, X, Sparkles, Receipt, Package, Users, Wallet, MessageCircle, FileBarChart, ScanBarcode, WifiOff, Calculator, Mic, Repeat, FileSpreadsheet, BookOpen, Landmark } from 'lucide-react'
 
 // ── Reveal (scroll-triggered, once) ──
 function Reveal({ children, delay = 0, className = '' }: { children: React.ReactNode; delay?: number; className?: string }) {
@@ -45,6 +45,20 @@ function SignalCard({ s, className = '' }: { s: typeof SIGNALS[0]; className?: s
     </div>
   )
 }
+
+// ── The manager's week: what Meraj takes off your plate ──
+const MANAGER_JOBS = [
+  { job: 'Morning cash count & day-open', meraj: 'End-of-day reconciliation — expected vs counted, variance flagged' },
+  { job: 'Billing at the counter', meraj: 'Fast POS — split payments (cash + UPI), hold carts, barcode scan' },
+  { job: 'GST-compliant invoices', meraj: 'Tax invoices with HSN, CGST/SGST/IGST split, amount in words' },
+  { job: 'Watching stock levels', meraj: 'Low-stock alerts, reorder suggestions from last month’s sales' },
+  { job: 'Chasing pending payments', meraj: 'Khata (udhaar) tracking + payment reminders on WhatsApp' },
+  { job: 'Following up with customers', meraj: 'Spots dormant regulars, drafts the follow-up — you approve' },
+  { job: 'Daily sales report', meraj: 'Every morning in your WhatsApp: sales, top items, dues, stock' },
+  { job: 'Monthly accounts & reports', meraj: 'AI reports from your real data — PDF and Excel' },
+  { job: 'Rent & repeat billing', meraj: 'Recurring invoices generate themselves — weekly, monthly, yearly' },
+  { job: 'Answering “how’s business?”', meraj: 'Ask Meraj anything, by voice, in 10 Indian languages' },
+]
 
 // ── Thinking Room ──
 const CONCERNS = [
@@ -93,22 +107,29 @@ function ThinkingRoom() {
   )
 }
 
-// ── Hub nodes ──
-const HUB = [
-  { label: 'Billing', risks: ['Slow checkout', 'Missed customers', 'Manual entry'], icon: Receipt },
-  { label: 'Inventory', risks: ['Stockouts', 'Overstock', 'No reorder alerts'], icon: Package },
-  { label: 'Customers', risks: ['Lost regulars', 'No follow-up', 'No history'], icon: Users },
-  { label: 'Cash', risks: ['Late payments', 'No reminders', 'Manual chasing'], icon: Wallet },
-  { label: 'WhatsApp', risks: ['Unanswered questions', 'No automation', 'Missed orders'], icon: MessageCircle },
-  { label: 'Reports', risks: ['No daily visibility', 'Manual tallying', 'Late insights'], icon: FileBarChart },
+// ── Feature grid ──
+const FEATURES = [
+  { icon: ScanBarcode, label: 'Counter POS', desc: 'Split payments (cash + UPI), hold & resume carts, barcode scan, offline sales that sync themselves' },
+  { icon: Receipt, label: 'GST tax invoices', desc: 'Rule-46 compliant: HSN, CGST/SGST/IGST split, amount in words, digital signature line, UPI QR' },
+  { icon: BookOpen, label: 'Khata (udhaar book)', desc: 'Digital credit ledger — who owes what, reminders, settled history' },
+  { icon: Package, label: 'Stock & inventory', desc: 'Low-stock alerts, multi-unit pricing (per kg / 500g / dozen), CSV bulk import' },
+  { icon: Users, label: 'Customers', desc: 'Spending history, segments, dormant-regular detection, one-tap WhatsApp' },
+  { icon: MessageCircle, label: 'WhatsApp automation', desc: 'Daily sales report, payment reminders, bills and receipts on WhatsApp' },
+  { icon: Repeat, label: 'Recurring invoices', desc: 'Rent and retainers bill themselves — weekly, monthly, yearly, pause anytime' },
+  { icon: FileBarChart, label: 'AI reports', desc: 'Built from your real sales and expenses — export to PDF or Excel' },
+  { icon: Calculator, label: 'Cash reconciliation', desc: 'End-of-day: expected vs counted cash, variance flagged' },
+  { icon: Mic, label: 'Voice, 10 languages', desc: 'Talk to Meraj in Hindi, Bengali, Tamil, Telugu, Marathi and more' },
+  { icon: WifiOff, label: 'Works offline', desc: 'Keep billing during power cuts and dead zones — syncs when you reconnect' },
+  { icon: Landmark, label: 'India-first compliance', desc: 'GSTIN validation, state codes, filing calendar — Meraj knows the rules' },
 ]
 
 const FAQS = [
-  { q: 'Do I need technical knowledge?', a: 'No. Setup takes 5 minutes — enter your shop name, add products, and you are ready to bill.' },
-  { q: 'Is my data safe?', a: 'Your data is encrypted and protected by row-level security — each shop can only see its own records. AI conversations are processed by Google Gemini. Your data is never sold or shared.' },
-  { q: 'Does Cashiea work offline?', a: 'Cashiea currently requires an internet connection. Full offline billing is on the roadmap but not available yet.' },
-  { q: 'Which languages does Meraj understand?', a: 'English and Hinglish (Hindi in Roman script). You can ask questions, create invoices, and send messages in either.' },
-  { q: 'What if I already use a POS?', a: 'Cashiea works alongside your existing setup. Import your product list and Meraj adds WhatsApp reports, customer tracking, and daily briefings on top.' },
+  { q: 'Do I need technical knowledge?', a: 'No. Setup takes 5 minutes — enter your shop name, add products (or import your whole list from a CSV), and you are ready to bill.' },
+  { q: 'Is my data safe?', a: 'Your data is encrypted in transit, hosted in India, and protected by row-level security — each shop can only see its own records. We follow India’s DPDP Act 2023 and never sell your data.' },
+  { q: 'Does Cashiea work offline?', a: 'Yes. Keep billing during internet cuts — sales are saved on your device and sync automatically when you reconnect, with a visible sync status.' },
+  { q: 'Can Meraj really replace a manager?', a: 'Meraj handles about 90% of a manager’s daily work — reports, follow-ups, stock watches, payment chasing, reconciliation — and asks you before anything goes out. The 10% that needs you stays yours: decisions, relationships, and the shop floor.' },
+  { q: 'Which languages does Meraj understand?', a: 'Voice and chat in Hindi/Hinglish, English and 8 more Indian languages — Bengali, Tamil, Telugu, Marathi, Gujarati, Kannada, Malayalam and Punjabi.' },
+  { q: 'What about my GST invoices?', a: 'Cashiea creates Rule-46 compliant tax invoices — TAX INVOICE heading, HSN codes, CGST/SGST or IGST split, amount in words, place of supply and signature. For GST specifics, Meraj gives general guidance and reminds you to confirm with your CA.' },
   { q: 'Can I cancel anytime?', a: 'Yes. No lock-in contracts, no setup fees, no hidden charges. Cancel from your dashboard.' },
 ]
 
@@ -129,7 +150,8 @@ export default function Landing() {
         {menu && <div className="sm:hidden border-t border-line px-4 py-3 space-y-1">
           <Link to="/login" className="block py-2 text-sm text-fg-muted">Login</Link>
           <Link to="/signup" className="block py-2 text-sm font-semibold text-accent">Start free trial</Link>
-          <a href="#thinking" onClick={() => setMenu(false)} className="block py-2 text-sm text-fg-muted">How Meraj thinks</a>
+          <a href="#meraj" onClick={() => setMenu(false)} className="block py-2 text-sm text-fg-muted">What Meraj does</a>
+          <a href="#features" onClick={() => setMenu(false)} className="block py-2 text-sm text-fg-muted">Features</a>
           <a href="#pricing" onClick={() => setMenu(false)} className="block py-2 text-sm text-fg-muted">Pricing</a>
           <a href="#faq" onClick={() => setMenu(false)} className="block py-2 text-sm text-fg-muted">FAQ</a>
         </div>}
@@ -141,30 +163,32 @@ export default function Landing() {
         <div className="relative max-w-3xl mx-auto text-center">
           <Reveal>
             <Mono className="text-accent inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full mb-6" >
-              <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" /> CASHIEA / AI SHOP MANAGER
+              <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" /> CASHIEA / EVERYTHING A SHOP NEEDS
             </Mono>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.05] tracking-tight text-fg">
-              I’m Meraj.<br />
-              <span className="text-accent">I watch your shop</span><br className="hidden sm:block" /> so you can run it.
+              Meet Meraj — the staff member<br className="hidden sm:block" /> who does a <span className="text-accent">manager’s job</span>.
             </h1>
             <p className="mt-5 text-base sm:text-lg text-fg-muted max-w-xl mx-auto leading-relaxed">
-              Invoices, stock, customers, payments. I check them every day. When something needs you, I tell you first.
+              He bills, tracks stock, chases payments, keeps the khata, and reports to you every morning. Cashiea is all a shop needs to run the business — from counter to books.
             </p>
-            <a href="#signals" className="inline-flex items-center gap-2 mt-8 px-7 py-3.5 rounded-full bg-fg text-paper text-sm font-bold hover:opacity-90 transition-opacity">
-              See how it works <ArrowDown className="w-4 h-4" />
-            </a>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">
+              <Link to="/signup" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-accent-strong text-accent-fg text-sm font-bold hover:bg-accent transition-colors">
+                Start free trial <ArrowRight className="w-4 h-4" />
+              </Link>
+              <a href="#meraj" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-fg text-paper text-sm font-bold hover:opacity-90 transition-opacity">
+                See what Meraj does <ArrowDown className="w-4 h-4" />
+              </a>
+            </div>
           </Reveal>
         </div>
       </section>
 
       {/* ══ 3. SIGNAL & FLOATING CARDS ══ */}
-      <section id="signals" className="relative px-4 py-20" style={{ background: 'rgb(var(--surface))' }}>
+      <section id="meraj" className="relative px-4 py-20" style={{ background: 'rgb(var(--surface))' }}>
         <div className="max-w-4xl mx-auto">
-          <Reveal className="text-center mb-12"><Mono className="text-fg-subtle">01 / WHAT MERAJ DOES</Mono></Reveal>
+          <Reveal className="text-center mb-12"><Mono className="text-fg-subtle">01 / MERAJ WATCHES YOUR SHOP</Mono></Reveal>
 
-          {/* Central graphic + floating cards */}
           <div className="relative max-w-2xl mx-auto">
-            {/* Radar + character */}
             <div className="relative mx-auto w-56 h-56 mb-8 sm:mb-0">
               <div className="absolute inset-0 rounded-full" style={{ background: 'repeating-radial-gradient(circle, transparent 0, transparent 35px, rgb(var(--line) / 0.15) 35px, rgb(var(--line) / 0.15) 36px)' }} />
               <div className="absolute inset-4 rounded-full border border-line/40" />
@@ -172,20 +196,17 @@ export default function Landing() {
               <motion.div animate={{ y: [0, -6, 0] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }} className="absolute inset-0 flex items-center justify-center">
                 <MerajAvatar state="idle" size="md" context="panel" />
               </motion.div>
-              {/* Tooltip */}
               <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-fg text-paper text-[10px] font-mono whitespace-nowrap z-10">
                 Meraj is watching
               </div>
             </div>
 
-            {/* Desktop floating cards */}
             <div className="hidden sm:block">
               <SignalCard s={SIGNALS[0]} className="absolute top-0 -left-4 w-52 animate-[float_4s_ease-in-out_infinite]" />
               <SignalCard s={SIGNALS[1]} className="absolute top-8 -right-4 w-52 animate-[float_4s_ease-in-out_1s_infinite]" />
               <SignalCard s={SIGNALS[2]} className="absolute bottom-8 -left-4 w-52 animate-[float_4s_ease-in-out_2s_infinite]" />
               <SignalCard s={SIGNALS[3]} className="absolute bottom-0 -right-4 w-52 animate-[float_4s_ease-in-out_0.5s_infinite]" />
             </div>
-            {/* Mobile stacked cards */}
             <div className="grid grid-cols-2 gap-2.5 sm:hidden">
               {SIGNALS.map((s, i) => <SignalCard key={i} s={s} />)}
             </div>
@@ -198,87 +219,84 @@ export default function Landing() {
         <motion.div animate={{ x: ['0%', '-50%'] }} transition={{ duration: 25, repeat: Infinity, ease: 'linear' }} className="flex gap-0 whitespace-nowrap">
           {Array(2).fill(null).map((_, i) => (
             <span key={i} className="font-mono text-[10px] uppercase tracking-wider text-fg-subtle flex">
-              <span className="px-3">Invoices</span><span className="text-accent">●</span>
+              <span className="px-3">GST tax invoices</span><span className="text-accent">●</span>
+              <span className="px-3">Split payments</span><span className="text-accent">●</span>
+              <span className="px-3">Khata</span><span className="text-accent">●</span>
               <span className="px-3">Stock alerts</span><span className="text-accent">●</span>
-              <span className="px-3">Follow-ups</span><span className="text-accent">●</span>
-              <span className="px-3">Payment reminders</span><span className="text-accent">●</span>
-              <span className="px-3">Daily reports</span><span className="text-accent">●</span>
-              <span className="px-3">WhatsApp</span><span className="text-accent">●</span>
-              <span className="px-3">GST billing</span><span className="text-accent">●</span>
+              <span className="px-3">WhatsApp reports</span><span className="text-accent">●</span>
+              <span className="px-3">Offline billing</span><span className="text-accent">●</span>
+              <span className="px-3">CSV import</span><span className="text-accent">●</span>
+              <span className="px-3">Recurring invoices</span><span className="text-accent">●</span>
+              <span className="px-3">Voice in 10 languages</span><span className="text-accent">●</span>
             </span>
           ))}
         </motion.div>
       </div>
 
-      {/* ══ 4. STATEMENT & FLOATING ALERTS ══ */}
+      {/* ══ 4. THE 90% SHOWCASE — a manager's job list ══ */}
       <section className="relative px-4 py-24 overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'radial-gradient(ellipse at center, rgb(var(--accent) / 0.06), transparent 50%)' }} />
-        <Reveal className="relative max-w-2xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold leading-tight text-fg">Small worries.<br /><span className="text-accent">One manager.</span></h2>
-          <p className="mt-4 text-sm text-fg-muted">Meraj catches the problems that slip through when you are busy at the counter.</p>
+        <Reveal className="relative max-w-3xl mx-auto text-center">
+          <Mono className="text-fg-subtle block mb-3">02 / THE MANAGER’S JOB LIST</Mono>
+          <h2 className="text-3xl sm:text-4xl font-bold leading-tight text-fg">90% of a manager’s work,<br /><span className="text-accent">done before you ask.</span></h2>
+          <p className="mt-4 text-sm text-fg-muted max-w-xl mx-auto">The jobs that eat a shop owner’s evening are exactly what Meraj does all day. You keep the decisions — he does the legwork.</p>
         </Reveal>
-        {/* Floating alert cards */}
-        <div className="relative max-w-3xl mx-auto mt-10 grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {['Slow checkout', 'Missed follow-ups', 'Late payments', 'Stock running low'].map((alert, i) => (
-            <Reveal key={alert} delay={i * 80}>
-              <div className="card p-3 text-center" style={{ transform: `translateY(${i % 2 === 0 ? '0' : '12px'})` }}>
-                <div className="w-1.5 h-1.5 rounded-full bg-warning mx-auto mb-2" />
-                <p className="text-xs font-medium text-fg-muted">{alert}</p>
+        <div className="relative max-w-2xl mx-auto mt-10 space-y-2">
+          {MANAGER_JOBS.map((row, i) => (
+            <Reveal key={row.job} delay={i * 40}>
+              <div className="card p-3.5 flex items-center gap-3">
+                <span className="w-7 h-7 rounded-full bg-positive/15 text-positive flex items-center justify-center flex-shrink-0"><Check className="w-3.5 h-3.5" strokeWidth={2.5} /></span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-fg-subtle line-through decoration-fg-subtle/50">{row.job}</p>
+                  <p className="text-sm font-medium text-fg mt-0.5">{row.meraj}</p>
+                </div>
+                <Mono className="text-accent flex-shrink-0 hidden sm:block">MERAJ</Mono>
               </div>
             </Reveal>
           ))}
         </div>
+        <Reveal delay={150} className="text-center mt-8">
+          <p className="text-sm text-fg-muted max-w-md mx-auto">Meraj prepares every action — invoices, messages, reminders — and waits for your OK. Nothing goes out without you.</p>
+        </Reveal>
       </section>
 
-      {/* ══ 5. HIGH-CONTRAST FEATURE BLOCK ══ */}
+      {/* ══ 5. HOW MERAJ THINKS ══ */}
       <section id="thinking" className="px-4 py-8">
         <Reveal className="max-w-5xl mx-auto">
           <div className="rounded-3xl p-8 sm:p-14" style={{ background: 'rgb(var(--accent-strong))' }}>
-            <Mono className="text-white/70 block mb-4">02 / HOW MERAJ THINKS</Mono>
+            <Mono className="text-white/70 block mb-4">03 / HOW MERAJ THINKS</Mono>
             <h2 className="text-3xl sm:text-4xl font-bold text-white leading-tight mb-3">Spots. Understands. Guides.</h2>
             <p className="text-sm text-white/80 max-w-lg mb-8 leading-relaxed">
               Meraj watches every invoice, product, and payment as it happens. When something needs you, you get one clear action — ready to send. You approve before it goes out.
             </p>
-            {/* Thinking room on accent background */}
             <ThinkingRoom />
           </div>
         </Reveal>
       </section>
 
-      {/* ══ 6. SYSTEM DIAGRAM ══ */}
-      <section className="px-4 py-20" style={{ background: 'rgb(var(--surface))' }}>
-        <div className="max-w-2xl mx-auto">
+      {/* ══ 6. FEATURE GRID — everything a shop needs ══ */}
+      <section id="features" className="px-4 py-20" style={{ background: 'rgb(var(--surface))' }}>
+        <div className="max-w-5xl mx-auto">
           <Reveal className="text-center mb-10">
-            <h2 className="text-2xl sm:text-3xl font-bold text-fg leading-tight">One shop.<br className="sm:hidden" /> Many problems. <span className="text-accent">One system.</span></h2>
+            <Mono className="text-fg-subtle block mb-3">04 / THE COMPLETE TOOLKIT</Mono>
+            <h2 className="text-2xl sm:text-3xl font-bold text-fg leading-tight">One app. <span className="text-accent">The whole shop.</span></h2>
+            <p className="text-sm text-fg-muted mt-3 max-w-lg mx-auto">Stop stitching together a billing machine, a khata register, WhatsApp, and an accountant’s spreadsheet. Cashiea runs it all.</p>
           </Reveal>
-          {/* Central node */}
-          <Reveal className="flex justify-center mb-8">
-            <div className="relative w-28 h-28">
-              <div className="absolute inset-0 rounded-full border-2 border-accent/20" />
-              <div className="absolute inset-2 rounded-full" style={{ background: 'rgb(var(--accent-soft))' }} />
-              <div className="absolute inset-0 flex items-center justify-center"><MerajMark size={40} className="text-accent" /></div>
-              {/* Radiating dots */}
-              {[0, 60, 120, 180, 240, 300].map((deg) => (
-                <span key={deg} className="absolute w-2 h-2 rounded-full bg-accent/40" style={{ top: '50%', left: '50%', transform: `rotate(${deg}deg) translateY(-64px) translateX(-50%)` }} />
-              ))}
-            </div>
-          </Reveal>
-          {/* Feature stack */}
-          <div className="space-y-2">
-            {HUB.map((node, i) => (
-              <Reveal key={node.label} delay={i * 50}>
-                <div className="card p-3.5 flex items-center gap-3">
-                  <span className="w-9 h-9 rounded-2xl bg-accent-soft text-accent flex items-center justify-center flex-shrink-0"><node.icon className="w-4 h-4" strokeWidth={1.75} /></span>
-                  <div className="flex-1 min-w-0">
-                    <Mono className="text-accent">{node.label}</Mono>
-                    <p className="text-xs text-fg-subtle mt-0.5 truncate">{node.risks.join(' · ')}</p>
-                  </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {FEATURES.map((f, i) => (
+              <Reveal key={f.label} delay={i * 40}>
+                <div className="card p-4 h-full">
+                  <span className="w-9 h-9 rounded-2xl bg-accent-soft text-accent flex items-center justify-center mb-3"><f.icon className="w-4 h-4" strokeWidth={1.75} /></span>
+                  <p className="text-sm font-bold text-fg">{f.label}</p>
+                  <p className="text-xs text-fg-muted mt-1 leading-relaxed">{f.desc}</p>
                 </div>
               </Reveal>
             ))}
           </div>
-          <Reveal delay={200} className="text-center mt-6">
-            <p className="text-sm text-fg-muted max-w-md mx-auto">Meraj connects every part of the shop, catching problems before they cost a sale.</p>
+          <Reveal delay={200} className="flex justify-center mt-8">
+            <Link to="/signup" className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-fg text-paper text-sm font-bold hover:opacity-90 transition-opacity">
+              <FileSpreadsheet className="w-4 h-4" /> Start with your own shop — free
+            </Link>
           </Reveal>
         </div>
       </section>
@@ -291,12 +309,12 @@ export default function Landing() {
             <p className="text-4xl font-bold text-fg">₹7,500<span className="text-lg font-medium text-fg-muted">/mo</span></p>
             <p className="text-sm text-fg-muted mt-1">Everything included. No tiers.</p>
             <div className="mt-6 space-y-2 text-left">
-              {['Meraj AI — spots, understands, guides', 'GST invoicing and billing', 'Stock alerts and reordering', 'Customer tracking', 'Daily WhatsApp reports', 'Payment reminders', '14-day free trial'].map((f) => (
+              {['Meraj AI — 90% of a manager’s work', 'GST tax invoices + UPI QR payments', 'Counter POS with split payments & offline mode', 'Khata, stock alerts, CSV import', 'Daily WhatsApp reports & payment reminders', 'AI reports with PDF & Excel export', 'Recurring invoices & cash reconciliation', '14-day free trial'].map((f) => (
                 <div key={f} className="flex items-center gap-2 text-sm text-fg-muted"><Check className="w-4 h-4 text-positive flex-shrink-0" /> {f}</div>
               ))}
             </div>
             <Link to="/signup" className="btn-primary w-full mt-6 rounded-full">Start free trial</Link>
-            <p className="text-xs text-fg-subtle mt-3">No setup fee. Cancel anytime.</p>
+            <p className="text-xs text-fg-subtle mt-3">No setup fee. Cancel anytime. GST as applicable.</p>
           </div>
         </Reveal>
       </section>
@@ -326,8 +344,8 @@ export default function Landing() {
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, rgb(var(--accent) / 0.08), transparent 60%)' }} />
         <Reveal className="relative max-w-xl mx-auto text-center">
           <div className="flex justify-center mb-5"><motion.div animate={{ y: [0, -5, 0] }} transition={{ duration: 3, repeat: Infinity }}><MerajAvatar state="idle" size="sm" context="panel" /></motion.div></div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-fg leading-tight">You know your shop.<br /><span className="text-accent">Meraj makes sure nothing slips through.</span></h2>
-          <p className="text-sm text-fg-muted mt-3">14-day free trial. No card required.</p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-fg leading-tight">Hire Meraj.<br /><span className="text-accent">Keep the shop that runs itself.</span></h2>
+          <p className="text-sm text-fg-muted mt-3">14-day free trial. No card required. Works on the phone in your pocket.</p>
           <Link to="/signup" className="inline-flex items-center gap-2 mt-6 px-7 py-3.5 rounded-full bg-accent-strong text-accent-fg text-sm font-bold hover:bg-accent transition-colors">Start free trial <ArrowRight className="w-4 h-4" /></Link>
         </Reveal>
       </section>

@@ -13,6 +13,7 @@
 
 import { jsPDF } from 'jspdf'
 import type { ReceiptModel } from './pos'
+import { amountInIndianWords } from './india-compliance'
 import type { Profile } from './types'
 
 const WIDTH = 80 // mm — standard thermal roll
@@ -27,8 +28,13 @@ export function buildReceiptPdf(r: ReceiptModel, profile: Profile | null): jsPDF
   const shopName = r.shopName || profile?.company_name || profile?.full_name || 'My Business'
   const date = new Date(r.date)
 
+  // A GST-registered shop's receipt with tax shown is a tax invoice
+  // (Rule 46): it carries the heading and the total in words.
+  const isTaxInvoice = !!r.gstin && r.taxTotal > 0
+
   // Pre-measure so the page is exactly as tall as the receipt.
   let height = 58 + r.lines.length * LINE * 2 + r.tenders.length * LINE + 30
+  if (isTaxInvoice) height += 8
   if (r.discountTotal > 0) height += LINE
   if (r.taxTotal > 0) height += LINE
   if (r.change > 0) height += LINE
@@ -61,6 +67,7 @@ export function buildReceiptPdf(r: ReceiptModel, profile: Profile | null): jsPDF
 
   // ── Header ──
   center(shopName.toUpperCase(), 11, 'bold')
+  if (isTaxInvoice) center('TAX INVOICE', 9, 'bold')
   if (r.address) center(r.address, 7.5)
   if (r.phone) center(`Phone: ${r.phone}`, 7.5)
   if (r.gstin) center(`GSTIN: ${r.gstin}`, 7.5)
@@ -88,6 +95,12 @@ export function buildReceiptPdf(r: ReceiptModel, profile: Profile | null): jsPDF
   if (r.taxTotal > 0) row('Tax (GST)', rs(r.taxTotal))
   rule()
   row('TOTAL', rs(r.total), 'bold')
+  if (isTaxInvoice) {
+    const words = doc.splitTextToSize(`(${amountInIndianWords(r.total)})`, WIDTH - 2 * MARGIN) as string[]
+    doc.setFont('courier', 'italic')
+    doc.setFontSize(7.5)
+    words.forEach((w) => { doc.text(w, MARGIN, y); y += 3.4 })
+  }
   for (const t of r.tenders) row(t.method.toUpperCase(), rs(t.amount))
   if (r.change > 0) row('Change', rs(r.change))
   rule()

@@ -1,156 +1,81 @@
-# cashiea — POS, CRM & AI Automation for Retail
+# Cashiea — everything an Indian shop needs to run the business
 
-> **The all-in-one cashier & customer-growth platform for Indian retail businesses.** Ring up sales, manage inventory, track customers, generate GST invoices with UPI payment links, send WhatsApp reports, and let AI handle the busywork.
+**Cashiea** is a POS + CRM + AI business OS for Indian retail shops. It bills at the counter, keeps the khata, tracks stock and customers, collects via UPI, and comes with **Meraj** — an AI staff member who does ~90% of a manager's daily work: reports, follow-ups, stock watches, payment chasing, and reconciliation. Every action Meraj proposes waits for the owner's confirmation.
 
-![Build](https://img.shields.io/badge/Build-passing-brightgreen)
-![Tests](https://img.shields.io/badge/Tests-213%20passing-brightgreen)
-![License](https://img.shields.io/badge/License-MIT-blue)
+Live at **[cashiea.vercel.app](https://cashiea.vercel.app)**
 
 ---
 
-## 🚀 Quick Start (for developers)
+## What's inside
+
+### Counter & billing
+- **New Sale (POS)** — fast product grid/list, barcode scanning (camera), **hold & resume carts**, split payments (cash + UPI + card with live change math), quick-quantity numpad, digital receipts (PDF / WhatsApp / print)
+- **GST tax invoices** — Rule 46 CGST Rules compliant: TAX INVOICE heading, supplier + buyer GSTIN, HSN/SAC, CGST/SGST or IGST split, **amount in words**, place of supply, reverse-charge indicator, signature line, UPI QR
+- **Khata (digital udhaar book)** — who owes what, payment reminders, settled history
+- **Recurring invoices** — weekly/monthly/yearly profiles with pause/resume; a scheduled job generates them daily, duplicate-proof by database constraint
+- **Offline-first** — keep billing through power cuts and dead zones; sales queue locally and sync on reconnect with a visible sync status
+
+### Stock & customers
+- Inventory with low-stock alerts, **multi-unit pricing** (per kg / 500 g / dozen) and **bulk CSV import** (column auto-mapping, duplicate-SKU detection, validation preview)
+- Customer CRM with segments, spending history and dormant-regular detection
+- Suppliers, purchase orders, quotations, expenses
+
+### Meraj — the AI staff member
+- Answers business questions from your **real data** (never hand-typed): "how was business today?", "who bought cement last month?", "which customers should I follow up?"
+- **Acts, with approval** — creates invoices, adds products/customers in bulk, sends WhatsApp messages, generates images, syncs stock from Google Sheets — always prepare → confirm → execute
+- **Voice in 10 Indian languages** (Hindi, Bengali, Tamil, Telugu, Marathi, Gujarati, Kannada, Malayalam, Punjabi, English)
+- Daily briefing at 7 AM, WhatsApp sales report at 8 PM, 9 PM intelligence prompts
+- Knows Indian compliance: GST slabs, GSTIN state codes, Rule 46 invoice requirements, filing deadlines, presumptive taxation — with "confirm with your CA" honesty
+
+### Reports & money
+- AI reports auto-populated from your transactions/expenses/receivables/stock — **PDF and Excel (real .xlsx) export**, WhatsApp sharing
+- End-of-day cash reconciliation (expected vs counted vs variance)
+- Payment reminders and overdue automation (scheduled backend job)
+- Multi-provider AI routing: Groq → Gemini fallback cascade, all free tiers
+
+### Trust & compliance
+- Row-level security on every table — one shop can never read another's data
+- Privacy Policy aligned with the **DPDP Act 2023 + DPDP Rules 2025** (consent, data-principal rights, 72-hour breach commitment); Terms drafted for Indian law
+- GSTIN checksum validation, HSN reference, state-code utilities
+
+## Tech stack
+
+- **Frontend:** React 18, TypeScript, Vite, Tailwind (semantic design tokens), framer-motion
+- **Backend:** Supabase (Postgres + RLS + pg_cron + 24 edge functions), ap-south-1 (Mumbai)
+- **AI:** Groq (primary) + Google Gemini (fallback) with a multi-pass patient cascade; function-calling tools for Meraj's actions
+- **Integrations:** WhatsApp Cloud API, Google Sheets/Drive/Gmail, UPI deep links + QR, Pollination.ai (image gen), GNews
+- **Testing:** Vitest (270+ tests — sale math, GST split, CSV engine, XLSX writer, compliance knowledge)
+
+## Project layout
+
+```
+src/
+  pages/          App screens (POS, Invoices, Khata, Reports, …)
+  components/     Shared UI — pos/, products/, invoices/ flows
+  lib/            Domain logic — pos (sale math), gst, csv, xlsx,
+                  india-compliance (GST + DPDP knowledge), validation
+supabase/
+  functions/      Edge functions (ai-assistant, whatsapp-send, …)
+  _shared/        AI routing cascade + India knowledge prompt
+  schema-v*.sql   Versioned migrations (RLS everywhere)
+```
+
+## Local development
 
 ```bash
-git clone https://github.com/SAIFALI369/cashiea.git
-cd cashiea
 npm install
-cp .env.example .env     # then fill in your Supabase keys
-npm run dev              # → http://localhost:5173
+cp .env.example .env.local   # fill VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
+npm run dev
 ```
 
-The app shows a **Setup Screen** until you fill `.env`. That's normal — it means the graceful-degradation guard is working.
+Tests: `npm test` · Build: `npm run build`
+
+## Deployment
+
+- **Frontend:** Vercel (auto on push to `main`; set the two `VITE_` env vars)
+- **Edge functions:** GitHub Actions deploys `supabase/functions/**` on push
+- **Database:** versioned SQL migrations in `supabase/`
 
 ---
 
-## 📋 Production Setup (5 steps, ~20 min)
-
-### 1. Create a Supabase project (5 min)
-- Go to [supabase.com](https://supabase.com) → New Project
-- Project Settings → API → copy **Project URL** and **anon key**
-- SQL Editor → paste the contents of [`supabase/_combined-schema.sql`](supabase/_combined-schema.sql) → **Run**
-- This creates all 24 tables, 9 RPCs, 26 RLS policies, triggers, and the auth-onboarding flow in one paste.
-
-### 2. Configure auth (2 min)
-- Supabase Dashboard → **Authentication** → **Providers** → **Email**
-- Turn **OFF** "Confirm email" (so signup goes straight in — no email verification needed)
-- **URL Configuration** → set Site URL to your Vercel domain + add `https://yourdomain/**` to Redirect URLs
-
-### 3. Deploy to Vercel (5 min)
-- Go to [vercel.com](https://vercel.com) → New Project → import `SAIFALI369/cashiea`
-- Before deploy, set Environment Variables:
-  - `VITE_SUPABASE_URL` = your Supabase URL
-  - `VITE_SUPABASE_ANON_KEY` = your anon key
-  - `VITE_STRIPE_ENABLED` = `false` (keep demo mode until Stripe is set up)
-- Deploy → you get a live URL
-
-### 4. Set the AI key (3 min, needs CLI)
-```bash
-npm i -g supabase
-supabase login
-supabase link --project-ref YOUR_PROJECT_REF
-supabase secrets set OPENROUTER_API_KEY=sk-or-v1-...
-# Then in the app: Settings → pick "OpenRouter"
-```
-The OpenRouter fallback chain (Gemini → Kimi K3 → Llama → free model) means AI works even before you purchase credits — it auto-falls to a free model.
-
-### 5. Deploy edge functions (5 min, needs CLI)
-```bash
-supabase functions deploy ai-automation ai-assistant business-brain daily-brain quick-tasks google-oauth google-fetch invoice-reminders quickbooks-oauth support-email campaign-send track api-generate-invoice api-draft-email create-checkout stripe-webhook daily-reports
-```
-
-**Done.** Signup → onboarding (3 steps) → dashboard with inventory → start selling.
-
----
-
-## ✨ Features
-
-| Category | Features |
-|----------|---------|
-| **Cashier / POS** | Cart checkout, 5 payment methods (cash/card/UPI/wallet/other), instant receipts, auto inventory decrement |
-| **Inventory** | Product catalog with price/cost/margin, stock tracking, low-stock alerts, quick restock |
-| **Customers (CRM)** | Client details, purchase history, lifetime value, loyalty points, segments (VIP/dormant/new) |
-| **Invoices** | AI + quick invoice, GST-ready, **professional PDF download**, UPI payment links + QR code, WhatsApp share |
-| **Quotations** | Create quotes → one-click convert to invoice |
-| **Accounts** | Expenses + income, daily/monthly cash flow, profit tracking, CSV export |
-| **Suppliers & POs** | Vendor CRM, purchase orders, outstanding tracking |
-| **AI Assistant** | Natural-language console: "How was business today?", "Who bought cement?", morning briefing |
-| **AI Brain** | Learns your business, predicts tasks, asks approval before acting, adapts from your corrections |
-| **Quick Actions** | Floating ⚡ bar: low-stock alert, daily closing report, Hindi/Hinglish bot, voice GST invoice |
-| **Daily Reports** | Automated WhatsApp report at owner-configured time, with failure logging + retry |
-| **Team** | Invite manager/accountant/staff with role-based permissions |
-| **Integrations** | Gmail, Google Sheets (OAuth), WhatsApp, Shopify, Tally, QuickBooks (scaffold) |
-| **Payments** | UPI deep links (zero setup, native to Indian phones), Stripe checkout (demo mode built in) |
-| **Onboarding** | 3-step wizard (category → first products → WhatsApp time), resumeable on reload |
-| **Legal** | Privacy Policy + Terms of Use (customized for Indian retail) |
-| **Support** | Contact form that emails supportcashiea@gmail.com |
-
----
-
-## 🧠 AI Provider Options
-
-The app supports 5 AI providers (pick in Settings):
-
-| Provider | Models | Setup |
-|----------|--------|-------|
-| **OpenRouter** (recommended) | Gemini → Kimi K3 → Llama auto-fallback, 300+ models | `supabase secrets set OPENROUTER_API_KEY=sk-or-v1-...` |
-| Vercel AI Gateway | GPT-5.5, Claude, Gemini | `supabase secrets set AI_GATEWAY_API_KEY=vck_...` (needs card) |
-| OpenAI | GPT-4o | `supabase secrets set OPENAI_API_KEY=sk-...` |
-| Google Gemini | Gemini 1.5 Flash | `supabase secrets set GEMINI_API_KEY=AIza...` |
-| Anthropic | Claude 3.5 Sonnet | `supabase secrets set ANTHROPIC_API_KEY=sk-ant-...` |
-
-**API keys are NEVER in frontend code.** All keys are read server-side from Supabase secrets.
-
----
-
-## 🏗️ Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18 + TypeScript + Vite 5 + Tailwind CSS |
-| Backend | Supabase (PostgreSQL + Auth + 17 Edge Functions) |
-| AI | Multi-provider: OpenRouter / Vercel Gateway / OpenAI / Gemini / Anthropic |
-| Payments | UPI deep links (zero setup) + Stripe (with demo mode) |
-| PDF | jsPDF (client-side, no server needed) |
-| Tests | Vitest (213 tests) |
-| Deploy | Vercel (frontend) + Supabase (backend) |
-
----
-
-## 📜 Scripts
-
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start dev server (localhost:5173) |
-| `npm run build` | Type-check + production build |
-| `npm test` | Run 213 tests |
-| `npm run test:coverage` | Tests with coverage |
-| `node --env-file=.env.local index.mjs` | Test the OpenRouter gateway standalone |
-
----
-
-## 🔒 Security
-
-- ✅ All API keys are Supabase secrets — **never** in frontend code or git
-- ✅ Row Level Security on every table — users only see their own data
-- ✅ `.env` and `.env.local` are gitignored
-- ✅ Passwords hashed by Supabase Auth
-- ✅ API keys hashed with SHA-256
-- ✅ Edge functions verify JWT on every request
-
----
-
-##  nothing
-
-| Problem | Fix |
-|---------|-----|
-| App shows "Setup Screen" | Missing `.env` — fill `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` |
-| Signup shows "Check your email" | Supabase → Authentication → Email → turn off "Confirm email" |
-| AI buttons show error toast | Edge functions not deployed — run `supabase functions deploy ...` |
-| WhatsApp reports not arriving | Set `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID` secrets |
-| "Insufficient credits" from AI | OpenRouter auto-falls to a free model — but you can add credits at openrouter.ai |
-
----
-
-## 📄 License
-
-MIT — for administrative automation. Built with ❤️ for Indian retail businesses.
+Built for Indian retail. GST-aware, WhatsApp-native, offline-ready.
