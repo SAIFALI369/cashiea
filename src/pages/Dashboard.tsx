@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { MerajAvatar } from '../components/MerajAvatar'
+import { FitAmount } from '../components/FitAmount'
 import { motion } from '../components/motion'
 import { formatINR } from '../lib/format'
 import { dashboardSuggestions } from '../lib/ai'
@@ -383,7 +384,7 @@ export default function Dashboard() {
                   <p className="text-base font-bold text-positive leading-tight">{m.positive!.label}</p>
                 </div>
               ) : (
-                <p className={`text-xl sm:text-2xl font-bold tabular-nums number-fit mt-1.5 leading-tight ${m.count === 0 ? 'text-fg-subtle' : 'text-fg'}`}>{m.value}</p>
+                <div className="mt-1.5 leading-tight"><FitAmount value={m.value} base="text-2xl" minTier="text-sm" className={`font-bold ${m.count === 0 ? 'text-fg-subtle' : 'text-fg'}`} /></div>
               )}
               {m.delta && !good && <p className={`text-[11px] font-medium mt-0.5 ${deltaCls[m.deltaTone || 'neutral']}`}>{m.delta}</p>}
               {m.action && m.count > 0 ? (

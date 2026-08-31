@@ -10,6 +10,7 @@ import type { CartLine } from '../../lib/pos'
 import type { Customer, PaymentMethod } from '../../lib/types'
 import { QueueBadge } from '../QueueBadge'
 import { SplitPayment } from './SplitPayment'
+import { FitAmount } from '../FitAmount'
 
 // ─── Stepper with press-and-hold acceleration ────────────────────
 
@@ -165,8 +166,8 @@ export function CartContents({
                     <QtyValue value={line.quantity} onNumpad={() => onNumpad(line.key)} />
                     <StepperBtn onStep={(s) => onChangeQty(line.key, s)} label={`Increase ${line.name} quantity`}><Plus className="w-4 h-4" /></StepperBtn>
                   </div>
-                  <span className="text-sm font-semibold text-fg w-16 text-right tabular-nums">
-                    {formatINR(result ? result.total : line.quantity * line.unit_price)}
+                  <span className="text-sm font-semibold text-fg text-right min-w-16 max-w-24">
+                    <FitAmount value={formatINR(result ? result.total : line.quantity * line.unit_price)} base="text-sm" minTier="text-xs" className="font-semibold text-fg" />
                   </span>
                   <button onClick={() => onOpenLineOptions(line.key)} className="w-8 h-8 rounded-lg flex items-center justify-center text-fg-subtle hover:text-fg hover:bg-surface-2" aria-label={`Options for ${line.name}`} title="GST, discounts, quantity">
                     <MoreVertical className="w-4 h-4" />
@@ -288,7 +289,7 @@ export function CartContents({
               <span>Total</span>
               <QueueBadge />
             </div>
-            <span className="text-2xl font-extrabold text-fg tabular-nums leading-none">{formatINR(sale.total)}</span>
+            <FitAmount value={formatINR(sale.total)} base="text-2xl" className="font-extrabold text-fg leading-none" />
           </div>
 
           <button
@@ -297,7 +298,7 @@ export function CartContents({
             title={checkoutReady ? undefined : checkoutHint}
             className="btn-primary w-full py-3.5 text-base flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Charge {formatINR(sale.total)}</>}
+            {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Charge <FitAmount value={formatINR(sale.total)} base="text-base" minTier="text-xs" className="font-semibold" /></>}
           </button>
           {!checkoutReady && <p className="text-xs text-warning text-center">{checkoutHint}</p>}
         </div>

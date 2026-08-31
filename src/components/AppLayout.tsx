@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import FloatingMeraj from './FloatingMeraj'
@@ -9,13 +9,13 @@ import { OfflineBanner } from './OfflineBanner'
 import { useDailyIntelligence } from '../lib/useDailyIntelligence'
 import { SyncManager } from './SyncManager'
 import { QueueBadge } from './QueueBadge'
-import { motion } from './motion'
+import { motion, AnimatePresence } from './motion'
 import Skeleton from './ui/Skeleton'
 import { Avatar } from './Avatar'
 import { useAuth } from '../context/AuthContext'
 import { getPageContext } from '../lib/pageContext'
 import { useKeyboardShortcuts } from '../lib/useKeyboardShortcuts'
-import { useSwipeNavigation } from '../lib/useSwipeNavigation'
+import { useSwipeNavigation, useEdgeDrawer, SWIPE_PAGES } from '../lib/useSwipeNavigation'
 import { Menu, Settings, ChevronLeft } from 'lucide-react'
 
 export default function AppLayout() {
@@ -26,6 +26,21 @@ export default function AppLayout() {
   useDailyIntelligence(ownerId)
   // Swipe left/right between Today → New Sale → Customers → Scan (mobile).
   useSwipeNavigation()
+  // Swipe in from the left edge → sidebar drawer slides in; swipe left → away.
+  useEdgeDrawer({ isOpen: sidebarOpen, onOpen: () => setSidebarOpen(true), onClose: () => setSidebarOpen(false) })
+
+  // ── Directional page slides ──
+  // Forward navigation slides the next page in from the right, back
+  // navigation slides it in from the left — the app moves the way you
+  // swiped. Unknown jumps (sidebar links) get the soft fade+lift.
+  const prevPathRef = useRef(location.pathname)
+  const [slideDir, setSlideDir] = useState(0)
+  useLayoutEffect(() => {
+    const from = SWIPE_PAGES.indexOf(prevPathRef.current)
+    const to = SWIPE_PAGES.indexOf(location.pathname)
+    prevPathRef.current = location.pathname
+    setSlideDir(from !== -1 && to !== -1 ? (to > from ? 1 : to < from ? -1 : 0) : 0)
+  }, [location.pathname])
   // The Meraj assistant page is full-bleed and scrolls internally; other pages
   // keep the padded, max-width shell + native body scroll.
   const isAssistant = location.pathname.startsWith('/app/assistant')
@@ -87,11 +102,13 @@ export default function AppLayout() {
         <main className={isAssistant
           ? 'flex-1 min-w-0 flex flex-col min-h-0'
           : 'flex-1 px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+72px)] sm:px-6 sm:pt-6 lg:px-10 lg:py-10 lg:pb-10 max-w-[1600px] mx-auto w-full'}>
+          <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={location.pathname}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ opacity: 0, x: slideDir !== 0 ? 36 * slideDir : 0, y: slideDir === 0 ? 6 : 0 }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            exit={{ opacity: 0, x: slideDir !== 0 ? -22 * slideDir : 0, y: slideDir === 0 ? 4 : 0 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
             className={isAssistant ? 'flex-1 flex flex-col min-h-0' : ''}
           >
             <Suspense fallback={
@@ -107,6 +124,7 @@ export default function AppLayout() {
               <Outlet />
             </Suspense>
           </motion.div>
+          </AnimatePresence>
         </main>
       </div>
 

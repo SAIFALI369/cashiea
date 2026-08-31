@@ -5,6 +5,7 @@ import { formatINR } from '../lib/format'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { FitAmount } from '../components/FitAmount'
 import { BookOpen, Plus, Loader2, Trash2, Search, Phone, X, Send, TrendingUp, TrendingDown, UserPlus, ChevronRight, AlertCircle, CheckCircle2, MessageCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -161,11 +162,11 @@ export default function Khata() {
         <div className="grid grid-cols-3 gap-2.5 mb-5">
           <div className="card p-3.5">
             <p className="text-[10px] font-bold uppercase tracking-wide text-fg-subtle">Outstanding</p>
-            <p className="text-xl font-bold text-negative number-fit">{formatINR(totalPending, 0)}</p>
+            <FitAmount value={formatINR(totalPending, 0)} base="text-xl" minTier="text-sm" className="font-bold text-negative" />
           </div>
           <div className="card p-3.5">
             <p className="text-[10px] font-bold uppercase tracking-wide text-fg-subtle">Collected</p>
-            <p className="text-xl font-bold text-positive number-fit">{formatINR(totalCollected, 0)}</p>
+            <FitAmount value={formatINR(totalCollected, 0)} base="text-xl" minTier="text-sm" className="font-bold text-positive" />
           </div>
           <div className="card p-3.5">
             <p className="text-[10px] font-bold uppercase tracking-wide text-fg-subtle">Customers</p>

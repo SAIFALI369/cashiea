@@ -1,4 +1,4 @@
-import { motion, type Variants } from 'framer-motion'
+import { motion, AnimatePresence, type Variants } from 'framer-motion'
 import type { ReactNode } from 'react'
 
 // ────────────────────────────────────────────────────────────────
@@ -40,4 +40,4 @@ export function PageTransition({ children }: { children: ReactNode }) {
   )
 }
 
-export { motion }
+export { motion, AnimatePresence }

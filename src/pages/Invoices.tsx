@@ -13,6 +13,7 @@ import { generateInvoicePdf } from '../lib/invoice-pdf'
 import type { Invoice, InvoiceItem } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import { MoreMenu } from '../components/MoreMenu'
+import { FitAmount } from '../components/FitAmount'
 import { UpiQr } from '../components/UpiQr'
 import { RecurringModal } from '../components/invoices/RecurringModal'
 import EmptyState from '../components/ui/EmptyState'
@@ -380,8 +381,8 @@ export default function Invoices() {
                     </div>
                   </div>
                   <div className="flex items-start gap-1">
-                    <div className="text-right">
-                      <p className="text-xl font-bold text-fg">₹{inv.total.toFixed(2)}</p>
+                    <div className="text-right max-w-40">
+                      <FitAmount value={`₹${inv.total.toFixed(2)}`} base="text-xl" minTier="text-sm" className="font-bold text-fg" />
                       {inv.due_date && <p className="text-xs text-fg-subtle">Due {inv.due_date}</p>}
                     </div>
                     {/* ⋮ menu — replaces swipe actions */}

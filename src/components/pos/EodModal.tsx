@@ -4,6 +4,7 @@ import { formatINR } from '../../lib/format'
 import { expectedCashForDay } from '../../lib/pos'
 import { supabase } from '../../lib/supabase'
 import type { CashSession, SalePayment, Transaction } from '../../lib/types'
+import { FitAmount } from '../FitAmount'
 import toast from 'react-hot-toast'
 
 /**
@@ -119,7 +120,7 @@ export function EodModal({
             {/* Expected */}
             <div className="rounded-xl bg-surface-2 border border-line p-3">
               <p className="text-xs font-semibold text-fg-muted">Expected cash ({cashSaleCount} cash sale{cashSaleCount !== 1 ? 's' : ''} today)</p>
-              <p className="text-2xl font-extrabold text-fg tabular-nums mt-0.5">{formatINR(expected)}</p>
+              <p className="mt-0.5"><FitAmount value={formatINR(expected)} base="text-2xl" minTier="text-base" className="font-extrabold text-fg" /></p>
             </div>
 
             {/* Counted */}
@@ -145,7 +146,7 @@ export function EodModal({
                   {Math.abs(variance) < 0.005 ? <Minus className="w-4 h-4 text-positive" /> : variance > 0 ? <ArrowUpRight className="w-4 h-4 text-negative" /> : <ArrowDownRight className="w-4 h-4 text-negative" />}
                   {Math.abs(variance) < 0.005 ? 'Balanced' : variance > 0 ? 'Over' : 'Short'}
                 </span>
-                <span className="text-lg font-extrabold tabular-nums text-fg">{formatINR(Math.abs(variance))}</span>
+                <FitAmount value={formatINR(Math.abs(variance))} base="text-lg" minTier="text-sm" className="font-extrabold text-fg" />
               </div>
             )}
 

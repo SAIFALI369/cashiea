@@ -18,12 +18,16 @@ export function DropZone({
   accept = 'image/*',
   className = '',
   label = 'Drop file here',
+  clickToBrowse = true,
 }: {
   children: ReactNode
   onFile: (file: File) => void
   accept?: string
   className?: string
   label?: string
+  /** Set false when the wrapped area has its own interactive controls —
+   *  only drag-and-drop will attach files, taps are left alone. */
+  clickToBrowse?: boolean
 }) {
   const [dragging, setDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -62,9 +66,15 @@ export function DropZone({
     }
   }, [accept, onFile])
 
-  const handleClick = useCallback(() => {
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    if (!clickToBrowse) return
+    // Never hijack taps that belong to interactive children — typing in a
+    // wrapped textarea, pressing buttons, selects and links must NOT open
+    // the file picker (that made the AI page's keyboard open the gallery).
+    const target = e.target as HTMLElement
+    if (target.closest('input, textarea, select, button, a, label, [contenteditable="true"], [role="button"], [role="switch"], [role="tab"]')) return
     inputRef.current?.click()
-  }, [])
+  }, [clickToBrowse])
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -80,9 +90,9 @@ export function DropZone({
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onClick={handleClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleClick()}
+      onKeyDown={clickToBrowse ? (e: React.KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && (e.target as HTMLElement) === e.currentTarget && inputRef.current?.click() : undefined}
+      role={clickToBrowse ? 'button' : undefined}
+      tabIndex={clickToBrowse ? 0 : undefined}
     >
       {children}
       <input

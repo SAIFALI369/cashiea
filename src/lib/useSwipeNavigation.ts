@@ -15,10 +15,13 @@ import { useLocation, useNavigate } from 'react-router-dom'
 //   • ignored over dialogs, overlays (fixed inset-0), inputs,
 //     horizontally-scrollable rows (chips, tiles), the bottom nav,
 //     the sidebar drawer, and anything marked data-no-swipe-nav
+//   • swipes that START at the left screen edge (≤36px) are reserved
+//     for the drawer gesture (useEdgeDrawer) and never navigate
 // ════════════════════════════════════════════════════════════════
 
 export const SWIPE_PAGES = ['/app', '/app/pos', '/app/customers', '/app/assistant']
 
+export const EDGE_SWIPE_ZONE = 36
 const MIN_DX = 72
 const MAX_DY = 60
 
@@ -68,7 +71,7 @@ export function useSwipeNavigation() {
       startX = t.clientX
       startY = t.clientY
       startTime = Date.now()
-      ignored = shouldIgnore(e.target)
+      ignored = startX <= EDGE_SWIPE_ZONE || shouldIgnore(e.target)
       active = true
     }
 
@@ -103,4 +106,70 @@ export function useSwipeNavigation() {
       document.removeEventListener('touchcancel', onCancel)
     }
   }, [location.pathname, navigate])
+}
+
+// ════════════════════════════════════════════════════════════════
+// useEdgeDrawer — swipe in from the LEFT EDGE to slide the sidebar
+// drawer in; swipe LEFT (or tap the backdrop) to slide it away.
+// Edge-originated swipes are excluded from page navigation above.
+// ════════════════════════════════════════════════════════════════
+
+export function useEdgeDrawer({
+  isOpen,
+  onOpen,
+  onClose,
+}: {
+  isOpen: boolean
+  onOpen: () => void
+  onClose: () => void
+}) {
+  useEffect(() => {
+    const mobile = window.matchMedia('(max-width: 1023px)')
+    if (!mobile.matches) return
+    if (!('ontouchstart' in window || navigator.maxTouchPoints > 0)) return
+
+    let startX = 0
+    let startY = 0
+    let fromEdge = false
+    let active = false
+
+    const onStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) { active = false; return }
+      const t = e.touches[0]
+      startX = t.clientX
+      startY = t.clientY
+      fromEdge = startX <= EDGE_SWIPE_ZONE
+      active = true
+    }
+
+    const onEnd = (e: TouchEvent) => {
+      if (!active) { active = false; return }
+      active = false
+      const touch = e.changedTouches[0]
+      if (!touch) return
+      const dx = touch.clientX - startX
+      const dy = touch.clientY - startY
+      if (Math.abs(dy) > MAX_DY) return
+      if (Math.abs(dx) < 56) return
+
+      if (isOpen && dx < 0) {
+        // Drawer open: swipe left anywhere slides it away.
+        onClose()
+      } else if (!isOpen && fromEdge && dx > 0) {
+        // Closed: swipe right from the left edge slides it in.
+        onOpen()
+      }
+    }
+
+    const onCancel = () => { active = false }
+
+    document.addEventListener('touchstart', onStart, { passive: true })
+    document.addEventListener('touchend', onEnd, { passive: true })
+    document.addEventListener('touchcancel', onCancel, { passive: true })
+    return () => {
+      document.removeEventListener('touchstart', onStart)
+      document.removeEventListener('touchend', onEnd)
+      document.removeEventListener('touchcancel', onCancel)
+    }
+  }, [isOpen, onOpen, onClose])
 }

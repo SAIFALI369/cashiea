@@ -27,7 +27,7 @@ export default function About() {
   const facts: any[] = Array.isArray(mem?.key_facts) ? mem!.key_facts : []
 
   return (
-    <div className="animate-fade-in max-w-2xl">
+    <div className="animate-fade-in max-w-2xl xl:max-w-3xl">
       <PageHeader title="About" subtitle="Your business at a glance — and what Meraj knows about it." icon={<Store className="w-5 h-5" />} />
 
       {/* Business identity */}

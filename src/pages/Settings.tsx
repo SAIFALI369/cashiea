@@ -239,12 +239,12 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      <div className="max-w-2xl space-y-6">
+      <div className="max-w-2xl xl:max-w-5xl space-y-6">
         {/* ═══ BUSINESS ═══ */}
         {tab === 'business' && (
           <>
             <Section title="Business profile">
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid sm:grid-cols-2 2xl:grid-cols-3 gap-4">
                 <Field label="Full name"><input value={fullName} onChange={(e) => setFullName(e.target.value)} className="input-field" placeholder="Jane Doe" /></Field>
                 <Field label="Business name"><input value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="input-field" placeholder="Sharma General Store" /></Field>
                 <Field label="GSTIN">
@@ -394,16 +394,18 @@ export default function SettingsPage() {
               </div>
             </Section>
 
-            <Section title="Workspace">
-              <div className="-mx-1">
-                {WORKSPACE.map((it) => <NavRow key={it.to} {...it} />)}
-              </div>
-            </Section>
-            <Section title="Account & security">
-              <div className="-mx-1">
-                {ACCOUNT_TOOLS.map((it) => <NavRow key={it.to} {...it} />)}
-              </div>
-            </Section>
+            <div className="grid xl:grid-cols-2 gap-6 items-start">
+              <Section title="Workspace">
+                <div className="-mx-1">
+                  {WORKSPACE.map((it) => <NavRow key={it.to} {...it} />)}
+                </div>
+              </Section>
+              <Section title="Account & security">
+                <div className="-mx-1">
+                  {ACCOUNT_TOOLS.map((it) => <NavRow key={it.to} {...it} />)}
+                </div>
+              </Section>
+            </div>
           </>
         )}
       </div>

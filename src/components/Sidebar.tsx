@@ -135,7 +135,12 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
 
   return (
     <>
-      {isOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={onClose} />}
+      {/* Backdrop fades in/out; the drawer itself slides (translate-x). */}
+      <div
+        onClick={onClose}
+        aria-hidden="true"
+        className={`fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+      />
       <aside className={clsx(
         'fixed lg:sticky top-0 left-0 z-50 h-screen bg-paper border-r border-line flex flex-col transition-all duration-300',
         collapsed ? 'w-[68px]' : 'w-72',

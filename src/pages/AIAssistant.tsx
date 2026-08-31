@@ -771,6 +771,7 @@ export default function AIAssistant() {
         }}
         accept="image/*"
         label="Drop image here"
+        clickToBrowse={false}
       >
       <div className="px-3 pb-3 pt-1 bg-gradient-to-t from-surface via-surface to-transparent">
         {pendingImage && (

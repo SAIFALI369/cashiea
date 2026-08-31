@@ -123,7 +123,7 @@ export default function ApiKeys() {
   }
 
   return (
-    <div className="animate-fade-in max-w-2xl">
+    <div className="animate-fade-in max-w-2xl xl:max-w-4xl">
       <PageHeader
         title="API Keys"
         subtitle="Connect Cashiea to your apps, scripts, and automations."

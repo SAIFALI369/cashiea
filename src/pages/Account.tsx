@@ -138,7 +138,7 @@ export default function Account() {
   const displayName = fullName || email || 'Your account'
 
   return (
-    <div className="animate-fade-in max-w-xl">
+    <div className="animate-fade-in max-w-2xl xl:max-w-4xl">
       <PageHeader
         title="Account"
         subtitle="Your shop, your identity — kept just the way you like it."

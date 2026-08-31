@@ -2,6 +2,7 @@ import { ChevronUp, ShoppingCart } from 'lucide-react'
 import { formatINR } from '../../lib/format'
 import type { SaleTotals } from '../../lib/pos'
 import { QueueBadge } from '../QueueBadge'
+import { FitAmount } from '../FitAmount'
 
 /**
  * StickyCartBar — the collapsed cart pinned above the mobile bottom
@@ -40,7 +41,7 @@ export function StickyCartBar({
           {itemCount > 0 ? (
             <>
               <span className="block text-xs font-medium text-fg-muted">{itemCount} item{itemCount !== 1 ? 's' : ''}</span>
-              <span className="block text-lg font-extrabold text-fg leading-tight tabular-nums">{formatINR(sale.total)}</span>
+              <span className="block leading-tight"><FitAmount value={formatINR(sale.total)} base="text-lg" minTier="text-sm" className="font-extrabold text-fg" /></span>
             </>
           ) : (
             <span className="block text-sm font-medium text-fg-subtle">Cart is empty — tap a product to start</span>

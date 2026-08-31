@@ -5,6 +5,7 @@ import { buildReceiptText, type ReceiptModel } from '../../lib/pos'
 import { downloadReceiptPdf, printReceiptPdf } from '../../lib/receipt-pdf'
 import type { Profile } from '../../lib/types'
 import { supabase } from '../../lib/supabase'
+import { FitAmount } from '../FitAmount'
 import toast from 'react-hot-toast'
 
 /**
@@ -64,7 +65,7 @@ export function ReceiptModal({
             <CheckCircle2 className="w-7 h-7 text-positive" />
           </div>
           <p className="text-xs text-fg-muted">Receipt {receipt.receiptNumber}</p>
-          <p className="text-3xl font-extrabold text-fg tabular-nums my-1">{formatINR(receipt.total)}</p>
+          <p className="my-1"><FitAmount value={formatINR(receipt.total)} base="text-3xl" minTier="text-lg" className="font-extrabold text-fg" /></p>
           <p className="text-xs text-fg-subtle">
             {receipt.tenders.map((t) => t.method.toUpperCase()).join(' + ')}
             {receipt.change > 0 && <> · change {formatINR(receipt.change)}</>}
