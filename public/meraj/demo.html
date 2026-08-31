@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Meraj device-character — face states</title>
+<style>
+  :root { --paper: #171310; --surface: #211c17; --fg: #ece5d8; --muted: #aa9f8d; --accent: 203 164 94; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 40px 20px; background: var(--paper); color: var(--fg);
+    font-family: Inter, system-ui, -apple-system, sans-serif; text-align: center;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p.sub { color: var(--muted); font-size: 13px; margin: 0 0 28px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 28px; max-width: 1080px; margin: 0 auto 40px; }
+  .cell {
+    background: var(--surface); border: 1px solid rgb(var(--accent) / .18); border-radius: 18px;
+    padding: 26px 12px 18px; display: flex; flex-direction: column; align-items: center; gap: 10px;
+  }
+  .cell img { width: 130px; height: 130px; object-fit: contain; animation: float 4.5s ease-in-out infinite; }
+  .cell b { font-size: 13px; }
+  .cell span { color: var(--muted); font-size: 11px; line-height: 1.4; max-width: 150px; }
+  .stage {
+    position: relative; width: 220px; height: 220px; margin: 0 auto 30px; display: flex;
+    align-items: center; justify-content: center;
+  }
+  .stage .glow {
+    position: absolute; inset: 6%; border-radius: 50%;
+    background: radial-gradient(closest-side, rgb(var(--accent) / .5), transparent 72%);
+    filter: blur(8px); animation: glow 4.5s ease-in-out infinite;
+  }
+  .stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
+    transition: opacity .3s ease; opacity: 0; animation: float 4.5s ease-in-out infinite; pointer-events: none; }
+  .stage img.on { opacity: 1; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 14px; }
+  button {
+    background: rgb(var(--accent) / .14); border: 1px solid rgb(var(--accent) / .35); color: var(--fg);
+    padding: 8px 14px; border-radius: 999px; font-size: 12px; cursor: pointer; transition: all .15s ease;
+  }
+  button:hover { background: rgb(var(--accent) / .26); }
+  button.on { background: rgb(var(--accent)); color: #161310; font-weight: 600; }
+  .note { color: var(--muted); font-size: 11px; max-width: 620px; margin: 0 auto; line-height: 1.5; }
+  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+  @keyframes glow { 0%, 100% { opacity: .45; transform: scale(.92); } 50% { opacity: .9; transform: scale(1.06); } }
+  @media (prefers-reduced-motion: reduce) { .cell img, .stage img, .stage .glow { animation: none; } }
+</style>
+</head>
+<body>
+  <h1>Meraj — device character</h1>
+  <p class="sub">Six face-state variants of the SAME base render — only the screen-face content changes.</p>
+
+  <div class="stage" id="stage">
+    <div class="glow"></div>
+    <img src="face-neutral.png" alt="neutral" class="on" />
+    <img src="face-happy.png" alt="happy" />
+    <img src="face-sad.png" alt="sad" />
+    <img src="face-listening.png" alt="listening" />
+    <img src="face-thinking.png" alt="thinking" />
+    <img src="face-speaking.png" alt="speaking" />
+  </div>
+  <div class="btns" id="btns">
+    <button data-face="neutral" class="on">Idle · neutral</button>
+    <button data-face="happy">Idle · happy</button>
+    <button data-face="sad">Idle · sad</button>
+    <button data-face="listening">Listening</button>
+    <button data-face="thinking">Thinking</button>
+    <button data-face="speaking">Speaking</button>
+  </div>
+
+  <div class="grid">
+    <div class="cell"><img src="face-neutral.png" alt="neutral" /><b>Idle — neutral</b><span>Default resting face</span></div>
+    <div class="cell"><img src="face-happy.png" alt="happy" /><b>Idle — happy</b><span>Business doing well</span></div>
+    <div class="cell"><img src="face-sad.png" alt="sad" /><b>Idle — sad</b><span>Business needs attention</span></div>
+    <div class="cell"><img src="face-listening.png" alt="listening" /><b>Listening</b><span>Waveform indicator on screen</span></div>
+    <div class="cell"><img src="face-thinking.png" alt="thinking" /><b>Thinking</b><span>Processing dots on screen</span></div>
+    <div class="cell"><img src="face-speaking.png" alt="speaking" /><b>Speaking</b><span>Mouth waveform on screen</span></div>
+  </div>
+
+  <p class="note">
+    Same cream/gold body, same angle, same "Meraj" display panel, "M" speaker and
+    "CASHIEA · PLAN TRACK GROW TOGETHER" branding on every variant — only the
+    screen-face swaps, so state changes read as one continuous device.
+  </p>
+
+<script>
+  const stage = document.getElementById('stage')
+  const buttons = [...document.querySelectorAll('#btns button')]
+  buttons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const face = btn.dataset.face
+      stage.querySelectorAll('img').forEach((img) => img.classList.toggle('on', img.alt === face))
+      buttons.forEach((b) => b.classList.toggle('on', b === btn))
+    })
+  })
+</script>
+</body>
+</html>

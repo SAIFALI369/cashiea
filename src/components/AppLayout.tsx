@@ -2,13 +2,20 @@ import { useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import FloatingMeraj from './FloatingMeraj'
+import BottomNav from './BottomNav'
 import ThemeToggle from './ThemeToggle'
 import { motion } from './motion'
 import { Menu } from 'lucide-react'
+import { useBusinessMood } from '../lib/businessMood'
 
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [merajOpen, setMerajOpen] = useState(false)
   const location = useLocation()
+
+  // One shared mood fetch for the bottom-nav launcher + floating
+  // assistant (single signal source — see lib/businessMood.ts).
+  const businessMood = useBusinessMood()
 
   return (
     <div className="min-h-screen flex bg-slate-950">
@@ -27,7 +34,8 @@ export default function AppLayout() {
           <div className="ml-auto"><ThemeToggle /></div>
         </header>
 
-        <main className="flex-1 p-4 lg:p-8 max-w-6xl mx-auto w-full">
+        {/* pb-28 keeps content clear of the mobile bottom nav */}
+        <main className="flex-1 p-4 lg:p-8 pb-28 lg:pb-8 max-w-6xl mx-auto w-full">
           {/* Route transition — gentle fade/slide on every navigation */}
           <motion.div
             key={location.pathname}
@@ -40,8 +48,12 @@ export default function AppLayout() {
         </main>
       </div>
 
-      {/* Floating Meraj AI assistant — draggable launcher, available on every page */}
-      <FloatingMeraj />
+      {/* Floating Meraj AI assistant — draggable launcher (desktop),
+          opened by the bottom-nav center device on mobile. */}
+      <FloatingMeraj open={merajOpen} onOpenChange={setMerajOpen} businessMood={businessMood} />
+
+      {/* Mobile bottom nav — Meraj device-character in the center slot */}
+      <BottomNav businessMood={businessMood} onOpenMeraj={() => setMerajOpen(true)} />
     </div>
   )
 }

@@ -9,7 +9,10 @@ import {
 import { PLANS } from '../lib/types'
 import type { ActivityLog, Transaction, Product, Customer } from '../lib/types'
 import { askAssistant } from '../lib/ai'
-import { MerajMark } from '../components/MerajMark'
+import MerajDevice from '../components/MerajDevice'
+import {
+  computeBusinessMood, isLowStock, averageDailyRevenue, type BusinessMood,
+} from '../lib/businessMood'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 
@@ -28,6 +31,7 @@ export default function Dashboard() {
   const [merajLoading, setMerajLoading] = useState(false)
   const [merajReply, setMerajReply] = useState('')
   const [merajInput, setMerajInput] = useState('')
+  const [businessMood, setBusinessMood] = useState<BusinessMood | null>(null)
 
   const renderSafeMarkdown = (md: string) =>
     DOMPurify.sanitize(marked.parse(md, { async: false }) as string, {
@@ -60,13 +64,16 @@ export default function Dashboard() {
     const now = new Date()
     const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
     const startMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+    const startRecent = new Date(now.getTime() - 14 * 86400000).toISOString()
 
-    const [todayTx, monthTx, cust, prod, logs] = await Promise.all([
+    const [todayTx, monthTx, recentTx, cust, prod, logs, overdueInv] = await Promise.all([
       supabase.from('transactions').select('*').eq('user_id', profile!.id).eq('status', 'completed').gte('created_at', startToday),
       supabase.from('transactions').select('*').eq('user_id', profile!.id).eq('status', 'completed').gte('created_at', startMonth),
+      supabase.from('transactions').select('created_at, total').eq('user_id', profile!.id).eq('status', 'completed').gte('created_at', startRecent).lt('created_at', startToday),
       supabase.from('customers').select('*', { count: 'exact', head: true }).eq('user_id', profile!.id),
       supabase.from('products').select('*', { count: 'exact', head: true }).eq('user_id', profile!.id),
       supabase.from('activity_logs').select('*').eq('user_id', profile!.id).order('created_at', { ascending: false }).limit(50),
+      supabase.from('invoices').select('id').eq('user_id', profile!.id).eq('status', 'overdue'),
     ])
 
     const todayData = (todayTx.data as Transaction[]) || []
@@ -92,10 +99,21 @@ export default function Dashboard() {
     setTopProducts(Object.values(productMap).sort((a, b) => b.revenue - a.revenue).slice(0, 5))
     setRecentSales(todayData.slice(0, 6))
 
-    // Low stock
+    // Low stock — the SAME detection predicate the businessMood uses
+    // (lib/businessMood.ts), so the alert card and Meraj's expression
+    // can never disagree.
     const { data: allProducts } = await supabase.from('products').select('*').eq('user_id', profile!.id)
     const productsList = (allProducts as Product[]) || []
-    setLowStock(productsList.filter((p) => p.stock_quantity <= p.low_stock_threshold).slice(0, 5))
+    const lowStockAll = productsList.filter(isLowStock)
+    setLowStock(lowStockAll.slice(0, 5))
+
+    // Meraj's resting mood — one shared calculation, no hardcoding.
+    setBusinessMood(computeBusinessMood({
+      todayRevenue,
+      recentAvgDailyRevenue: averageDailyRevenue(recentTx.data as Transaction[] || []),
+      overdueInvoiceCount: (overdueInv.data ?? []).length,
+      lowStockCount: lowStockAll.length,
+    }))
 
     // Dormant customers (60+ days)
     const { data: custList } = await supabase.from('customers').select('last_purchase_at, total_orders').eq('user_id', profile!.id)
@@ -165,13 +183,26 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Meraj — AI assistant on the dashboard */}
+      {/* Meraj — AI assistant on the dashboard. The device-character's
+          resting face shows the real businessMood at a glance; while a
+          briefing/question is in flight it switches to 'thinking'. */}
       <div className="card p-6 mb-6 bg-gradient-to-br from-brand-600/10 to-transparent border-brand-600/30">
-        <div className="flex items-center gap-3 mb-4">
-          <span className="w-11 h-11 rounded-full bg-accent-soft text-accent ring-1 ring-accent/25 flex-shrink-0 inline-flex items-center justify-center"><MerajMark size={26} /></span>
+        <div className="flex flex-wrap items-center gap-4 mb-4">
+          <MerajDevice
+            size="md"
+            context="card"
+            interactionState={merajLoading ? 'thinking' : 'idle'}
+            businessMood={businessMood ?? 'neutral'}
+          />
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-white flex items-center gap-2">Meraj <span className="text-xs font-normal text-slate-400">— your Cashiea AI assistant</span></h3>
-            <p className="text-xs text-slate-400">Ask about today's sales, stock, or customers — or get a quick briefing.</p>
+            <p className="text-xs text-slate-400">
+              {businessMood === 'happy'
+                ? 'Meraj noticed business is going well today.'
+                : businessMood === 'sad'
+                  ? 'Meraj noticed something needs your attention today.'
+                  : "Ask about today's sales, stock, or customers — or get a quick briefing."}
+            </p>
           </div>
           <button onClick={() => askMeraj('', true)} disabled={merajLoading} className="btn-primary text-xs flex items-center gap-1.5 whitespace-nowrap"><Sparkles className="w-3.5 h-3.5" /> Briefing</button>
         </div>

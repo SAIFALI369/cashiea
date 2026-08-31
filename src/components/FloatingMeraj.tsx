@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { askAssistant, runQuickTask, type QuickTaskMode } from '../lib/ai'
-import { MerajMark } from './MerajMark'
+import MerajDevice from './MerajDevice'
+import type { BusinessMood } from '../lib/businessMood'
 import {
   X, Send, Loader2, AlertTriangle, FileBarChart, MessageCircle, Receipt, Sparkles, ArrowUpRight,
 } from 'lucide-react'
@@ -32,8 +33,15 @@ function renderSafeMarkdown(md: string): string {
   })
 }
 
-export default function FloatingMeraj() {
-  const [open, setOpen] = useState(false)
+export default function FloatingMeraj({
+  open,
+  onOpenChange,
+  businessMood,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  businessMood: BusinessMood | null
+}) {
   const [messages, setMessages] = useState<Msg[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -72,7 +80,7 @@ export default function FloatingMeraj() {
     const dx = e.clientX - drag.current.startX
     const dy = e.clientY - drag.current.startY
     if (Math.abs(dx) > 5 || Math.abs(dy) > 5) drag.current.moved = true
-    const size = 60
+    const size = 64
     const nx = Math.max(DEFAULT_MARGIN, Math.min(window.innerWidth - size - DEFAULT_MARGIN, drag.current.origX + dx))
     const ny = Math.max(DEFAULT_MARGIN, Math.min(window.innerHeight - size - DEFAULT_MARGIN, drag.current.origY + dy))
     setPos({ x: nx, y: ny })
@@ -82,7 +90,7 @@ export default function FloatingMeraj() {
     const wasDrag = drag.current.moved
     drag.current.active = false
     if (!wasDrag) {
-      setOpen(true) // a tap (not a drag) opens the window
+      onOpenChange(true) // a tap (not a drag) opens the window
     } else {
       try { localStorage.setItem(POS_KEY, JSON.stringify(pos)) } catch { /* ignore */ }
     }
@@ -144,9 +152,15 @@ export default function FloatingMeraj() {
     ? (TASKS.find((t) => t.id === pendingTask)?.label + ' — type details…')
     : 'Ask Meraj anything about your business…'
 
+  // Real app state for the device: thinking while a request is in
+  // flight; otherwise idle (resting expression = businessMood).
+  const interactionState = loading ? 'thinking' as const : 'idle' as const
+
   return (
     <>
-      {/* Draggable Meraj launcher (hidden while the window is open) */}
+      {/* Draggable Meraj launcher — the device character itself.
+          Desktop only: on mobile the bottom-nav center device opens
+          the window. Hidden while the window is open. */}
       {!open && pos.x !== -1 && (
         <button
           onPointerDown={onPointerDown}
@@ -154,29 +168,32 @@ export default function FloatingMeraj() {
           onPointerUp={onPointerUp}
           aria-label="Open Meraj AI assistant (drag to move)"
           title="Meraj — tap to open, drag to move"
-          className="fixed z-40 w-[60px] h-[60px] rounded-full shadow-float hover:scale-105 active:scale-95 transition-transform touch-none select-none bg-gradient-to-br from-accent to-accent-strong text-accent-fg flex items-center justify-center"
+          className="fixed z-40 hidden lg:block w-[64px] h-[64px] rounded-full hover:scale-105 active:scale-95 transition-transform touch-none select-none"
           style={{ left: pos.x, top: pos.y }}
         >
-          <MerajMark size={32} className="pointer-events-none" />
-          <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-positive rounded-full border-2 border-paper animate-pulse" />
+          <span className="pointer-events-none block w-full h-full">
+            <MerajDevice size="sm" context="nav" interactionState="idle" businessMood={businessMood ?? 'neutral'} />
+          </span>
         </button>
       )}
 
       {/* Floating AI window */}
       {open && (
-        <div className="fixed z-50 bottom-4 right-4 left-4 sm:left-auto sm:w-[380px] flex flex-col card rounded-2xl border border-slate-700/60 shadow-2xl shadow-black/50 overflow-hidden animate-scale-in origin-bottom-right"
+        <div className="fixed z-50 bottom-20 lg:bottom-4 right-4 left-4 sm:left-auto sm:w-[380px] flex flex-col card rounded-2xl border border-slate-700/60 shadow-2xl shadow-black/50 overflow-hidden animate-scale-in origin-bottom-right"
           style={{ maxHeight: '78vh' }}>
           {/* Header — X is in the UPPER-LEFT corner */}
           <div className="flex items-center gap-2 p-3 border-b border-slate-800 bg-slate-900/60">
-            <button onClick={() => setOpen(false)} aria-label="Close" className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 flex-shrink-0">
+            <button onClick={() => onOpenChange(false)} aria-label="Close" className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 flex-shrink-0">
               <X className="w-4 h-4" />
             </button>
-            <span className="w-8 h-8 rounded-full bg-accent-soft text-accent ring-1 ring-accent/25 flex-shrink-0 inline-flex items-center justify-center"><MerajMark size={20} /></span>
+            <span className="flex-shrink-0 inline-flex items-center justify-center">
+              <MerajDevice size="sm" context="panel" interactionState={interactionState} businessMood={businessMood ?? 'neutral'} />
+            </span>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-white text-sm leading-tight">Meraj</p>
               <p className="text-[11px] text-slate-400 leading-tight">Your Cashiea AI assistant</p>
             </div>
-            <Link to="/app/assistant" onClick={() => setOpen(false)} className="text-slate-400 hover:text-brand-300 flex-shrink-0" title="Open full chat" aria-label="Open full chat">
+            <Link to="/app/assistant" onClick={() => onOpenChange(false)} className="text-slate-400 hover:text-brand-300 flex-shrink-0" title="Open full chat" aria-label="Open full chat">
               <ArrowUpRight className="w-4 h-4" />
             </Link>
           </div>
@@ -199,7 +216,9 @@ export default function FloatingMeraj() {
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 min-h-[180px]">
             {messages.length === 0 && (
               <div className="text-center py-6">
-                <span className="w-12 h-12 rounded-full bg-accent-soft text-accent ring-1 ring-accent/25 mx-auto inline-flex items-center justify-center"><MerajMark size={28} /></span>
+                <div className="flex justify-center">
+                  <MerajDevice size="md" context="panel" interactionState="idle" businessMood={businessMood ?? 'neutral'} />
+                </div>
                 <p className="text-sm text-slate-300 mt-3 font-medium">Hi, I'm Meraj 👋</p>
                 <p className="text-xs text-slate-500 mt-1 px-2">Ask about sales, stock or customers — or tap a quick action above.</p>
               </div>

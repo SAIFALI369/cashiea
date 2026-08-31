@@ -129,6 +129,32 @@
   .module { @apply card relative overflow-hidden; }
 }
 
+/* ════════════════════════════════════════════════════════════════
+   MERAJ DEVICE CHARACTER — motion spec (CSS only, no 3D).
+   Idle: gentle float + breathing glow. Active states (listening /
+   thinking / speaking) run the same motion faster so the device
+   feels attentive. A true 3D backflip/rotation is deliberately NOT
+   implemented — tracked as a separate future task.
+   ════════════════════════════════════════════════════════════════ */
+@keyframes meraj-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(calc(-1 * var(--meraj-float, 4px))); }
+}
+@keyframes meraj-glow {
+  0%, 100% { opacity: 0.45; transform: scale(0.92); }
+  50% { opacity: 0.9; transform: scale(1.06); }
+}
+.meraj-float { animation: meraj-float 4.5s ease-in-out infinite; }
+.meraj-glow { animation: meraj-glow 4.5s ease-in-out infinite; }
+/* Active conversation states feel more alert than resting idle. */
+.meraj-device[data-active='true'] .meraj-float,
+.meraj-device[data-active='true'] .meraj-glow {
+  animation-duration: 1.7s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .meraj-float, .meraj-glow { animation: none; }
+}
+
 /* Scrollbar — quiet, theme-aware. */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
