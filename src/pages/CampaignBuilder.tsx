@@ -179,7 +179,7 @@ export default function CampaignBuilder() {
               </div>
               <div>
                 <label className="label flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-brand-400" /> Base Email Body
+                  <Sparkles className="w-4 h-4 text-accent" /> Base Email Body
                 </label>
                 <textarea
                   value={body}
@@ -198,7 +198,7 @@ export default function CampaignBuilder() {
               <h2 className="font-semibold text-white flex items-center gap-2">
                 <FlaskConical className="w-4 h-4 text-purple-400" /> A/B Test Subject Lines
               </h2>
-              <input type="checkbox" checked={abEnabled} onChange={(e) => setAbEnabled(e.target.checked)} className="w-5 h-5 accent-brand-500" />
+              <input type="checkbox" checked={abEnabled} onChange={(e) => setAbEnabled(e.target.checked)} className="w-5 h-5 accent-accent" />
             </label>
             {abEnabled && (
               <div className="animate-fade-in">
@@ -215,7 +215,7 @@ export default function CampaignBuilder() {
               <h2 className="font-semibold text-white flex items-center gap-2">
                 <Repeat className="w-4 h-4 text-cyan-400" /> Follow-up Sequence
               </h2>
-              <input type="checkbox" checked={followupEnabled} onChange={(e) => setFollowupEnabled(e.target.checked)} className="w-5 h-5 accent-brand-500" />
+              <input type="checkbox" checked={followupEnabled} onChange={(e) => setFollowupEnabled(e.target.checked)} className="w-5 h-5 accent-accent" />
             </label>
             {followupEnabled && (
               <div className="grid grid-cols-2 gap-4 animate-fade-in">
@@ -238,7 +238,7 @@ export default function CampaignBuilder() {
           <div className="card p-4">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-white flex items-center gap-2">
-                <Users className="w-4 h-4 text-brand-400" /> Recipients
+                <Users className="w-4 h-4 text-accent" /> Recipients
               </h2>
               <span className="text-xs text-slate-500">{validRecipients.length} valid</span>
             </div>
@@ -268,7 +268,7 @@ export default function CampaignBuilder() {
                       <input value={r.company} onChange={(e) => updateRecipient(i, 'company', e.target.value)} className="input-field text-xs py-1.5" placeholder="Company" />
                     </div>
                     {recipients.length > 1 && (
-                      <button onClick={() => removeRecipient(i)} className="text-xs text-red-400 hover:text-red-300 mt-1 flex items-center gap-1">
+                      <button onClick={() => removeRecipient(i)} className="text-xs text-negative hover:text-negative mt-1 flex items-center gap-1">
                         <X className="w-3 h-3" /> remove
                       </button>
                     )}
@@ -287,7 +287,7 @@ export default function CampaignBuilder() {
           {/* Schedule */}
           <div className="card p-4">
             <h2 className="font-semibold text-white flex items-center gap-2 mb-4">
-              <Calendar className="w-4 h-4 text-amber-400" /> Schedule (optional)
+              <Calendar className="w-4 h-4 text-warning" /> Schedule (optional)
             </h2>
             <input
               type="datetime-local"

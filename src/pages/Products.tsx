@@ -400,11 +400,14 @@ export default function Products() {
               const statusCls = status === 'out' ? 'bg-negative/15 text-negative' : status === 'low' ? 'bg-warning/15 text-warning' : 'bg-positive/15 text-positive'
               const margin = p.price > 0 ? (((p.price - p.cost) / p.price) * 100).toFixed(0) : '—'
               return (
-                <div key={p.id} className="card p-4 flex items-center gap-3">
+                <div key={p.id} className="card p-4 flex flex-wrap items-center gap-x-3 gap-y-2.5">
                   <div className="w-9 h-9 rounded-control bg-surface-2 flex items-center justify-center flex-shrink-0">
                     <Package className="w-5 h-5 text-accent" />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  {/* basis-44: on phones the name block takes its own full-width
+                      line (names wrap normally, never one word per line); on
+                      desktop everything stays on one row. */}
+                  <div className="flex-1 min-w-0 basis-44">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-fg">{p.name}</h3>
                       <span className="text-xs px-1.5 py-0.5 rounded bg-surface-2 text-fg-subtle capitalize">{p.category}</span>
@@ -413,17 +416,17 @@ export default function Products() {
                     </div>
                     <p className="text-sm text-accent mt-0.5">₹{p.price.toFixed(2)} <span className="text-fg-subtle">· {margin}% margin</span>{p.units?.[0]?.unit ? <span className="text-fg-subtle"> · per {p.units[0].unit}</span> : null}</p>
                   </div>
-                  <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                  <div className="flex items-center gap-2 ml-auto flex-shrink-0">
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap ${statusCls}`}>{statusLabel}</span>
                     <div className="flex items-center gap-1">
                       <button onClick={() => restock(p, -1)} aria-label={`Remove one ${p.units?.[0]?.unit || 'unit'} of ${p.name} from stock`} className="w-11 h-11 rounded-control bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-fg-muted active:scale-95 transition-transform text-lg">−</button>
                       <span className="w-16 text-center text-sm font-semibold text-fg">{p.stock_quantity}<span className="text-[10px] font-normal text-fg-subtle ml-0.5">{p.units?.[0]?.unit || 'pcs'}</span></span>
                       <button onClick={() => restock(p, 1)} aria-label={`Add one ${p.units?.[0]?.unit || 'unit'} of ${p.name} to stock`} className="w-11 h-11 rounded-control bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-fg-muted active:scale-95 transition-transform text-lg">+</button>
                     </div>
+                    <button onClick={() => setConfirmDelete(p)} aria-label={`Delete ${p.name}`} className="w-11 h-11 rounded-xl flex items-center justify-center text-fg-subtle hover:text-negative hover:bg-negative/10 flex-shrink-0">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                  <button onClick={() => setConfirmDelete(p)} aria-label={`Delete ${p.name}`} className="w-11 h-11 rounded-xl flex items-center justify-center text-fg-subtle hover:text-negative hover:bg-negative/10 flex-shrink-0">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
                 </div>
               )
             })}

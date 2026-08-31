@@ -44,7 +44,7 @@ const CORE: Section[] = [
   ]},
 ]
 
-// ── MORE TOOLS (collapsed by default — power features, rarely used daily) ──
+// ── MORE TOOLS (expanded by default — Suppliers, Staff, AI Tools, Campaigns) ──
 const MORE: Section[] = [
   { label: 'Suppliers & Team', items: [
     { to: '/app/suppliers', label: 'Suppliers', icon: Truck },
@@ -79,9 +79,18 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
   const { profile, ownerId, signOut } = useAuth()
   const navigate = useNavigate()
   const [failedCount, setFailedCount] = useState(0)
-  const [showMore, setShowMore] = useState(false)
+  // More Tools is EXPANDED by default — Suppliers, Staff, AI Tools and
+  // Campaigns are discoverable from the first visit. The choice sticks.
+  const [showMore, setShowMore] = useState(() => {
+    try { return localStorage.getItem('cashiea_sidebar_more') !== '0' } catch { return true }
+  })
   const [collapsed, setCollapsed] = useState(false)
   const { count: pendingApprovals } = usePendingApprovals()
+
+  const toggleMore = () => setShowMore((v) => {
+    try { localStorage.setItem('cashiea_sidebar_more', v ? '0' : '1') } catch { /* ignore */ }
+    return !v
+  })
 
   useEffect(() => {
     if (!profile) return
@@ -158,10 +167,10 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
             </div>
           ))}
 
-          {/* More Tools — collapsed by default, expands on tap */}
+          {/* More Tools — expanded by default, collapsible (choice persists) */}
           <div>
             <button
-              onClick={() => setShowMore((v) => !v)}
+              onClick={toggleMore}
               className="w-full flex items-center gap-2 px-3 py-2.5 rounded-control text-sm font-semibold text-fg-subtle hover:text-fg hover:bg-surface-2 transition-colors"
               aria-expanded={showMore}
             >

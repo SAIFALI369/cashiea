@@ -208,7 +208,7 @@ export default function DataEntryPage() {
 
         {mode === 'single' ? (
           <>
-            <label className="label flex items-center gap-2"><Sparkles className="w-4 h-4 text-brand-400" /> Paste unstructured text</label>
+            <label className="label flex items-center gap-2"><Sparkles className="w-4 h-4 text-accent" /> Paste unstructured text</label>
             <textarea
               value={sourceText}
               onChange={(e) => setSourceText(e.target.value)}
@@ -235,7 +235,7 @@ export default function DataEntryPage() {
               </select>
               <span className="text-xs text-slate-500 ml-auto">{batchPreview.length} records detected</span>
             </div>
-            <label className="label flex items-center gap-2"><Layers className="w-4 h-4 text-brand-400" /> Paste many records (e.g. 200 emails/day)</label>
+            <label className="label flex items-center gap-2"><Layers className="w-4 h-4 text-accent" /> Paste many records (e.g. 200 emails/day)</label>
             <textarea
               value={batchText}
               onChange={(e) => setBatchText(e.target.value)}
@@ -249,8 +249,8 @@ export default function DataEntryPage() {
                   <span>Processing batch...</span>
                   <span>{progress.done} / {progress.total}</span>
                 </div>
-                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-brand-500 rounded-full transition-all" style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }} />
+                <div className="h-2 bg-surface-2 rounded-full overflow-hidden">
+                  <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }} />
                 </div>
               </div>
             )}
@@ -267,7 +267,7 @@ export default function DataEntryPage() {
 
       {/* Results */}
       {loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-brand-500" /></div>
+        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>
       ) : entries.length === 0 ? (
         <EmptyState icon={Database} title="No data extracted yet" description="Paste a single record, or switch to Batch mode to process 200+ emails at once. AI extracts clean structured data from each." />
       ) : (
@@ -276,12 +276,12 @@ export default function DataEntryPage() {
             <div key={entry.id} className="card p-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 capitalize">{entry.category}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-warning/15 text-amber-300 capitalize">{entry.category}</span>
                   <span className="text-xs text-slate-500">{new Date(entry.created_at).toLocaleDateString()}</span>
                 </div>
                 <div className="flex gap-1">
                   <button onClick={() => handleCopy(entry.extracted_data)} className="btn-ghost text-xs"><Copy className="w-3.5 h-3.5" /> Copy</button>
-                  <button onClick={() => handleDelete(entry.id)} className="btn-ghost text-xs text-red-400 hover:text-red-300"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => handleDelete(entry.id)} className="btn-ghost text-xs text-negative hover:text-negative"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
               </div>
               <div className="grid sm:grid-cols-2 gap-2.5">
@@ -290,7 +290,7 @@ export default function DataEntryPage() {
                   const isJson = valueStr.startsWith('{') || valueStr.startsWith('[')
                   return (
                     <div key={key} className="bg-slate-900/60 rounded-lg p-3">
-                      <p className="text-xs font-semibold text-brand-400 capitalize mb-1">{key.replace(/_/g, ' ')}</p>
+                      <p className="text-xs font-semibold text-accent capitalize mb-1">{key.replace(/_/g, ' ')}</p>
                       <p className={`text-sm text-slate-300 ${isJson ? 'font-mono text-xs break-all' : 'break-words'}`}>{valueStr.length > 200 ? valueStr.slice(0, 200) + '...' : valueStr}</p>
                     </div>
                   )

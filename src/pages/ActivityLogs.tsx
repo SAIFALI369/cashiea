@@ -67,7 +67,7 @@ export default function ActivityLogs() {
       {/* Summary */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="card p-4">
-          <Clock className="w-5 h-5 text-green-400 mb-1" />
+          <Clock className="w-5 h-5 text-positive mb-1" />
           <p className="text-xl font-bold text-white">{(totalMinutes / 60).toFixed(1)}h</p>
           <p className="text-xs text-slate-400">Time saved</p>
         </div>
@@ -77,7 +77,7 @@ export default function ActivityLogs() {
           <p className="text-xs text-slate-400">Money saved</p>
         </div>
         <div className="card p-4">
-          <History className="w-5 h-5 text-brand-400 mb-1" />
+          <History className="w-5 h-5 text-accent mb-1" />
           <p className="text-xl font-bold text-white">{logs.length}</p>
           <p className="text-xs text-slate-400">Total actions</p>
         </div>
@@ -90,7 +90,7 @@ export default function ActivityLogs() {
             key={f}
             onClick={() => setFilter(f)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all border ${
-              filter === f ? 'border-accent-strong bg-accent-strong/20 text-brand-300' : 'border-slate-700 text-slate-400 hover:text-white'
+              filter === f ? 'border-accent-strong bg-accent-strong/20 text-accent-strong' : 'border-slate-700 text-slate-400 hover:text-white'
             }`}
           >
             {f}
@@ -99,17 +99,17 @@ export default function ActivityLogs() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-brand-500" /></div>
+        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>
       ) : filtered.length === 0 ? (
         <EmptyState icon={History} title="No activity yet" description="Your automation history will appear here, including time and money saved per action." />
       ) : (
-        <div className="card divide-y divide-slate-800">
+        <div className="card divide-y divide-line">
           {filtered.map((log) => {
             const Icon = actionIcons[log.action_type] || History
             return (
               <div key={log.id} className="p-4 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-slate-800 flex items-center justify-center flex-shrink-0">
-                  <Icon className="w-4 h-4 text-brand-400" />
+                <div className="w-9 h-9 rounded-lg bg-surface-2 flex items-center justify-center flex-shrink-0">
+                  <Icon className="w-4 h-4 text-accent" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-slate-200 truncate">{log.description || log.action_type}</p>
@@ -119,7 +119,7 @@ export default function ActivityLogs() {
                   </p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-xs font-semibold text-green-400">+{log.time_saved_minutes}m</p>
+                  <p className="text-xs font-semibold text-positive">+{log.time_saved_minutes}m</p>
                   <p className="text-xs text-emerald-400">${Number(log.money_saved).toFixed(0)}</p>
                 </div>
               </div>

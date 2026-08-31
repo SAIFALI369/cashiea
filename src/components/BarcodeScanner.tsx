@@ -94,7 +94,7 @@ export function BarcodeScanner({ onDetect, onClose }: { onDetect: (code: string)
                   </>
                 )}
               </div>
-              {error && <p className="text-center text-xs text-red-400 mt-2">{error}</p>}
+              {error && <p className="text-center text-xs text-negative mt-2">{error}</p>}
             </div>
           </>
         ) : (

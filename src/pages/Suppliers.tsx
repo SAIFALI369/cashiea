@@ -105,7 +105,7 @@ export default function Suppliers() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-brand-500" /></div>
+        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>
       ) : tab === 'suppliers' ? (
         <>
           {showSupplier && (
@@ -129,17 +129,17 @@ export default function Suppliers() {
                 <div key={s.id} className="card p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-surface-2 flex items-center justify-center flex-shrink-0"><Truck className="w-5 h-5 text-brand-400" /></div>
+                      <div className="w-10 h-10 rounded-xl bg-surface-2 flex items-center justify-center flex-shrink-0"><Truck className="w-5 h-5 text-accent" /></div>
                       <div className="min-w-0"><h3 className="font-semibold text-fg truncate">{s.name}</h3>{s.contact_person && <p className="text-xs text-fg-subtle truncate">{s.contact_person}</p>}</div>
                     </div>
-                    <button onClick={() => deleteSupplier(s.id)} className="text-fg-subtle hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => deleteSupplier(s.id)} className="text-fg-subtle hover:text-negative"><Trash2 className="w-4 h-4" /></button>
                   </div>
                   <div className="flex flex-wrap gap-3 mt-3 text-xs text-fg-muted">
                     {s.phone && <span>{s.phone}</span>}
                     {s.email && <span className="truncate">{s.email}</span>}
                     {s.gstin && <span className="font-mono">GST: {s.gstin}</span>}
                   </div>
-                  {Number(s.outstanding) > 0 && <div className="mt-3 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-300 text-xs font-medium inline-block">Outstanding: ₹{Number(s.outstanding).toFixed(0)}</div>}
+                  {Number(s.outstanding) > 0 && <div className="mt-3 px-2.5 py-1 rounded-lg bg-warning/10 text-amber-300 text-xs font-medium inline-block">Outstanding: ₹{Number(s.outstanding).toFixed(0)}</div>}
                 </div>
               ))}
             </div>
@@ -159,7 +159,7 @@ export default function Suppliers() {
                   <input value={it.name} onChange={(e) => updatePOItem(i, 'name', e.target.value)} className="input-field flex-1" placeholder="Item name" />
                   <input type="number" value={it.quantity} onChange={(e) => updatePOItem(i, 'quantity', e.target.value)} className="input-field w-24" placeholder="Qty" />
                   <input type="number" value={it.unit_price} onChange={(e) => updatePOItem(i, 'unit_price', e.target.value)} className="input-field w-28" placeholder="Price" />
-                  {poForm.items.length > 1 && <button onClick={() => removePOItem(i)} className="text-red-400 px-2"><X className="w-4 h-4" /></button>}
+                  {poForm.items.length > 1 && <button onClick={() => removePOItem(i)} className="text-negative px-2"><X className="w-4 h-4" /></button>}
                 </div>
               ))}
               <button onClick={addPOItem} className="btn-ghost text-xs"><Plus className="w-3.5 h-3.5" /> Add item</button>
@@ -173,7 +173,7 @@ export default function Suppliers() {
             <div className="space-y-2">
               {pos.map((po) => (
                 <div key={po.id} className="card p-4 flex items-center justify-between">
-                  <div><div className="flex items-center gap-2"><span className="font-mono text-sm text-fg">{po.po_number}</span><span className={`text-xs px-2 py-0.5 rounded-full ${po.status === 'received' ? 'bg-green-500/15 text-green-400' : po.status === 'ordered' ? 'bg-blue-500/15 text-blue-400' : 'bg-surface-3 text-fg-muted'}`}>{po.status}</span></div><p className="text-xs text-fg-subtle mt-0.5">{supplierName(po.supplier_id)} · {po.items?.length || 0} items · {new Date(po.created_at).toLocaleDateString()}</p></div>
+                  <div><div className="flex items-center gap-2"><span className="font-mono text-sm text-fg">{po.po_number}</span><span className={`text-xs px-2 py-0.5 rounded-full ${po.status === 'received' ? 'bg-positive/15 text-positive' : po.status === 'ordered' ? 'bg-info/15 text-info' : 'bg-surface-3 text-fg-muted'}`}>{po.status}</span></div><p className="text-xs text-fg-subtle mt-0.5">{supplierName(po.supplier_id)} · {po.items?.length || 0} items · {new Date(po.created_at).toLocaleDateString()}</p></div>
                   <div className="flex items-center gap-3"><span className="font-semibold text-fg">₹{Number(po.total).toFixed(0)}</span>{po.status === 'ordered' && <button onClick={() => markReceived(po)} className="btn-secondary text-xs">Mark received</button>}</div>
                 </div>
               ))}

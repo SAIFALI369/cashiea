@@ -9,12 +9,12 @@ import { Plug, Loader2, CheckCircle2, XCircle, RefreshCw, Sparkles, Mail, Sheet,
 import toast from 'react-hot-toast'
 
 const PROVIDERS: { id: IntegrationProvider; name: string; icon: typeof Mail; desc: string; color: string }[] = [
-  { id: 'gmail', name: 'Gmail', icon: Mail, desc: 'Read customer emails, orders, inquiries', color: 'text-red-400' },
-  { id: 'google_sheets', name: 'Google Sheets', icon: Sheet, desc: 'Import products, sales, customer lists', color: 'text-green-400' },
+  { id: 'gmail', name: 'Gmail', icon: Mail, desc: 'Read customer emails, orders, inquiries', color: 'text-negative' },
+  { id: 'google_sheets', name: 'Google Sheets', icon: Sheet, desc: 'Import products, sales, customer lists', color: 'text-positive' },
   { id: 'excel', name: 'Excel / CSV', icon: Sheet, desc: 'Upload inventory or sales data', color: 'text-emerald-400' },
-  { id: 'whatsapp', name: 'WhatsApp', icon: MessageCircle, desc: 'Customer messages & order chats', color: 'text-green-500' },
-  { id: 'shopify', name: 'Shopify', icon: ShoppingCart, desc: 'Sync products, orders & customers', color: 'text-green-600' },
-  { id: 'tally', name: 'Tally', icon: FileText, desc: 'Import accounting & GST data', color: 'text-blue-400' },
+  { id: 'whatsapp', name: 'WhatsApp', icon: MessageCircle, desc: 'Customer messages & order chats', color: 'text-positive' },
+  { id: 'shopify', name: 'Shopify', icon: ShoppingCart, desc: 'Sync products, orders & customers', color: 'text-positive' },
+  { id: 'tally', name: 'Tally', icon: FileText, desc: 'Import accounting & GST data', color: 'text-info' },
 ]
 
 export default function Integrations() {
@@ -123,7 +123,7 @@ export default function Integrations() {
       {/* Info banner */}
       <div className="card p-5 mb-6 bg-gradient-to-r from-accent-strong/10 to-transparent border-accent-strong/30">
         <div className="flex items-start gap-3">
-          <Sparkles className="w-5 h-5 text-brand-400 flex-shrink-0 mt-0.5" />
+          <Sparkles className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
           <div className="text-sm text-slate-300">
             <p className="font-semibold text-white mb-1">How it works</p>
             <p className="text-slate-400">Connect the apps you already use. The AI fetches your business details (products, customers, sales patterns) and builds a living summary on the <strong className="text-white">AI Brain</strong> page. As it works with you, it learns your preferences and predicts tasks — always asking before acting.</p>
@@ -145,7 +145,7 @@ export default function Integrations() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-brand-500" /></div>
+        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>
       ) : PROVIDERS.length === 0 ? (
         <EmptyState icon={Plug} title="No integrations available" description="Integrations will appear here." />
       ) : (
@@ -158,16 +158,16 @@ export default function Integrations() {
               const status = getStatus(p.id)
               const intObj = getInt(p.id)
               return (
-                <div key={p.id} className={`card p-5 ${status === 'connected' ? 'border-green-700/40' : ''}`}>
+                <div key={p.id} className={`card p-5 ${status === 'connected' ? 'border-positive/40' : ''}`}>
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center">
+                      <div className="w-9 h-9 rounded-xl bg-surface-2 flex items-center justify-center">
                         <p.icon className={`w-5.5 h-5.5 ${p.color}`} />
                       </div>
                       <div>
                         <h3 className="font-semibold text-white">{p.name}</h3>
                         {status === 'connected' && (
-                          <span className="inline-flex items-center gap-1 text-xs text-green-400 mt-0.5">
+                          <span className="inline-flex items-center gap-1 text-xs text-positive mt-0.5">
                             <CheckCircle2 className="w-3 h-3" /> Connected
                           </span>
                         )}
@@ -197,7 +197,7 @@ export default function Integrations() {
                         <button onClick={() => setShowPaste(p.id)} className="btn-secondary text-xs flex-1"><RefreshCw className="w-3.5 h-3.5" /> Sync data</button>
                       )}
                       <button onClick={() => setShowPaste(p.id)} className="btn-secondary text-xs" title="Paste data to teach the AI">Paste</button>
-                      <button onClick={() => disconnect(p.id)} className="btn-ghost text-xs text-red-400"><XCircle className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => disconnect(p.id)} className="btn-ghost text-xs text-negative"><XCircle className="w-3.5 h-3.5" /></button>
                     </div>
                   )}
                 </div>
@@ -205,8 +205,8 @@ export default function Integrations() {
             })}
           </div>
 
-          <div className="card p-4 mt-6 border-amber-600/30 bg-amber-600/5">
-            <p className="text-xs text-amber-200/80 leading-relaxed">
+          <div className="card p-4 mt-6 border-warning/30 bg-warning/5">
+            <p className="text-xs text-warning/80 leading-relaxed">
               <strong>Live OAuth setup (optional):</strong> To pull data automatically from Gmail or Google Sheets, create a Google Cloud OAuth client and set <code className="text-amber-300">GOOGLE_CLIENT_ID</code> + <code className="text-amber-300">GOOGLE_CLIENT_SECRET</code> secrets. Until then, use <strong>"Paste data"</strong> on any integration to feed info to the AI immediately — it learns from whatever you give it.
             </p>
           </div>

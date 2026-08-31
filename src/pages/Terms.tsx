@@ -8,10 +8,10 @@ const updated = 'July 18, 2026'
 export default function Terms() {
   return (
     <div className="min-h-screen bg-slate-950">
-      <nav className="border-b border-slate-800/50">
+      <nav className="border-b border-line/50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 text-white font-bold">
-            <FileText className="w-5 h-5 text-brand-400" /> Cashiea
+            <FileText className="w-5 h-5 text-accent" /> Cashiea
           </Link>
           <Link to="/" className="btn-ghost text-sm"><ArrowLeft className="w-4 h-4" /> Home</Link>
         </div>
@@ -20,7 +20,7 @@ export default function Terms() {
       <article className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
         <div className="flex items-center gap-3 mb-8">
           <div className="w-12 h-12 rounded-xl bg-accent-strong/15 border border-accent-strong/40 flex items-center justify-center">
-            <FileText className="w-6 h-6 text-brand-400" />
+            <FileText className="w-6 h-6 text-accent" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-white">Terms of Use</h1>
@@ -65,7 +65,7 @@ export default function Terms() {
           </Section>
 
           <Section title="6. Refunds">
-            <p>Except where required by law, subscription fees are non-refundable. If you believe you have been charged in error, please contact us at <a href={`mailto:${SUPPORT_EMAIL}`} className="text-brand-400 hover:text-brand-300">{SUPPORT_EMAIL}</a> within 14 days of the charge, and we will review your request.</p>
+            <p>Except where required by law, subscription fees are non-refundable. If you believe you have been charged in error, please contact us at <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent hover:text-accent-strong">{SUPPORT_EMAIL}</a> within 14 days of the charge, and we will review your request.</p>
           </Section>
 
           <Section title="7. Intellectual Property">
@@ -105,9 +105,9 @@ export default function Terms() {
 
           <Section title="15. Contact">
             <p>If you have questions about these Terms, please contact us:</p>
-            <div className="flex items-center gap-2 mt-2 text-brand-400">
+            <div className="flex items-center gap-2 mt-2 text-accent">
               <Mail className="w-4 h-4" />
-              <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-brand-300">{SUPPORT_EMAIL}</a>
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:text-accent-strong">{SUPPORT_EMAIL}</a>
             </div>
           </Section>
         </div>

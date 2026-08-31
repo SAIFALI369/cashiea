@@ -69,8 +69,8 @@ export default function Support() {
       <div className="animate-fade-in">
         <PageHeader title="Support" subtitle="We’re here to help" icon={<LifeBuoy className="w-5 h-5" />} />
         <div className="card p-6 text-center max-w-md mx-auto">
-          <div className="w-16 h-16 rounded-full bg-green-500/15 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle2 className="w-8 h-8 text-green-400" />
+          <div className="w-16 h-16 rounded-full bg-positive/15 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 className="w-8 h-8 text-positive" />
           </div>
           <h2 className="text-xl font-bold text-white mb-2">Message sent! ✅</h2>
           <p className="text-slate-400 mb-6">Thanks for reaching out. Our team will reply to <span className="text-white">{email}</span> as soon as possible.</p>
@@ -132,7 +132,7 @@ export default function Support() {
 
             <div>
               <label className="label flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-brand-400" /> Describe your problem or need *
+                <MessageSquare className="w-4 h-4 text-accent" /> Describe your problem or need *
               </label>
               <textarea
                 value={message}
@@ -146,9 +146,9 @@ export default function Support() {
             </div>
 
             {mailtoUrl && (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-600/30 text-sm text-amber-200">
+              <div className="p-3 rounded-xl bg-warning/10 border border-warning/30 text-sm text-amber-200">
                 <p className="font-medium mb-1">✉️ Email app didn’t open?</p>
-                <p className="text-amber-200/80 mb-2">If your mail app didn’t launch, send the message manually to <strong>{SUPPORT_EMAIL}</strong>, or click below:</p>
+                <p className="text-warning/80 mb-2">If your mail app didn’t launch, send the message manually to <strong>{SUPPORT_EMAIL}</strong>, or click below:</p>
                 <a href={mailtoUrl} className="btn-secondary text-xs inline-flex"><ExternalLink className="w-3.5 h-3.5" /> Open email manually</a>
               </div>
             )}
@@ -165,16 +165,16 @@ export default function Support() {
         <div className="space-y-4">
           <div className="card p-5">
             <div className="flex items-center gap-2 mb-3">
-              <Mail className="w-5 h-5 text-brand-400" />
+              <Mail className="w-5 h-5 text-accent" />
               <h3 className="font-semibold text-white">Email us</h3>
             </div>
-            <a href={`mailto:${SUPPORT_EMAIL}`} className="text-brand-400 hover:text-brand-300 break-all">{SUPPORT_EMAIL}</a>
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent hover:text-accent-strong break-all">{SUPPORT_EMAIL}</a>
             <p className="text-xs text-slate-500 mt-2">For any question, bug, billing issue, or feature request.</p>
           </div>
 
           <div className="card p-5">
             <div className="flex items-center gap-2 mb-3">
-              <Clock className="w-5 h-5 text-green-400" />
+              <Clock className="w-5 h-5 text-positive" />
               <h3 className="font-semibold text-white">Response time</h3>
             </div>
             <p className="text-sm text-slate-400">We typically reply within <span className="text-white font-medium">24 hours</span>, Monday–Friday.</p>

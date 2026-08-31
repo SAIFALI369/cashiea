@@ -184,7 +184,7 @@ export default function EmailAssistant() {
                 onClick={() => setTone(t)}
                 className={`px-3.5 py-1.5 rounded-full text-sm font-medium capitalize transition-all border ${
                   tone === t
-                    ? 'border-accent-strong bg-accent-strong/20 text-brand-300'
+                    ? 'border-accent-strong bg-accent-strong/20 text-accent-strong'
                     : 'border-slate-700 text-slate-400 hover:border-slate-600 hover:text-white'
                 }`}
               >
@@ -195,7 +195,7 @@ export default function EmailAssistant() {
         </div>
 
         <label className="label flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-brand-400" /> Key points to include
+          <Sparkles className="w-4 h-4 text-accent" /> Key points to include
         </label>
         <textarea
           value={keyPoints}
@@ -216,7 +216,7 @@ export default function EmailAssistant() {
       {/* History */}
       {loading ? (
         <div className="flex justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
         </div>
       ) : emails.length === 0 ? (
         <EmptyState
@@ -249,7 +249,7 @@ export default function EmailAssistant() {
                   </button>
                   <button
                     onClick={() => handleDelete(email.id)}
-                    className="btn-ghost text-xs text-red-400 hover:text-red-300"
+                    className="btn-ghost text-xs text-negative hover:text-negative"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -264,7 +264,7 @@ export default function EmailAssistant() {
                 <p className="text-xs text-slate-500 mb-2">To: {email.recipient}</p>
               )}
               {email.generated_body && (
-                <div className="whitespace-pre-wrap text-sm text-slate-300 leading-relaxed bg-slate-900/50 rounded-xl p-4 mt-2 border border-slate-800">
+                <div className="whitespace-pre-wrap text-sm text-slate-300 leading-relaxed bg-slate-900/50 rounded-xl p-4 mt-2 border border-line">
                   {email.generated_body}
                 </div>
               )}

@@ -8,13 +8,13 @@ import { Users, Plus, Loader2, Trash2, Crown, Shield, Calculator, UserCheck, Mai
 import toast from 'react-hot-toast'
 
 const ROLES: { value: TeamRole; label: string; icon: typeof Crown; desc: string; color: string }[] = [
-  { value: 'manager', label: 'Manager', icon: Shield, desc: 'Can approve invoices, view reports, manage staff', color: 'text-blue-400' },
+  { value: 'manager', label: 'Manager', icon: Shield, desc: 'Can approve invoices, view reports, manage staff', color: 'text-info' },
   { value: 'accountant', label: 'Accountant', icon: Calculator, desc: 'Reviews invoices, accounts, and reports', color: 'text-purple-400' },
-  { value: 'staff', label: 'Staff', icon: UserCheck, desc: 'POS access only — rings up sales', color: 'text-green-400' },
+  { value: 'staff', label: 'Staff', icon: UserCheck, desc: 'POS access only — rings up sales', color: 'text-positive' },
 ]
 
 const roleIcon: Record<string, typeof Crown> = { owner: Crown, manager: Shield, accountant: Calculator, staff: UserCheck }
-const roleColor: Record<string, string> = { owner: 'text-amber-400', manager: 'text-blue-400', accountant: 'text-purple-400', staff: 'text-green-400' }
+const roleColor: Record<string, string> = { owner: 'text-warning', manager: 'text-info', accountant: 'text-purple-400', staff: 'text-positive' }
 
 export default function Team() {
   const { profile, ownerId } = useAuth()
@@ -99,21 +99,21 @@ export default function Team() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-brand-500" /></div>
+        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>
       ) : members.length === 0 ? (
         <EmptyState icon={Users} title="No team members yet" description="Invite your staff. Managers can approve invoices, accountants review accounts, and staff run the POS counter." />
       ) : (
         <div className="space-y-2">
           {/* Owner row */}
-          <div className="card p-4 border-amber-600/30 bg-amber-600/5 flex items-center justify-between">
+          <div className="card p-4 border-warning/30 bg-warning/5 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center"><Crown className="w-5 h-5 text-fg" /></div>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-warning to-amber-700 flex items-center justify-center"><Crown className="w-5 h-5 text-fg" /></div>
               <div>
-                <p className="font-semibold text-fg">{profile?.full_name} <span className="text-xs text-amber-400">(you)</span></p>
+                <p className="font-semibold text-fg">{profile?.full_name} <span className="text-xs text-warning">(you)</span></p>
                 <p className="text-xs text-fg-subtle">{profile?.company_name}</p>
               </div>
             </div>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400">Owner</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-warning/15 text-warning">Owner</span>
           </div>
 
           {members.map((m) => {
@@ -129,14 +129,14 @@ export default function Team() {
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${
-                    m.status === 'active' ? 'bg-green-500/15 text-green-400' :
-                    m.status === 'revoked' ? 'bg-red-500/15 text-red-400' :
-                    'bg-amber-500/15 text-amber-400'
+                    m.status === 'active' ? 'bg-positive/15 text-positive' :
+                    m.status === 'revoked' ? 'bg-negative/15 text-negative' :
+                    'bg-warning/15 text-warning'
                   }`}>{m.status}</span>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-surface-3 text-fg-muted capitalize hidden sm:inline">{m.role}</span>
                   {m.status !== 'revoked'
-                    ? <button onClick={() => revoke(m.id)} className="btn-ghost text-xs text-amber-400"><X className="w-3.5 h-3.5" /></button>
-                    : <button onClick={() => removeMember(m.id)} className="btn-ghost text-xs text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>}
+                    ? <button onClick={() => revoke(m.id)} className="btn-ghost text-xs text-warning"><X className="w-3.5 h-3.5" /></button>
+                    : <button onClick={() => removeMember(m.id)} className="btn-ghost text-xs text-negative"><Trash2 className="w-3.5 h-3.5" /></button>}
                 </div>
               </div>
             )

@@ -68,7 +68,7 @@ export default function Campaigns() {
 
       {loading ? (
         <div className="flex justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
         </div>
       ) : campaigns.length === 0 ? (
         <EmptyState
@@ -85,9 +85,9 @@ export default function Campaigns() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-bold text-white text-lg">{c.name}</h3>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      c.status === 'sent' ? 'bg-green-500/15 text-green-400' :
-                      c.status === 'sending' ? 'bg-blue-500/15 text-blue-400' :
-                      c.status === 'scheduled' ? 'bg-amber-500/15 text-amber-400' :
+                      c.status === 'sent' ? 'bg-positive/15 text-positive' :
+                      c.status === 'sending' ? 'bg-info/15 text-info' :
+                      c.status === 'scheduled' ? 'bg-warning/15 text-warning' :
                       'bg-slate-700 text-slate-400'
                     }`}>{c.status}</span>
                     {c.ab_enabled && (
@@ -107,7 +107,7 @@ export default function Campaigns() {
                   <button onClick={() => handleExport(c, 'csv')} className="btn-ghost text-xs" title="Export CSV">
                     <Download className="w-3.5 h-3.5" />
                   </button>
-                  <button onClick={() => handleDelete(c.id)} className="btn-ghost text-xs text-red-400 hover:text-red-300">
+                  <button onClick={() => handleDelete(c.id)} className="btn-ghost text-xs text-negative hover:text-negative">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -127,7 +127,7 @@ export default function Campaigns() {
                     <BarChart3 className="w-3.5 h-3.5" />
                     <span className="text-xs">Open Rate</span>
                   </div>
-                  <p className="text-xl font-bold text-green-400">{openRate(c)}%</p>
+                  <p className="text-xl font-bold text-positive">{openRate(c)}%</p>
                   <p className="text-xs text-slate-500">{c.opened_count} opens</p>
                 </div>
                 <div className="bg-slate-900/60 rounded-xl p-3">
@@ -135,7 +135,7 @@ export default function Campaigns() {
                     <MousePointerClick className="w-3.5 h-3.5" />
                     <span className="text-xs">Clicks</span>
                   </div>
-                  <p className="text-xl font-bold text-blue-400">{c.clicked_count}</p>
+                  <p className="text-xl font-bold text-info">{c.clicked_count}</p>
                 </div>
                 <div className="bg-slate-900/60 rounded-xl p-3">
                   <div className="flex items-center gap-1.5 text-slate-400 mb-1">

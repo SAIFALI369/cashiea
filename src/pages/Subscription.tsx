@@ -92,11 +92,11 @@ export default function Subscription() {
       />
 
       {/* Current plan banner */}
-      <div className="card p-4 mb-8 bg-gradient-to-r from-brand-900/30 to-transparent">
+      <div className="card p-4 mb-8 bg-gradient-to-r from-accent-strong/30 to-transparent">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-accent-strong/20 border border-accent-strong/50 flex items-center justify-center">
-              <Crown className="w-6 h-6 text-brand-400" />
+              <Crown className="w-6 h-6 text-accent" />
             </div>
             <div>
               <p className="text-sm text-slate-400">Current Plan</p>
@@ -136,7 +136,7 @@ export default function Subscription() {
                 </div>
               )}
               {isCurrent && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-green-600 text-white text-xs font-bold whitespace-nowrap">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-positive text-accent-fg text-xs font-bold whitespace-nowrap">
                   Current Plan
                 </div>
               )}
@@ -147,7 +147,7 @@ export default function Subscription() {
                 <span className="text-slate-500 text-sm">/mo</span>
               </div>
 
-              <div className="flex items-center gap-1.5 text-sm text-brand-400 mb-4">
+              <div className="flex items-center gap-1.5 text-sm text-accent mb-4">
                 <Zap className="w-4 h-4" />
                 <span className="font-semibold">{plan.usageLimit.toLocaleString()}</span>
                 <span className="text-slate-500">AI actions/mo</span>
@@ -156,7 +156,7 @@ export default function Subscription() {
               <ul className="space-y-2.5 mb-6 min-h-[140px]">
                 {plan.features.map((feat) => (
                   <li key={feat} className="flex items-start gap-2 text-sm text-slate-400">
-                    <Check className="w-4 h-4 text-brand-400 mt-0.5 flex-shrink-0" />
+                    <Check className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
                     {feat}
                   </li>
                 ))}
@@ -167,10 +167,10 @@ export default function Subscription() {
                 disabled={isCurrent || updating !== null}
                 className={`w-full text-sm py-2.5 rounded-xl font-semibold transition-all ${
                   isCurrent
-                    ? 'bg-slate-800 text-slate-500 cursor-default'
+                    ? 'bg-surface-2 text-slate-500 cursor-default'
                     : plan.price > PLANS[currentPlan].price
-                    ? 'bg-gradient-to-r from-accent-strong to-brand-500 text-white hover:from-brand-500 hover:to-brand-400'
-                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                    ? 'bg-gradient-to-r from-accent-strong to-accent text-white hover:from-accent hover:to-accent'
+                    : 'bg-surface-2 text-slate-200 hover:bg-slate-700'
                 }`}
               >
                 {updating === key ? (

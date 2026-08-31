@@ -3,10 +3,10 @@ import PageHeader from '../components/ui/PageHeader'
 import { Shield, Lock, FileCheck, Globe, Server, KeyRound, Check } from 'lucide-react'
 
 const certifications = [
-  { icon: Lock, name: 'GDPR', desc: 'Full data-subject rights, EU data processing compliance, and right-to-erasure supported.', color: 'text-blue-400' },
-  { icon: Shield, name: 'SOC 2 Type II', desc: 'Security, availability, and confidentiality controls audited annually.', color: 'text-green-400' },
+  { icon: Lock, name: 'GDPR', desc: 'Full data-subject rights, EU data processing compliance, and right-to-erasure supported.', color: 'text-info' },
+  { icon: Shield, name: 'SOC 2 Type II', desc: 'Security, availability, and confidentiality controls audited annually.', color: 'text-positive' },
   { icon: FileCheck, name: 'CCPA', desc: 'California Consumer Privacy Act — opt-out of data sale and access controls.', color: 'text-purple-400' },
-  { icon: KeyRound, name: 'ISO 27001', desc: 'Information security management system certified.', color: 'text-amber-400' },
+  { icon: KeyRound, name: 'ISO 27001', desc: 'Information security management system certified.', color: 'text-warning' },
   { icon: Globe, name: 'DPDP-Aligned', desc: 'Aligned with India\'s Digital Personal Data Protection Act for customer data privacy.', color: 'text-cyan-400' },
   { icon: Server, name: 'PCI DSS', desc: 'Payments processed by Stripe — we never touch raw card data.', color: 'text-pink-400' },
 ]
@@ -37,7 +37,7 @@ export default function Compliance() {
         {certifications.map((c) => (
           <div key={c.name} className="card p-5 hover:border-accent-strong/50 transition-all">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-surface-2 flex items-center justify-center">
                 <c.icon className={`w-5 h-5 ${c.color}`} />
               </div>
               <h3 className="font-bold text-white">{c.name}</h3>
@@ -50,20 +50,20 @@ export default function Compliance() {
       {/* Security practices */}
       <div className="card p-4 mb-8">
         <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
-          <Lock className="w-5 h-5 text-brand-400" /> Security Practices
+          <Lock className="w-5 h-5 text-accent" /> Security Practices
         </h2>
         <div className="grid sm:grid-cols-2 gap-3">
           {practices.map((p) => (
             <div key={p} className="flex items-start gap-2 text-sm text-slate-300">
-              <Check className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" /> {p}
+              <Check className="w-4 h-4 text-positive mt-0.5 flex-shrink-0" /> {p}
             </div>
           ))}
         </div>
       </div>
 
       {/* Trust badges row */}
-      <div className="card p-5 text-center bg-gradient-to-br from-brand-900/20 to-transparent">
-        <Shield className="w-12 h-12 text-brand-400 mx-auto mb-3" />
+      <div className="card p-5 text-center bg-gradient-to-br from-accent-strong/20 to-transparent">
+        <Shield className="w-12 h-12 text-accent mx-auto mb-3" />
         <h2 className="text-xl font-bold text-white mb-2">Your data stays yours</h2>
         <p className="text-slate-400 max-w-md mx-auto mb-6">
           We never train AI models on your private data, and you can export or delete everything at any time.

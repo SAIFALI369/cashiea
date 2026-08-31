@@ -93,7 +93,7 @@ export default function ConnectAppModal({
           <label className="flex items-start gap-2.5 mt-4 cursor-pointer">
             <div className="relative mt-0.5">
               <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="sr-only peer" />
-              <div className="w-5 h-5 rounded-md border-2 transition-all peer-checked:bg-blue-500 peer-checked:border-blue-500 flex items-center justify-center" style={{ borderColor: C.border }}>
+              <div className="w-5 h-5 rounded-md border-2 transition-all peer-checked:bg-info peer-checked:border-info flex items-center justify-center" style={{ borderColor: C.border }}>
                 {confirmed && <Check className="w-3.5 h-3.5 text-white" />}
               </div>
             </div>

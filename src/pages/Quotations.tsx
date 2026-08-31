@@ -90,7 +90,7 @@ export default function Quotations() {
     if (!error) { setQuotes(quotes.filter((q) => q.id !== id)); toast.success('Deleted') }
   }
 
-  const statusColor: Record<string, string> = { sent: 'bg-blue-500/15 text-blue-400', accepted: 'bg-green-500/15 text-green-400', converted: 'bg-purple-500/15 text-purple-400', rejected: 'bg-red-500/15 text-red-400', draft: 'bg-surface-3 text-fg-muted', expired: 'bg-surface-3 text-fg-muted' }
+  const statusColor: Record<string, string> = { sent: 'bg-info/15 text-info', accepted: 'bg-positive/15 text-positive', converted: 'bg-purple-500/15 text-purple-400', rejected: 'bg-negative/15 text-negative', draft: 'bg-surface-3 text-fg-muted', expired: 'bg-surface-3 text-fg-muted' }
 
   return (
     <div className="animate-fade-in">
@@ -110,7 +110,7 @@ export default function Quotations() {
               <input value={it.description} onChange={(e) => updateItem(i, 'description', e.target.value)} className="input-field flex-1" placeholder="Item / service" />
               <input type="number" value={it.quantity} onChange={(e) => updateItem(i, 'quantity', e.target.value)} className="input-field w-20" placeholder="Qty" />
               <input type="number" value={it.unit_price} onChange={(e) => updateItem(i, 'unit_price', e.target.value)} className="input-field w-28" placeholder="Price" />
-              {form.items.length > 1 && <button onClick={() => removeItem(i)} className="text-red-400 px-2"><X className="w-4 h-4" /></button>}
+              {form.items.length > 1 && <button onClick={() => removeItem(i)} className="text-negative px-2"><X className="w-4 h-4" /></button>}
             </div>
           ))}
           <button onClick={addItem} className="btn-ghost text-xs"><Plus className="w-3.5 h-3.5" /> Add item</button>
@@ -130,7 +130,7 @@ export default function Quotations() {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-brand-500" /></div>
+        <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>
       ) : quotes.length === 0 ? (
         <EmptyState icon={FileSignature} title="No quotations yet" description="Create a price quote for a customer, then convert it to an invoice with one click." />
       ) : (
@@ -144,7 +144,7 @@ export default function Quotations() {
               <div className="flex items-center gap-2 flex-shrink-0">
                 <span className="font-semibold text-fg">{formatINR(Number(q.total), 0)}</span>
                 {(q.status === 'sent' || q.status === 'accepted') && <button onClick={() => convertToInvoice(q)} className="btn-primary text-xs whitespace-nowrap">Convert <ArrowRight className="w-3 h-3" /></button>}
-                <button onClick={() => del(q.id)} className="text-fg-subtle hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
+                <button onClick={() => del(q.id)} className="text-fg-subtle hover:text-negative"><Trash2 className="w-4 h-4" /></button>
               </div>
             </div>
           ))}

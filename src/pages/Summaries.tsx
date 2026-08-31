@@ -105,7 +105,7 @@ export default function Summaries() {
       {/* Summarizer */}
       <div className="card p-4 mb-6">
         <label className="label flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-brand-400" /> Text to summarize
+          <Sparkles className="w-4 h-4 text-accent" /> Text to summarize
         </label>
         <textarea
           value={sourceText}
@@ -145,7 +145,7 @@ export default function Summaries() {
       {/* History */}
       {loading ? (
         <div className="flex justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-brand-500" />
+          <Loader2 className="w-8 h-8 animate-spin text-accent" />
         </div>
       ) : summaries.length === 0 ? (
         <EmptyState
@@ -178,7 +178,7 @@ export default function Summaries() {
                   </button>
                   <button
                     onClick={() => handleDelete(summary.id)}
-                    className="btn-ghost text-xs text-red-400 hover:text-red-300"
+                    className="btn-ghost text-xs text-negative hover:text-negative"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

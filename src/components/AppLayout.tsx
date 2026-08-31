@@ -1,5 +1,5 @@
-import { Suspense, useEffect, useRef, useState } from 'react'
-import { Outlet, useLocation, Link } from 'react-router-dom'
+import { Suspense, useEffect, useState } from 'react'
+import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import FloatingMeraj from './FloatingMeraj'
 import BottomNav from './BottomNav'
@@ -16,10 +16,11 @@ import { useAuth } from '../context/AuthContext'
 import { getPageContext } from '../lib/pageContext'
 import { useKeyboardShortcuts } from '../lib/useKeyboardShortcuts'
 import { useSwipeNavigation } from '../lib/useSwipeNavigation'
-import { Menu, Settings } from 'lucide-react'
+import { Menu, Settings, ChevronLeft } from 'lucide-react'
 
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const navigate = useNavigate()
   const location = useLocation()
   const { profile, ownerId } = useAuth()
   useDailyIntelligence(ownerId)
@@ -31,17 +32,6 @@ export default function AppLayout() {
   // Persistent AI access on every non-assistant screen (desktop FAB / mobile bottom-nav center).
   const showFloatingMeraj = !isAssistant
 
-  const [hdrOpacity, setHdrOpacity] = useState(1)
-  const fadeTimer = useRef<number | undefined>(undefined)
-  useEffect(() => {
-    if (isAssistant) return
-    const reset = () => { setHdrOpacity(1); clearTimeout(fadeTimer.current); fadeTimer.current = window.setTimeout(() => setHdrOpacity(1), 2000) }
-    window.addEventListener('scroll', reset, { passive: true })
-    window.addEventListener('touchstart', reset, { passive: true })
-    reset()
-    return () => { window.removeEventListener('scroll', reset); window.removeEventListener('touchstart', reset); clearTimeout(fadeTimer.current) }
-  }, [isAssistant])
-
   // ── Page name for the header (replaces 'Cashiea' on non-dashboard pages) ──
   const pageHeaderName = (() => {
     const path = location.pathname
@@ -49,6 +39,14 @@ export default function AppLayout() {
     const ctx = getPageContext(path)
     return ctx?.name || 'Cashiea'
   })()
+
+  // Sub-pages get a back affordance — one tap returns the way you came
+  // (browser history when there is one, the dashboard otherwise).
+  const isSubPage = pageHeaderName !== 'Cashiea'
+  const goBack = () => {
+    if (window.history.state && window.history.state.idx > 0) navigate(-1)
+    else navigate('/app')
+  }
 
   return (
     // Assistant: definite viewport height so its message list scrolls on mobile.
@@ -63,7 +61,14 @@ export default function AppLayout() {
           <button onClick={() => setSidebarOpen(true)} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-muted hover:text-fg">
             <Menu className="w-6 h-6" />
           </button>
-          <div style={{ opacity: hdrOpacity, transition: 'opacity 0.4s ease' }} className="flex-1 min-w-0">
+          {/* Back affordance on sub-pages — the page keeps its name
+              (no fading) and one tap walks back the trail. */}
+          {isSubPage && (
+            <button onClick={goBack} aria-label="Go back" className="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-muted hover:text-fg rounded-xl">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+          )}
+          <div className="flex-1 min-w-0">
             <span className="font-bold text-fg">{pageHeaderName}</span>
           </div>
           <QueueBadge />

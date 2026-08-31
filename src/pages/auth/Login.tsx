@@ -178,7 +178,7 @@ export default function Login() {
               <label className="flex items-center gap-2 cursor-pointer">
                 <div className="relative">
                   <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="sr-only peer" />
-                  <div className="w-5 h-5 rounded-md border-2 transition-all peer-checked:bg-blue-500 peer-checked:border-blue-500" style={{ borderColor: C.border }} />
+                  <div className="w-5 h-5 rounded-md border-2 transition-all peer-checked:bg-info peer-checked:border-info" style={{ borderColor: C.border }} />
                   {remember && <Check className="absolute top-0.5 left-0.5 w-4 h-4 text-white pointer-events-none" />}
                 </div>
                 <span className="text-sm" style={{ color: C.textBody }}>Remember me</span>

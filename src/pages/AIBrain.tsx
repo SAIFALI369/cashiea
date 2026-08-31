@@ -10,15 +10,15 @@ import { Brain, Loader2, RefreshCw, CheckCircle2, XCircle, Sparkles, Lightbulb, 
 import toast from 'react-hot-toast'
 
 const priorityColor: Record<string, string> = {
-  urgent: 'border-red-600/50 bg-red-600/5',
+  urgent: 'border-negative/50 bg-negative/5',
   high: 'border-orange-600/50 bg-orange-600/5',
-  medium: 'border-amber-600/40 bg-amber-600/5',
+  medium: 'border-warning/40 bg-warning/5',
   low: 'border-slate-700 bg-slate-900/40',
 }
 const priorityBadge: Record<string, string> = {
-  urgent: 'bg-red-500/15 text-red-400',
+  urgent: 'bg-negative/15 text-negative',
   high: 'bg-orange-500/15 text-orange-400',
-  medium: 'bg-amber-500/15 text-amber-400',
+  medium: 'bg-warning/15 text-warning',
   low: 'bg-slate-700 text-slate-400',
 }
 const typeIcon: Record<string, string> = {
@@ -129,11 +129,11 @@ export default function AIBrain() {
       {/* About My Business — the living summary */}
       <div className="card p-4 mb-6 bg-gradient-to-br from-accent-strong/10 to-transparent">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold text-white flex items-center gap-2"><Sparkles className="w-5 h-5 text-brand-400" /> About My Business</h2>
+          <h2 className="font-semibold text-white flex items-center gap-2"><Sparkles className="w-5 h-5 text-accent" /> About My Business</h2>
           {memory?.last_updated_at && <span className="text-xs text-slate-500">Updated {new Date(memory.last_updated_at).toLocaleString()}</span>}
         </div>
         {loading ? (
-          <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-brand-500" /></div>
+          <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-accent" /></div>
         ) : !memory?.summary ? (
           <div className="text-center py-6">
             <p className="text-slate-400 mb-4">The AI hasn't learned about your business yet. Connect your data sources and let it study your shop.</p>
@@ -145,7 +145,7 @@ export default function AIBrain() {
         ) : (
           <>
             {memory.business_type && (
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent-strong/15 text-brand-300 text-xs font-medium mb-3">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent-strong/15 text-accent-strong text-xs font-medium mb-3">
                 <TrendingUp className="w-3.5 h-3.5" /> {memory.business_type}
               </div>
             )}
@@ -154,7 +154,7 @@ export default function AIBrain() {
               <div className="mt-4 grid sm:grid-cols-2 gap-2">
                 {memory.key_facts.slice(0, 6).map((f, i) => (
                   <div key={i} className="bg-slate-900/60 rounded-lg p-2.5 flex items-start gap-2">
-                    <span className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${f.confidence === 'high' ? 'bg-green-400' : f.confidence === 'medium' ? 'bg-amber-400' : 'bg-slate-500'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${f.confidence === 'high' ? 'bg-positive' : f.confidence === 'medium' ? 'bg-warning' : 'bg-slate-500'}`} />
                     <div>
                       <p className="text-sm text-slate-200">{f.fact}</p>
                       <p className="text-xs text-slate-600 capitalize">{f.source}</p>
@@ -170,7 +170,7 @@ export default function AIBrain() {
       {/* Predictions pending approval */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold text-white flex items-center gap-2"><Lightbulb className="w-5 h-5 text-amber-400" /> Predicted Tasks <span className="text-xs text-slate-500 font-normal">({pending.length} pending)</span></h2>
+          <h2 className="font-semibold text-white flex items-center gap-2"><Lightbulb className="w-5 h-5 text-warning" /> Predicted Tasks <span className="text-xs text-slate-500 font-normal">({pending.length} pending)</span></h2>
           <button onClick={predict} disabled={predicting} className="btn-ghost text-xs"><RefreshCw className="w-3.5 h-3.5" /> Refresh</button>
         </div>
         <p className="text-xs text-slate-500 mb-4">The AI predicts what needs doing. Nothing happens until you approve it. If you deny with a reason, the AI learns.</p>
@@ -188,7 +188,7 @@ export default function AIBrain() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold text-white">{p.title}</h3>
                         <span className={`text-xs px-1.5 py-0.5 rounded capitalize ${priorityBadge[p.priority]}`}>{p.priority}</span>
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 capitalize">{p.prediction_type}</span>
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-surface-2 text-slate-400 capitalize">{p.prediction_type}</span>
                       </div>
                       {p.description && <p className="text-sm text-slate-300 mt-1">{p.description}</p>}
                       {p.rationale && <p className="text-xs text-slate-500 mt-1.5 italic">Why: {p.rationale}</p>}
@@ -196,7 +196,7 @@ export default function AIBrain() {
                   </div>
                 </div>
                 <div className="flex gap-2 mt-3 justify-end">
-                  <button onClick={() => setShowCorrect(p)} className="btn-ghost text-xs text-red-400 hover:text-red-300">Deny & teach</button>
+                  <button onClick={() => setShowCorrect(p)} className="btn-ghost text-xs text-negative hover:text-negative">Deny & teach</button>
                   <button onClick={() => decide(p, 'dismissed')} className="btn-ghost text-xs">Dismiss</button>
                   <button onClick={() => decide(p, 'denied')} className="btn-secondary text-xs"><XCircle className="w-3.5 h-3.5" /> Deny</button>
                   <button onClick={() => decide(p, 'approved')} className="btn-primary text-xs"><CheckCircle2 className="w-3.5 h-3.5" /> Approve</button>
@@ -219,8 +219,8 @@ export default function AIBrain() {
                   <span className="text-slate-300 truncate">{p.title}</span>
                 </div>
                 <span className={`text-xs px-1.5 py-0.5 rounded capitalize flex-shrink-0 ml-2 ${
-                  p.status === 'approved' ? 'bg-green-500/15 text-green-400' :
-                  p.status === 'denied' ? 'bg-red-500/15 text-red-400' :
+                  p.status === 'approved' ? 'bg-positive/15 text-positive' :
+                  p.status === 'denied' ? 'bg-negative/15 text-negative' :
                   'bg-slate-700 text-slate-400'
                 }`}>{p.status}</span>
               </div>
@@ -232,7 +232,7 @@ export default function AIBrain() {
       {/* Learning log */}
       {corrections.length > 0 && (
         <div className="card p-5">
-          <h3 className="font-semibold text-white mb-1 flex items-center gap-2"><GraduationCap className="w-4 h-4 text-brand-400" /> What the AI has learned from you</h3>
+          <h3 className="font-semibold text-white mb-1 flex items-center gap-2"><GraduationCap className="w-4 h-4 text-accent" /> What the AI has learned from you</h3>
           <p className="text-xs text-slate-500 mb-3">These corrections shape future predictions and summaries.</p>
           <div className="space-y-2">
             {corrections.map((c) => (
