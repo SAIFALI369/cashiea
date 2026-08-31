@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Meraj device-character — face states</title>
+<title>Meraj device-character — live animation</title>
 <style>
   :root { --paper: #171310; --surface: #211c17; --fg: #ece5d8; --muted: #aa9f8d; --accent: 203 164 94; }
   * { box-sizing: border-box; }
@@ -13,83 +13,119 @@
   }
   h1 { font-size: 22px; margin: 0 0 4px; }
   p.sub { color: var(--muted); font-size: 13px; margin: 0 0 28px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 28px; max-width: 1080px; margin: 0 auto 40px; }
-  .cell {
-    background: var(--surface); border: 1px solid rgb(var(--accent) / .18); border-radius: 18px;
-    padding: 26px 12px 18px; display: flex; flex-direction: column; align-items: center; gap: 10px;
-  }
-  .cell img { width: 130px; height: 130px; object-fit: contain; animation: float 4.5s ease-in-out infinite; }
-  .cell b { font-size: 13px; }
-  .cell span { color: var(--muted); font-size: 11px; line-height: 1.4; max-width: 150px; }
+
+  /* ── the real thing: same engine the app uses ── */
   .stage {
-    position: relative; width: 220px; height: 220px; margin: 0 auto 30px; display: flex;
-    align-items: center; justify-content: center;
+    position: relative; width: 260px; height: 260px; margin: 0 auto 24px;
+    display: flex; align-items: center; justify-content: center;
   }
   .stage .glow {
-    position: absolute; inset: 6%; border-radius: 50%;
+    position: absolute; inset: 4%; border-radius: 50%;
     background: radial-gradient(closest-side, rgb(var(--accent) / .5), transparent 72%);
-    filter: blur(8px); animation: glow 4.5s ease-in-out infinite;
+    filter: blur(10px); animation: glow 4.5s ease-in-out infinite;
   }
-  .stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
-    transition: opacity .3s ease; opacity: 0; animation: float 4.5s ease-in-out infinite; pointer-events: none; }
-  .stage img.on { opacity: 1; }
-  .btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 14px; }
+  .device {
+    position: relative; width: 190px; height: 190px; animation: float 4.5s ease-in-out infinite;
+  }
+  .device[data-active='true'] { animation-duration: 1.7s; }
+  .device[data-active='true'] + .glow, .glow.active { animation-duration: 1.7s; }
+  .clip {
+    position: absolute; inset: 0; overflow: hidden;
+    border-radius: 50% 50% 50% 50% / 44% 44% 56% 56%;
+  }
+  .clip img.body { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .face {
+    position: absolute; width: 42.96875%; height: 46.875%;
+    left: 28.515625%; top: 14.6484375%;
+    transition: opacity .3s ease; opacity: 0;
+  }
+  .face.on { opacity: 1; }
+  .flipbook {
+    position: absolute; left: 0; top: 0; height: 100%; width: auto; max-width: none;
+    animation: flip 0.667s steps(8, end) infinite;
+  }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 30px; }
   button {
     background: rgb(var(--accent) / .14); border: 1px solid rgb(var(--accent) / .35); color: var(--fg);
-    padding: 8px 14px; border-radius: 999px; font-size: 12px; cursor: pointer; transition: all .15s ease;
+    padding: 9px 16px; border-radius: 999px; font-size: 12px; cursor: pointer; transition: all .15s ease;
   }
   button:hover { background: rgb(var(--accent) / .26); }
   button.on { background: rgb(var(--accent)); color: #161310; font-weight: 600; }
-  .note { color: var(--muted); font-size: 11px; max-width: 620px; margin: 0 auto; line-height: 1.5; }
-  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
+  /* ── contact sheet ── */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 26px; max-width: 1000px; margin: 0 auto 36px; }
+  .cell {
+    background: var(--surface); border: 1px solid rgb(var(--accent) / .18); border-radius: 18px;
+    padding: 18px 10px 14px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .cell img { width: 110px; height: 110px; object-fit: contain; }
+  .cell b { font-size: 12px; }
+  .cell span { color: var(--muted); font-size: 10px; }
+  .note { color: var(--muted); font-size: 11px; max-width: 640px; margin: 0 auto; line-height: 1.5; }
+
+  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
   @keyframes glow { 0%, 100% { opacity: .45; transform: scale(.92); } 50% { opacity: .9; transform: scale(1.06); } }
-  @media (prefers-reduced-motion: reduce) { .cell img, .stage img, .stage .glow { animation: none; } }
+  @keyframes flip { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+  @media (prefers-reduced-motion: reduce) {
+    .device, .stage .glow { animation: none; }
+    .flipbook { animation: none; transform: translateX(0); }
+  }
 </style>
 </head>
 <body>
-  <h1>Meraj — device character</h1>
-  <p class="sub">Six face-state variants of the SAME base render — only the screen-face content changes.</p>
+  <h1>Meraj — live animation</h1>
+  <p class="sub">He floats, blinks, smiles, thinks and answers — this is the exact engine the app runs.</p>
 
-  <div class="stage" id="stage">
+  <div class="stage">
     <div class="glow"></div>
-    <img src="face-neutral.png" alt="neutral" class="on" />
-    <img src="face-happy.png" alt="happy" />
-    <img src="face-sad.png" alt="sad" />
-    <img src="face-listening.png" alt="listening" />
-    <img src="face-thinking.png" alt="thinking" />
-    <img src="face-speaking.png" alt="speaking" />
+    <div class="device" id="device" data-active="false">
+      <div class="clip">
+        <img class="body" src="device-body.png" alt="" />
+        <span class="face on"  data-face="neutral"><img class="flipbook" src="sheet-neutral.png" alt="neutral" /></span>
+        <span class="face"      data-face="happy"><img class="flipbook" src="sheet-happy.png" alt="happy" /></span>
+        <span class="face"      data-face="sad"><img class="flipbook" src="sheet-sad.png" alt="sad" /></span>
+        <span class="face"      data-face="listening"><img class="flipbook" src="sheet-listening.png" alt="listening" /></span>
+        <span class="face"      data-face="thinking"><img class="flipbook" src="sheet-thinking.png" alt="thinking" /></span>
+        <span class="face"      data-face="speaking"><img class="flipbook" src="sheet-speaking.png" alt="speaking" /></span>
+      </div>
+    </div>
   </div>
+
   <div class="btns" id="btns">
     <button data-face="neutral" class="on">Idle · neutral</button>
-    <button data-face="happy">Idle · happy</button>
-    <button data-face="sad">Idle · sad</button>
-    <button data-face="listening">Listening</button>
-    <button data-face="thinking">Thinking</button>
-    <button data-face="speaking">Speaking</button>
+    <button data-face="happy">Idle · happy (smiles)</button>
+    <button data-face="sad">Idle · sad (worried)</button>
+    <button data-face="listening">Listening (waveform)</button>
+    <button data-face="thinking">Thinking (pulsing dots)</button>
+    <button data-face="speaking">Speaking (talking mouth)</button>
   </div>
 
   <div class="grid">
-    <div class="cell"><img src="face-neutral.png" alt="neutral" /><b>Idle — neutral</b><span>Default resting face</span></div>
-    <div class="cell"><img src="face-happy.png" alt="happy" /><b>Idle — happy</b><span>Business doing well</span></div>
-    <div class="cell"><img src="face-sad.png" alt="sad" /><b>Idle — sad</b><span>Business needs attention</span></div>
-    <div class="cell"><img src="face-listening.png" alt="listening" /><b>Listening</b><span>Waveform indicator on screen</span></div>
-    <div class="cell"><img src="face-thinking.png" alt="thinking" /><b>Thinking</b><span>Processing dots on screen</span></div>
-    <div class="cell"><img src="face-speaking.png" alt="speaking" /><b>Speaking</b><span>Mouth waveform on screen</span></div>
+    <div class="cell"><img src="sheet-neutral.png" alt="" /><b>Neutral — 8 frames</b><span>resting, blink, pupil drift</span></div>
+    <div class="cell"><img src="sheet-happy.png" alt="" /><b>Happy — 8 frames</b><span>closed eyes, smile, sparkles</span></div>
+    <div class="cell"><img src="sheet-sad.png" alt="" /><b>Sad — 8 frames</b><span>worried brows, sigh</span></div>
+    <div class="cell"><img src="sheet-listening.png" alt="" /><b>Listening — 8 frames</b><span>dancing waveform, live dot</span></div>
+    <div class="cell"><img src="sheet-thinking.png" alt="" /><b>Thinking — 8 frames</b><span>searching pupils, pulsing dots</span></div>
+    <div class="cell"><img src="sheet-speaking.png" alt="" /><b>Speaking — 8 frames</b><span>chattering mouth waveform</span></div>
   </div>
 
   <p class="note">
-    Same cream/gold body, same angle, same "Meraj" display panel, "M" speaker and
-    "CASHIEA · PLAN TRACK GROW TOGETHER" branding on every variant — only the
-    screen-face swaps, so state changes read as one continuous device.
+    One static cream/gold body with the "Meraj" panel, "M" speaker and Cashiea branding —
+    the animated face sheet plays on top, so swapping states looks like one continuous
+    living device, never different characters. Active states (listening / thinking /
+    speaking) speed up the float for an attentive feel.
   </p>
 
 <script>
-  const stage = document.getElementById('stage')
+  const device = document.getElementById('device')
   const buttons = [...document.querySelectorAll('#btns button')]
+  const ACTIVE = new Set(['listening', 'thinking', 'speaking'])
   buttons.forEach((btn) => {
     btn.addEventListener('click', () => {
       const face = btn.dataset.face
-      stage.querySelectorAll('img').forEach((img) => img.classList.toggle('on', img.alt === face))
+      device.querySelectorAll('.face').forEach((f) => f.classList.toggle('on', f.dataset.face === face))
+      device.dataset.active = ACTIVE.has(face) ? 'true' : 'false'
+      document.querySelector('.stage .glow').classList.toggle('active', ACTIVE.has(face))
       buttons.forEach((b) => b.classList.toggle('on', b === btn))
     })
   })

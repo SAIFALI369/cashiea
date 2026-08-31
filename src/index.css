@@ -131,10 +131,12 @@
 
 /* ════════════════════════════════════════════════════════════════
    MERAJ DEVICE CHARACTER — motion spec (CSS only, no 3D).
-   Idle: gentle float + breathing glow. Active states (listening /
-   thinking / speaking) run the same motion faster so the device
-   feels attentive. A true 3D backflip/rotation is deliberately NOT
-   implemented — tracked as a separate future task.
+   Body: gentle float + breathing glow (idle 4.5s; active states run
+   faster so the device feels attentive).
+   Face: 8-frame flipbook sprite sheet plays with steps() — the
+   character visibly blinks, smiles, thinks and answers like a video.
+   A true 3D backflip/rotation is deliberately NOT implemented —
+   tracked as a separate future task.
    ════════════════════════════════════════════════════════════════ */
 @keyframes meraj-float {
   0%, 100% { transform: translateY(0); }
@@ -144,8 +146,19 @@
   0%, 100% { opacity: 0.45; transform: scale(0.92); }
   50% { opacity: 0.9; transform: scale(1.06); }
 }
+@keyframes meraj-flipbook {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
 .meraj-float { animation: meraj-float 4.5s ease-in-out infinite; }
 .meraj-glow { animation: meraj-glow 4.5s ease-in-out infinite; }
+.meraj-clip { border-radius: 50% 50% 50% 50% / 44% 44% 56% 56%; }
+/* The flipbook layer holds 8 frames side by side; steps() steps the
+   strip one frame at a time. pause = animation-play-state. */
+.meraj-flipbook {
+  animation: meraj-flipbook 0.667s steps(8, end) infinite;
+  animation-delay: -0.05s; /* de-syncs multiple devices on one screen */
+}
 /* Active conversation states feel more alert than resting idle. */
 .meraj-device[data-active='true'] .meraj-float,
 .meraj-device[data-active='true'] .meraj-glow {
@@ -153,6 +166,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .meraj-float, .meraj-glow { animation: none; }
+  .meraj-flipbook { animation: none; transform: translateX(0); } /* static first frame */
 }
 
 /* Scrollbar — quiet, theme-aware. */

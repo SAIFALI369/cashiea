@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import type { CSSProperties } from 'react'
 import type { BusinessMood } from '../lib/businessMood'
@@ -6,6 +7,19 @@ import type { BusinessMood } from '../lib/businessMood'
 // MerajDevice — the oval device-character (cream/gold body, dark
 // glass screen-face, "Meraj" display panel, "M" speaker, Cashiea
 // branding baked into the render).
+//
+// VIDEO-LIKE ANIMATION:
+// The body is one static render; the screen-face is an 8-frame
+// flipbook sprite sheet that plays on loop with CSS `steps()` —
+// eyes blink, pupils drift, waveforms dance, thought dots pulse,
+// the mouth chatters. The whole device floats + breathes with a
+// glow halo. (A true 3D backflip is still out of scope — tracked
+// as a separate future task.)
+//
+// Optional video upgrade: drop {state}.webm files next to the
+// sheets and pass animationMode="video" — each is played through a
+// hidden <video> and drawn onto a shared canvas per state, so the
+// face runs at 60fps while the body stays a crisp still.
 //
 // One component, three placements:
 //   • context="nav"   — bottom-nav center launcher (size sm)
@@ -16,26 +30,39 @@ import type { BusinessMood } from '../lib/businessMood'
 // speaking) ALWAYS beat the resting businessMood — an active
 // conversation is more urgent than the resting mood. businessMood
 // (happy / neutral / sad) only renders when interactionState is idle.
-//
-// Motion is CSS-only: an idle float + breathing glow (no 3D, no
-// backflips — a full 3D rotation is deliberately out of scope and is
-// tracked separately).
 // ────────────────────────────────────────────────────────────────
 
 export type MerajInteractionState = 'idle' | 'listening' | 'thinking' | 'speaking'
 export type MerajSize = 'sm' | 'md' | 'lg'
 export type MerajContext = 'nav' | 'card' | 'panel'
 export type MerajFace = 'neutral' | 'happy' | 'sad' | 'listening' | 'thinking' | 'speaking'
+export type MerajAnimationMode = 'sprite' | 'video'
 
-/** The 6 face-state variants of the SAME base character render. */
-export const MERAJ_FACE_IMAGES: Record<MerajFace, string> = {
-  neutral: '/meraj/face-neutral.png',
-  happy: '/meraj/face-happy.png',
-  sad: '/meraj/face-sad.png',
-  listening: '/meraj/face-listening.png',
-  thinking: '/meraj/face-thinking.png',
-  speaking: '/meraj/face-speaking.png',
+/** 8-frame flipbook sprite sheets (220x240 per frame, 1760x240 total). */
+export const MERAJ_SHEETS: Record<MerajFace, string> = {
+  neutral: '/meraj/sheet-neutral.png',
+  happy: '/meraj/sheet-happy.png',
+  sad: '/meraj/sheet-sad.png',
+  listening: '/meraj/sheet-listening.png',
+  thinking: '/meraj/sheet-thinking.png',
+  speaking: '/meraj/sheet-speaking.png',
 }
+
+/** Static shared body — same render under every face state. */
+export const MERAJ_BODY = '/meraj/device-body.png'
+
+/** Optional 60fps video loops ({state}.webm) — used when animationMode="video". */
+export const MERAJ_VIDEOS: Record<MerajFace, string> = {
+  neutral: '/meraj/neutral.webm',
+  happy: '/meraj/happy.webm',
+  sad: '/meraj/sad.webm',
+  listening: '/meraj/listening.webm',
+  thinking: '/meraj/thinking.webm',
+  speaking: '/meraj/speaking.webm',
+}
+
+export const MERAJ_FRAMES = 8
+export const MERAJ_FPS = 12
 
 const FACE_LABEL: Record<MerajFace, string> = {
   neutral: 'Meraj, resting',
@@ -65,6 +92,24 @@ const PIXELS: Record<MerajSize, number> = { sm: 48, md: 80, lg: 150 }
 const FLOAT_PX: Record<MerajSize, number> = { sm: 2.5, md: 4, lg: 6 }
 const GLOW_INSET: Record<MerajContext, string> = { nav: '-12%', card: '-16%', panel: '-22%' }
 
+/** Pause the flipbook when the device scrolls out of view (perf). */
+function useInView<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null)
+  const [inView, setInView] = useState(true)
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return
+    const el = ref.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      { rootMargin: '80px' },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+  return { ref, inView }
+}
+
 interface MerajDeviceProps {
   /** Real app state: listening while the mic is active, thinking while
    *  a request is in flight, speaking while a response is playing. */
@@ -74,6 +119,9 @@ interface MerajDeviceProps {
   size?: MerajSize
   context?: MerajContext
   className?: string
+  /** 'sprite' = 8-frame flipbook (default). 'video' = draw {state}.webm
+   *  loops through a hidden <video> onto a canvas (60fps). */
+  animationMode?: MerajAnimationMode
 }
 
 export default function MerajDevice({
@@ -82,17 +130,65 @@ export default function MerajDevice({
   size = 'md',
   context = 'card',
   className = '',
+  animationMode = 'sprite',
 }: MerajDeviceProps) {
   const face = resolveMerajFace(interactionState, businessMood)
   const active = interactionState !== 'idle'
   const px = PIXELS[size]
+  const { ref: inViewRef, inView } = useInView<HTMLSpanElement>()
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+
+  const video = animationMode === 'video'
+
+  // ── Video mode: loop the active state's .webm, draw onto the shared
+  // canvas. The body stays a crisp still; only the face is video.
+  useEffect(() => {
+    if (!video) return
+    const vid = videoRef.current
+    const canvas = canvasRef.current
+    if (!vid || !canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const src = MERAJ_VIDEOS[face]
+    if (vid.src !== new URL(src, window.location.href).href) {
+      vid.src = src
+      vid.loop = true
+      vid.muted = true
+      vid.playsInline = true
+    }
+
+    let raf = 0
+    const draw = () => {
+      if (vid.readyState >= 2) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.drawImage(vid, 0, 0, canvas.width, canvas.height)
+      }
+      raf = requestAnimationFrame(draw)
+    }
+    const tryPlay = () => {
+      if (inView) vid.play().catch(() => { /* autoplay blocked — retry on next interaction */ })
+      else vid.pause()
+    }
+    tryPlay()
+    raf = requestAnimationFrame(draw)
+    const onVis = () => (document.visibilityState === 'visible' ? tryPlay() : vid.pause())
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      cancelAnimationFrame(raf)
+      document.removeEventListener('visibilitychange', onVis)
+    }
+  }, [video, face, inView])
 
   return (
     <span
+      ref={inViewRef}
       role="img"
       aria-label={FACE_LABEL[face]}
       title={FACE_LABEL[face]}
       data-active={active ? 'true' : 'false'}
+      data-anim={video ? 'video' : 'sprite'}
       className={clsx('meraj-device relative inline-flex items-center justify-center flex-shrink-0', className)}
       style={{
         width: px,
@@ -111,25 +207,75 @@ export default function MerajDevice({
         }}
       />
 
-      {/* All 6 faces are stacked and cross-faded, so swapping states
-          reads as ONE continuous device, never a different character. */}
+      {/* Whole device floats; the frame is clipped to the oval body so
+          animated face states never paint outside the character. */}
       <span className="meraj-float relative w-full h-full">
-        {(Object.keys(MERAJ_FACE_IMAGES) as MerajFace[]).map((key) => (
+        <span
+          className="meraj-clip absolute inset-0 overflow-hidden"
+          style={{ borderRadius: '50% 50% 50% 50% / 44% 44% 56% 56%' }}
+        >
+          {/* Static shared body — identical under every state */}
           <img
-            key={key}
-            src={MERAJ_FACE_IMAGES[key]}
+            src={MERAJ_BODY}
             alt=""
             aria-hidden="true"
             draggable={false}
             loading="eager"
             decoding="async"
-            className={clsx(
-              'absolute inset-0 w-full h-full object-contain select-none pointer-events-none transition-opacity duration-300',
-              key === face ? 'opacity-100' : 'opacity-0',
-            )}
+            className="absolute inset-0 w-full h-full object-contain select-none pointer-events-none"
           />
-        ))}
+
+          {/* Animated screen-face.
+              Sprite mode: one <img> per state, cross-faded, flipbook
+              playback via CSS steps(). All faces share the same body,
+              so state swaps read as one continuous device. */}
+          {!video &&
+            (Object.keys(MERAJ_SHEETS) as MerajFace[]).map((key) => (
+              <span
+                key={key}
+                aria-hidden="true"
+                className={clsx(
+                  'meraj-face absolute transition-opacity duration-300',
+                  key === face ? 'opacity-100' : 'opacity-0',
+                )}
+                style={{
+                  width: `${(220 / 512) * 100}%`,
+                  height: `${(240 / 512) * 100}%`,
+                  left: `${(146 / 512) * 100}%`,
+                  top: `${(75 / 512) * 100}%`,
+                }}
+              >
+                <img
+                  src={MERAJ_SHEETS[key]}
+                  alt=""
+                  draggable={false}
+                  loading="eager"
+                  decoding="async"
+                  className="meraj-flipbook absolute left-0 top-0 h-full w-auto max-w-none select-none pointer-events-none"
+                  style={{
+                    animationPlayState: inView ? 'running' : 'paused',
+                    aspectRatio: `${MERAJ_FRAMES * 220} / 240`, // 1760/240 strip
+                  }}
+                />
+              </span>
+            ))}
+
+          {/* Video mode: hidden <video> loop drawn onto this canvas */}
+          {video && (
+            <canvas
+              ref={canvasRef}
+              aria-hidden="true"
+              className="absolute left-0 top-0 w-full h-full"
+              width={220}
+              height={240}
+            />
+          )}
+        </span>
       </span>
+
+      {video && (
+        <video ref={videoRef} muted loop playsInline preload="auto" className="hidden" />
+      )}
     </span>
   )
 }
