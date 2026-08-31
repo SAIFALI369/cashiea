@@ -10,7 +10,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Users, Plus, Loader2, Trash2, Search, Mail, Phone, ShoppingBag, X, Clock, Send, TrendingUp, Award, UserPlus, MessageCircle, ChevronRight, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const empty = { name: '', email: '', phone: '', address: '', company: '', notes: '', tags: '' }
+const empty = { name: '', email: '', phone: '', address: '', company: '', notes: '', tags: '', credit_limit: 0, outstanding: 0 }
 
 type Segment = 'all' | 'vip' | 'regular' | 'new' | 'dormant'
 
@@ -58,6 +58,8 @@ export default function Customers() {
       company: form.company || null,
       notes: form.notes || null,
       tags,
+      credit_limit: Number(form.credit_limit) || 0,
+      outstanding: Number(form.outstanding) || 0,
     })
     if (error) return toast.error(error.message)
     setCustomers((data as Customer[]) ? [data as Customer, ...customers] : customers)
@@ -222,6 +224,18 @@ export default function Customers() {
                     <p className="text-sm font-bold text-fg tabular-nums leading-tight">{c.total_orders || 0}</p>
                   </div>
                 </div>
+                {Number(c.credit_limit) > 0 && (
+                  <div className="rounded-control bg-surface-2 px-2.5 py-2">
+                    <p className="text-[9px] font-bold uppercase text-fg-subtle">Credit Limit</p>
+                    <p className="text-sm font-bold text-warning tabular-nums leading-tight">{formatINR(Number(c.credit_limit), 0)}</p>
+                  </div>
+                )}
+                {Number(c.outstanding) > 0 && (
+                  <div className="rounded-control bg-surface-2 px-2.5 py-2">
+                    <p className="text-[9px] font-bold uppercase text-fg-subtle">Outstanding</p>
+                    <p className="text-sm font-bold text-negative tabular-nums leading-tight">{formatINR(Number(c.outstanding), 0)}</p>
+                  </div>
+                )}
 
                 {/* Contact info */}
                 <div className="flex items-center gap-3 text-xs text-fg-muted">
@@ -321,6 +335,18 @@ export default function Customers() {
                 <p className="text-base font-bold text-fg tabular-nums">{formatINR(Number(selected.total_orders || 0) > 0 ? Number(selected.total_spent || 0) / Number(selected.total_orders) : 0, 0)}</p>
               </div>
             </div>
+            {Number(selected.credit_limit) > 0 && (
+              <div className="rounded-control bg-surface-2 px-3 py-2.5 text-center">
+                <p className="text-[9px] font-bold uppercase text-fg-subtle">Credit Limit</p>
+                <p className="text-base font-bold text-warning tabular-nums">{formatINR(Number(selected.credit_limit), 0)}</p>
+              </div>
+            )}
+            {Number(selected.outstanding) > 0 && (
+              <div className="rounded-control bg-surface-2 px-3 py-2.5 text-center">
+                <p className="text-[9px] font-bold uppercase text-fg-subtle">Outstanding</p>
+                <p className="text-base font-bold text-negative tabular-nums">{formatINR(Number(selected.outstanding), 0)}</p>
+              </div>
+            )}
 
             {/* Contact */}
             <div className="space-y-2 mb-4">

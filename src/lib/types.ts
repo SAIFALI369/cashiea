@@ -44,6 +44,8 @@ export interface Invoice {
   client_address: string | null
   /** Buyer GSTIN — required on B2B tax invoices (Rule 46(h)). */
   client_gstin: string | null
+  gst_rate: number | null
+  gst_amount: number | null
   items: InvoiceItem[]
   subtotal: number
   tax_rate: number
@@ -245,6 +247,8 @@ export interface Customer {
   loyalty_points: number
   first_purchase_at: string | null
   last_purchase_at: string | null
+  credit_limit: number
+  outstanding: number
   created_at: string
 }
 
@@ -341,6 +345,7 @@ export interface Supplier {
   gstin: string | null
   notes: string | null
   outstanding: number
+  credit_limit: number
   created_at: string
 }
 
