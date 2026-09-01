@@ -5,8 +5,9 @@ import { marked } from 'marked'
 import { motion, AnimatePresence } from 'framer-motion'
 import { askAssistant } from '../lib/ai'
 import { getPageContext } from '../lib/pageContext'
-import { MerajMark } from './MerajMark'
-import { MerajAvatar, deriveAvatarState } from './MerajAvatar'
+import { MerajGlyph } from './MerajDevice'
+import MerajDevice, { interactionFromAvatarState } from './MerajDevice'
+import { useBusinessMood } from '../lib/businessMood'
 import { useSpeech } from '../lib/useSpeech'
 import {
   X, Send, Loader2, Sparkles, ArrowUpRight, Plus, Zap, MessageCircle,
@@ -93,7 +94,8 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
     setMessages((m) => [...m, { role: 'meraj' as const, text: 'No problem — cancelled.' }])
   }
 
-  const avatarState = deriveAvatarState({ listening, loading, speaking })
+  const avatarState = listening ? 'listening' : loading ? 'thinking' : speaking ? 'speaking' : 'idle'
+  const businessMood = useBusinessMood() ?? 'neutral'
   const voiceStatus = listening ? 'Listening…' : loading ? 'Thinking…' : speaking ? 'Speaking…' : ''
 
   const startVoice = async () => {
@@ -135,7 +137,7 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
       {/* Voice-first launcher (desktop). Tap → listen → think → speak. */}
       {voiceMode ? (
         <div className="fixed z-40 bottom-6 right-6 hidden lg:flex flex-col items-center gap-2">
-          <MerajAvatar state={avatarState} size="sm" context="panel" />
+          <MerajDevice interactionState={interactionFromAvatarState(avatarState)} businessMood={businessMood} size="sm" context="panel" />
           {voiceStatus && <p className="text-[11px] font-medium text-fg-muted">{voiceStatus}</p>}
           {voiceReply && (
             <div className="card p-3 max-w-xs text-sm max-h-32 overflow-y-auto scroll-area prose-content" dangerouslySetInnerHTML={{ __html: render(voiceReply) }} />
@@ -149,7 +151,7 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
           className="fixed z-40 bottom-6 right-6 hidden lg:block active:scale-95 transition-transform"
         >
           <span className="relative block">
-            <MerajAvatar state={avatarState} size="md" context="floating" />
+            <MerajDevice interactionState={interactionFromAvatarState(avatarState)} businessMood={businessMood} size="md" context="panel" />
             <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-positive rounded-full border-2 border-paper animate-pulse" />
           </span>
         </button>
@@ -168,7 +170,7 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
             {/* Header — mark · title · page it's reading · expand · close */}
             <div className="flex items-center gap-2.5 px-3.5 py-3 border-b border-line bg-surface">
               <span className="w-8 h-8 rounded-xl bg-accent-soft text-accent ring-1 ring-accent/20 flex items-center justify-center flex-shrink-0">
-                <MerajMark size={18} />
+                <MerajGlyph size={18} />
               </span>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-fg text-sm leading-tight">Meraj</p>
@@ -199,7 +201,7 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center px-4">
                   <span className="w-11 h-11 rounded-2xl bg-accent-soft text-accent flex items-center justify-center mb-3">
-                    <MerajMark size={24} />
+                    <MerajGlyph size={24} />
                   </span>
                   <p className="text-sm text-fg font-medium">{ctx ? `Ask about ${ctx.name}` : 'Ask me anything'}</p>
                   <p className="text-xs text-fg-subtle mt-1 leading-relaxed max-w-[260px]">
@@ -220,7 +222,7 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
                     ) : (
                       <div key={i} className="flex gap-2.5">
                         <span className="w-7 h-7 rounded-lg bg-accent-soft text-accent flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <MerajMark size={15} />
+                          <MerajGlyph size={15} />
                         </span>
                         <div className="flex-1 min-w-0 pt-0.5">
                           <div className="prose-content text-sm" dangerouslySetInnerHTML={{ __html: render(m.text) }} />
@@ -239,7 +241,7 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
                   {loading && (
                     <div className="flex gap-2.5">
                       <span className="w-7 h-7 rounded-lg bg-accent-soft text-accent flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <MerajMark size={15} />
+                        <MerajGlyph size={15} />
                       </span>
                       <div className="flex items-center gap-1 pt-2">
                         {[0, 1, 2].map((d) => (

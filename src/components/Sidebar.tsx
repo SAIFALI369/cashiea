@@ -15,7 +15,7 @@ import {
   Package, Wallet, History, AlertOctagon, UsersRound,
   Settings as SettingsIcon, Plug, Key, CreditCard, Network, Shield, LifeBuoy,
   UserCircle, Bell, ShieldCheck, Lightbulb, X, LogOut, ChevronDown, ChevronRight,
-} from 'lucide-react'
+  TrendingUp, Landmark } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 interface Item { to: string; label: string; icon: LucideIcon; end?: boolean; badge?: boolean; ai?: boolean }
@@ -37,7 +37,10 @@ const CORE: Section[] = [
   ]},
   { label: 'Money', items: [
     { to: '/app/accounts', label: 'Accounts', icon: Wallet },
+    { to: '/app/profit-dashboard', label: 'Profit', icon: TrendingUp },
     { to: '/app/reports', label: 'Reports', icon: FileBarChart },
+    { to: '/app/gst-export', label: 'GST Export', icon: FileSignature },
+    { to: '/app/bank-import', label: 'Bank Import', icon: Landmark },
   ]},
   { label: 'Settings', items: [
     { to: '/app/settings', label: 'Settings', icon: SettingsIcon },

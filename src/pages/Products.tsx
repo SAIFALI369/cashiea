@@ -399,6 +399,7 @@ export default function Products() {
               const statusLabel = status === 'out' ? 'Out of stock' : status === 'low' ? 'Low stock' : 'In stock'
               const statusCls = status === 'out' ? 'bg-negative/15 text-negative' : status === 'low' ? 'bg-warning/15 text-warning' : 'bg-positive/15 text-positive'
               const margin = p.price > 0 ? (((p.price - p.cost) / p.price) * 100).toFixed(0) : '—'
+  const marginColor = Number(margin) >= 20 ? 'bg-positive/20 text-positive' : Number(margin) >= 10 ? 'bg-warning/20 text-warning' : 'bg-negative/20 text-negative'
               return (
                 <div key={p.id} className="card p-4 flex flex-wrap items-center gap-x-3 gap-y-2.5">
                   <div className="w-9 h-9 rounded-control bg-surface-2 flex items-center justify-center flex-shrink-0">
@@ -415,6 +416,7 @@ export default function Products() {
                       {p.units && p.units.length > 1 && <span className="text-xs px-1.5 py-0.5 rounded bg-accent-soft text-accent-strong">{p.units.length} units</span>}
                     </div>
                     <p className="text-sm text-accent mt-0.5">₹{p.price.toFixed(2)} <span className="text-fg-subtle">· {margin}% margin</span>{p.units?.[0]?.unit ? <span className="text-fg-subtle"> · per {p.units[0].unit}</span> : null}</p>
+                  {margin !== '—' && <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${marginColor}`}>{margin}%</span>}
                   </div>
                   <div className="flex items-center gap-2 ml-auto flex-shrink-0">
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap ${statusCls}`}>{statusLabel}</span>

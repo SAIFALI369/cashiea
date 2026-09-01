@@ -17,6 +17,9 @@ const Khata = lazy(() => import('./pages/Khata'))
 const Invoices = lazy(() => import('./pages/Invoices'))
 const Reports = lazy(() => import('./pages/Reports'))
 const DataEntryPage = lazy(() => import('./pages/DataEntry'))
+const ProfitDashboard = lazy(() => import('./pages/ProfitDashboard'))
+const BankImport = lazy(() => import('./pages/BankImport'))
+const GstExport = lazy(() => import('./pages/GstExport'))
 const Summaries = lazy(() => import('./pages/Summaries'))
 const EmailAssistant = lazy(() => import('./pages/EmailAssistant'))
 const Campaigns = lazy(() => import('./pages/Campaigns'))
@@ -122,6 +125,9 @@ function App() {
           <Route path="suggestions" element={<SuggestionsPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="permissions" element={<PermissionsPage />} />
+          <Route path="profit-dashboard" element={<ProfitDashboard />} />
+          <Route path="bank-import" element={<BankImport />} />
+          <Route path="gst-export" element={<GstExport />} />
         </Route>
 
         {/* Fallback */}

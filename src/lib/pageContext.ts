@@ -12,6 +12,18 @@ export interface PageContextInfo {
 }
 
 const PAGE_CONTEXT: Record<string, PageContextInfo> = {
+  '/app/profit-dashboard': {
+    name: 'Profit',
+    description: 'the profit dashboard — sales revenue, estimated cost of goods sold, gross and net profit, expenses, supplier dues and customer udhaar for the selected period',
+  },
+  '/app/gst-export': {
+    name: 'GST Export',
+    description: 'the GST export sheet — rate-wise GST summary (CGST/SGST/IGST), B2B vs B2C split and invoice list for GSTR-1 filing preparation',
+  },
+  '/app/bank-import': {
+    name: 'Bank Import',
+    description: 'the bank statement import — upload a bank CSV, match credits to unpaid invoices, and mark matched invoices paid',
+  },
   '/app/pos': {
     name: 'Point of Sale',
     description: 'the checkout screen where you ring up a new sale — add items and quantities, apply discount and tax, take payment, and generate a bill',

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import { MerajAvatar } from '../components/MerajAvatar'
+import MerajDevice from '../components/MerajDevice'
+import { useBusinessMood } from '../lib/businessMood'
 import { FitAmount } from '../components/FitAmount'
 import { motion } from '../components/motion'
 import { formatINR } from '../lib/format'
@@ -44,6 +45,8 @@ const startOfWeek = (d = new Date()) => {
 export default function Dashboard() {
   const { profile, ownerId } = useAuth()
   const navigate = useNavigate()
+  // Real signal-driven mood (sales trend vs 14-day average, overdue, low stock).
+  const merajMood = useBusinessMood() ?? 'neutral'
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<Stat[]>([])
   const [topPriority, setTopPriority] = useState<OverdueInv | null>(null)
@@ -298,7 +301,7 @@ export default function Dashboard() {
       {insights.length > 0 && (
         <section className="card p-5 sm:p-6">
           <div className="flex items-center gap-3 mb-3">
-            <MerajAvatar state="idle" context="icon" size="sm" className="flex-shrink-0" />
+            <MerajDevice interactionState="idle" businessMood={merajMood} size="md" context="card" className="flex-shrink-0" />
             <div className="min-w-0">
               <p className="text-sm font-bold text-fg">Meraj noticed {insights.length} things</p>
               <p className="text-[11px] text-fg-subtle">A quick look at your business</p>
@@ -321,7 +324,7 @@ export default function Dashboard() {
       {/* ASK MERAJ bar */}
       <section>
         <form onSubmit={(e) => { e.preventDefault(); goAsk() }} className="flex items-center gap-2 rounded-control border border-line bg-surface px-2 focus-within:border-accent/50 transition-colors">
-          <span className="pl-1.5"><MerajAvatar state="idle" context="icon" size="xs" /></span>
+          <span className="pl-1.5 flex-shrink-0"><MerajDevice interactionState="idle" businessMood={merajMood} size="sm" context="card" /></span>
           <input
             value={ask}
             onChange={(e) => setAsk(e.target.value)}

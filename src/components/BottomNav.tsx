@@ -3,7 +3,8 @@ import { useState, useRef } from 'react'
 import clsx from 'clsx'
 import { LayoutDashboard, ShoppingCart, Users, X, Camera } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { MerajAvatar, deriveAvatarState } from './MerajAvatar'
+import MerajDevice, { interactionFromAvatarState } from './MerajDevice'
+import { useBusinessMood } from '../lib/businessMood'
 import { useSpeech } from '../lib/useSpeech'
 import { askAssistant } from '../lib/ai'
 import { renderMd } from '../lib/markdown'
@@ -25,6 +26,14 @@ const LEFT: Item[] = [
 const RIGHT: Item[] = [
   { to: '/app/customers', label: 'Customers', icon: Users },
 ]
+
+// Legacy state names kept: listening / loading / speaking / idle.
+function deriveAvatarStateCompat({ listening, loading, speaking }: { listening: boolean; loading?: boolean; speaking: boolean }) {
+  if (listening) return 'listening'
+  if (loading) return 'thinking'
+  if (speaking) return 'speaking'
+  return 'idle'
+}
 
 const Slot = ({ item }: { item: Item }) => (
   <NavLink
@@ -52,7 +61,9 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
   const [voiceLoading, setVoiceLoading] = useState(false)
   const [voiceReply, setVoiceReply] = useState('')
 
-  const avatarState = deriveAvatarState({ listening, loading: voiceLoading || transcribing, speaking })
+  const avatarState = deriveAvatarStateCompat({ listening, loading: voiceLoading || transcribing, speaking })
+  const businessMood = useBusinessMood() ?? 'neutral'
+  const interaction = interactionFromAvatarState(avatarState)
   const statusText = listening ? 'Listening…' : transcribing ? 'Transcribing…' : voiceLoading ? 'Thinking…' : speaking ? 'Speaking…' : ''
 
   const startVoice = async () => {
@@ -143,7 +154,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
               <X className="w-4 h-4" />
             </button>
             <button onClick={() => (listening ? cancelVoice() : startVoice())} aria-label="Tap to talk to Meraj" className="active:scale-95 transition-transform">
-              <MerajAvatar state={avatarState} size="sm" context="panel" />
+              <MerajDevice interactionState={interaction} businessMood={businessMood} size="sm" context="nav" />
             </button>
           </div>
         </div>
@@ -169,7 +180,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
               aria-label="Talk to Meraj" title="Talk to Meraj"
             >
               <span className={`w-12 h-12 -mt-6 rounded-full ring-4 ring-surface flex items-center justify-center active:scale-95 transition-all shadow-[0_6px_20px_-4px_rgb(var(--accent))] ${listening || speaking ? 'bg-accent text-accent-fgl border-2 border-accent' : 'bg-accent-strong text-accent-fg'}`}>
-                <MerajAvatar state={voiceActive ? avatarState : 'idle'} size="sm" context="floating" />
+                <MerajDevice interactionState={voiceActive ? interaction : 'idle'} businessMood={businessMood} size="sm" context="nav" />
               </span>
               <span className="text-[9px] font-bold text-accent -mt-0.5">Talk to Meraj</span>
             </button>

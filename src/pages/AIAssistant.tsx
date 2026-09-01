@@ -5,9 +5,10 @@ import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { motion, AnimatePresence } from 'framer-motion'
 import { askAssistant } from '../lib/ai'
-import { MerajMark } from '../components/MerajMark'
+import { MerajGlyph } from '../components/MerajDevice'
 import { useAuth } from '../context/AuthContext'
-import { MerajAvatar, deriveAvatarState } from '../components/MerajAvatar'
+import MerajDevice, { interactionFromAvatarState } from '../components/MerajDevice'
+import { useBusinessMood } from '../lib/businessMood'
 import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft, Plus, MessageCircle, Zap, Wallet, Package, TrendingUp, Receipt, FileText, MessageSquareText, BarChart3, Download, Pencil } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { formatINR } from '../lib/format'
@@ -390,7 +391,9 @@ export default function AIAssistant() {
 
   const replying = loading || typing
   const userTyping = !replying && (focused || input.trim().length > 0)
-  const avatarState = deriveAvatarState({ listening, loading: replying || userTyping })
+  const avatarState = listening ? 'listening' : (replying || userTyping) ? 'thinking' : 'speaking'
+  const businessMood = useBusinessMood() ?? 'neutral'
+  const merajInteraction = listening ? 'listening' : (replying || userTyping) ? 'thinking' : 'idle'
 
   const send = async (override?: string, overrideImage?: { data: string; mimeType: string; preview: string } | null) => {
     const img = overrideImage ?? pendingImage
@@ -529,7 +532,7 @@ export default function AIAssistant() {
           {convos.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />}
         </button>
         <div className="flex-1 flex items-center justify-center gap-2">
-          <MerajAvatar state={avatarState} context="icon" size="sm" />
+          <MerajDevice interactionState={merajInteraction} businessMood={businessMood} size="sm" context="panel" />
           <div className="text-left leading-tight">
             <p className="font-semibold text-fg text-sm">Meraj</p>
             <p className="text-[10px] text-fg-subtle">{userTyping ? 'Hello — ask me anything' : scopeLabel ? `Focused · ${scopeLabel}` : 'Your shop assistant'}</p>
@@ -566,7 +569,7 @@ export default function AIAssistant() {
             {/* Greeting — Meraj mascot + fresh 2-4 word micro-greeting */}
             <div className="flex items-start gap-3 mb-5">
               <div className="flex-shrink-0 -mt-1">
-                <MerajAvatar state="idle" context="panel" size="md" />
+                <MerajDevice interactionState="idle" businessMood={businessMood} size="lg" context="panel" />
               </div>
               <div className="min-w-0">
                 <h2 className="text-xl font-bold text-fg leading-snug">{greeting}</h2>
@@ -699,7 +702,7 @@ export default function AIAssistant() {
               </div>
             ) : (
               <div key={i} className="flex gap-3">
-                <span className="w-8 h-8 rounded-lg bg-accent-soft text-accent flex items-center justify-center flex-shrink-0 mt-0.5"><MerajMark size={18} /></span>
+                <span className="w-8 h-8 rounded-lg bg-accent-soft text-accent flex items-center justify-center flex-shrink-0 mt-0.5"><MerajGlyph size={18} /></span>
                 <div className="flex-1 min-w-0 pt-0.5">
                   <div className="text-sm">
                     {typing && i === lastIdx
@@ -743,7 +746,7 @@ export default function AIAssistant() {
           )}
           {loading && (
             <div className="flex gap-3">
-              <span className="w-8 h-8 rounded-lg bg-accent-soft text-accent flex items-center justify-center flex-shrink-0 mt-0.5"><MerajMark size={18} /></span>
+              <span className="w-8 h-8 rounded-lg bg-accent-soft text-accent flex items-center justify-center flex-shrink-0 mt-0.5"><MerajGlyph size={18} /></span>
               <div className="flex items-center gap-1.5 pt-2">
                 {[0, 1, 2].map((d) => (
                   <motion.span key={d} className="w-1.5 h-1.5 rounded-full bg-accent" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1, repeat: Infinity, delay: d * 0.15 }} />

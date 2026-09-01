@@ -245,6 +245,8 @@ export interface Customer {
   loyalty_points: number
   first_purchase_at: string | null
   last_purchase_at: string | null
+  /** Manual credit limit the shop has extended to this customer (₹). */
+  credit_limit: number
   created_at: string
 }
 
@@ -341,6 +343,8 @@ export interface Supplier {
   gstin: string | null
   notes: string | null
   outstanding: number
+  /** Credit limit the supplier has extended to the shop (₹). */
+  credit_limit: number
   created_at: string
 }
 
