@@ -4,6 +4,7 @@ import Sidebar from './Sidebar'
 import FloatingMeraj from './FloatingMeraj'
 import BottomNav from './BottomNav'
 import DesktopHeader from './DesktopHeader'
+import { CommandPalette } from './CommandPalette'
 import { LiveClock } from './LiveClock'
 import { OfflineBanner } from './OfflineBanner'
 import { useDailyIntelligence } from '../lib/useDailyIntelligence'
@@ -149,6 +150,7 @@ export default function AppLayout() {
           we keep the FAB for non-desktop / non-mobile? Keep existing logic
           but hide on desktop where the bottom-nav Meraj slot is visible. */}
       {showFloatingMeraj && !isDesktop && <FloatingMeraj pathname={location.pathname} />}
+      <CommandPalette />
       <SyncManager />
     </div>
   )
