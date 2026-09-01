@@ -91,8 +91,10 @@ Deno.serve(async (req) => {
       }
       const newUserId = created.user.id;
 
-      // Profile row links the account to the owner's business.
-      const { error: profErr } = await svc.from("profiles").insert({
+      // Profile: the on_auth_user_created trigger already inserts a
+      // starter row — UPSERT it into a staff profile linked to the
+      // owner's business.
+      const { error: profErr } = await svc.from("profiles").upsert({
         id: newUserId,
         full_name: name || cleanEmail.split("@")[0],
         company_name: null,
@@ -103,7 +105,7 @@ Deno.serve(async (req) => {
         plan_tier: "free",
         ai_provider: "groq",
         report_time_utc: "22:30",
-      });
+      }, { onConflict: "id" });
       if (profErr) {
         // Roll back the auth user so we never leave a half-linked account.
         await svc.auth.admin.deleteUser(newUserId);
