@@ -65,7 +65,7 @@ FACE_W = (250, 248, 242)       # white eyes/mouth (light theme)
 
 # Geometry — body / screen / bezel
 BODY_CX, BODY_CY, BODY_RX, BODY_RY = 300, 256, 260, 216   # 520x432
-SCREEN_BOX = (96, 84, 504, 352)                            # 408x268, r=30
+SCREEN_BOX = (96, 122, 504, 390)                           # 408x268, r=30 — vertically CENTERED
 SCREEN_R = 30
 
 STATES = ['neutral', 'happy', 'sad', 'listening', 'thinking', 'speaking']
@@ -135,8 +135,8 @@ def render_body():
                fill=(255, 255, 255, 58))
     ad.ellipse((BODY_CX + 60, BODY_CY + 90, BODY_CX + 260, BODY_CY + 220),   # warm sheen
                fill=(255, 255, 255, 26))
-    ad.rounded_rectangle((88, 76, 512, 360), radius=38, fill=(0, 0, 0, 62))  # bezel shadow ring
-    ad.rounded_rectangle((98, 86, 502, 350), radius=28, outline=(255, 255, 255, 30), width=2)
+    ad.rounded_rectangle((88, 114, 512, 398), radius=38, fill=(0, 0, 0, 62))  # bezel shadow ring
+    ad.rounded_rectangle((98, 124, 502, 388), radius=28, outline=(255, 255, 255, 30), width=2)
     inner_pts = superellipse_pts(BODY_CX, BODY_CY, BODY_RX - 12, BODY_RY - 12, n=2.7)
     ad.polygon(inner_pts, outline=(255, 255, 255, 26), width=3)             # inner light line
     # clip accents to the body silhouette so nothing bleeds past the edges
@@ -151,17 +151,17 @@ def render_body():
     img.paste(hole, (SCREEN_BOX[0], SCREEN_BOX[1]), mask_rr(SCREEN_BOX, SCREEN_R))
 
     # ── bezel content (opaque, drawn directly) ──
-    draw_spaced(d, 'CASHIEA', BODY_CX, 62, load(16, bold=True), CREAM, spacing=6)
+    draw_spaced(d, 'CASHIEA', BODY_CX, 61, load(16, bold=True), CREAM, spacing=6)
 
-    d.ellipse((179, 365, 221, 407), fill=CREAM)                    # M badge
-    d.text((200, 386), 'M', font=load(26, bold=True), fill=BADGE_GREEN, anchor='mm')
-    d.text((312, 386), 'Meraj', font=load(38, serif=True), fill=CREAM, anchor='mm')
-    draw_spaced(d, 'PLAN · TRACK · GROW TOGETHER', BODY_CX, 424, load(13), CREAM, spacing=1)
+    d.ellipse((179, 403, 221, 445), fill=CREAM)                    # M badge
+    d.text((200, 424), 'M', font=load(26, bold=True), fill=BADGE_GREEN, anchor='mm')
+    d.text((312, 424), 'Meraj', font=load(36, serif=True), fill=CREAM, anchor='mm')
+    draw_spaced(d, 'PLAN · TRACK · GROW TOGETHER', BODY_CX, 462, load(13), CREAM, spacing=1)
 
     for i in range(5):                                            # speaker dots
         x = 274 + i * 13
-        d.ellipse((x - 3.5, 448.5, x + 3.5, 455.5), fill=DOT_GREEN)
-    d.ellipse((106, 448, 114, 456), fill=LED)                     # standby LED
+        d.ellipse((x - 3.5, 486.5, x + 3.5, 493.5), fill=DOT_GREEN)
+    d.ellipse((106, 486, 114, 494), fill=LED)                     # standby LED
 
     return img
 

@@ -61,7 +61,7 @@ export const MERAJ_FRAMES = 8
 export const MERAJ_FPS = 12
 
 /** Source canvas geometry (600x512) and the screen rect inside it. */
-export const MERAJ_SCREEN = { x: 96, y: 84, w: 408, h: 268 }
+export const MERAJ_SCREEN = { x: 96, y: 122, w: 408, h: 268 }  // vertically centered in the body
 
 const FACE_LABEL: Record<MerajFace, string> = {
   neutral: 'Meraj, resting',
@@ -135,6 +135,17 @@ export default function MerajDevice({
 }: MerajDeviceProps) {
   const face = resolveMerajFace(interactionState, businessMood)
   const active = interactionState !== 'idle'
+
+  // Crossfade memory: render only the current face's sprite (plus the
+  // previous one briefly, for the fade) — mounting all six sheets in
+  // every placement decoded 6× the images for no visual gain.
+  const [prevFace, setPrevFace] = useState<MerajFace | null>(null)
+  const faceRef = useRef<MerajFace>(face)
+  if (faceRef.current !== face) {
+    setPrevFace(faceRef.current)
+    faceRef.current = face
+    if (typeof window !== 'undefined') setTimeout(() => setPrevFace((p) => (p === faceRef.current ? p : null)), 400)
+  }
   const height = PIXELS[size]
   const width = height * (600 / 512) // TV form factor (1.171875 : 1)
   // Accessibility: users who prefer reduced motion never get the 24fps
@@ -174,8 +185,12 @@ export default function MerajDevice({
     }
 
     let raf = 0
-    const draw = () => {
-      if (vid.readyState >= 2) {
+    let lastDraw = 0
+    const draw = (now: number) => {
+      // Only paint while the video is actually playing, at most ~30fps —
+      // an idle rAF loop spinning at 60fps burns battery for nothing.
+      if (!vid.paused && vid.readyState >= 2 && now - lastDraw >= 33) {
+        lastDraw = now
         ctx.clearRect(0, 0, canvas.width, canvas.height)
         ctx.drawImage(vid, 0, 0, canvas.width, canvas.height)
       }
@@ -195,11 +210,17 @@ export default function MerajDevice({
     tryPlay()
     raf = requestAnimationFrame(draw)
     const onVis = () => (document.visibilityState === 'visible' ? tryPlay() : vid.pause())
+    // No playback possible (autoplay blocked / missing file) → kill the
+    // draw loop; the sprite fallback beneath takes over.
+    const giveUp = () => { cancelAnimationFrame(raf); raf = 0 }
+    const onStall = () => { if (vid.error) giveUp() }
+    vid.addEventListener('stalled', onStall)
     document.addEventListener('visibilitychange', onVis)
     return () => {
       cancelAnimationFrame(raf)
       vid.removeEventListener('playing', onPlaying)
       vid.removeEventListener('error', onError)
+      vid.removeEventListener('stalled', onStall)
       document.removeEventListener('visibilitychange', onVis)
     }
   }, [video, face, inView])
@@ -220,6 +241,7 @@ export default function MerajDevice({
       title={FACE_LABEL[face]}
       data-active={active ? 'true' : 'false'}
       data-face={face}
+      data-inview={inView ? 'true' : 'false'}
       data-anim={video ? 'video' : 'sprite'}
       className={clsx('meraj-device relative inline-flex items-center justify-center flex-shrink-0', className)}
       style={{
@@ -234,8 +256,7 @@ export default function MerajDevice({
         className="meraj-glow absolute rounded-full pointer-events-none"
         style={{
           inset: GLOW_INSET[context],
-          background: 'radial-gradient(closest-side, rgb(var(--meraj-glow, 46 166 103) / 0.5), transparent 72%)',
-          filter: 'blur(6px)',
+          background: 'radial-gradient(closest-side, rgb(var(--meraj-glow, 46 166 103) / 0.42), rgb(var(--meraj-glow, 46 166 103) / 0.16) 46%, transparent 78%)',
         }}
       />
 
@@ -248,8 +269,10 @@ export default function MerajDevice({
           className="meraj-screen absolute pointer-events-none"
           style={scr}
         >
-          {/* Sprite faces (always mounted as the video fallback) */}
-          {(Object.keys(MERAJ_SHEETS) as MerajFace[]).map((key) => (
+          {/* Sprite faces — only the active (and briefly the previous)
+              sheet is mounted; the container clips the 8-frame strip to
+              the screen (see .meraj-screen CSS). */}
+          {[...(prevFace && prevFace !== face ? [prevFace] : []), face].map((key) => (
             <img
               key={key}
               src={MERAJ_SHEETS[key]}
