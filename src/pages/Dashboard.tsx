@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import MerajDevice from '../components/MerajDevice'
+import MerajSection from '../components/MerajSection'
 import { useBusinessMood } from '../lib/businessMood'
 import { FitAmount } from '../components/FitAmount'
 import { motion } from '../components/motion'
@@ -297,29 +298,11 @@ export default function Dashboard() {
         </section>
       )}
 
-      {/* MERAJ INSIGHTS */}
-      {insights.length > 0 && (
-        <section className="card p-5 sm:p-6">
-          <div className="flex items-center gap-3 mb-3">
-            <MerajDevice interactionState="idle" businessMood={merajMood} size="md" context="card" className="flex-shrink-0" />
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-fg">Meraj noticed {insights.length} things</p>
-              <p className="text-[11px] text-fg-subtle">A quick look at your business</p>
-            </div>
-          </div>
-          <div className="space-y-3">
-            {insights.map((it, i) => (
-              <div key={i} className="flex items-start gap-2.5">
-                <span className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${sevDot[it.severity]}`} />
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-fg leading-snug truncate">{it.title}</p>
-                  <p className="text-xs text-fg-subtle leading-snug">{it.subtitle}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* MERAJ SECTION — large rectangular reserved space for Meraj.
+          He's always present here, playing/reacting, with a 💭 thought bubble
+          that cycles a friend-phrase every hour, and a creative business
+          pulse strip showing profit/stocks/sales/problems/growth. */}
+      <MerajSection />
 
       {/* ASK MERAJ bar */}
       <section>
@@ -370,8 +353,9 @@ export default function Dashboard() {
         )}
       </section>
 
-      {/* STATS grid — dense, enriched */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+      {/* STATS grid — 3 per row (3/3) on tablet+ to feel purpose-built for desktop.
+          Kept at 2 per row only on the smallest phones where 3 would crowd. */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
         {stats.map((m) => {
           const good = m.count === 0 && !!m.positive
           return (
