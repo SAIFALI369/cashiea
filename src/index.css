@@ -231,17 +231,23 @@ h1, h2, h3 {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   MERAJ DEVICE CHARACTER — motion spec (CSS only, no 3D).
-   Body: gentle float + breathing glow (idle 4.5s; active states run
-   faster so the device feels attentive).
-   Face: 8-frame flipbook sprite sheet plays with steps() — the
-   character visibly blinks, smiles, thinks and answers like a video.
-   A true 3D backflip/rotation is deliberately NOT implemented —
-   tracked as a separate future task.
+   MERAJ DEVICE CHARACTER — floating green TV mascot.
+   Motion (CSS only): gentle float + subtle 3D tilt (a ±3° rock — a
+   true 3D backflip is deliberately NOT implemented and stays a
+   separate future task), green breathing glow, and a soft depth
+   shadow under the device.
+   Screen animation: 8-frame flipbook sprite via steps() or a real
+   24fps .webm video loop drawn on a canvas (component-managed).
+   Theme: the screen is authored black-on-white (light); in dark
+   mode it inverts → white screen, black eyes/mouth.
    ════════════════════════════════════════════════════════════════ */
+:root { --meraj-glow: 46 166 103; }
+
 @keyframes meraj-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(calc(-1 * var(--meraj-float, 4px))); }
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  25%      { transform: translateY(calc(var(--meraj-float, 4px) * -0.4)) rotate(-1.2deg); }
+  50%      { transform: translateY(calc(var(--meraj-float, 4px) * -1)) rotate(3deg); }
+  75%      { transform: translateY(calc(var(--meraj-float, 4px) * -0.4)) rotate(1.2deg); }
 }
 @keyframes meraj-glow {
   0%, 100% { opacity: 0.45; transform: scale(0.92); }
@@ -251,18 +257,25 @@ h1, h2, h3 {
   from { transform: translateX(0); }
   to { transform: translateX(-100%); }
 }
-.meraj-float { animation: meraj-float 4.5s ease-in-out infinite; }
+.meraj-float {
+  animation: meraj-float 4.5s ease-in-out infinite;
+  will-change: transform;
+}
 .meraj-glow { animation: meraj-glow 4.5s ease-in-out infinite; }
-.meraj-clip { border-radius: 50% 50% 50% 50% / 44% 44% 56% 56%; }
+/* Soft ground shadow so the device reads as floating, not glued. */
+.meraj-body { filter: drop-shadow(0 10px 18px rgb(var(--shadow) / 0.28)); }
 .meraj-flipbook {
   animation: meraj-flipbook 0.667s steps(8, end) infinite;
   animation-delay: -0.05s; /* de-syncs multiple devices on one screen */
 }
+/* THEME-ADAPTIVE SCREEN: black screen + white features in light mode;
+   dark mode inverts it → white screen + black features. */
+.dark .meraj-screen { filter: invert(1); }
 .meraj-device[data-active='true'] .meraj-float,
 .meraj-device[data-active='true'] .meraj-glow {
   animation-duration: 1.7s;
 }
 @media (prefers-reduced-motion: reduce) {
   .meraj-float, .meraj-glow { animation: none; }
-  .meraj-flipbook { animation: none; transform: translateX(0); }
+  .meraj-flipbook { animation: none; transform: translateX(0); } /* static first frame */
 }

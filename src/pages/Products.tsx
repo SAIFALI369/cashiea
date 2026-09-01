@@ -81,6 +81,17 @@ export default function Products() {
 
   // ── Inline validation (fires on blur, blocks save) ─────────────
 
+  // Same-name detection: adding a product whose name matches an
+  // existing one (case-insensitive) becomes a RESTOCK — the entered
+  // quantity is ADDED to live stock. This is the only way stock grows;
+  // it only shrinks through recorded sales.
+  const existingByName = useMemo(() => {
+    const q = form.name.trim().toLowerCase()
+    if (!q) return null
+    return products.find((p) => p.name.trim().toLowerCase() === q) || null
+  }, [form.name, products])
+  const isRestock = !!existingByName
+
   const skuOwner = useMemo(() => {
     const lower = form.sku.trim().toLowerCase()
     if (!lower) return null
@@ -90,7 +101,7 @@ export default function Products() {
   const errors = useMemo(() => {
     const e: Record<string, string> = {}
     if (!form.name.trim()) e.name = 'Product name is required'
-    if (form.price === '') e.price = 'Selling price is required'
+    if (form.price === '' && !isRestock) e.price = 'Selling price is required'
     else {
       const v = validatePrice(form.price)
       if (!v.valid) e.price = v.message!
@@ -130,6 +141,32 @@ export default function Products() {
 
     setSaving(true)
     try {
+      // ── RESTOCK: same name as an existing product → add quantity to
+      // live stock (update price/cost only when provided). This is the
+      // only path that grows stock; sales are the only path that
+      // shrinks it. Non-owners go through the owner-approval flow.
+      if (existingByName) {
+        const addQty = Number(form.stock_quantity) || 0
+        if (addQty <= 0) { toast.error('Enter the quantity to add'); setSaving(false); return }
+        const newQty = Number(existingByName.stock_quantity) + addQty
+        const patch: Partial<Product> = { stock_quantity: newQty, updated_at: new Date().toISOString() }
+        if (form.price !== '') patch.price = Number(form.price) || 0
+        if (form.cost !== '') patch.cost = Number(form.cost) || 0
+        if (isOwner) {
+          const { error } = await supabase.from('products').update(patch).eq('id', existingByName.id).eq('user_id', ownerId)
+          if (error) throw error
+          setProducts(products.map((x) => x.id === existingByName.id ? { ...x, ...patch } as Product : x))
+          toast.success(`Stock updated — ${existingByName.name}: ${existingByName.stock_quantity} → ${newQty} (+${addQty})`)
+        } else {
+          await requestAction({ capability: 'products:manage', action_type: 'product.restock', target: 'products',
+            payload: { id: existingByName.id, stock_quantity: newQty, ...(patch.price !== undefined ? { price: patch.price } : {}), ...(patch.cost !== undefined ? { cost: patch.cost } : {}) },
+            summary: `Restock "${existingByName.name}" — add ${addQty} (new total ${newQty})`, money_related: false })
+          toast.success('Restock sent to the owner for approval')
+        }
+        setForm(empty); setTouched({}); setShowForm(false)
+        return
+      }
+
       // Multi-unit pricing: the base unit mirrors the main price; extra
       // units (500g, dozen …) each carry their own price and consume a
       // fraction of base stock.
@@ -181,20 +218,6 @@ export default function Products() {
     } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed') }
   }
 
-  const restock = async (p: Product, delta: number) => {
-    const newQty = Math.max(0, p.stock_quantity + delta)
-    try {
-      if (isOwner) {
-        const { error } = await supabase.from('products').update({ stock_quantity: newQty }).eq('id', p.id)
-        if (error) throw error
-        setProducts(products.map((x) => x.id === p.id ? { ...x, stock_quantity: newQty } : x))
-      } else {
-        await requestAction({ capability: 'products:manage', action_type: 'product.restock', target: 'products', payload: { id: p.id, stock_quantity: newQty }, summary: `Set "${p.name}" stock to ${newQty}`, money_related: false })
-        toast.success('Sent for approval')
-      }
-    } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed') }
-  }
-
   const filtered = products.filter((p) => {
     const matchSearch = !search || p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) || (p.sku || '').toLowerCase().includes(debouncedSearch.toLowerCase())
     if (!matchSearch) return false
@@ -228,15 +251,31 @@ export default function Products() {
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-4 mb-4">
         <div className="card p-4"><p className="text-xl font-bold text-fg">{products.length}</p><p className="text-xs text-fg-subtle">Products</p></div>
         <div className="card p-4"><p className="text-xl font-bold text-warning">{lowStockCount}</p><p className="text-xs text-fg-subtle">Low stock</p></div>
         <div className="card p-4"><p className="text-xl font-bold text-fg">₹{inventoryValue.toFixed(0)}</p><p className="text-xs text-fg-subtle">Inventory value</p></div>
       </div>
 
+      {/* Stock-integrity policy, stated where the owner looks */}
+      <p className="text-[11px] text-fg-subtle mb-6 leading-relaxed">
+        Stock is protected — it only grows through a restock (Add Product with an existing name) and only shrinks through recorded sales.
+        To remove units (spoilage, breakage), bill them at the counter so the record stays clean; staff changes go to the owner for approval.
+      </p>
+
       {showForm && (
         <div className="card p-4 mb-6 animate-slide-up">
-          <h2 className="font-semibold text-fg mb-4">New Product</h2>
+          <h2 className="font-semibold text-fg mb-1">{isRestock ? `Restock ${existingByName?.name}` : 'New Product'}</h2>
+          {isRestock ? (
+            <div className="mb-4 p-3 rounded-xl bg-accent-soft/60 border border-accent/30 text-xs text-fg leading-relaxed" role="status">
+              <strong className="text-fg">“{existingByName?.name}” already exists</strong> — current stock{' '}
+              <strong className="text-fg">{existingByName?.stock_quantity} {existingByName?.units?.[0]?.unit || 'pcs'}</strong>.
+              The quantity you enter below is <strong className="text-fg">added</strong> to live stock on save.
+              Leave price/cost blank to keep the current ones.
+            </div>
+          ) : (
+            <p className="text-xs text-fg-subtle mb-4">Tip: enter an existing product's name to restock it.</p>
+          )}
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="label">Name *</label>
@@ -254,7 +293,7 @@ export default function Products() {
             </div>
             <div><label className="label">Description</label><input value={form.description} onChange={(e) => setField('description', e.target.value)} className="input-field" placeholder="Optional" /></div>
             <div>
-              <label className="label">Price (₹) *</label>
+              <label className="label">Price (₹){isRestock ? <span className="text-fg-subtle font-normal"> (keep current if blank)</span> : ' *'}</label>
               <input type="number" step="0.01" value={form.price} onChange={(e) => setField('price', e.target.value)} onBlur={() => touch('price')} className={`input-field ${fieldError('price') ? 'border-negative' : ''}`} placeholder="299" aria-invalid={!!fieldError('price')} />
               {err('price')}
             </div>
@@ -281,7 +320,7 @@ export default function Products() {
               </div>
             </div>
             <div>
-              <label className="label">Stock quantity{hints.unit ? <span className="text-fg-subtle font-normal"> ({hints.unit})</span> : null}</label>
+              <label className="label">{isRestock ? 'Quantity to add' : 'Stock quantity'}{hints.unit ? <span className="text-fg-subtle font-normal"> ({hints.unit})</span> : null}</label>
               <input type="number" step="0.01" value={form.stock_quantity} onChange={(e) => setField('stock_quantity', e.target.value)} onBlur={() => touch('stock_quantity')} className={`input-field ${fieldError('stock_quantity') ? 'border-negative' : ''}`} placeholder="100" aria-invalid={!!fieldError('stock_quantity')} />
               {err('stock_quantity')}
             </div>
@@ -420,11 +459,12 @@ export default function Products() {
                   </div>
                   <div className="flex items-center gap-2 ml-auto flex-shrink-0">
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap ${statusCls}`}>{statusLabel}</span>
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => restock(p, -1)} aria-label={`Remove one ${p.units?.[0]?.unit || 'unit'} of ${p.name} from stock`} className="w-11 h-11 rounded-control bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-fg-muted active:scale-95 transition-transform text-lg">−</button>
-                      <span className="w-16 text-center text-sm font-semibold text-fg">{p.stock_quantity}<span className="text-[10px] font-normal text-fg-subtle ml-0.5">{p.units?.[0]?.unit || 'pcs'}</span></span>
-                      <button onClick={() => restock(p, 1)} aria-label={`Add one ${p.units?.[0]?.unit || 'unit'} of ${p.name} to stock`} className="w-11 h-11 rounded-control bg-surface-2 hover:bg-surface-3 flex items-center justify-center text-fg-muted active:scale-95 transition-transform text-lg">+</button>
-                    </div>
+                    {/* Stock is a READOUT — it only changes through sales
+                        (which decrement at checkout) or a restock through
+                        the Add Product form. No manual +/- manipulation. */}
+                    <span className="text-sm font-semibold text-fg tabular-nums">
+                      {p.stock_quantity}<span className="text-[10px] font-normal text-fg-subtle ml-0.5">{p.units?.[0]?.unit || 'pcs'}</span>
+                    </span>
                     <button onClick={() => setConfirmDelete(p)} aria-label={`Delete ${p.name}`} className="w-11 h-11 rounded-xl flex items-center justify-center text-fg-subtle hover:text-negative hover:bg-negative/10 flex-shrink-0">
                       <Trash2 className="w-4 h-4" />
                     </button>

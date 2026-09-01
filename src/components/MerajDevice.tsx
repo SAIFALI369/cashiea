@@ -4,32 +4,28 @@ import type { CSSProperties } from 'react'
 import type { BusinessMood } from '../lib/businessMood'
 
 // ────────────────────────────────────────────────────────────────
-// MerajDevice — the oval device-character (cream/gold body, dark
-// glass screen-face, "Meraj" display panel, "M" speaker, Cashiea
-// branding baked into the render).
+// MerajDevice — the floating green TV mascot.
 //
-// VIDEO-LIKE ANIMATION:
-// The body is one static render; the screen-face is an 8-frame
-// flipbook sprite sheet that plays on loop with CSS `steps()` —
-// eyes blink, pupils drift, waveforms dance, thought dots pulse,
-// the mouth chatters. The whole device floats + breathes with a
-// glow halo. (A true 3D backflip is still out of scope — tracked
-// as a separate future task.)
+// DESIGN: a smooth green squircle body (superellipse, 1.2:1 TV
+// form factor) with a wide inset screen (1.52:1), "CASHIEA" on the
+// top bezel, "M" badge + "Meraj" wordmark + tagline + speaker dots
+// on the bottom bezel.
 //
-// Optional video upgrade: drop {state}.webm files next to the
-// sheets and pass animationMode="video" — each is played through a
-// hidden <video> and drawn onto a shared canvas per state, so the
-// face runs at 60fps while the body stays a crisp still.
+// THEME-ADAPTIVE SCREEN: the screen layer is authored as BLACK
+// screen + WHITE eyes/mouth (light theme). In dark mode CSS applies
+// `filter: invert(1)` to it → WHITE screen + BLACK eyes/mouth.
+// One asset set, both themes.
 //
-// One component, three placements:
-//   • context="nav"   — bottom-nav center launcher (size sm)
-//   • context="card"  — Dashboard "Meraj noticed something" card (md)
-//   • context="panel" — full Meraj / talk panel (lg)
+// ANIMATION (video-like):
+//  • 8-frame flipbook sprite sheets played with CSS steps() (12fps)
+//  • OR real 24fps .webm video loops drawn onto a canvas (video mode,
+//    default for size="lg") — smooth eased motion, tiny file size
+//  • The whole device floats with a gentle 3D tilt (±3° rock) and a
+//    green breathing glow. (A true backflip remains out of scope —
+//    tracked separately.)
 //
 // Face priority: active interaction states (listening / thinking /
-// speaking) ALWAYS beat the resting businessMood — an active
-// conversation is more urgent than the resting mood. businessMood
-// (happy / neutral / sad) only renders when interactionState is idle.
+// speaking) ALWAYS beat the resting businessMood.
 // ────────────────────────────────────────────────────────────────
 
 export type MerajInteractionState = 'idle' | 'listening' | 'thinking' | 'speaking'
@@ -38,7 +34,10 @@ export type MerajContext = 'nav' | 'card' | 'panel'
 export type MerajFace = 'neutral' | 'happy' | 'sad' | 'listening' | 'thinking' | 'speaking'
 export type MerajAnimationMode = 'sprite' | 'video'
 
-/** 8-frame flipbook sprite sheets (220x240 per frame, 1760x240 total). */
+/** Static shared body — identical under every face state. */
+export const MERAJ_BODY = '/meraj/device-body.png'
+
+/** 8-frame flipbook sprite sheets (408x268 per frame, 3264x268 total). */
 export const MERAJ_SHEETS: Record<MerajFace, string> = {
   neutral: '/meraj/sheet-neutral.png',
   happy: '/meraj/sheet-happy.png',
@@ -48,10 +47,7 @@ export const MERAJ_SHEETS: Record<MerajFace, string> = {
   speaking: '/meraj/sheet-speaking.png',
 }
 
-/** Static shared body — same render under every face state. */
-export const MERAJ_BODY = '/meraj/device-body.png'
-
-/** Optional 60fps video loops ({state}.webm) — used when animationMode="video". */
+/** 24fps .webm face loops (VP9 + alpha) — used in video mode. */
 export const MERAJ_VIDEOS: Record<MerajFace, string> = {
   neutral: '/meraj/neutral.webm',
   happy: '/meraj/happy.webm',
@@ -63,6 +59,9 @@ export const MERAJ_VIDEOS: Record<MerajFace, string> = {
 
 export const MERAJ_FRAMES = 8
 export const MERAJ_FPS = 12
+
+/** Source canvas geometry (600x512) and the screen rect inside it. */
+export const MERAJ_SCREEN = { x: 96, y: 84, w: 408, h: 268 }
 
 const FACE_LABEL: Record<MerajFace, string> = {
   neutral: 'Meraj, resting',
@@ -90,9 +89,9 @@ export function resolveMerajFace(
 
 const PIXELS: Record<MerajSize, number> = { sm: 48, md: 80, lg: 150 }
 const FLOAT_PX: Record<MerajSize, number> = { sm: 2.5, md: 4, lg: 6 }
-const GLOW_INSET: Record<MerajContext, string> = { nav: '-12%', card: '-16%', panel: '-22%' }
+const GLOW_INSET: Record<MerajContext, string> = { nav: '-10%', card: '-14%', panel: '-20%' }
 
-/** Pause the flipbook when the device scrolls out of view (perf). */
+/** Pause animation when the device scrolls out of view (perf). */
 function useInView<T extends HTMLElement>() {
   const ref = useRef<T | null>(null)
   const [inView, setInView] = useState(true)
@@ -119,8 +118,10 @@ interface MerajDeviceProps {
   size?: MerajSize
   context?: MerajContext
   className?: string
-  /** 'sprite' = 8-frame flipbook (default). 'video' = draw {state}.webm
-   *  loops through a hidden <video> onto a canvas (60fps). */
+  /** 'sprite' = flipbook; 'video' = 24fps .webm on a canvas.
+   *  Default: 'video' for the large panel character, 'sprite' for
+   *  small devices. Falls back to the sprite automatically if the
+   *  video can't play (autoplay policy, missing file). */
   animationMode?: MerajAnimationMode
 }
 
@@ -130,33 +131,46 @@ export default function MerajDevice({
   size = 'md',
   context = 'card',
   className = '',
-  animationMode = 'sprite',
+  animationMode,
 }: MerajDeviceProps) {
   const face = resolveMerajFace(interactionState, businessMood)
   const active = interactionState !== 'idle'
-  const px = PIXELS[size]
+  const height = PIXELS[size]
+  const width = height * (600 / 512) // TV form factor (1.171875 : 1)
+  // Accessibility: users who prefer reduced motion never get the 24fps
+  // video loop — the sprite engine is used instead and CSS pins it to
+  // its first frame.
+  const reducedMotion = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  const mode: MerajAnimationMode = animationMode ?? (size === 'lg' && !reducedMotion ? 'video' : 'sprite')
   const { ref: inViewRef, inView } = useInView<HTMLSpanElement>()
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [videoOk, setVideoOk] = useState(false)
 
-  const video = animationMode === 'video'
+  const video = mode === 'video'
 
-  // ── Video mode: loop the active state's .webm, draw onto the shared
-  // canvas. The body stays a crisp still; only the face is video.
+  // ── Video mode: loop the active state's .webm, draw it onto the
+  // shared canvas. The body stays a crisp still; only the screen is
+  // video. Any failure → the sprite faces stay visible underneath.
   useEffect(() => {
-    if (!video) return
+    if (!video) {
+      setVideoOk(false)
+      return
+    }
     const vid = videoRef.current
     const canvas = canvasRef.current
     if (!vid || !canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
+    setVideoOk(false)
     const src = MERAJ_VIDEOS[face]
     if (vid.src !== new URL(src, window.location.href).href) {
       vid.src = src
       vid.loop = true
       vid.muted = true
       vid.playsInline = true
+      vid.preload = 'auto'
     }
 
     let raf = 0
@@ -168,18 +182,35 @@ export default function MerajDevice({
       raf = requestAnimationFrame(draw)
     }
     const tryPlay = () => {
-      if (inView) vid.play().catch(() => { /* autoplay blocked — retry on next interaction */ })
-      else vid.pause()
+      if (!inView) {
+        vid.pause()
+        return
+      }
+      vid.play().then(() => setVideoOk(true)).catch(() => setVideoOk(false))
     }
+    const onPlaying = () => setVideoOk(true)
+    const onError = () => setVideoOk(false)
+    vid.addEventListener('playing', onPlaying)
+    vid.addEventListener('error', onError)
     tryPlay()
     raf = requestAnimationFrame(draw)
     const onVis = () => (document.visibilityState === 'visible' ? tryPlay() : vid.pause())
     document.addEventListener('visibilitychange', onVis)
     return () => {
       cancelAnimationFrame(raf)
+      vid.removeEventListener('playing', onPlaying)
+      vid.removeEventListener('error', onError)
       document.removeEventListener('visibilitychange', onVis)
     }
   }, [video, face, inView])
+
+  // ── Screen layer geometry (percent of the 600x512 source canvas)
+  const scr = {
+    width: `${(MERAJ_SCREEN.w / 600) * 100}%`,
+    height: `${(MERAJ_SCREEN.h / 512) * 100}%`,
+    left: `${(MERAJ_SCREEN.x / 600) * 100}%`,
+    top: `${(MERAJ_SCREEN.y / 512) * 100}%`,
+  }
 
   return (
     <span
@@ -188,89 +219,79 @@ export default function MerajDevice({
       aria-label={FACE_LABEL[face]}
       title={FACE_LABEL[face]}
       data-active={active ? 'true' : 'false'}
+      data-face={face}
       data-anim={video ? 'video' : 'sprite'}
       className={clsx('meraj-device relative inline-flex items-center justify-center flex-shrink-0', className)}
       style={{
-        width: px,
-        height: px,
+        width,
+        height,
         '--meraj-float': `${FLOAT_PX[size]}px`,
       } as CSSProperties}
     >
-      {/* Breathing glow halo (CSS animation) */}
+      {/* Green breathing glow halo */}
       <span
         aria-hidden="true"
         className="meraj-glow absolute rounded-full pointer-events-none"
         style={{
           inset: GLOW_INSET[context],
-          background: 'radial-gradient(closest-side, rgb(var(--accent) / 0.5), transparent 72%)',
+          background: 'radial-gradient(closest-side, rgb(var(--meraj-glow, 46 166 103) / 0.5), transparent 72%)',
           filter: 'blur(6px)',
         }}
       />
 
-      {/* Whole device floats; the frame is clipped to the oval body so
-          animated face states never paint outside the character. */}
+      {/* Floating + tilting device */}
       <span className="meraj-float relative w-full h-full">
+        {/* THE SCREEN — animated face layer, UNDER the body so the
+            bezel frames it. Inverted in dark mode via CSS (.dark). */}
         <span
-          className="meraj-clip absolute inset-0 overflow-hidden"
-          style={{ borderRadius: '50% 50% 50% 50% / 44% 44% 56% 56%' }}
+          aria-hidden="true"
+          className="meraj-screen absolute pointer-events-none"
+          style={scr}
         >
-          {/* Static shared body — identical under every state */}
-          <img
-            src={MERAJ_BODY}
-            alt=""
-            aria-hidden="true"
-            draggable={false}
-            loading="eager"
-            decoding="async"
-            className="absolute inset-0 w-full h-full object-contain select-none pointer-events-none"
-          />
+          {/* Sprite faces (always mounted as the video fallback) */}
+          {(Object.keys(MERAJ_SHEETS) as MerajFace[]).map((key) => (
+            <img
+              key={key}
+              src={MERAJ_SHEETS[key]}
+              alt=""
+              draggable={false}
+              loading="eager"
+              decoding="async"
+              className={clsx(
+                'meraj-flipbook absolute left-0 top-0 h-full w-auto max-w-none select-none transition-opacity duration-300',
+                !videoOk && key === face ? 'opacity-100' : 'opacity-0',
+              )}
+              style={{
+                animationPlayState: inView && !videoOk ? 'running' : 'paused',
+                aspectRatio: `${MERAJ_FRAMES * MERAJ_SCREEN.w} / ${MERAJ_SCREEN.h}`,
+              }}
+            />
+          ))}
 
-          {/* Animated screen-face.
-              Sprite mode: one <img> per state, cross-faded, flipbook
-              playback via CSS steps(). All faces share the same body,
-              so state swaps read as one continuous device. */}
-          {!video &&
-            (Object.keys(MERAJ_SHEETS) as MerajFace[]).map((key) => (
-              <span
-                key={key}
-                aria-hidden="true"
-                className={clsx(
-                  'meraj-face absolute transition-opacity duration-300',
-                  key === face ? 'opacity-100' : 'opacity-0',
-                )}
-                style={{
-                  width: `${(220 / 512) * 100}%`,
-                  height: `${(240 / 512) * 100}%`,
-                  left: `${(146 / 512) * 100}%`,
-                  top: `${(75 / 512) * 100}%`,
-                }}
-              >
-                <img
-                  src={MERAJ_SHEETS[key]}
-                  alt=""
-                  draggable={false}
-                  loading="eager"
-                  decoding="async"
-                  className="meraj-flipbook absolute left-0 top-0 h-full w-auto max-w-none select-none pointer-events-none"
-                  style={{
-                    animationPlayState: inView ? 'running' : 'paused',
-                    aspectRatio: `${MERAJ_FRAMES * 220} / 240`, // 1760/240 strip
-                  }}
-                />
-              </span>
-            ))}
-
-          {/* Video mode: hidden <video> loop drawn onto this canvas */}
+          {/* Video loop canvas (24fps) — fades in once playback starts */}
           {video && (
             <canvas
               ref={canvasRef}
-              aria-hidden="true"
-              className="absolute left-0 top-0 w-full h-full"
-              width={220}
-              height={240}
+              width={MERAJ_SCREEN.w}
+              height={MERAJ_SCREEN.h}
+              className={clsx(
+                'absolute left-0 top-0 w-full h-full transition-opacity duration-300',
+                videoOk ? 'opacity-100' : 'opacity-0',
+              )}
             />
           )}
         </span>
+
+        {/* THE BODY — static green TV frame with the screen hole */}
+        <img
+          src={MERAJ_BODY}
+          alt=""
+          aria-hidden="true"
+          draggable={false}
+          loading="eager"
+          decoding="async"
+          className="meraj-body absolute inset-0 w-full h-full select-none pointer-events-none"
+        />
       </span>
 
       {video && (
@@ -280,27 +301,26 @@ export default function MerajDevice({
   )
 }
 
-
 /**
- * MerajGlyph — a tiny inline-SVG silhouette of the device character
- * (oval body, screen band, "M" speaker) for 12–24px icon slots where
- * spinning the full 6-sheet flipbook would be wasteful. Uses currentColor.
+ * MerajGlyph — a tiny inline-SVG silhouette of the TV character
+ * (squircle body, screen band, "M" speaker) for 12–24px icon slots
+ * where the flipbook engine would be wasteful. Uses currentColor.
  */
 export function MerajGlyph({ size = 18, className = '' }: { size?: number; className?: string }) {
   return (
     <svg
       width={size}
-      height={size}
-      viewBox="0 0 24 24"
+      height={size * 0.86}
+      viewBox="0 0 28 24"
       fill="none"
       aria-hidden="true"
       className={className}
     >
-      <ellipse cx="12" cy="12" rx="8.2" ry="10.4" fill="currentColor" opacity="0.16" />
-      <ellipse cx="12" cy="12" rx="8.2" ry="10.4" stroke="currentColor" strokeWidth="1.6" />
-      <rect x="6.8" y="6.2" width="10.4" height="6.4" rx="2.6" stroke="currentColor" strokeWidth="1.5" fill="none" />
-      <path d="M10 11.4 L12 8.8 L14 11.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      <circle cx="12" cy="16.6" r="1.5" stroke="currentColor" strokeWidth="1.3" fill="none" />
+      <rect x="1" y="1" width="26" height="22" rx="7.5" fill="currentColor" opacity="0.16" />
+      <rect x="1" y="1" width="26" height="22" rx="7.5" stroke="currentColor" strokeWidth="1.6" />
+      <rect x="5" y="5.4" width="18" height="10" rx="2.8" stroke="currentColor" strokeWidth="1.5" fill="none" />
+      <path d="M10.4 11.8 L14 8.2 L17.6 11.8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <circle cx="14" cy="17.2" r="1.6" stroke="currentColor" strokeWidth="1.3" fill="none" />
     </svg>
   )
 }
