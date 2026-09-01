@@ -41,7 +41,9 @@ jobs:
             echo "  ❌ $1 failed after 3 attempts"
             FAILED=1
           }
-          for f in ai-automation ai-assistant business-brain daily-brain quick-tasks google-oauth google-fetch integrations-api support-email campaign-send track api-generate-invoice api-draft-email create-checkout stripe-webhook daily-reports invoice-reminders whatsapp-webhook whatsapp-send request-action scan-receipt voice-stt; do
+          # Auto-discover every function directory (excluding _shared) —
+          # new functions deploy without touching this list.
+          for f in $(ls -d supabase/functions/*/ | grep -v _shared | xargs -n1 basename); do
             deploy_fn "$f"
           done
           echo ""
