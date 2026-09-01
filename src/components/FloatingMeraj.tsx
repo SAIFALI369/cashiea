@@ -134,9 +134,10 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
 
   return (
     <>
-      {/* Voice-first launcher (desktop). Tap → listen → think → speak. */}
+      {/* Voice-first launcher — mobile/tablet only.
+          On desktop (≥lg), the bottom-nav Meraj slot is the primary launcher. */}
       {voiceMode ? (
-        <div className="fixed z-40 bottom-6 right-6 hidden lg:flex flex-col items-center gap-2">
+        <div className="fixed z-40 bottom-6 right-6 lg:hidden flex flex-col items-center gap-2">
           <MerajDevice interactionState={interactionFromAvatarState(avatarState)} businessMood={businessMood} size="sm" context="panel" />
           {voiceStatus && <p className="text-[11px] font-medium text-fg-muted">{voiceStatus}</p>}
           {voiceReply && (
@@ -148,7 +149,7 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
         <button
           onClick={startVoice}
           aria-label="Tap to talk to Meraj"
-          className="fixed z-40 bottom-6 right-6 hidden lg:block active:scale-95 transition-transform"
+          className="fixed z-40 bottom-6 right-6 lg:hidden block active:scale-95 transition-transform"
         >
           <span className="relative block">
             <MerajDevice interactionState={interactionFromAvatarState(avatarState)} businessMood={businessMood} size="md" context="panel" />
@@ -164,7 +165,7 @@ export default function FloatingMeraj({ pathname }: { pathname: string }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.98 }}
             transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed z-50 bottom-4 right-4 left-4 sm:left-auto sm:w-[392px] flex flex-col card rounded-2xl overflow-hidden shadow-float"
+            className="fixed z-50 bottom-4 right-4 left-4 sm:left-auto sm:w-[392px] lg:hidden flex flex-col card rounded-2xl overflow-hidden shadow-float"
             style={{ height: '78vh', maxHeight: '78vh' }}
           >
             {/* Header — mark · title · page it's reading · expand · close */}
