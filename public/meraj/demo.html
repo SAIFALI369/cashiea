@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Meraj — the floating green TV mascot</title>
+<style>
+  :root {
+    --paper: 247 242 233; --surface: 254 251 245; --fg: 41 37 31;
+    --muted: 92 84 73; --accent: 161 124 71; --line: 226 217 201;
+  }
+  html.dark {
+    --paper: 22 19 16; --surface: 33 28 23; --fg: 236 229 216;
+    --muted: 170 159 141; --accent: 203 164 94; --line: 58 49 40;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 40px 20px; background: rgb(var(--paper)); color: rgb(var(--fg));
+    font-family: Inter, system-ui, -apple-system, sans-serif; text-align: center;
+    transition: background .3s ease, color .3s ease;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p.sub { color: rgb(var(--muted)); font-size: 13px; margin: 0 0 24px; }
+  .tools { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 26px; }
+  button {
+    background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); color: rgb(var(--fg));
+    padding: 9px 16px; border-radius: 999px; font-size: 12px; cursor: pointer; transition: all .15s ease;
+  }
+  button:hover { border-color: rgb(var(--accent) / .6); }
+  button.on { background: rgb(var(--accent)); color: rgb(var(--paper)); font-weight: 600; border-color: transparent; }
+
+  /* ── the real engine, same as the app ── */
+  .stage { position: relative; width: 280px; height: 280px; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; }
+  .stage .glow {
+    position: absolute; inset: 4%; border-radius: 50%;
+    background: radial-gradient(closest-side, rgb(46 166 103 / .5), transparent 72%);
+    filter: blur(10px); animation: glow 4.5s ease-in-out infinite;
+  }
+  .device {
+    position: relative; width: 200px; height: 170.67px;   /* 600:512 TV ratio */
+    animation: float 4.5s ease-in-out infinite; will-change: transform;
+  }
+  .device[data-active='true'] { animation-duration: 1.7s; }
+  .device[data-active='true'] ~ .glow { animation-duration: 1.7s; }
+  .screen {
+    position: absolute; width: 68%; height: 52.34375%;
+    left: 16%; top: 16.40625%; pointer-events: none;
+  }
+  html.dark .screen { filter: invert(1); }
+  .screen img.strip {
+    position: absolute; left: 0; top: 0; height: 100%; width: auto; max-width: none;
+    opacity: 0; transition: opacity .3s ease;
+    animation: flip 0.667s steps(8, end) infinite;
+  }
+  .screen img.strip.on { opacity: 1; }
+  .screen video, .screen canvas {
+    position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+    opacity: 0; transition: opacity .3s ease;
+  }
+  .screen video.on, .screen canvas.on { opacity: 1; }
+  .body { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 10px 18px rgb(60 50 35 / .28)); }
+
+  /* ── contact sheets ── */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 26px; max-width: 1000px; margin: 0 auto 36px; }
+  .cell {
+    background: rgb(var(--surface)); border: 1px solid rgb(var(--line)); border-radius: 18px;
+    padding: 18px 10px 14px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .cell img, .cell video { width: 150px; height: 98.5px; object-fit: contain; }
+  .cell b { font-size: 12px; }
+  .cell span { color: rgb(var(--muted)); font-size: 10px; }
+  .note { color: rgb(var(--muted)); font-size: 11px; max-width: 660px; margin: 0 auto; line-height: 1.6; }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0) rotate(-3deg); }
+    25%      { transform: translateY(-2.4px) rotate(-1.2deg); }
+    50%      { transform: translateY(-6px) rotate(3deg); }
+    75%      { transform: translateY(-2.4px) rotate(1.2deg); }
+  }
+  @keyframes glow { 0%, 100% { opacity: .45; transform: scale(.92); } 50% { opacity: .9; transform: scale(1.06); } }
+  @keyframes flip { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+  @media (prefers-reduced-motion: reduce) {
+    .device, .stage .glow { animation: none; }
+    .screen img.strip { animation: none; transform: translateX(0); }
+  }
+</style>
+</head>
+<body>
+  <h1>Meraj — the floating green TV mascot</h1>
+  <p class="sub">Smooth green squircle · wide TV screen · theme-adaptive black/white display · real 24fps video loops.</p>
+
+  <div class="tools">
+    <button id="btn-theme" class="on">☀️ Light — black screen, white eyes</button>
+    <button id="btn-anim" class="on">🎞️ Flipbook (8f · 12fps)</button>
+    <button data-face="neutral" class="face on">Idle · neutral</button>
+    <button data-face="happy" class="face">Idle · happy</button>
+    <button data-face="sad" class="face">Idle · sad</button>
+    <button data-face="listening" class="face">Listening</button>
+    <button data-face="thinking" class="face">Thinking</button>
+    <button data-face="speaking" class="face">Speaking</button>
+  </div>
+
+  <div class="stage">
+    <div class="glow"></div>
+    <div class="device" id="device" data-active="false">
+      <div class="screen" id="screen">
+        <img class="strip on" data-face="neutral" src="sheet-neutral.png" alt="" />
+        <img class="strip" data-face="happy" src="sheet-happy.png" alt="" />
+        <img class="strip" data-face="sad" src="sheet-sad.png" alt="" />
+        <img class="strip" data-face="listening" src="sheet-listening.png" alt="" />
+        <img class="strip" data-face="thinking" src="sheet-thinking.png" alt="" />
+        <img class="strip" data-face="speaking" src="sheet-speaking.png" alt="" />
+        <video class="v-neutral" src="neutral.webm" muted loop playsinline preload="auto"></video>
+        <video class="v-happy" src="happy.webm" muted loop playsinline preload="auto"></video>
+        <video class="v-sad" src="sad.webm" muted loop playsinline preload="auto"></video>
+        <video class="v-listening" src="listening.webm" muted loop playsinline preload="auto"></video>
+        <video class="v-thinking" src="thinking.webm" muted loop playsinline preload="auto"></video>
+        <video class="v-speaking" src="speaking.webm" muted loop playsinline preload="auto"></video>
+      </div>
+      <img class="body" src="device-body.png" alt="" />
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="cell"><img src="sheet-neutral.png" alt="" /><b>Neutral</b><span>resting, blink, pupil drift</span></div>
+    <div class="cell"><img src="sheet-happy.png" alt="" /><b>Happy</b><span>smile + twinkling sparkles</span></div>
+    <div class="cell"><img src="sheet-sad.png" alt="" /><b>Sad</b><span>worried brows, sigh, tear</span></div>
+    <div class="cell"><video src="listening.webm" muted loop playsinline autoplay></video><b>Listening — 24fps video</b><span>dancing waveform, live dot</span></div>
+    <div class="cell"><video src="thinking.webm" muted loop playsinline autoplay></video><b>Thinking — 24fps video</b><span>searching pupils, pulsing dots</span></div>
+    <div class="cell"><video src="speaking.webm" muted loop playsinline autoplay></video><b>Speaking — 24fps video</b><span>chattering mouth waveform</span></div>
+  </div>
+
+  <p class="note">
+    Body ratio <b>1.2 : 1</b> (TV form factor), screen ratio <b>1.52 : 1</b> — wide enough to feel like a
+    floating TV, round enough to stay cute. The screen is authored black-with-white-eyes for light
+    mode; dark mode inverts it to a white screen with black eyes and mouth. Toggle both above.
+    Videos are 24fps VP9 loops with alpha — the screen region only; the green body stays a crisp still.
+  </p>
+
+<script>
+  const $ = (s) => document.querySelector(s)
+  const device = $('#device')
+  const ACTIVE = new Set(['listening', 'thinking', 'speaking'])
+  let currentFace = 'neutral'
+  let videoMode = false
+
+  const faceButtons = [...document.querySelectorAll('button.face')]
+  faceButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      currentFace = btn.dataset.face
+      faceButtons.forEach((b) => b.classList.toggle('on', b === btn))
+      device.dataset.active = ACTIVE.has(currentFace) ? 'true' : 'false'
+      render()
+    })
+  })
+
+  $('#btn-theme').addEventListener('click', () => {
+    const dark = document.documentElement.classList.toggle('dark')
+    const btn = $('#btn-theme')
+    btn.textContent = dark ? '🌙 Dark — white screen, black eyes' : '☀️ Light — black screen, white eyes'
+  })
+
+  $('#btn-anim').addEventListener('click', () => {
+    videoMode = !videoMode
+    $('#btn-anim').textContent = videoMode ? '🎬 Video loop (24fps .webm)' : '🎞️ Flipbook (8f · 12fps)'
+    render()
+  })
+
+  function render() {
+    document.querySelectorAll('#screen img.strip').forEach((img) => {
+      img.classList.toggle('on', !videoMode && img.dataset.face === currentFace)
+    })
+    document.querySelectorAll('#screen video').forEach((v) => {
+      const isCurrent = v.className === `v-${currentFace}`
+      v.classList.toggle('on', videoMode && isCurrent)
+      if (videoMode && isCurrent) v.play().catch(() => {})
+      if (!videoMode || !isCurrent) v.pause()
+    })
+  }
+</script>
+</body>
+</html>

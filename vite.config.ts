@@ -7,6 +7,9 @@ export default defineConfig({
   server: {
     port: 5173,
     open: true,
+    // Allow the Arena live-preview host (any *.e2b.app host) in dev so
+    // the preview proxy can reach the app. Production is unaffected.
+    allowedHosts: ['.e2b.app'],
   },
   build: {
     // Code-split heavy libs into their own chunks so they only load

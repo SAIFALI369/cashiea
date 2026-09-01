@@ -116,6 +116,31 @@ The app supports 5 AI providers (pick in Settings):
 
 ---
 
+## 🎭 The Meraj Mascot (floating green TV)
+
+Meraj is a `<MerajDevice />` character used in the bottom nav, the Dashboard card
+and the full AI panel. It's a smooth green squircle body (1.2:1 TV form factor)
+with a wide 1.52:1 screen, "CASHIEA" + "Meraj" bezel branding, and six animated
+face states — `neutral`, `happy`, `sad`, `listening`, `thinking`, `speaking`.
+
+- **Animation:** 8-frame flipbook sprite sheets (CSS `steps()`) and real **24fps
+  .webm video loops** (VP9 + alpha) for the large panel character, with automatic
+  fallback. The whole device floats with a gentle ±3° tilt and a green glow.
+- **Theme-adaptive screen:** black screen + white eyes/mouth in light mode;
+  dark mode inverts it (white screen + black eyes/mouth) via one CSS rule.
+- **Faces:** interaction states (listening/thinking/speaking) always beat the
+  resting `businessMood` (computed in `src/lib/businessMood.ts` from real
+  sales/stock/invoice signals).
+
+**Regenerating the art:**
+
+```bash
+python3 scripts/generate-meraj-faces.py   # Pillow — sheets, frames, previews
+node scripts/build-meraj-videos.mjs       # needs @ffmpeg-installer/ffmpeg (dev dep)
+```
+
+A live demo (light/dark toggle, flipbook vs video) is served at `/meraj/demo.html`.
+
 ## 📜 Scripts
 
 | Command | Description |

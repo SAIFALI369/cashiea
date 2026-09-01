@@ -34,3 +34,7 @@ supabase/.temp
 
 # OS
 Thumbs.db
+
+# Python (asset generators)
+__pycache__/
+scripts/video-frames/
