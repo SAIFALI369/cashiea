@@ -141,11 +141,14 @@ export default function MerajDevice({
   // every placement decoded 6× the images for no visual gain.
   const [prevFace, setPrevFace] = useState<MerajFace | null>(null)
   const faceRef = useRef<MerajFace>(face)
-  if (faceRef.current !== face) {
-    setPrevFace(faceRef.current)
+  useEffect(() => {
+    if (faceRef.current === face) return
+    const oldFace = faceRef.current
     faceRef.current = face
-    if (typeof window !== 'undefined') setTimeout(() => setPrevFace((p) => (p === faceRef.current ? p : null)), 400)
-  }
+    setPrevFace(oldFace)
+    const t = window.setTimeout(() => setPrevFace((p) => (p === oldFace ? null : p)), 400)
+    return () => window.clearTimeout(t)
+  }, [face])
   const height = PIXELS[size]
   const width = height * (600 / 512) // TV form factor (1.171875 : 1)
   // Accessibility: users who prefer reduced motion never get the 24fps
@@ -187,9 +190,13 @@ export default function MerajDevice({
     let raf = 0
     let lastDraw = 0
     const draw = (now: number) => {
-      // Only paint while the video is actually playing, at most ~30fps —
-      // an idle rAF loop spinning at 60fps burns battery for nothing.
-      if (!vid.paused && vid.readyState >= 2 && now - lastDraw >= 33) {
+      // Only paint while visible and actually playing, at most ~30fps —
+      // no hidden/paused rAF loop draining battery.
+      if (!inView || vid.paused || vid.readyState < 2) {
+        raf = 0
+        return
+      }
+      if (now - lastDraw >= 33) {
         lastDraw = now
         ctx.clearRect(0, 0, canvas.width, canvas.height)
         ctx.drawImage(vid, 0, 0, canvas.width, canvas.height)
@@ -201,14 +208,16 @@ export default function MerajDevice({
         vid.pause()
         return
       }
-      vid.play().then(() => setVideoOk(true)).catch(() => setVideoOk(false))
+      vid.play().then(() => {
+        setVideoOk(true)
+        if (!raf) raf = requestAnimationFrame(draw)
+      }).catch(() => setVideoOk(false))
     }
     const onPlaying = () => setVideoOk(true)
     const onError = () => setVideoOk(false)
     vid.addEventListener('playing', onPlaying)
     vid.addEventListener('error', onError)
     tryPlay()
-    raf = requestAnimationFrame(draw)
     const onVis = () => (document.visibilityState === 'visible' ? tryPlay() : vid.pause())
     // No playback possible (autoplay blocked / missing file) → kill the
     // draw loop; the sprite fallback beneath takes over.

@@ -48,6 +48,9 @@ export default function AppLayout() {
   // becomes a true "screen" between the desktop header and the desktop
   // bottom nav — Meraj fills that space completely, designed for desktop.
   const isAssistant = location.pathname.startsWith('/app/assistant')
+  // On desktop, the assistant remains framed by the desktop header + bottom nav.
+  // On mobile it stays full-bleed, matching the existing chat-first experience.
+  const showDesktopShell = !isAssistant || isDesktop
   // Persistent AI access on every non-assistant screen (desktop FAB / mobile bottom-nav center).
   const showFloatingMeraj = !isAssistant
 
@@ -77,7 +80,7 @@ export default function AppLayout() {
         <OfflineBanner />
 
         {/* ── Desktop header (≥lg) ── */}
-        {!isAssistant && <DesktopHeader />}
+        {showDesktopShell && <DesktopHeader />}
 
         {/* ── Mobile header (<lg) — menu · brand · sync · clock · account ── */}
         {!isAssistant && (
@@ -112,7 +115,7 @@ export default function AppLayout() {
               room at the bottom for the 72px desktop nav + safe area. */}
         <main className={
           isAssistant
-            ? 'flex-1 min-w-0 flex flex-col min-h-0'
+            ? 'flex-1 min-w-0 flex flex-col min-h-0 lg:pb-[calc(env(safe-area-inset-bottom)+72px)]'
             : 'flex-1 px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+72px)] sm:px-6 sm:pt-6 lg:px-10 lg:pt-8 lg:pb-[calc(env(safe-area-inset-bottom)+96px)] max-w-[1600px] mx-auto w-full'
         }>
           <AnimatePresence mode="wait" initial={false}>
@@ -142,7 +145,7 @@ export default function AppLayout() {
       </div>
 
       {/* Bottom nav — shapes itself for mobile vs desktop internally. */}
-      {!isAssistant && <BottomNav onMore={() => setSidebarOpen(true)} />}
+      {showDesktopShell && <BottomNav onMore={() => setSidebarOpen(true)} />}
 
       {/* Desktop persistent voice Meraj (FAB) — only shown on non-assistant pages
           when NOT on desktop (the desktop bottom nav already has a Meraj

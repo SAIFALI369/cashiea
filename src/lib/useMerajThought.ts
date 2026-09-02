@@ -62,6 +62,15 @@ const FALLBACK_POOL: string[] = [
 
 function istNow(): Date { return new Date(Date.now() + 5.5 * 3600000) }
 function istDateStr(d: Date = istNow()): string { return d.toISOString().split('T')[0] }
+function addUtcDays(d: Date, days: number): Date { return new Date(d.getTime() + days * 86400000) }
+/**
+ * A thought batch runs 6 AM → 1 AM. The 00:00 and 01:00 slots still
+ * belong to the previous day's 5 AM batch, not the next calendar day.
+ */
+function activeBatchDateStr(d: Date = istNow()): string {
+  const h = d.getUTCHours()
+  return istDateStr(h < 2 ? addUtcDays(d, -1) : d)
+}
 /**
  * Map an IST date to the "thought hour slot" index 0–19, where:
  *   0 = 06:00–06:59 IST, 1 = 07:00–07:59 IST, … 19 = 01:00–01:59 next day
@@ -98,7 +107,7 @@ function writeBatch(b: ThoughtBatch) {
 
 /** Ensure today's batch exists — generates if missing (or it's a new day). */
 async function ensureTodayBatch(ownerId: string | null | undefined): Promise<ThoughtBatch> {
-  const today = istDateStr()
+  const today = activeBatchDateStr()
   const existing = readBatch()
   if (existing && existing.date === today) {
     // Top-up if the array lost entries for some reason
@@ -192,15 +201,19 @@ export function useMerajThought(ownerId?: string | null): {
 
     if (slot < 0) { setText(null); return }
 
-    // If current slot's sentence already seen (e.g. from a previous visit
-    // this hour), look for the first unseen slot within range to display
-    // something fresh. Otherwise just show the current slot's line.
-    let idx = slot
-    if (batch.seen[slot]) {
-      // find next unseen at-or-after current slot; else fall back to current
-      for (let i = slot; i < 20; i++) {
+    // If current slot's sentence is already seen (e.g. from a previous visit
+    // this hour), look forward for the next unseen slot. Never repeat a
+    // consumed line; if today's 20 are exhausted, use an extra fallback.
+    let idx = batch.seen[slot] ? -1 : slot
+    if (idx < 0) {
+      for (let i = slot + 1; i < 20; i++) {
         if (!batch.seen[i]) { idx = i; break }
       }
+    }
+
+    if (idx < 0) {
+      setText(randomFallbackBatch()[Math.floor(Math.random() * FALLBACK_POOL.length)])
+      return
     }
 
     // Mark it consumed ("delete after shown").
@@ -215,8 +228,14 @@ export function useMerajThought(ownerId?: string | null): {
     const batch = readBatch()
     if (!batch) return
     let next = -1
-    for (let i = 0; i < 20; i++) {
+    const start = Math.max(0, currentSlotIndex() + 1)
+    for (let i = start; i < 20; i++) {
       if (!batch.seen[i]) { next = i; break }
+    }
+    if (next < 0) {
+      for (let i = 0; i < start; i++) {
+        if (!batch.seen[i]) { next = i; break }
+      }
     }
     if (next >= 0) {
       batch.seen[next] = true
@@ -234,4 +253,4 @@ export function useMerajThought(ownerId?: string | null): {
 }
 
 /** Exposed for tests: deterministic slot computation. */
-export const __test = { currentSlotIndex, istDateStr }
+export const __test = { currentSlotIndex, istDateStr, activeBatchDateStr }
