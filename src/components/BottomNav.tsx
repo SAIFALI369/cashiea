@@ -184,10 +184,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
         <div
           className={clsx(
             'fixed z-40 flex flex-col items-end gap-2',
-            // mobile: right-3, above bottom nav
-            'lg:hidden right-3',
-            // desktop: bottom-right, above desktop nav (which is 72px tall)
-            'hidden lg:flex right-6'
+            isDesktop ? 'right-6' : 'right-3'
           )}
           style={isDesktop
             ? { bottom: '96px' }
@@ -231,7 +228,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
               className="flex flex-col items-center justify-center gap-0.5 min-h-[56px]"
               aria-label="Talk to Meraj" title="Talk to Meraj"
             >
-              <span className={`w-12 h-12 -mt-6 rounded-full ring-4 ring-surface flex items-center justify-center active:scale-95 transition-all shadow-[0_6px_20px_-4px_rgb(var(--accent))] ${listening || speaking ? 'bg-accent text-accent-fgl border-2 border-accent' : 'bg-accent-strong text-accent-fg'}`}>
+              <span className={`w-12 h-12 -mt-6 rounded-full ring-4 ring-surface flex items-center justify-center active:scale-95 transition-all shadow-[0_6px_20px_-4px_rgb(var(--accent))] ${listening || speaking ? 'bg-accent text-accent-fg border-2 border-accent' : 'bg-accent-strong text-accent-fg'}`}>
                 <MerajDevice interactionState={voiceActive ? interaction : 'idle'} businessMood={businessMood} size="sm" context="nav" />
               </span>
               <span className="text-[9px] font-bold text-accent -mt-0.5">Talk to Meraj</span>
