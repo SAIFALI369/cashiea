@@ -29,16 +29,35 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <AuthProvider>
           <App />
           <Toaster
-            position="top-right"
+            position="bottom-center"
+            containerStyle={{ zIndex: 9999 }}
             toastOptions={{
               duration: 4000,
+              className: 'cashiea-toast cashiea-toast-blank',
               style: {
-                background: 'rgb(var(--surface))',
-                color: 'rgb(var(--fg))',
-                borderRadius: '12px',
-                border: '1px solid rgb(var(--line))',
+                padding: '12px 20px',
+                maxWidth: 420,
+                borderRadius: '9999px',
+                background: 'transparent',
+                border: '1px solid rgba(16, 185, 129, 0.5)',
+                color: '#ffffff',
                 fontSize: '14px',
-                boxShadow: '0 8px 24px -8px rgb(var(--shadow) / 0.2)',
+                fontWeight: 600,
+                boxShadow: '0 22px 60px -18px rgba(5, 150, 105, 0.65), 0 8px 24px -10px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.04) inset',
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+              },
+              success: {
+                className: 'cashiea-toast cashiea-toast-success',
+                iconTheme: { primary: 'rgba(16, 185, 129, 0.18)', secondary: '#ffffff' },
+              },
+              error: {
+                className: 'cashiea-toast cashiea-toast-error',
+                iconTheme: { primary: 'rgba(165, 79, 71, 0.16)', secondary: '#ffffff' },
+              },
+              loading: {
+                className: 'cashiea-toast cashiea-toast-loading',
+                iconTheme: { primary: 'rgba(16, 185, 129, 0.18)', secondary: '#ffffff' },
               },
             }}
           />
