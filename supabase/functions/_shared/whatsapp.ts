@@ -22,15 +22,21 @@ export function isWhatsAppConfigured(): boolean {
 
 /** Normalize to international digits; default-prefix 91 for 10-digit Indian numbers. */
 export function normalizePhone(raw: string): string {
-  let num = (raw || "").replace(/[^\d]/g, "");
+  let num = String(raw || "").replace(/[^\d]/g, "");
   if (num.length === 10) num = "91" + num;
   return num;
+}
+
+function validRecipient(raw: string): boolean {
+  return /^\d{10,15}$/.test(normalizePhone(raw));
 }
 
 export interface SendResult { ok: boolean; error?: string; messageId?: string }
 
 /** Free-text message (allowed within the 24h customer service window). */
 export async function sendWhatsAppText(toPhone: string, message: string): Promise<SendResult> {
+  if (!validRecipient(toPhone)) return { ok: false, error: "Invalid WhatsApp recipient" };
+  if (typeof message !== "string" || message.trim().length === 0 || message.length > 4096) return { ok: false, error: "Invalid WhatsApp message" };
   if (!isWhatsAppConfigured()) return { ok: false, error: "WhatsApp not configured (WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID missing)" };
   try {
     const res = await fetch(messagesUrl(WHATSAPP_PHONE_NUMBER_ID!), {
@@ -42,7 +48,7 @@ export async function sendWhatsAppText(toPhone: string, message: string): Promis
     const data = await res.json();
     return { ok: true, messageId: data?.messages?.[0]?.id };
   } catch (e) {
-    return { ok: false, error: `Network: ${e.message}` };
+    return { ok: false, error: `Network: ${(e as Error)?.message || "request failed"}` };
   }
 }
 
@@ -53,6 +59,8 @@ export async function sendWhatsAppTemplate(
   languageCode = "en_US",
   components: any[] = []
 ): Promise<SendResult> {
+  if (!validRecipient(toPhone)) return { ok: false, error: "Invalid WhatsApp recipient" };
+  if (typeof templateName !== "string" || !/^[A-Za-z0-9_.-]{1,100}$/.test(templateName)) return { ok: false, error: "Invalid WhatsApp template" };
   if (!isWhatsAppConfigured()) return { ok: false, error: "WhatsApp not configured" };
   try {
     const template: any = { name: templateName, language: { code: languageCode } };
@@ -66,6 +74,6 @@ export async function sendWhatsAppTemplate(
     const data = await res.json();
     return { ok: true, messageId: data?.messages?.[0]?.id };
   } catch (e) {
-    return { ok: false, error: `Network: ${e.message}` };
+    return { ok: false, error: `Network: ${(e as Error)?.message || "request failed"}` };
   }
 }

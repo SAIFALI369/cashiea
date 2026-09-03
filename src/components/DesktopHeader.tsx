@@ -44,7 +44,7 @@ export default function DesktopHeader() {
           <Avatar url={profile?.avatar_url} name={profile?.full_name} size={34} />
           <span className="flex flex-col items-start leading-tight">
             <span className="text-xs font-semibold text-fg max-w-[130px] truncate">{profile?.full_name || 'Owner'}</span>
-            <span className="text-[10px] text-fg-subtle">Owner</span>
+            <span className="text-[10px] text-fg-subtle capitalize">{profile?.role || 'account'}</span>
           </span>
           <Settings className="w-4 h-4 text-fg-subtle ml-1" />
         </Link>

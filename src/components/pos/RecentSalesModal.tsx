@@ -12,11 +12,12 @@ import toast from 'react-hot-toast'
  * sales), and the action is written to the activity log.
  */
 export function RecentSalesModal({
-  open, ownerId, profile, onVoided, onClose,
+  open, ownerId, profile, canVoid, onVoided, onClose,
 }: {
   open: boolean
   ownerId: string
   profile: Profile | null
+  canVoid: boolean
   onVoided: () => void
   onClose: () => void
 }) {
@@ -42,6 +43,10 @@ export function RecentSalesModal({
 
   const doVoid = async () => {
     if (!voiding) return
+    if (!canVoid) {
+      toast.error('Only the business owner can void a sale')
+      return
+    }
     if (!reason.trim()) {
       toast.error('A reason is required to void a sale')
       return
@@ -52,37 +57,14 @@ export function RecentSalesModal({
     }
     setWorking(true)
     try {
-      const { error } = await supabase
-        .from('transactions')
-        .update({
-          status: 'void',
-          void_reason: reason.trim(),
-          voided_at: new Date().toISOString(),
-          voided_by: profile?.full_name || 'Cashier',
-        })
-        .eq('id', voiding.id)
-        .eq('user_id', ownerId)
+      const { error } = await supabase.rpc('void_sale', {
+        p_transaction_id: voiding.id,
+        p_user_id: ownerId,
+        p_reason: reason.trim(),
+        p_voided_by: profile?.full_name || 'Cashier',
+      })
       if (error) throw error
 
-      // Restore stock (units factor per line).
-      await Promise.all(
-        (voiding.items || []).map((it) =>
-          supabase
-            .rpc('adjust_stock', { p_id: it.product_id, qty: -(Number(it.quantity) || 0) * (Number(it.factor ?? 1) || 1) })
-            .then(({ error }) => { if (error) console.warn('stock restore failed for', it.product_id, error.message) }),
-        ),
-      )
-      if (voiding.customer_id) {
-        await supabase.rpc('recompute_customer_stats', { customer_uuid: voiding.customer_id })
-      }
-      await supabase.from('activity_logs').insert({
-        user_id: ownerId,
-        action_type: 'campaign',
-        description: `Voided sale ${voiding.receipt_number} (${formatINR(voiding.total)}) — ${reason.trim()}`,
-        time_saved_minutes: 0,
-        money_saved: 0,
-        metadata: { voided_receipt: voiding.receipt_number, reason: reason.trim() },
-      })
 
       toast.success(`Sale ${voiding.receipt_number} voided — stock restored`)
       setVoiding(null)
@@ -138,7 +120,7 @@ export function RecentSalesModal({
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <span className="text-sm font-bold text-fg tabular-nums">{formatINR(s.total)}</span>
-                      {s.status === 'completed' && (
+                      {canVoid && s.status === 'completed' && (
                         <button onClick={() => { setVoiding(s); setReason('') }} className="px-2.5 py-1.5 rounded-lg border border-line text-xs font-semibold text-negative hover:bg-negative/10 flex items-center gap-1">
                           <Ban className="w-3.5 h-3.5" /> Void
                         </button>

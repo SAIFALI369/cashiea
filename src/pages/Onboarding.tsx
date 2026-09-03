@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { onboardingQuestions, onboardingPersona, type OnboardingQuestion, type OnboardingPersona } from '../lib/ai'
@@ -186,6 +186,13 @@ export default function Onboarding() {
         <Loader2 className="w-8 h-8 animate-spin text-fg-subtle" />
       </div>
     )
+  }
+
+  // Onboarding changes the business owner's profile and shared memory. A
+  // linked team account (even one with onboarding_step = 5) must never reach
+  // this screen by typing the URL directly.
+  if (profile.role !== 'owner' || profile.business_owner_id) {
+    return <Navigate to="/app" replace />
   }
 
   const steps = [

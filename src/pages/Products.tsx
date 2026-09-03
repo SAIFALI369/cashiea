@@ -148,19 +148,27 @@ export default function Products() {
       if (existingByName) {
         const addQty = Number(form.stock_quantity) || 0
         if (addQty <= 0) { toast.error('Enter the quantity to add'); setSaving(false); return }
-        const newQty = Number(existingByName.stock_quantity) + addQty
-        const patch: Partial<Product> = { stock_quantity: newQty, updated_at: new Date().toISOString() }
-        if (form.price !== '') patch.price = Number(form.price) || 0
-        if (form.cost !== '') patch.cost = Number(form.cost) || 0
+        const price = form.price !== '' ? Number(form.price) : null
+        const cost = form.cost !== '' ? Number(form.cost) : null
         if (isOwner) {
-          const { error } = await supabase.from('products').update(patch).eq('id', existingByName.id).eq('user_id', ownerId)
+          // The database adds against the row currently on the server. Never
+          // send a client-computed total: another tab, cashier, or import may
+          // have changed stock since this list was loaded.
+          const { data, error } = await supabase.rpc('restock_product', {
+            p_product_id: existingByName.id,
+            p_owner_id: ownerId,
+            p_add_quantity: addQty,
+            p_price: price,
+            p_cost: cost,
+          })
           if (error) throw error
-          setProducts(products.map((x) => x.id === existingByName.id ? { ...x, ...patch } as Product : x))
-          toast.success(`Stock updated — ${existingByName.name}: ${existingByName.stock_quantity} → ${newQty} (+${addQty})`)
+          const next = data as Product
+          setProducts(products.map((x) => x.id === existingByName.id ? { ...x, ...next } : x))
+          toast.success(`Stock updated — ${existingByName.name}: ${existingByName.stock_quantity} → ${next.stock_quantity} (+${addQty})`)
         } else {
           await requestAction({ capability: 'products:manage', action_type: 'product.restock', target: 'products',
-            payload: { id: existingByName.id, stock_quantity: newQty, ...(patch.price !== undefined ? { price: patch.price } : {}), ...(patch.cost !== undefined ? { cost: patch.cost } : {}) },
-            summary: `Restock "${existingByName.name}" — add ${addQty} (new total ${newQty})`, money_related: false })
+            payload: { id: existingByName.id, add_quantity: addQty, ...(price !== null ? { price } : {}), ...(cost !== null ? { cost } : {}) },
+            summary: `Restock "${existingByName.name}" — add ${addQty}`, money_related: false })
           toast.success('Restock sent to the owner for approval')
         }
         setForm(empty); setTouched({}); setShowForm(false)
@@ -238,7 +246,7 @@ export default function Products() {
         icon={<Package className="w-5 h-5" />}
         action={
           <div className="flex gap-2">
-            <button onClick={() => setShowImport(true)} className="btn-secondary text-sm"><FileSpreadsheet className="w-4 h-4" /> Import</button>
+            {isOwner && <button onClick={() => setShowImport(true)} className="btn-secondary text-sm"><FileSpreadsheet className="w-4 h-4" /> Import</button>}
             <button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showForm ? 'Close' : 'Add Product'}</button>
           </div>
         }

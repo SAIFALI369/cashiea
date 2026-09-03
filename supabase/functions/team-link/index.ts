@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     const { data: ownerProfile } = await svc
       .from("profiles").select("id, role, business_owner_id").eq("id", user.id).single();
     if (!ownerProfile) return json({ error: "Profile not found" }, 404);
-    if (ownerProfile.business_owner_id) return json({ error: "Only the owner can manage linked accounts" }, 403);
+    if (ownerProfile.role !== "owner" || ownerProfile.business_owner_id !== null) return json({ error: "Only the owner can manage linked accounts" }, 403);
 
     const ownerId = ownerProfile.id;
 

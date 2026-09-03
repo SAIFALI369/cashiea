@@ -44,8 +44,8 @@ export default function ConnectAppModal({
               <div>
                 <p className="text-sm font-medium mb-1" style={{ color: C.text }}>What happens next:</p>
                 <ol className="text-sm space-y-1" style={{ color: C.textBody }}>
-                  <li>1. You'll sign in with your Google account</li>
-                  <li>2. Google will ask you to grant access</li>
+                  <li>1. You'll sign in with your {app.name === 'Canva' ? 'Canva' : 'Google'} account</li>
+                  <li>2. {app.name === 'Canva' ? 'Canva' : 'Google'} will ask you to grant access</li>
                   <li>3. Choose a permission level below</li>
                   <li>4. Cashiea connects — ready to use</li>
                 </ol>
@@ -113,7 +113,7 @@ export default function ConnectAppModal({
               className="flex-1 py-3 rounded-xl font-semibold text-white text-sm transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               style={{ background: `linear-gradient(135deg, ${C.blue}, rgb(var(--gold)))`, boxShadow: confirmed ? `0 4px 14px rgb(var(--accent) / 0.19)` : 'none' }}
             >
-              Continue with Google <ArrowRight className="w-4 h-4" />
+              Continue with {app.name} <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>

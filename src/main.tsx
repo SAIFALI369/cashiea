@@ -7,21 +7,9 @@ import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import './index.css'
 
-// PWA / offline cache is TEMPORARILY DISABLED (see vite.config selfDestroying).
-// On load, remove any leftover service worker + caches so the browser always
-// fetches the latest build (this was causing "no UI changes appear"). Remove
-// this block when re-enabling offline.
-if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.getRegistrations()
-      .then((regs) => regs.forEach((r) => r.unregister().catch(() => {})))
-      .catch(() => {})
-    if (window.caches) {
-      caches.keys().then((keys) => keys.forEach((k) => caches.delete(k).catch(() => {})))
-    }
-  })
-}
-
+// vite-plugin-pwa registers the versioned service worker in production builds.
+// It caches only the immutable app shell; authenticated mutations remain in the
+// durable, tenant-bound offline queue in src/lib/offlineQueue.ts.
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ThemeProvider>

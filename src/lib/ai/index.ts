@@ -4,7 +4,8 @@
 // never sees or sends provider API keys.
 // ════════════════════════════════════════════════════════════════
 
-import { supabase, AI_FUNCTION_URL } from '../supabase'
+import { supabase, AI_FUNCTION_URL, edgeFunctionUrl } from '../supabase'
+import type { GoogleProvider } from '../app-catalog'
 
 export type TaskType = 'invoice' | 'report' | 'extract' | 'summary' | 'email' | 'sentiment'
 export type AIProvider = 'openai' | 'gemini' | 'anthropic' | 'vercel_gateway' | 'openrouter'
@@ -134,13 +135,13 @@ export async function askAssistant(
 
   // Cache: skip the API for recent identical ask-mode questions (saves a full round-trip)
   const cacheable = mode === 'ask' && !confirm && !image && !briefing
-  const cacheKey = cacheable ? `${scope || 'g'}:${(message || '').trim().toLowerCase().slice(0, 200)}` : ''
+  const cacheKey = cacheable ? `${session.user.id}:${scope || 'g'}:${(message || '').trim().toLowerCase().slice(0, 200)}` : ''
   if (cacheKey) {
     const cached = aiCacheGet(cacheKey)
     if (cached) return cached
   }
 
-  const res = await fetchWithRetry(AI_FUNCTION_URL.replace('ai-automation', 'ai-assistant'), {
+  const res = await fetchWithRetry(edgeFunctionUrl('ai-assistant'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -165,7 +166,7 @@ export async function callBrain(mode: 'learn' | 'predict' | 'correct', extra: Re
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('You must be logged in.')
 
-  const res = await fetchWithRetry(AI_FUNCTION_URL.replace('ai-automation', 'business-brain'), {
+  const res = await fetchWithRetry(edgeFunctionUrl('business-brain'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -189,7 +190,7 @@ export interface OnboardingQuestion { q: string; type: 'text' | 'choice'; option
 export async function onboardingQuestions(input: { category: string; businessName?: string; city?: string }): Promise<OnboardingQuestion[]> {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('You must be logged in.')
-  const res = await fetchWithRetry(AI_FUNCTION_URL.replace('ai-automation', 'ai-assistant'), {
+  const res = await fetchWithRetry(edgeFunctionUrl('ai-assistant'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -207,7 +208,7 @@ export interface OnboardingPersona { headline: string; persona: string; skills: 
 export async function onboardingPersona(input: { category: string; businessName?: string; city?: string; answers: Record<string, string> }): Promise<OnboardingPersona> {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('You must be logged in.')
-  const res = await fetchWithRetry(AI_FUNCTION_URL.replace('ai-automation', 'ai-assistant'), {
+  const res = await fetchWithRetry(edgeFunctionUrl('ai-assistant'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -229,7 +230,7 @@ export async function onboardingPersona(input: { category: string; businessName?
 export async function dashboardSuggestions(state: Record<string, unknown>): Promise<string[]> {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('You must be logged in.')
-  const res = await fetchWithRetry(AI_FUNCTION_URL.replace('ai-automation', 'ai-assistant'), {
+  const res = await fetchWithRetry(edgeFunctionUrl('ai-assistant'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -247,21 +248,34 @@ export async function dashboardSuggestions(state: Record<string, unknown>): Prom
  * Kick off the Google OAuth flow — opens Google's consent screen.
  * Returns the authorize URL to redirect to, or null if OAuth isn't configured.
  */
-export function googleAuthorizeUrl(userId: string, provider: 'gmail' | 'google_sheets'): string {
-  const base = (import.meta.env.VITE_SUPABASE_URL || '').replace('.supabase.co', '.functions.supabase.co')
-  const fn = `${base}/google-oauth`
-  return `${fn}?action=authorize&user=${encodeURIComponent(userId)}&provider=${provider}`
+export async function googleAuthorizeUrl(
+  provider: GoogleProvider,
+  permission: 'read_only' | 'read_write' | 'full_access' = 'read_only',
+): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('You must be logged in.')
+  const res = await fetch(edgeFunctionUrl('google-oauth'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ action: 'authorize', provider, permission }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok || !data.url) throw new Error(data?.error || `Google authorization failed (HTTP ${res.status})`)
+  return data.url as string
 }
 
 /**
  * Trigger a live sync from a connected Google source (calls google-fetch).
  */
-export async function syncGoogleSource(provider: 'gmail' | 'google_sheets', spreadsheetId?: string): Promise<any> {
+export async function syncGoogleSource(provider: GoogleProvider, spreadsheetId?: string): Promise<any> {
   const { data: { session } } = await supabase.auth.getSession()
   const { data: { user } } = await supabase.auth.getUser()
   if (!session || !user) throw new Error('You must be logged in.')
-  const base = (import.meta.env.VITE_SUPABASE_URL || '').replace('.supabase.co', '.functions.supabase.co')
-  const res = await fetchWithRetry(`${base}/google-fetch`, {
+  const res = await fetchWithRetry(edgeFunctionUrl('google-fetch'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -285,8 +299,7 @@ export async function runQuickTask(mode: QuickTaskMode, text?: string, extra?: R
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('You must be logged in.')
 
-  const base = (import.meta.env.VITE_SUPABASE_URL || '').replace('.supabase.co', '.functions.supabase.co')
-  const res = await fetchWithRetry(`${base}/quick-tasks`, {
+  const res = await fetchWithRetry(edgeFunctionUrl('quick-tasks'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

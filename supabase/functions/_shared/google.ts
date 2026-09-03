@@ -1,111 +1,140 @@
 // ════════════════════════════════════════════════════════════════
-// Google token refresh helper — shared by google-fetch and daily-brain.
-// If an access token is expired, refreshes it using the stored refresh
-// token and updates the integration row. Returns a valid access token
-// (or null if not refreshable).
+// Google token helper — tokens live only in connected_apps.
+//
+// Older installations used integrations.metadata. The migration copies those
+// values once and removes the secret keys. The fallback below is retained only
+// for a controlled rolling deploy; new callers must pass a connected_apps row
+// (normally through a service-role client).
 // ════════════════════════════════════════════════════════════════
+
+interface GoogleConnection {
+  id?: string
+  user_id: string
+  provider?: string
+  app_slug?: string
+  metadata?: Record<string, any> | null
+  access_token?: string | null
+  refresh_token?: string | null
+  token_expires_at?: string | null
+}
+
+function tokenFields(connection: GoogleConnection) {
+  const metadata = connection.metadata || {};
+  const expiry = connection.token_expires_at
+    ? new Date(connection.token_expires_at).getTime()
+    : metadata.expires_at == null ? null : Number(metadata.expires_at);
+  return {
+    accessToken: connection.access_token ?? metadata.access_token ?? null,
+    refreshToken: connection.refresh_token ?? metadata.refresh_token ?? null,
+    expiresAt: Number.isFinite(expiry as number) ? expiry : null,
+  };
+}
 
 export async function refreshGoogleToken(
   supabase: any,
-  integration: { user_id: string; provider: string; metadata: any }
+  connection: GoogleConnection,
 ): Promise<string | null> {
-  const meta = integration.metadata || {};
+  const { accessToken, refreshToken, expiresAt } = tokenFields(connection);
   const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
   const clientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
   const now = Date.now();
 
-  // Still valid?
-  if (meta.access_token && (!meta.expires_at || meta.expires_at > now + 60_000)) {
-    return meta.access_token as string;
-  }
-
-  // Need a refresh token to renew
-  if (!meta.refresh_token || !clientId || !clientSecret) return null;
+  if (accessToken && (!expiresAt || expiresAt > now + 60_000)) return accessToken;
+  if (!refreshToken || !clientId || !clientSecret) return null;
 
   try {
-    const res = await fetch("https://oauth2.googleapis.com/token", {
+    const response = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
-        refresh_token: meta.refresh_token,
+        refresh_token: refreshToken,
         client_id: clientId,
         client_secret: clientSecret,
         grant_type: "refresh_token",
       }),
     });
-    if (!res.ok) return null;
-    const tokens = await res.json();
+    if (!response.ok) return null;
+    const tokens = await response.json();
+    if (!tokens.access_token) return null;
 
-    // Persist the refreshed tokens
-    await supabase.from("integrations").update({
-      metadata: {
-        ...meta,
+    const nextExpiry = tokens.expires_in ? new Date(now + tokens.expires_in * 1000).toISOString() : null;
+    if (connection.id && (connection.app_slug || connection.id)) {
+      // connected_apps is the only supported token store. This query must use
+      // the service-role client; browser-readable column grants exclude these
+      // columns by design.
+      await supabase.from("connected_apps").update({
         access_token: tokens.access_token,
-        expires_at: tokens.expires_in ? now + tokens.expires_in * 1000 : null,
-      },
-    }).eq("user_id", integration.user_id).eq("provider", integration.provider);
-
+        refresh_token: tokens.refresh_token || refreshToken,
+        token_expires_at: nextExpiry,
+        status: "connected",
+        updated_at: new Date().toISOString(),
+      }).eq("id", connection.id);
+    } else if (connection.provider) {
+      // Rolling-deploy compatibility for a legacy row. Never put the refreshed
+      // token back into metadata; metadata is browser-readable.
+      const safeMetadata = { ...(connection.metadata || {}) };
+      delete safeMetadata.access_token;
+      delete safeMetadata.refresh_token;
+      delete safeMetadata.expires_at;
+      await supabase.from("integrations").update({
+        metadata: safeMetadata,
+        last_error: null,
+      }).eq("user_id", connection.user_id).eq("provider", connection.provider);
+    }
     return tokens.access_token as string;
   } catch {
     return null;
   }
 }
 
-/**
- * Fetch recent Gmail messages (subject + snippet) for a user's connection.
- * Returns an array of { subject, snippet, date }.
- */
+/** Fetch recent Gmail messages (subject + snippet) for a connected account. */
 export async function fetchGmail(accessToken: string, max = 25): Promise<{ subject: string; snippet: string; date: string }[]> {
-  // List recent message IDs
-  const listRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${max}`, {
+  const safeMax = Math.max(1, Math.min(100, Math.floor(Number(max) || 25)));
+  const listRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=${safeMax}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  if (!listRes.ok) return [];
-  const { messages = [] } = await listRes.json();
-
+  if (!listRes.ok) throw new Error(`Gmail API returned ${listRes.status}`);
+  const payload = await listRes.json();
+  const messages = Array.isArray(payload?.messages) ? payload.messages.slice(0, safeMax) : [];
   const out: { subject: string; snippet: string; date: string }[] = [];
-  for (const m of messages) {
+  for (const message of messages) {
     try {
-      const msgRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`, {
+      const messageId = typeof message?.id === "string" && /^[A-Za-z0-9_-]{1,200}$/.test(message.id) ? message.id : "";
+      if (!messageId) continue;
+      const messageRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (!msgRes.ok) continue;
-      const msg = await msgRes.json();
-      const headers = msg.payload?.headers || [];
+      if (!messageRes.ok) continue;
+      const data = await messageRes.json();
+      const headers = data.payload?.headers || [];
       const subject = headers.find((h: any) => h.name === "Subject")?.value || "(no subject)";
       const from = headers.find((h: any) => h.name === "From")?.value || "";
       const date = headers.find((h: any) => h.name === "Date")?.value || "";
-      out.push({ subject: `${subject} — from ${from}`, snippet: (msg.snippet || "").slice(0, 300), date });
-    } catch { /* skip this message */ }
+      out.push({ subject: `${String(subject).slice(0, 300)} — from ${String(from).slice(0, 300)}`.slice(0, 650), snippet: String(data.snippet || "").slice(0, 500), date: String(date).slice(0, 100) });
+    } catch { /* skip an individual message */ }
   }
   return out;
 }
 
-/**
- * Fetch rows from a Google Sheet by ID + range.
- * Returns an array of row objects using the first row as headers.
- */
+/** Fetch rows from a Google Sheet by ID + range. */
 export async function fetchSheet(accessToken: string, spreadsheetId: string, range = "A1:Z500"): Promise<Record<string, string>[]> {
-  const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}`, {
+  const safeSpreadsheetId = encodeURIComponent(String(spreadsheetId).slice(0, 200));
+  const safeRange = encodeURIComponent(String(range).slice(0, 200));
+  const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${safeSpreadsheetId}/values/${safeRange}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  if (!res.ok) return [];
-  const data = await res.json();
-  const rows: string[][] = data.values || [];
+  if (!response.ok) throw new Error(`Google Sheets API returned ${response.status}`);
+  const data = await response.json();
+  const rows: string[][] = Array.isArray(data?.values) ? data.values.slice(0, 5_000) : [];
   if (rows.length < 2) return [];
-  const headers = rows[0].map((h, i) => h || `col${i}`);
+  const headers = rows[0].map((header, index) => header || `col${index}`);
   return rows.slice(1).map((row) => {
-    const obj: Record<string, string> = {};
-    headers.forEach((h, i) => { obj[h] = (row[i] || "").toString(); });
-    return obj;
+    const result: Record<string, string> = {};
+    headers.forEach((header, index) => { result[header] = (row[index] || "").toString(); });
+    return result;
   });
 }
 
-// ─── SHEETS WRITE ──────────────────────────────────────────────────
-// Requires the full "spreadsheets" scope (not readonly) — the OAuth flow
-// now requests it. Existing users must reconnect once to get write access.
-
-/** Append rows to a Google Sheet (values are appended after the last row). */
 export async function appendSheetRows(
   accessToken: string,
   spreadsheetId: string,
@@ -113,7 +142,7 @@ export async function appendSheetRows(
   rows: (string | number)[][],
 ): Promise<{ ok: boolean; updatedCells: number; error?: string }> {
   try {
-    const res = await fetch(
+    const response = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
       {
         method: "POST",
@@ -121,40 +150,32 @@ export async function appendSheetRows(
         body: JSON.stringify({ values: rows }),
       },
     );
-    if (!res.ok) {
-      const err = await res.text();
-      return { ok: false, updatedCells: 0, error: err.slice(0, 300) };
-    }
-    const data = await res.json();
+    if (!response.ok) return { ok: false, updatedCells: 0, error: (await response.text()).slice(0, 300) };
+    const data = await response.json();
     return { ok: true, updatedCells: data?.updates?.updatedCells || rows.flat().length };
-  } catch (err) {
-    return { ok: false, updatedCells: 0, error: (err as Error)?.message || "network error" };
+  } catch (error) {
+    return { ok: false, updatedCells: 0, error: (error as Error)?.message || "network error" };
   }
 }
 
-/** Create a new Google Spreadsheet and return its ID + URL. */
 export async function createSpreadsheet(
   accessToken: string,
   title: string,
 ): Promise<{ ok: boolean; spreadsheetId?: string; url?: string; error?: string }> {
   try {
-    const res = await fetch("https://sheets.googleapis.com/v4/spreadsheets", {
+    const response = await fetch("https://sheets.googleapis.com/v4/spreadsheets", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify({ properties: { title } }),
     });
-    if (!res.ok) {
-      const err = await res.text();
-      return { ok: false, error: err.slice(0, 300) };
-    }
-    const data = await res.json();
+    if (!response.ok) return { ok: false, error: (await response.text()).slice(0, 300) };
+    const data = await response.json();
     return { ok: true, spreadsheetId: data?.spreadsheetId, url: data?.spreadsheetUrl };
-  } catch (err) {
-    return { ok: false, error: (err as Error)?.message || "network error" };
+  } catch (error) {
+    return { ok: false, error: (error as Error)?.message || "network error" };
   }
 }
 
-/** Write (overwrite) a range in a Google Sheet. */
 export async function writeSheetRange(
   accessToken: string,
   spreadsheetId: string,
@@ -162,7 +183,7 @@ export async function writeSheetRange(
   rows: (string | number)[][],
 ): Promise<{ ok: boolean; updatedCells: number; error?: string }> {
   try {
-    const res = await fetch(
+    const response = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
       {
         method: "PUT",
@@ -170,13 +191,10 @@ export async function writeSheetRange(
         body: JSON.stringify({ values: rows }),
       },
     );
-    if (!res.ok) {
-      const err = await res.text();
-      return { ok: false, updatedCells: 0, error: err.slice(0, 300) };
-    }
-    const data = await res.json();
+    if (!response.ok) return { ok: false, updatedCells: 0, error: (await response.text()).slice(0, 300) };
+    const data = await response.json();
     return { ok: true, updatedCells: data?.updatedCells || rows.flat().length };
-  } catch (err) {
-    return { ok: false, updatedCells: 0, error: (err as Error)?.message || "network error" };
+  } catch (error) {
+    return { ok: false, updatedCells: 0, error: (error as Error)?.message || "network error" };
   }
 }

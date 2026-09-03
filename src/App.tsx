@@ -80,8 +80,9 @@ function App() {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
 
-        {/* Onboarding wizard (auth required, handled inside the page) */}
-        <Route path="/app/onboarding" element={<Onboarding />} />
+        {/* Onboarding is protected too; it must never show a perpetual spinner
+            or call profile/business writes for an anonymous visitor. */}
+        <Route path="/app/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
 
         {/* Protected app */}
         <Route

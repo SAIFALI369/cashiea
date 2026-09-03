@@ -32,12 +32,13 @@ export async function refreshCanvaToken(supabase: any, conn: any): Promise<strin
   try {
     const res = await fetch(TOKEN_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Basic ${btoa(`${CLIENT_ID}:${CLIENT_SECRET}`)}`,
+      },
       body: new URLSearchParams({
         grant_type: "refresh_token",
         refresh_token: t.refresh_token,
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
       }),
     });
     if (!res.ok) return null;

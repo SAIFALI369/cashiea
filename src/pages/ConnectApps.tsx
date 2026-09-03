@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { APP_CATALOG, oauthProviderForSlug, type AppCatalogEntry, type PermissionMode } from '../lib/app-catalog'
+import { googleAuthorizeUrl } from '../lib/ai'
 import PageHeader from '../components/ui/PageHeader'
 import ConnectAppModal from '../components/ConnectAppModal'
 import DrivePicker from '../components/DrivePicker'
@@ -9,6 +10,7 @@ import { Plus, Loader2, Trash2, RefreshCw, Zap, FolderOpen, FileText } from 'luc
 import toast from 'react-hot-toast'
 
 interface SelectedFile { id: string; name: string; mimeType: string }
+interface SelectedSpreadsheet { id: string; name: string }
 interface ConnectedApp {
   id: string
   app_slug: string
@@ -18,7 +20,7 @@ interface ConnectedApp {
   status: string
   last_synced_at: string | null
   created_at: string
-  metadata?: { selectedFiles?: SelectedFile[] } | null
+  metadata?: { selectedFiles?: SelectedFile[]; spreadsheet_id?: string; spreadsheet_name?: string; spreadsheet_url?: string } | null
 }
 
 const C = { bg: 'rgb(var(--paper))', border: 'rgb(var(--line))', blue: 'rgb(var(--accent))', green: 'rgb(var(--positive))', text: 'rgb(var(--fg))', muted: 'rgb(var(--fg-subtle))', amber: 'rgb(var(--warning))', red: 'rgb(var(--negative))' }
@@ -33,32 +35,45 @@ const statusInfo: Record<string, { label: string; color: string }> = {
   disconnected: { label: 'Disconnected', color: C.muted },
 }
 
-// Google Picker API key (created in Google Cloud Console, restricted to the Picker API).
-const DRIVE_DEV_KEY = import.meta.env.VITE_GOOGLE_DRIVE_API_KEY || ''
+const SAFE_CONNECTION_FIELDS = 'id,user_id,app_slug,app_name,provider_email,permission_mode,status,last_synced_at,metadata,created_at,updated_at'
 
 export default function ConnectApps() {
-  const { profile, ownerId } = useAuth()
+  const { ownerId } = useAuth()
   const [connections, setConnections] = useState<Record<string, ConnectedApp>>({})
   const [loading, setLoading] = useState(true)
   const [activeModal, setActiveModal] = useState<AppCatalogEntry | null>(null)
   const [testing, setTesting] = useState<string | null>(null)
   const [disconnecting, setDisconnecting] = useState<string | null>(null)
   const [picking, setPicking] = useState(false)
-  const [pickerToken, setPickerToken] = useState<string | null>(null)
+  const [drivePickerOpen, setDrivePickerOpen] = useState(false)
+  const [driveFiles, setDriveFiles] = useState<SelectedFile[]>([])
+  const [selectedDriveFiles, setSelectedDriveFiles] = useState<SelectedFile[]>([])
+  const [savingDriveSelection, setSavingDriveSelection] = useState(false)
+  const [spreadsheetIdDraft, setSpreadsheetIdDraft] = useState('')
+  const [savingSpreadsheet, setSavingSpreadsheet] = useState(false)
 
   const loadConnections = useCallback(async () => {
-    if (!profile) return
+    if (!ownerId) {
+      setConnections({})
+      setLoading(false)
+      return
+    }
     setLoading(true)
-    const { data } = await supabase.from('connected_apps').select('*').eq('user_id', ownerId)
+    const { data } = await supabase.from('connected_apps').select(SAFE_CONNECTION_FIELDS).eq('user_id', ownerId)
     const map: Record<string, ConnectedApp> = {}
     ;(data || []).forEach((c: any) => { map[c.app_slug] = c })
     setConnections(map)
     setLoading(false)
-  }, [profile])
+  }, [ownerId])
 
-  useEffect(() => { loadConnections() }, [loadConnections])
+  useEffect(() => { void loadConnections() }, [loadConnections])
 
   useEffect(() => {
+    setSpreadsheetIdDraft(connections['google-sheets']?.metadata?.spreadsheet_id || '')
+  }, [connections])
+
+  useEffect(() => {
+    if (!ownerId) return
     const params = new URLSearchParams(window.location.search)
     const connected = params.get('connected')
     const error = params.get('error')
@@ -71,29 +86,33 @@ export default function ConnectApps() {
       toast.error(`Connection failed: ${error}`)
       window.history.replaceState({}, '', window.location.pathname)
     }
-  }, [loadConnections])
+  }, [loadConnections, ownerId])
 
-  const startAuth = (app: AppCatalogEntry, permission: PermissionMode) => {
+  const startAuth = async (app: AppCatalogEntry, permission: PermissionMode) => {
+    if (!ownerId) { toast.error('Your account is still loading — please try again'); return }
     setActiveModal(null)
-    const base = (import.meta.env.VITE_SUPABASE_URL || '').replace('.supabase.co', '.functions.supabase.co')
-    const fnUrl = app.slug === 'canva' ? `${base}/canva-oauth` : `${base}/google-oauth`
-    const url = app.slug === 'canva'
-      ? `${fnUrl}?action=authorize&user=${ownerId}`
-      : `${fnUrl}?action=authorize&user=${ownerId}&provider=${oauthProviderForSlug(app.slug)}&permission=${permission}`
-    window.location.href = url
+    try {
+      let url: string
+      if (app.slug === 'canva') {
+        const { data, error } = await supabase.functions.invoke('canva-oauth', { body: { action: 'authorize' } })
+        if (error) throw error
+        if (!data?.url) throw new Error(data?.error || 'Canva authorization failed')
+        url = data.url
+      } else {
+        url = await googleAuthorizeUrl(oauthProviderForSlug(app.slug), permission)
+      }
+      window.location.assign(url)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not start connection')
+    }
   }
 
   const callApi = async (action: string, appSlug: string, extra: Record<string, unknown> = {}) => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) throw new Error('Not authenticated')
-    const base = (import.meta.env.VITE_SUPABASE_URL || '').replace('.supabase.co', '.functions.supabase.co')
-    const res = await fetch(`${base}/integrations-api`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
-      body: JSON.stringify({ action, app_slug: appSlug, ...extra }),
+    const { data, error } = await supabase.functions.invoke('integrations-api', {
+      body: { action, app_slug: appSlug, ...extra },
     })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data?.error || `Failed (${res.status})`)
+    if (error) throw error
+    if (data?.error) throw new Error(data.error)
     return data
   }
 
@@ -118,34 +137,83 @@ export default function ConnectApps() {
     } finally { setDisconnecting(null) }
   }
 
-  // Google Drive: open the file picker
+  // Google Drive: list and select files through the server. The OAuth token
+  // remains inside integrations-api and is never mounted in the DOM.
   const openDrivePicker = async () => {
-    if (!DRIVE_DEV_KEY) { toast.error('Google Picker API key not set. Add VITE_GOOGLE_DRIVE_API_KEY (see setup notes).'); return }
     setPicking(true)
     try {
-      const r = await callApi('get_drive_token', 'google-drive')
-      setPickerToken(r.token)
+      const result = await callApi('list_drive_files', 'google-drive')
+      const files = Array.isArray(result?.files) ? result.files as SelectedFile[] : []
+      const existing = connections['google-drive']?.metadata?.selectedFiles || []
+      setDriveFiles(files)
+      setSelectedDriveFiles(files.filter((file) => existing.some((saved) => saved.id === file.id)))
+      setDrivePickerOpen(true)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not open picker')
+      toast.error(err instanceof Error ? err.message : 'Could not load Drive files')
     } finally { setPicking(false) }
   }
-  const onDrivePicked = async (files: SelectedFile[]) => {
-    setPickerToken(null)
+  const saveDriveSelection = async (files: SelectedFile[]) => {
+    setSavingDriveSelection(true)
     try {
       await callApi('save_drive_files', 'google-drive', { files })
+      setSelectedDriveFiles(files)
+      setDrivePickerOpen(false)
       await loadConnections()
       toast.success(`${files.length} file${files.length > 1 ? 's' : ''} selected for Meraj`)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not save selection')
+    } finally { setSavingDriveSelection(false) }
+  }
+
+  const extractSpreadsheetId = (value: string) => {
+    const trimmed = value.trim()
+    const fromUrl = trimmed.match(/\/spreadsheets\/d\/([A-Za-z0-9_-]+)/i)
+    return (fromUrl?.[1] || trimmed).replace(/[?#].*$/, '')
+  }
+
+  const saveSpreadsheet = async () => {
+    const spreadsheetId = extractSpreadsheetId(spreadsheetIdDraft)
+    if (!/^[A-Za-z0-9_-]{1,200}$/.test(spreadsheetId)) {
+      toast.error('Paste a Google Sheets URL or spreadsheet ID')
+      return
     }
+    setSavingSpreadsheet(true)
+    try {
+      await callApi('save_spreadsheet', 'google-sheets', { spreadsheet_id: spreadsheetId })
+      await loadConnections()
+      toast.success('Google Sheet selected for Meraj')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not select spreadsheet')
+    } finally { setSavingSpreadsheet(false) }
+  }
+
+  const clearSpreadsheet = async () => {
+    setSavingSpreadsheet(true)
+    try {
+      await callApi('clear_spreadsheet', 'google-sheets')
+      setSpreadsheetIdDraft('')
+      await loadConnections()
+      toast.success('Spreadsheet selection cleared')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not clear spreadsheet')
+    } finally { setSavingSpreadsheet(false) }
   }
 
   return (
     <div className="animate-fade-in">
       <PageHeader title="Connect Apps" subtitle="Connect external apps to let Cashiea AI work with your data" icon={<Zap className="w-5 h-5" />} />
 
-      {pickerToken && DRIVE_DEV_KEY && (
-        <DrivePicker token={pickerToken} developerKey={DRIVE_DEV_KEY} onPick={onDrivePicked} onError={(m) => { toast.error(m); setPickerToken(null) }} />
+      {drivePickerOpen && (
+        <DrivePicker
+          files={driveFiles}
+          selectedIds={selectedDriveFiles.map((file) => file.id)}
+          loading={picking}
+          saving={savingDriveSelection}
+          onRefresh={openDrivePicker}
+          onChange={setSelectedDriveFiles}
+          onSave={saveDriveSelection}
+          onClose={() => setDrivePickerOpen(false)}
+        />
       )}
 
       <div className="grid sm:grid-cols-2 gap-4 mb-8">
@@ -155,7 +223,12 @@ export default function ConnectApps() {
           const info = statusInfo[status] || statusInfo.not_connected
           const isConnected = status === 'connected'
           const isDrive = app.slug === 'google-drive'
+          const isSheets = app.slug === 'google-sheets'
           const selected = conn?.metadata?.selectedFiles || []
+          const sheetId = typeof conn?.metadata?.spreadsheet_id === 'string' ? conn.metadata.spreadsheet_id : ''
+          const selectedSpreadsheet: SelectedSpreadsheet | null = sheetId
+            ? { id: sheetId, name: conn?.metadata?.spreadsheet_name || 'Selected spreadsheet' }
+            : null
 
           return (
             <div key={app.slug} className="rounded-xl p-4 transition-all" style={{ background: 'rgb(var(--surface))', border: `1px solid ${C.border}` }}>
@@ -184,6 +257,35 @@ export default function ConnectApps() {
                 </div>
               )}
 
+              {/* Sheets: select one spreadsheet by URL or ID. The server
+                  validates access with the connected OAuth token and stores only
+                  its non-secret metadata. */}
+              {isConnected && isSheets && (
+                <div className="mb-4 p-3 rounded-xl" style={{ background: C.bg }}>
+                  <p className="text-xs font-semibold mb-1" style={{ color: C.text }}>Spreadsheet for Meraj</p>
+                  {selectedSpreadsheet && (
+                    <a href={`https://docs.google.com/spreadsheets/d/${selectedSpreadsheet.id}`} target="_blank" rel="noreferrer" className="block text-xs truncate mb-2" style={{ color: C.blue }}>
+                      {selectedSpreadsheet.name}
+                    </a>
+                  )}
+                  <input
+                    value={spreadsheetIdDraft}
+                    onChange={(event) => setSpreadsheetIdDraft(event.target.value)}
+                    placeholder="Paste Google Sheets URL or ID"
+                    className="w-full px-3 py-2 rounded-lg text-xs outline-none"
+                    style={{ background: 'rgb(var(--surface))', color: C.text, border: `1px solid ${C.border}` }}
+                    aria-label="Google Sheets spreadsheet URL or ID"
+                  />
+                  <div className="flex gap-2 mt-2">
+                    <button onClick={saveSpreadsheet} disabled={savingSpreadsheet || !spreadsheetIdDraft.trim()} className="flex-1 py-2 rounded-lg text-xs font-semibold" style={{ background: C.blue, color: '#fff' }}>
+                      {savingSpreadsheet ? <Loader2 className="w-3.5 h-3.5 animate-spin mx-auto" /> : selectedSpreadsheet ? 'Change sheet' : 'Use this sheet'}
+                    </button>
+                    {selectedSpreadsheet && <button onClick={clearSpreadsheet} disabled={savingSpreadsheet} className="px-3 py-2 rounded-lg text-xs" style={{ color: C.red, border: `1px solid ${C.border}` }}>Clear</button>}
+                  </div>
+                  <p className="text-[11px] mt-1.5" style={{ color: C.muted }}>Read-only connects can sync/import. Reconnect with Read &amp; Write before exporting from Cashiea.</p>
+                </div>
+              )}
+
               {/* Drive: selected files + picker */}
               {isConnected && isDrive && (
                 <div className="mb-4">
@@ -203,7 +305,7 @@ export default function ConnectApps() {
                   <button onClick={openDrivePicker} disabled={picking} className="w-full mt-2 py-2 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-all" style={{ background: C.bg, color: C.text, border: `1px solid ${C.border}` }}>
                     {picking ? <Loader2 className="w-4 h-4 animate-spin" /> : <FolderOpen className="w-4 h-4" />} {selected.length ? 'Change selection' : 'Pick files'}
                   </button>
-                  {!DRIVE_DEV_KEY && <p className="text-[11px] mt-1.5" style={{ color: C.amber }}>Picker needs VITE_GOOGLE_DRIVE_API_KEY (see setup).</p>}
+                  <p className="text-[11px] mt-1.5" style={{ color: C.muted }}>Files are listed by Cashiea’s server connection; OAuth tokens never reach this browser.</p>
                 </div>
               )}
 

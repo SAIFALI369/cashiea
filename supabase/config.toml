@@ -15,8 +15,8 @@ major_version = 15
 
 [auth]
 enabled = true
-site_url = "http://localhost:5173"
-additional_redirect_urls = ["https://localhost:5173"]
+site_url = "https://cashiea.vercel.app"
+additional_redirect_urls = ["http://localhost:5173", "https://localhost:5173", "https://cashiea.vercel.app"]
 jwt_expiry = 3600
 enable_signup = true
 
@@ -27,6 +27,14 @@ enable_confirmations = false
 
 # Functions verify JWT by default. Override per-function below (verify_jwt = false)
 # for webhooks / OAuth callbacks that must be callable without a user JWT.
+[functions.api-draft-email]
+# Authenticates requests with x-api-key inside the function; there is no user JWT.
+verify_jwt = false
+
+[functions.api-generate-invoice]
+# Authenticates requests with x-api-key inside the function; there is no user JWT.
+verify_jwt = false
+
 [functions.stripe-webhook]
 verify_jwt = false
 
@@ -36,8 +44,6 @@ verify_jwt = false
 [functions.google-oauth]
 verify_jwt = false
 
-[functions.quickbooks-oauth]
-verify_jwt = false
 
 [functions.daily-brain]
 verify_jwt = false

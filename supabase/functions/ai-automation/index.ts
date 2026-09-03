@@ -9,6 +9,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/retry.ts";
 import { callAIWithFallback } from "../_shared/ai-call.ts";
+import { resolveBusiness } from "../_shared/business.ts";
+import { releaseApiUsage } from "../_shared/usage.ts";
 
 // ─── AI calls go through _shared/ai-call.ts (Groq primary + Gemini fallback — same as Meraj chat) ──
 
@@ -62,58 +64,81 @@ const SAVINGS: Record<string, { time: number; money: number }> = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  const contentLength = Number(req.headers.get("content-length") || 0);
+  if (Number.isFinite(contentLength) && contentLength > 100_000) return json({ error: "Request is too large" }, 413);
 
+  let usageReserved = false;
+  let usageConsumed = false;
+  let usageOwner = "";
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: req.headers.get("Authorization")! } } }
+      { global: { headers: { Authorization: req.headers.get("Authorization") || "" } } },
     );
-
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) return json({ error: "Unauthorized" }, 401);
 
-    // Usage check — honor trial boost
-    const { data: profile } = await supabase
+    const service = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const business = await resolveBusiness(service, user.id);
+    if (!business) return json({ error: "Your account is not linked to exactly one active business" }, 403);
+    const { ownerId } = business;
+    usageOwner = ownerId;
+    const { data: profile, error: profileError } = await service
       .from("profiles")
-      .select("api_usage_count, api_usage_limit, ai_provider, plan, trial_ends_at")
-      .eq("id", user.id)
-      .single();
+      .select("ai_provider")
+      .eq("id", ownerId)
+      .maybeSingle();
+    if (profileError || !profile) return json({ error: "Could not load business profile" }, 503);
 
-    const onTrial = profile?.trial_ends_at && new Date(profile.trial_ends_at) > new Date();
-    const limit = onTrial ? Math.max(profile.api_usage_limit, 500) : profile?.api_usage_limit || 50;
-    if (profile && profile.api_usage_count >= limit) {
-      return json({ error: "Usage limit reached. Please upgrade your plan." }, 429);
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Invalid JSON body" }, 400);
+    const taskType = typeof body.task_type === "string" ? body.task_type : "";
+    const prompt = typeof body.prompt === "string" ? body.prompt.trim().slice(0, 20_000) : "";
+    if (!Object.prototype.hasOwnProperty.call(SYSTEM_PROMPTS, taskType) || !prompt) {
+      return json({ error: "A supported task_type and prompt are required" }, 400);
     }
+    if (body.report_type !== undefined && (typeof body.report_type !== "string" || !["financial", "sales", "operations", "custom"].includes(body.report_type))) return json({ error: "Unsupported report type" }, 400);
+    if (body.title !== undefined && (typeof body.title !== "string" || body.title.length > 200)) return json({ error: "title is invalid or too long" }, 400);
+    if (body.provider !== undefined && (typeof body.provider !== "string" || body.provider.length > 40)) return json({ error: "provider is invalid" }, 400);
 
-    const { task_type, prompt, provider: requestedProvider, report_type, title } = await req.json();
-    if (!task_type || !prompt) return json({ error: "task_type and prompt are required" }, 400);
+    const { data: reserved, error: reserveError } = await service.rpc("reserve_api_usage", { p_user_id: ownerId, p_amount: 1 });
+    if (reserveError) return json({ error: "AI usage service is unavailable; deploy schema v27 first" }, 503);
+    if (!reserved) return json({ error: "Usage limit reached. Please upgrade your plan." }, 429);
+    usageReserved = true;
 
-    const provider = requestedProvider || profile?.ai_provider || "openai";
-    const systemPrompt = SYSTEM_PROMPTS[task_type] || "You are a helpful business assistant.";
+    const requestedProvider = typeof body.provider === "string" ? body.provider : "";
+    const allowedProviders = ["groq", "openai", "gemini", "anthropic", "vercel_gateway", "openrouter"];
+    const provider = allowedProviders.includes(requestedProvider) ? requestedProvider : (profile.ai_provider || "groq");
+    const systemPrompt = SYSTEM_PROMPTS[taskType] || "You are a helpful business assistant.";
 
-    // Build the actual user prompt (report sub-type framing)
     let userPrompt = prompt;
-    if (task_type === "report") {
-      userPrompt = frameReportPrompt(report_type || "custom", title || "", prompt);
+    if (taskType === "report") {
+      const reportType = typeof body.report_type === "string" ? body.report_type.slice(0, 40) : "custom";
+      const title = typeof body.title === "string" ? body.title.slice(0, 200) : "";
+      userPrompt = frameReportPrompt(reportType, title, prompt);
     }
 
     const result = await callAIWithFallback(provider, systemPrompt, userPrompt, 2000, "ai-automation");
-
-    // Increment usage + log activity
-    await supabase.rpc("increment_api_usage", { user_uuid: user.id });
-    const savings = SAVINGS[task_type] || { time: 10, money: 5 };
-    await supabase.from("activity_logs").insert({
-      user_id: user.id,
-      action_type: task_type,
-      description: `${task_type} generated`,
+    usageConsumed = true;
+    const savings = SAVINGS[taskType] || { time: 10, money: 5 };
+    await service.from("activity_logs").insert({
+      user_id: ownerId,
+      action_type: taskType,
+      description: `${taskType} generated`,
       time_saved_minutes: savings.time,
       money_saved: savings.money,
       provider,
     });
 
-    return json({ result, provider, task_type });
+    return json({ result, provider, task_type: taskType });
   } catch (error) {
-    return json({ error: error.message }, 500);
+    return json({ error: error instanceof Error ? error.message : String(error) }, 500);
+  } finally {
+    if (usageReserved && !usageConsumed) await releaseApiUsage(
+      createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } }),
+      usageOwner,
+    );
   }
 });

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
+import { useCan } from '../lib/permissions'
+import { supabase, edgeFunctionUrl } from '../lib/supabase'
 import { offlineInsert } from '../lib/mutations'
 import type { Expense } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
@@ -12,7 +13,8 @@ import toast from 'react-hot-toast'
 const categories = ['Rent', 'Salaries', 'Inventory', 'Utilities', 'Marketing', 'Transport', 'Maintenance', 'Sales', 'Other']
 
 export default function Accounts() {
-  const { profile } = useAuth()
+  const { ownerId } = useAuth()
+  const { isOwner } = useCan()
   const [entries, setEntries] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -32,8 +34,8 @@ export default function Accounts() {
       canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
       const imageData = canvas.toDataURL('image/jpeg', 0.8).split(',')[1]
       const { data: { session } } = await supabase.auth.getSession()
-      const base = (import.meta.env.VITE_SUPABASE_URL || '').replace('.supabase.co', '.functions.supabase.co')
-      const r = await fetch(`${base}/scan-receipt`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session!.access_token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY }, body: JSON.stringify({ image: { data: imageData, mimeType: 'image/jpeg' } }) })
+      if (!session) throw new Error('You must be logged in to scan a receipt')
+      const r = await fetch(edgeFunctionUrl('scan-receipt'), { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY }, body: JSON.stringify({ image: { data: imageData, mimeType: 'image/jpeg' } }) })
       const result = await r.json(); if (!r.ok) throw new Error(result?.error || 'Scan failed')
       const d = result.extracted
       const catMap: Record<string, string> = { utilities: 'Utilities', rent: 'Rent', supplies: 'Inventory', transport: 'Transport', food: 'Other', salary: 'Salaries', maintenance: 'Maintenance', marketing: 'Marketing', tax: 'Other', other: 'Other' }
@@ -43,20 +45,22 @@ export default function Accounts() {
     finally { setScanning(false) }
   }
 
-  useEffect(() => { loadData() }, [])
-
-  const loadData = async () => {
+  useEffect(() => {
+    if (!ownerId) return
+    let cancelled = false
     setLoading(true)
-    const { data } = await supabase.from('expenses').select('*').eq('user_id', profile!.id).order('date', { ascending: false })
-    setEntries((data as Expense[]) || [])
-    setLoading(false)
-  }
+    supabase.from('expenses').select('*').eq('user_id', ownerId).order('date', { ascending: false })
+      .then(({ data }) => { if (!cancelled) { setEntries((data as Expense[]) || []); setLoading(false) } })
+    return () => { cancelled = true }
+  }, [ownerId])
 
   const save = async () => {
+    if (!isOwner) { toast.error('Only the business owner can record accounts entries'); return }
+    if (!ownerId) { toast.error('Your shop is still loading — please try again'); return }
     if (!form.description.trim()) return toast.error('Description required')
     if (!form.amount) return toast.error('Amount required')
     const { data, error } = await offlineInsert('expenses', {
-      user_id: profile!.id, type: form.type, category: form.category, description: form.description,
+      user_id: ownerId, type: form.type, category: form.category, description: form.description,
       amount: Number(form.amount), payment_method: form.payment_method, date: form.date, notes: form.notes || null,
     })
     if (error) { toast.error(error.message); return }
@@ -67,7 +71,9 @@ export default function Accounts() {
   }
 
   const del = async (id: string) => {
-    const { error } = await supabase.from('expenses').delete().eq('id', id)
+    if (!isOwner) { toast.error('Only the business owner can delete accounts entries'); return }
+    if (!ownerId) return
+    const { error } = await supabase.from('expenses').delete().eq('id', id).eq('user_id', ownerId)
     if (!error) { setEntries(entries.filter((e) => e.id !== id)); toast.success('Deleted') }
   }
 
@@ -82,7 +88,7 @@ export default function Accounts() {
 
   return (
     <div className="animate-fade-in">
-      <PageHeader title="Accounts" subtitle="Track expenses, income, cash flow & profit" icon={<Wallet className="w-5 h-5" />} action={<div className="flex gap-2"><input ref={scanRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={scanReceipt} /><button onClick={() => scanRef.current?.click()} disabled={scanning} className="btn-secondary text-xs">{scanning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />} Scan</button><button onClick={() => exportToCSV('accounts', entries as unknown as Record<string, unknown>[])} className="btn-secondary text-xs"><Download className="w-3.5 h-3.5" /> Export</button><button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showForm ? 'Close' : 'Add Entry'}</button></div>} />
+      <PageHeader title="Accounts" subtitle="Track expenses, income, cash flow & profit" icon={<Wallet className="w-5 h-5" />} action={<div className="flex gap-2">{isOwner && <><input ref={scanRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={scanReceipt} /><button onClick={() => scanRef.current?.click()} disabled={scanning} className="btn-secondary text-xs">{scanning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />} Scan</button></>}<button onClick={() => exportToCSV('accounts', entries as unknown as Record<string, unknown>[])} className="btn-secondary text-xs"><Download className="w-3.5 h-3.5" /> Export</button>{isOwner && <button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showForm ? 'Close' : 'Add Entry'}</button>}</div>} />
 
       {/* Overview cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -92,7 +98,7 @@ export default function Accounts() {
         <div className="card p-4"><span className="text-xs text-fg-muted block mb-1">Month Expenses</span><p className="text-xl font-bold text-negative">₹{monthExpenses.toFixed(0)}</p><p className="text-xs text-fg-subtle mt-0.5">Net: ₹{(monthIncome - monthExpenses).toFixed(0)}</p></div>
       </div>
 
-      {showForm && (
+      {isOwner && showForm && (
         <div className="card p-4 mb-6 animate-slide-up">
           <div className="flex gap-2 mb-4">
             <button onClick={() => setForm({ ...form, type: 'expense' })} className={`flex-1 py-2 rounded-xl text-sm font-medium ${form.type === 'expense' ? 'bg-negative/20 text-negative border border-red-600/40' : 'bg-surface-2 text-fg-muted'}`}>💸 Expense</button>
@@ -121,7 +127,7 @@ export default function Accounts() {
                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${e.type === 'income' ? 'bg-positive/15' : 'bg-negative/15'}`}>{e.type === 'income' ? <TrendingUp className="w-4 h-4 text-positive" /> : <TrendingDown className="w-4 h-4 text-negative" />}</div>
                 <div className="min-w-0"><p className="text-sm text-fg truncate">{e.description}</p><p className="text-xs text-fg-subtle">{e.category} · {e.date} · {e.payment_method}</p></div>
               </div>
-              <div className="flex items-center gap-3 flex-shrink-0"><span className={`font-semibold ${e.type === 'income' ? 'text-positive' : 'text-negative'}`}>{e.type === 'income' ? '+' : '−'}₹{Number(e.amount).toFixed(0)}</span><button onClick={() => del(e.id)} className="text-fg-subtle hover:text-negative"><Trash2 className="w-3.5 h-3.5" /></button></div>
+              <div className="flex items-center gap-3 flex-shrink-0"><span className={`font-semibold ${e.type === 'income' ? 'text-positive' : 'text-negative'}`}>{e.type === 'income' ? '+' : '−'}₹{Number(e.amount).toFixed(0)}</span>{isOwner && <button onClick={() => del(e.id)} className="text-fg-subtle hover:text-negative"><Trash2 className="w-3.5 h-3.5" /></button>}</div>
             </div>
           ))}
         </div>

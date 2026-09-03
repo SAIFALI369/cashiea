@@ -1,6 +1,7 @@
 import { renderMd } from '../lib/markdown'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useCan } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import { callAI } from '../lib/ai'
 import type { Report } from '../lib/types'
@@ -17,6 +18,7 @@ import { buildWhatsappLink } from '../lib/payments'
 
 export default function Reports() {
   const { profile, ownerId } = useAuth()
+  const { isOwner } = useCan()
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -51,6 +53,10 @@ export default function Reports() {
   }
 
   const handleGenerate = async () => {
+    if (!isOwner) {
+      toast.error('Only the business owner can generate reports')
+      return
+    }
     if (!data || !data.hasData) {
       toast.error('No business data found yet — record some sales first')
       return
@@ -97,7 +103,11 @@ export default function Reports() {
   }
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from('reports').delete().eq('id', id)
+    if (!isOwner) {
+      toast.error('Only the business owner can delete reports')
+      return
+    }
+    const { error } = await supabase.from('reports').delete().eq('id', id).eq('user_id', ownerId)
     if (!error) {
       setReports(reports.filter((r) => r.id !== id))
       toast.success('Report deleted')
@@ -147,16 +157,16 @@ export default function Reports() {
         title="Reports"
         subtitle="Structured business reports from your real Cashiea data — no typing"
         icon={<BarChart3 className="w-5 h-5" />}
-        action={
+        action={isOwner ? (
           <button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm">
             <Plus className="w-4 h-4" /> {showForm ? 'Close' : 'New Report'}
           </button>
-        }
+        ) : <span className="text-xs text-fg-subtle">Owner-only changes</span>}
       />
 
       <SalesTrend ownerId={ownerId} />
 
-      {showForm && (
+      {isOwner && showForm && (
         <div className="card p-4 mb-6 animate-slide-up">
           {/* Type selector with guidance */}
           <label className="label">Report Type</label>
@@ -274,7 +284,7 @@ export default function Reports() {
                     )}
                     <button onClick={() => handleWhatsApp(report)} className="btn-ghost text-xs h-10 text-positive"><MessageCircle className="w-3.5 h-3.5" /> WhatsApp</button>
                     <button onClick={() => handleCopy(report.generated_content!)} className="btn-ghost text-xs h-10"><Copy className="w-3.5 h-3.5" /> Copy</button>
-                    <button onClick={() => handleDelete(report.id)} className="btn-ghost text-xs h-10 text-negative"><Trash2 className="w-3.5 h-3.5" /> Delete</button>
+                    {isOwner && <button onClick={() => handleDelete(report.id)} className="btn-ghost text-xs h-10 text-negative"><Trash2 className="w-3.5 h-3.5" /> Delete</button>}
                   </div>
                   <div className="prose-content px-5 pb-5 max-h-[500px] overflow-y-auto" dangerouslySetInnerHTML={{ __html: renderMd(report.generated_content) }} />
                 </div>

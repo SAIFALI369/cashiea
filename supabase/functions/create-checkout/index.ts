@@ -42,11 +42,23 @@ Deno.serve(async (req) => {
       httpClient: Stripe.createFetchHttpClient(),
     });
 
+    const authorization = req.headers.get("Authorization");
+    if (!authorization?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !anonKey || !serviceKey) throw new Error("Billing service is not configured");
+
     const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: req.headers.get("Authorization")! } } }
+      supabaseUrl,
+      anonKey,
+      { global: { headers: { Authorization: authorization } }, auth: { persistSession: false } }
     );
+    const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 
     // Verify the user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -56,42 +68,83 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { plan } = await req.json();
-
-    if (!plan || plan === "free") {
-      return new Response(JSON.stringify({ error: "Invalid plan" }), {
+    let body: { plan?: unknown };
+    try { body = await req.json(); } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const plan = typeof body.plan === "string" ? body.plan : "";
 
+    if (!plan || !Object.prototype.hasOwnProperty.call(PRICE_MAP, plan)) {
+      return new Response(JSON.stringify({ error: "Invalid or unavailable plan" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const priceId = PRICE_MAP[plan];
-    if (!priceId) throw new Error(`No Stripe price configured for plan: ${plan}`);
+    if (!priceId) {
+      return new Response(JSON.stringify({ error: "This plan is not configured for checkout" }), {
+        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    // Look up or create the Stripe customer
-    const { data: existingSub } = await supabase
+    const { data: profile, error: profileError } = await admin
+      .from("profiles")
+      .select("id, full_name, company_name, role, business_owner_id, plan")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (profileError || !profile) throw new Error("Could not verify billing owner");
+    if (profile.role !== "owner" || profile.business_owner_id !== null) {
+      return new Response(JSON.stringify({ error: "Only the business owner can start checkout" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // A second checkout for an already active subscription can create two
+    // Stripe subscriptions. Require the existing subscription to be managed
+    // first instead of silently double-billing the shop.
+    const { data: existingSub, error: subscriptionError } = await admin
       .from("subscriptions")
-      .select("stripe_customer_id")
+      .select("stripe_customer_id, stripe_subscription_id, status, plan")
       .eq("user_id", user.id)
       .maybeSingle();
+    if (subscriptionError) throw new Error("Could not read billing record");
+    if (existingSub?.stripe_subscription_id && ['active', 'trialing', 'past_due'].includes(existingSub.status)) {
+      return new Response(JSON.stringify({ error: "An active subscription already exists. Manage it in Stripe before changing plans." }), {
+        status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
+    // Look up or create the Stripe customer. Persisting the customer ID before
+    // returning the checkout URL makes retries reuse the same customer.
     let customerId = existingSub?.stripe_customer_id;
-
     if (!customerId) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name, company_name")
-        .eq("id", user.id)
-        .single();
-
       const customer = await stripe.customers.create({
-        email: user.email,
-        name: profile?.full_name || undefined,
-        metadata: { supabase_uid: user.id, company: profile?.company_name || "" },
+        email: user.email || undefined,
+        name: profile.full_name || undefined,
+        metadata: { supabase_uid: user.id, company: profile.company_name || "" },
       });
       customerId = customer.id;
     }
 
-    const appUrl = Deno.env.get("APP_URL") || "http://localhost:5173";
+    const { error: customerSaveError } = await admin.from("subscriptions").upsert({
+      user_id: user.id,
+      stripe_customer_id: customerId,
+      plan: profile.plan || "free",
+      status: existingSub?.status || "active",
+    }, { onConflict: "user_id" });
+    if (customerSaveError) throw new Error("Could not save billing record");
+
+    const appUrlValue = Deno.env.get("APP_URL");
+    if (!appUrlValue) throw new Error("APP_URL is not configured");
+    let appUrl: string;
+    try {
+      const parsed = new URL(appUrlValue);
+      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('invalid protocol');
+      appUrl = parsed.toString().replace(/\/+$/, "");
+    } catch {
+      throw new Error("APP_URL is invalid");
+    }
 
     // Create the Checkout Session (subscription mode)
     const session = await stripe.checkout.sessions.create({

@@ -1,6 +1,7 @@
 import { renderMd } from '../lib/markdown'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useCan } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import { callAI } from '../lib/ai'
 import type { Summary } from '../lib/types'
@@ -18,6 +19,7 @@ const summaryTypes = [
 
 export default function Summaries() {
   const { profile, ownerId } = useAuth()
+  const { can } = useCan()
   const [summaries, setSummaries] = useState<Summary[]>([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -25,20 +27,25 @@ export default function Summaries() {
   const [summaryType, setSummaryType] = useState('brief')
 
   useEffect(() => {
-    loadSummaries()
-  }, [])
+    if (ownerId) loadSummaries()
+    else { setSummaries([]); setLoading(false) }
+  }, [ownerId])
 
   const loadSummaries = async () => {
+    if (!ownerId) return
     setLoading(true)
     const { data } = await supabase
       .from('summaries')
       .select('*')
+      .eq('user_id', ownerId)
       .order('created_at', { ascending: false })
     setSummaries((data as Summary[]) || [])
     setLoading(false)
   }
 
   const handleSummarize = async () => {
+    if (!can('ai:use')) return toast.error('Your role cannot use AI features')
+    if (!ownerId) return toast.error('Your shop is still loading — please try again')
     if (!sourceText.trim()) {
       toast.error('Enter text to summarize')
       return
@@ -82,7 +89,8 @@ export default function Summaries() {
   }
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from('summaries').delete().eq('id', id)
+    if (!can('ai:use') || !ownerId) return
+    const { error } = await supabase.from('summaries').delete().eq('id', id).eq('user_id', ownerId)
     if (!error) {
       setSummaries(summaries.filter((s) => s.id !== id))
       toast.success('Summary deleted')

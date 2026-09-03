@@ -37,9 +37,11 @@ export async function holdCart(
   label: string,
   snapshot: HeldCartSnapshot,
   total: number,
+  actorId = ownerId,
 ): Promise<{ queued: boolean; row: HeldCart }> {
   const { data, error, queued } = await offlineInsert('held_carts', {
     user_id: ownerId,
+    created_by: actorId || ownerId,
     label: label || null,
     cart: snapshot,
     total,
