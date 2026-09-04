@@ -36,7 +36,7 @@ function inScrollableRow(el: Element | null): boolean {
   return false
 }
 
-function shouldIgnore(target: EventTarget | null): boolean {
+export function shouldIgnore(target: EventTarget | null): boolean {
   const el = target instanceof Element ? target : null
   if (!el) return true
   if (el.closest('[data-no-swipe-nav]')) return true
@@ -49,6 +49,11 @@ function shouldIgnore(target: EventTarget | null): boolean {
   return false
 }
 
+/**
+ * @deprecated Lateral swipe navigation now lives in PageStack
+ * (interactive drag with the neighbour page revealed under the
+ * finger). This fling-only hook is kept for reference/compat.
+ */
 export function useSwipeNavigation() {
   const location = useLocation()
   const navigate = useNavigate()

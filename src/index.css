@@ -152,6 +152,99 @@
 
   /* Subtle top accent line for primary modules (Linear/Stripe cue). */
   .module { @apply card relative overflow-hidden; }
+
+  /* ── Page-level shared vocabulary (audit: unify every page) ── */
+
+  /* Glass panel — headers, floating bars, peek layers. */
+  .glass {
+    background: rgb(var(--surface) / 0.72);
+    -webkit-backdrop-filter: saturate(1.4) blur(16px);
+    backdrop-filter: saturate(1.4) blur(16px);
+    border: 1px solid rgb(var(--line) / 0.7);
+  }
+
+  /* Small interactive chip (filters, tags, quick actions). */
+  .chip {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold
+           bg-surface-2 text-fg-muted border border-line
+           transition-all duration-150 ease-butter
+           hover:border-line-2 hover:text-fg active:scale-95;
+  }
+  .chip-active {
+    @apply bg-accent-soft text-accent-strong border-accent/40;
+  }
+
+  /* Section label — the quiet uppercase eyebrow above grouped content. */
+  .section-title {
+    @apply text-[11px] font-bold uppercase tracking-[0.14em] text-fg-subtle;
+  }
+
+  /* Brand gradient text (hero numbers, login headlines). */
+  .text-gradient {
+    background: linear-gradient(120deg, rgb(var(--accent)) 10%, rgb(var(--gold)) 90%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Hairline divider that fades at the ends. */
+  .hairline {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(var(--line-2)) 18% 82%, transparent);
+  }
+
+  /* Skeleton bone + sweep highlight (see Skeleton.tsx). */
+  .skeleton-bone {
+    @apply relative overflow-hidden bg-surface-2;
+  }
+  .skeleton-bone::after {
+    content: '';
+    @apply absolute inset-0;
+    background: linear-gradient(100deg, transparent 20%, rgb(var(--surface-3) / 0.9) 50%, transparent 80%);
+    animation: shimmer 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+
+  /* Accent sheen that sweeps a primary card once on mount. */
+  .sheen {
+    @apply relative overflow-hidden;
+  }
+  .sheen::before {
+    content: '';
+    @apply absolute inset-0 pointer-events-none;
+    background: linear-gradient(115deg, transparent 30%, rgb(var(--accent) / 0.06) 48%, rgb(var(--gold) / 0.08) 52%, transparent 70%);
+    transform: translateX(-120%);
+    animation: sheen-sweep 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.15s 1 both;
+  }
+  @keyframes sheen-sweep {
+    to { transform: translateX(120%); }
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   FOCUS VISIBILITY — a single, calm, theme-aware ring for every
+   interactive element (audit: keyboard focus was invisible in places).
+   ════════════════════════════════════════════════════════════════ */
+:focus-visible {
+  outline: 2px solid rgb(var(--accent) / 0.75);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.btn-primary:focus-visible, .btn-secondary:focus-visible, .icon-btn:focus-visible {
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgb(var(--accent) / 0.18);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   REDUCED MOTION — honour the OS setting app-wide. Route transitions
+   collapse to a plain crossfade; ambient loops stop entirely.
+   ════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.08s !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Scrollbar — quiet, theme-aware. */

@@ -54,6 +54,28 @@ export default {
           900: 'rgb(var(--surface) / <alpha-value>)',
           950: 'rgb(var(--paper-deep) / <alpha-value>)',
         },
+        // Full legacy-palette safety net: ANY stray Tailwind palette name
+        // resolves onto the semantic tokens so pages can never drift off-theme
+        // (audit finding: purple/cyan/pink/orange/emerald leaked through).
+        gray: { 50: 'rgb(var(--fg))', 100: 'rgb(var(--fg))', 200: 'rgb(var(--fg-muted))', 300: 'rgb(var(--fg-muted))', 400: 'rgb(var(--fg-muted))', 500: 'rgb(var(--fg-subtle))', 600: 'rgb(var(--fg-subtle))', 700: 'rgb(var(--line-2))', 800: 'rgb(var(--line))', 900: 'rgb(var(--surface-2))', 950: 'rgb(var(--paper-deep))' },
+        zinc: { DEFAULT: 'rgb(var(--fg-muted))', 50: 'rgb(var(--fg))', 100: 'rgb(var(--fg))', 200: 'rgb(var(--fg-muted))', 300: 'rgb(var(--fg-muted))', 400: 'rgb(var(--fg-muted))', 500: 'rgb(var(--fg-subtle))', 600: 'rgb(var(--fg-subtle))', 700: 'rgb(var(--line-2))', 800: 'rgb(var(--line))', 900: 'rgb(var(--surface-2))', 950: 'rgb(var(--paper-deep))' },
+        neutral: { DEFAULT: 'rgb(var(--fg-muted))', 50: 'rgb(var(--fg))', 100: 'rgb(var(--fg))', 200: 'rgb(var(--fg-muted))', 300: 'rgb(var(--fg-muted))', 400: 'rgb(var(--fg-muted))', 500: 'rgb(var(--fg-subtle))', 600: 'rgb(var(--fg-subtle))', 700: 'rgb(var(--line-2))', 800: 'rgb(var(--line))', 900: 'rgb(var(--surface-2))', 950: 'rgb(var(--paper-deep))' },
+        stone: { DEFAULT: 'rgb(var(--fg-muted))', 50: 'rgb(var(--fg))', 100: 'rgb(var(--fg))', 200: 'rgb(var(--fg-muted))', 300: 'rgb(var(--fg-muted))', 400: 'rgb(var(--fg-muted))', 500: 'rgb(var(--fg-subtle))', 600: 'rgb(var(--fg-subtle))', 700: 'rgb(var(--line-2))', 800: 'rgb(var(--line))', 900: 'rgb(var(--surface-2))', 950: 'rgb(var(--paper-deep))' },
+        blue: { DEFAULT: 'rgb(var(--info))', 50: 'rgb(var(--surface))', 100: 'rgb(var(--surface-2))', 200: 'rgb(var(--line))', 300: 'rgb(var(--info))', 400: 'rgb(var(--info))', 500: 'rgb(var(--info))', 600: 'rgb(var(--info))', 700: 'rgb(var(--info))', 800: 'rgb(var(--info))', 900: 'rgb(var(--info))', 950: 'rgb(var(--info))' },
+        sky: { DEFAULT: 'rgb(var(--info))', 400: 'rgb(var(--info))', 500: 'rgb(var(--info))' },
+        cyan: { DEFAULT: 'rgb(var(--info))', 300: 'rgb(var(--info))', 400: 'rgb(var(--info))', 500: 'rgb(var(--info))', 600: 'rgb(var(--info))' },
+        indigo: { DEFAULT: 'rgb(var(--info))', 400: 'rgb(var(--info))', 500: 'rgb(var(--info))' },
+        violet: { DEFAULT: 'rgb(var(--gold))', 400: 'rgb(var(--gold))', 500: 'rgb(var(--gold))' },
+        purple: { DEFAULT: 'rgb(var(--gold))', 300: 'rgb(var(--gold))', 400: 'rgb(var(--gold))', 500: 'rgb(var(--gold))', 600: 'rgb(var(--copper))' },
+        fuchsia: { DEFAULT: 'rgb(var(--gold))', 400: 'rgb(var(--gold))', 500: 'rgb(var(--gold))' },
+        pink: { DEFAULT: 'rgb(var(--negative))', 400: 'rgb(var(--negative))', 500: 'rgb(var(--negative))' },
+        rose: { DEFAULT: 'rgb(var(--negative))', 400: 'rgb(var(--negative))', 500: 'rgb(var(--negative))' },
+        orange: { DEFAULT: 'rgb(var(--warning))', 400: 'rgb(var(--warning))', 500: 'rgb(var(--warning))', 600: 'rgb(var(--warning))' },
+        yellow: { DEFAULT: 'rgb(var(--warning))', 400: 'rgb(var(--warning))', 500: 'rgb(var(--warning))' },
+        amber: { DEFAULT: 'rgb(var(--warning))', 400: 'rgb(var(--warning))', 500: 'rgb(var(--warning))', 600: 'rgb(var(--warning))' },
+        lime: { DEFAULT: 'rgb(var(--positive))', 400: 'rgb(var(--positive))', 500: 'rgb(var(--positive))' },
+        teal: { DEFAULT: 'rgb(var(--positive))', 400: 'rgb(var(--positive))', 500: 'rgb(var(--positive))' },
+        emerald: { DEFAULT: 'rgb(var(--positive))', 300: 'rgb(var(--positive))', 400: 'rgb(var(--positive))', 500: 'rgb(var(--positive))', 600: 'rgb(var(--positive))', 700: 'rgb(var(--positive))', 800: 'rgb(var(--positive))', 900: 'rgb(var(--positive))' },
         brand: {
           50: 'rgb(var(--accent-soft) / <alpha-value>)',
           100: 'rgb(var(--accent-soft) / <alpha-value>)',
@@ -119,16 +141,33 @@ export default {
         'lift': '0 4px 12px -2px rgb(var(--shadow) / 0.08), 0 2px 6px -2px rgb(var(--shadow) / 0.06)',
         'float': '0 12px 32px -8px rgb(var(--shadow) / 0.16), 0 4px 12px -4px rgb(var(--shadow) / 0.08)',
         'focus': '0 0 0 3px rgb(var(--accent) / 0.22)',
+        // Edge shadow cast by a page sliding over another (native-stack feel).
+        'page-edge': 'inset -1px 0 0 rgb(var(--shadow) / 0.06), -8px 0 24px -6px rgb(var(--shadow) / 0.18)',
+        'page-edge-r': 'inset 1px 0 0 rgb(var(--shadow) / 0.06), 8px 0 24px -6px rgb(var(--shadow) / 0.18)',
+        // Soft accent halo for primary CTAs / active nav.
+        'glow-accent': '0 6px 20px -6px rgb(var(--accent) / 0.45)',
+      },
+      transitionTimingFunction: {
+        // "Butter" — the app-wide signature curves.
+        'butter': 'cubic-bezier(0.22, 1, 0.36, 1)',
+        'butter-in-out': 'cubic-bezier(0.65, 0, 0.35, 1)',
+        'swipe': 'cubic-bezier(0.16, 1, 0.3, 1)',
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',
         'slide-up': 'slideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
         'scale-in': 'scaleIn 0.2s cubic-bezier(0.22, 1, 0.36, 1)',
+        // Skeleton shimmer — a highlight sweeping across the bone.
+        'shimmer': 'shimmer 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+        // Slow ambient drift for decorative gradients.
+        'drift': 'drift 14s ease-in-out infinite alternate',
       },
       keyframes: {
         fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
         slideUp: { '0%': { opacity: '0', transform: 'translateY(12px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
         scaleIn: { '0%': { opacity: '0', transform: 'scale(0.97)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
+        shimmer: { '0%': { transform: 'translateX(-100%)' }, '100%': { transform: 'translateX(100%)' } },
+        drift: { '0%': { transform: 'translate3d(0, 0, 0) scale(1)' }, '100%': { transform: 'translate3d(4%, -3%, 0) scale(1.06)' } },
       },
     },
   },

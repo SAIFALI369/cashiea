@@ -120,23 +120,28 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
       end={item.end}
       onClick={onClose}
       className={({ isActive }) => clsx(
-        'group flex items-center gap-3 rounded-control font-medium text-sm transition-colors min-h-[40px] px-3 py-2',
+        'group relative flex items-center gap-3 rounded-control font-medium text-sm transition-colors min-h-[40px] px-3 py-2',
         collapsed && 'lg:justify-center lg:px-2',
         isActive
-          ? 'bg-accent-soft text-accent'
+          ? 'bg-accent-soft text-accent-strong font-semibold'
           : item.ai
             ? 'text-accent hover:bg-surface-2'
             : 'text-fg-muted hover:text-fg hover:bg-surface-2'
       )}
     >
-      <item.icon className="w-[18px] h-[18px] flex-shrink-0" strokeWidth={1.75} />
-      <span className={clsx("flex-1 truncate", collapsed && "lg:hidden")}>{item.label}</span>
-      {item.ai && <span className="text-[9px] font-bold tracking-wide px-1.5 py-0.5 rounded-full bg-accent text-accent-fg">AI</span>}
-      {item.badge && failedCount > 0 && (
-        <span className="bg-negative text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{failedCount > 9 ? '9+' : failedCount}</span>
-      )}
-      {item.to === '/app/notifications' && pendingApprovals > 0 && (
-        <span className="bg-accent text-accent-fg text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{pendingApprovals > 9 ? '9+' : pendingApprovals}</span>
+      {({ isActive }) => (
+        <>
+          {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-accent" aria-hidden="true" />}
+          <item.icon className="w-[18px] h-[18px] flex-shrink-0" strokeWidth={1.75} />
+          <span className={clsx("flex-1 truncate", collapsed && "lg:hidden")}>{item.label}</span>
+          {item.ai && <span className="text-[9px] font-bold tracking-wide px-1.5 py-0.5 rounded-full bg-accent text-accent-fg">AI</span>}
+          {item.badge && failedCount > 0 && (
+            <span className="bg-negative text-accent-fg text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{failedCount > 9 ? '9+' : failedCount}</span>
+          )}
+          {item.to === '/app/notifications' && pendingApprovals > 0 && (
+            <span className="bg-accent text-accent-fg text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{pendingApprovals > 9 ? '9+' : pendingApprovals}</span>
+          )}
+        </>
       )}
     </NavLink>
     )

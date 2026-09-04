@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Suspense, useState } from 'react'
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import FloatingMeraj from './FloatingMeraj'
@@ -10,13 +10,13 @@ import { OfflineBanner } from './OfflineBanner'
 import { useDailyIntelligence } from '../lib/useDailyIntelligence'
 import { SyncManager } from './SyncManager'
 import { QueueBadge } from './QueueBadge'
-import { motion, AnimatePresence } from './motion'
+import PageStack from './PageStack'
 import Skeleton from './ui/Skeleton'
 import { Avatar } from './Avatar'
 import { useAuth } from '../context/AuthContext'
 import { getPageContext } from '../lib/pageContext'
 import { useKeyboardShortcuts } from '../lib/useKeyboardShortcuts'
-import { useSwipeNavigation, useEdgeDrawer, SWIPE_PAGES } from '../lib/useSwipeNavigation'
+import { useEdgeDrawer } from '../lib/useSwipeNavigation'
 import { Menu, Settings, ChevronLeft } from 'lucide-react'
 import { useIsDesktop } from '../lib/useIsDesktop'
 
@@ -28,20 +28,10 @@ export default function AppLayout() {
   const isDesktop = useIsDesktop()
   useDailyIntelligence(ownerId, profile?.role === 'owner' && !profile.business_owner_id)
   useKeyboardShortcuts()
-  // Swipe left/right between Today → New Sale → Customers → Scan (mobile).
-  useSwipeNavigation()
-  // Swipe in from the left edge → sidebar drawer slides in; swipe left → away.
+  // Lateral swipe between primary tabs now lives in PageStack
+  // (interactive, with the neighbour page revealed under the finger).
+  // Swipe in from the left edge → sidebar drawer slides in.
   useEdgeDrawer({ isOpen: sidebarOpen, onOpen: () => setSidebarOpen(true), onClose: () => setSidebarOpen(false) })
-
-  // ── Directional page slides ──
-  const prevPathRef = useRef(location.pathname)
-  const [slideDir, setSlideDir] = useState(0)
-  useLayoutEffect(() => {
-    const from = SWIPE_PAGES.indexOf(prevPathRef.current)
-    const to = SWIPE_PAGES.indexOf(location.pathname)
-    prevPathRef.current = location.pathname
-    setSlideDir(from !== -1 && to !== -1 ? (to > from ? 1 : to < from ? -1 : 0) : 0)
-  }, [location.pathname])
 
   // The Meraj assistant page is full-bleed and scrolls internally; other pages
   // keep the padded, max-width shell + native body scroll. On desktop this
@@ -96,7 +86,7 @@ export default function AppLayout() {
 
         {/* ── Mobile header (<lg) — menu · brand · sync · clock · account ── */}
         {!isAssistant && (
-        <header className="lg:hidden sticky top-0 z-30 bg-surface/80 backdrop-blur border-b border-line px-4 py-2 flex items-center gap-3 safe-area-pt">
+        <header className="lg:hidden sticky top-0 z-30 glass border-b border-line px-4 py-2 flex items-center gap-3 safe-area-pt">
           <button onClick={() => setSidebarOpen(true)} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-muted hover:text-fg">
             <Menu className="w-6 h-6" />
           </button>
@@ -130,15 +120,7 @@ export default function AppLayout() {
             ? 'flex-1 min-w-0 flex flex-col min-h-0 lg:pb-[calc(env(safe-area-inset-bottom)+72px)]'
             : 'flex-1 px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+72px)] sm:px-6 sm:pt-6 lg:px-10 lg:pt-8 lg:pb-[calc(env(safe-area-inset-bottom)+96px)] max-w-[1600px] mx-auto w-full'
         }>
-          <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, x: slideDir !== 0 ? 36 * slideDir : 0, y: slideDir === 0 ? 6 : 0 }}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            exit={{ opacity: 0, x: slideDir !== 0 ? -22 * slideDir : 0, y: slideDir === 0 ? 4 : 0 }}
-            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className={isAssistant ? 'flex-1 flex flex-col min-h-0' : ''}
-          >
+          <PageStack pathname={location.pathname} fullBleed={isAssistant}>
             <Suspense fallback={
               <div className="space-y-5">
                 <Skeleton className="h-8 w-64" />
@@ -151,8 +133,7 @@ export default function AppLayout() {
             }>
               <Outlet />
             </Suspense>
-          </motion.div>
-          </AnimatePresence>
+          </PageStack>
         </main>
       </div>
 

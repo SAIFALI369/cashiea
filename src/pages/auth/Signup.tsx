@@ -19,28 +19,27 @@ function Logo({ size = 32 }: { size?: number }) {
   )
 }
 
-const C = { bg: 'rgb(var(--paper))', bgCard: 'rgb(var(--surface))', border: 'rgb(var(--line))', blue: 'rgb(var(--accent))', blueDark: 'rgb(var(--accent-strong))', blueLight: 'rgb(var(--gold))', green: 'rgb(var(--positive))', text: 'rgb(var(--fg))', textBody: 'rgb(var(--fg-muted))', muted: 'rgb(var(--fg-subtle))', red: 'rgb(var(--negative))', amber: 'rgb(var(--warning))' }
-
 // ── Defined at MODULE scope on purpose ─────────────────────────────
 // Defined inside the component before, every keystroke remounted the
 // <input>, dropping focus and dismissing the mobile keyboard.
 function Input({ icon: Icon, focusProps, ...props }: any) {
   return (
-    <div className="relative">
-      <Icon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors z-10" style={{ color: C.muted }} />
+    <div className="relative group">
+      <Icon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 z-10 text-fg-subtle pointer-events-none transition-colors group-focus-within:text-accent" />
       <input
         {...props}
         {...focusProps}
-        className={`${FOCUS_SCROLL_CLASS} w-full pl-12 pr-4 py-3.5 rounded-xl text-base outline-none transition-all duration-200`}
-        style={{ background: 'rgb(var(--surface))', border: `1px solid ${C.border}`, color: C.text }}
+        className={`${FOCUS_SCROLL_CLASS} w-full pl-12 pr-4 py-3.5 rounded-xl text-base bg-surface border border-line text-fg
+                    placeholder:text-fg-subtle outline-none transition-all duration-200 ease-butter
+                    focus:border-accent focus:ring-4 focus:ring-accent/15`}
       />
     </div>
   )
 }
 
-// Password strength calculator
-function getStrength(pwd: string): { label: string; color: string; pct: number } {
-  if (!pwd) return { label: '', color: C.border, pct: 0 }
+// Password strength calculator (semantic tone classes)
+function getStrength(pwd: string): { label: string; tone: string; pct: number } {
+  if (!pwd) return { label: '', tone: 'bg-line-2 text-fg-subtle', pct: 0 }
   let score = 0
   if (pwd.length >= 6) score++
   if (pwd.length >= 10) score++
@@ -48,11 +47,11 @@ function getStrength(pwd: string): { label: string; color: string; pct: number }
   if (/[^A-Za-z0-9]/.test(pwd)) score++
   if (pwd.length >= 14) score++
   const levels = [
-    { label: 'Too short', color: C.red, pct: 20 },
-    { label: 'Weak', color: C.red, pct: 40 },
-    { label: 'Fair', color: C.amber, pct: 60 },
-    { label: 'Good', color: C.green, pct: 80 },
-    { label: 'Strong', color: C.green, pct: 100 },
+    { label: 'Too short', tone: 'bg-negative text-negative', pct: 20 },
+    { label: 'Weak', tone: 'bg-negative text-negative', pct: 40 },
+    { label: 'Fair', tone: 'bg-warning text-warning', pct: 60 },
+    { label: 'Good', tone: 'bg-positive text-positive', pct: 80 },
+    { label: 'Strong', tone: 'bg-positive text-positive', pct: 100 },
   ]
   return levels[score] || levels[0]
 }
@@ -79,7 +78,11 @@ export default function Signup() {
 
   // Mobile-friendly focus: keeps the focused input in view when the
   // on-screen keyboard opens so the keyboard doesn't auto-dismiss.
-  const focusProps = useInputFocus({ focusBorderColor: C.blue, focusShadow: `0 0 0 3px ${C.blue}15`, blurBorderColor: C.border })
+  const focusProps = useInputFocus({
+    focusBorderColor: 'rgb(var(--accent))',
+    focusShadow: '0 0 0 3px rgb(var(--accent) / 0.15)',
+    blurBorderColor: 'rgb(var(--line))',
+  })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -109,33 +112,38 @@ export default function Signup() {
 
   if (needsConfirmation) {
     return (
-      <div className="flex items-center justify-center p-4" style={{ background: C.bg, minHeight: '100dvh' }}>
-        <div className="max-w-md w-full text-center" style={{ animation: 'fadeIn 0.5s ease-out' }}>
-          <style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
-          <div className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center" style={{ background: C.blue + '12' }}><Mail className="w-10 h-10" style={{ color: C.blue }} /></div>
-          <h2 className="font-bold text-xl mb-3" style={{ fontFamily: '"Plus Jakarta Sans"', color: C.text }}>Check your email</h2>
-          <p className="mb-6 leading-relaxed" style={{ color: C.textBody }}>We sent a confirmation link to <span className="font-semibold" style={{ color: C.text }}>{email}</span>. Click it to activate your account.</p>
-          <div className="p-4 rounded-xl text-left mb-6" style={{ background: 'rgb(var(--warning) / 0.12)', border: '1px solid rgb(var(--warning) / 0.3)' }}>
-            <p className="text-sm" style={{ color: 'rgb(var(--warning))' }}><strong>Tip:</strong> To skip this for testing, go to Supabase Dashboard → Authentication → Email → turn off "Confirm email".</p>
+      <div className="flex items-center justify-center p-4 bg-paper min-h-dvh">
+        <div className="max-w-md w-full text-center animate-fade-in">
+          <div className="relative w-20 h-20 mx-auto mb-6">
+            <div className="absolute -inset-3 rounded-full bg-accent/10 blur-xl" aria-hidden="true" />
+            <div className="relative w-20 h-20 rounded-full mx-auto flex items-center justify-center bg-accent-soft">
+              <Mail className="w-10 h-10 text-accent-strong" />
+            </div>
           </div>
-          <Link to="/login" className="inline-flex font-semibold text-white px-8 py-3.5 rounded-xl transition-all hover:scale-[1.02]" style={{ background: `linear-gradient(135deg, ${C.blue}, ${C.blueLight})` }}>Go to Sign In</Link>
+          <h2 className="font-bold text-xl mb-3 text-fg tracking-tight">Check your email</h2>
+          <p className="mb-6 leading-relaxed text-fg-muted">We sent a confirmation link to <span className="font-semibold text-fg">{email}</span>. Click it to activate your account.</p>
+          <div className="card p-4 text-left mb-6 bg-warning/10 border-warning/30">
+            <p className="text-sm text-warning"><strong>Tip:</strong> To skip this for testing, go to Supabase Dashboard → Authentication → Email → turn off "Confirm email".</p>
+          </div>
+          <Link to="/login" className="btn-primary px-8 py-3.5">Go to Sign In</Link>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex" style={{ background: C.bg, minHeight: '100dvh' }}>
-      {/* ═══ LEFT: Brand Panel ═══ */}
-      <div className="hidden lg:flex flex-col justify-center w-[42%] p-16 relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${C.blueDark} 0%, ${C.blue} 100%)`, minHeight: '100dvh' }}>
-        <div className="absolute top-20 right-0 w-96 h-96 rounded-full" style={{ background: `radial-gradient(circle, ${C.blueLight}25 0%, transparent 70%)` }} />
+    <div className="flex min-h-dvh bg-paper">
+      {/* ═══ LEFT: Brand Panel (desktop) ═══ */}
+      <div className="hidden lg:flex flex-col justify-center w-[42%] p-16 relative overflow-hidden bg-gradient-to-br from-accent-strong via-accent-strong to-accent min-h-dvh">
+        <div className="absolute top-20 right-0 w-96 h-96 rounded-full bg-gold/25 blur-3xl animate-drift" aria-hidden="true" />
+
         <div className="relative max-w-md">
           <div className="flex items-center gap-3 mb-12">
-            <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center p-1.5"><Logo size={36} /></div>
-            <span className="text-white font-bold text-xl" style={{ fontFamily: '"Plus Jakarta Sans"' }}>Cashiea</span>
+            <div className="w-12 h-12 rounded-2xl bg-accent-fg/15 backdrop-blur flex items-center justify-center p-1.5"><Logo size={36} /></div>
+            <span className="font-bold text-xl text-accent-fg">Cashiea</span>
           </div>
-          <h1 className="text-white font-bold mb-6" style={{ fontFamily: '"Plus Jakarta Sans"', fontSize: '36px', lineHeight: 1.25 }}>Start automating your shop in 5 minutes.</h1>
-          <p className="text-white/70 text-lg leading-relaxed mb-10">Join 47+ shop owners who save hours every week with AI-powered billing, reports, and customer follow-ups.</p>
+          <h1 className="text-accent-fg font-bold mb-6 text-4xl leading-[1.2] tracking-tight">Start automating your shop in 5 minutes.</h1>
+          <p className="text-accent-fg/75 text-lg leading-relaxed mb-10">Join 47+ shop owners who save hours every week with AI-powered billing, reports, and customer follow-ups.</p>
 
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4 mb-10">
@@ -144,9 +152,9 @@ export default function Signup() {
               { stat: '₹12K', label: 'extra/month' },
               { stat: '90%', label: 'faster billing' },
             ].map((s, i) => (
-              <div key={i} className="text-center p-3 rounded-xl bg-white/10 backdrop-blur" style={{ animation: `slideUp 0.5s ease-out ${0.3 + i * 0.1}s both` }}>
-                <p className="text-xl font-bold text-white">{s.stat}</p>
-                <p className="text-xs text-white/60">{s.label}</p>
+              <div key={i} className="text-center p-3 rounded-xl bg-accent-fg/10 backdrop-blur" style={{ animation: `signupUp 0.5s cubic-bezier(0.22,1,0.36,1) ${0.3 + i * 0.1}s both` }}>
+                <p className="text-xl font-bold text-accent-fg">{s.stat}</p>
+                <p className="text-xs text-accent-fg/60">{s.label}</p>
               </div>
             ))}
           </div>
@@ -157,47 +165,47 @@ export default function Signup() {
               { icon: TrendingUp, text: 'Daily WhatsApp sales reports' },
               { icon: Shield, text: '14-day free trial, no card needed' },
             ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3 text-white/90" style={{ animation: `slideUp 0.5s ease-out ${0.6 + i * 0.1}s both` }}>
-                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0"><item.icon className="w-4 h-4" /></div>
+              <div key={i} className="flex items-center gap-3 text-accent-fg/90" style={{ animation: `signupUp 0.5s cubic-bezier(0.22,1,0.36,1) ${0.6 + i * 0.1}s both` }}>
+                <div className="w-8 h-8 rounded-lg bg-accent-fg/10 flex items-center justify-center flex-shrink-0"><item.icon className="w-4 h-4" /></div>
                 <span>{item.text}</span>
               </div>
             ))}
           </div>
         </div>
-        <style>{`@keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+        <style>{`@keyframes signupUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }`}</style>
       </div>
 
       {/* ═══ RIGHT: Signup Form ═══ */}
-      <div className="flex-1 flex items-start justify-center p-4 sm:p-6 py-10 overflow-y-auto cashiea-form-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
-        <div className="w-full max-w-[460px] py-8" style={{ animation: 'fadeInUp 0.6s ease-out' }}>
-          <style>{`@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+      <div className="flex-1 flex items-start justify-center p-4 sm:p-6 py-10 overflow-y-auto cashiea-form-scroll">
+        <div className="w-full max-w-[460px] py-8" style={{ animation: 'formIn 0.6s cubic-bezier(0.22,1,0.36,1) both' }}>
+          <style>{`@keyframes formIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }`}</style>
 
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2.5 mb-8 justify-center">
             <Logo size={40} />
-            <span className="font-bold text-xl" style={{ fontFamily: '"Plus Jakarta Sans"', color: C.text }}>Cashiea</span>
+            <span className="font-bold text-xl text-fg">Cashiea</span>
           </div>
 
-          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium mb-6 transition-colors" style={{ color: C.muted }} onMouseEnter={e => e.currentTarget.style.color = C.blue} onMouseLeave={e => e.currentTarget.style.color = C.muted}>
+          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium mb-6 text-fg-subtle hover:text-accent transition-colors">
             <ArrowLeft className="w-4 h-4" /> Back to home
           </Link>
 
-          <h2 className="font-bold mb-1" style={{ fontFamily: '"Plus Jakarta Sans"', fontSize: '28px', color: C.text }}>Create your account</h2>
-          <p className="mb-6" style={{ fontSize: '16px', color: C.muted }}>Start your 14-day free trial. No credit card required.</p>
+          <h2 className="font-bold mb-1 text-fg text-[28px] tracking-tight">Create your account</h2>
+          <p className="mb-6 text-base text-fg-muted">Start your 14-day free trial. No credit card required.</p>
 
           {error && (
-            <div className="mb-5 p-3.5 rounded-xl text-sm animate-fade-in" style={{ background: C.red + '10', border: `1px solid ${C.red}30`, color: C.red }}>{error}</div>
+            <div className="mb-5 p-3.5 rounded-xl text-sm animate-fade-in bg-negative/10 border border-negative/25 text-negative">{error}</div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name + Shop name */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: C.text }}>Your Name *</label>
+                <label className="block text-sm font-semibold mb-1.5 text-fg">Your Name *</label>
                 <Input icon={User} focusProps={focusProps} type="text" required value={fullName} onChange={(e: any) => setFullName(e.target.value)} placeholder="Ramesh Kumar" autoComplete="name" />
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: C.text }}>Shop Name *</label>
+                <label className="block text-sm font-semibold mb-1.5 text-fg">Shop Name *</label>
                 <Input icon={Store} focusProps={focusProps} type="text" required value={shopName} onChange={(e: any) => setShopName(e.target.value)} placeholder="Sharma Store" autoComplete="organization" />
               </div>
             </div>
@@ -205,48 +213,49 @@ export default function Signup() {
             {/* Phone + City */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: C.text }}>Phone *</label>
+                <label className="block text-sm font-semibold mb-1.5 text-fg">Phone *</label>
                 <Input icon={Phone} focusProps={focusProps} type="tel" required value={phone} onChange={(e: any) => setPhone(e.target.value)} placeholder="+91 98765 43210" autoComplete="tel" inputMode="tel" />
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: C.text }}>City</label>
+                <label className="block text-sm font-semibold mb-1.5 text-fg">City</label>
                 <Input icon={MapPin} focusProps={focusProps} type="text" value={city} onChange={(e: any) => setCity(e.target.value)} placeholder="Gaya" autoComplete="address-level2" />
               </div>
             </div>
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-semibold mb-1.5" style={{ color: C.text }}>Email *</label>
+              <label className="block text-sm font-semibold mb-1.5 text-fg">Email *</label>
               <Input icon={Mail} focusProps={focusProps} type="email" required value={email} onChange={(e: any) => setEmail(e.target.value)} placeholder="you@shop.com" autoComplete="email" inputMode="email" />
             </div>
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-semibold mb-1.5" style={{ color: C.text }}>Password *</label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 z-10" style={{ color: C.muted }} />
+              <label className="block text-sm font-semibold mb-1.5 text-fg">Password *</label>
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 z-10 text-fg-subtle pointer-events-none transition-colors group-focus-within:text-accent" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   {...focusProps}
-                  className={`${FOCUS_SCROLL_CLASS} w-full pl-12 pr-12 py-3.5 rounded-xl text-base outline-none transition-all duration-200`}
-                  style={{ background: 'rgb(var(--surface))', border: `1px solid ${C.border}`, color: C.text }}
+                  className={`${FOCUS_SCROLL_CLASS} w-full pl-12 pr-12 py-3.5 rounded-xl text-base bg-surface border border-line text-fg
+                              placeholder:text-fg-subtle outline-none transition-all duration-200 ease-butter
+                              focus:border-accent focus:ring-4 focus:ring-accent/15`}
                   placeholder="Min 6 characters"
                   autoComplete="new-password"
                 />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors" style={{ color: C.muted }} onMouseEnter={e => e.currentTarget.style.color = C.blue} onMouseLeave={e => e.currentTarget.style.color = C.muted}>
+                <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="absolute right-4 top-1/2 -translate-y-1/2 text-fg-subtle hover:text-accent transition-colors">
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
               {/* Strength bar */}
               {password && (
                 <div className="mt-2 flex items-center gap-2 animate-fade-in">
-                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: C.border }}>
-                    <div className="h-full rounded-full transition-all duration-300" style={{ width: `${strength.pct}%`, background: strength.color }} />
+                  <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-surface-3">
+                    <div className={`h-full rounded-full transition-all duration-300 ${strength.tone.split(' ')[0]}`} style={{ width: `${strength.pct}%` }} />
                   </div>
-                  <span className="text-xs font-medium" style={{ color: strength.color }}>{strength.label}</span>
+                  <span className={`text-xs font-medium ${strength.tone.split(' ')[1]}`}>{strength.label}</span>
                 </div>
               )}
             </div>
@@ -255,33 +264,33 @@ export default function Signup() {
             <label className="flex items-start gap-2.5 cursor-pointer">
               <div className="relative mt-0.5">
                 <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="sr-only peer" />
-                <div className="w-5 h-5 rounded-md border-2 transition-all peer-checked:bg-info peer-checked:border-info flex items-center justify-center" style={{ borderColor: C.border }}>
-                  {agree && <Check className="w-3.5 h-3.5 text-white" />}
+                <div className="w-5 h-5 rounded-md border-2 border-line transition-all peer-checked:bg-accent peer-checked:border-accent flex items-center justify-center">
+                  {agree && <Check className="w-3.5 h-3.5 text-accent-fg" />}
                 </div>
               </div>
-              <span className="text-sm leading-relaxed" style={{ color: C.textBody }}>
+              <span className="text-sm leading-relaxed text-fg-muted">
                 I agree to Cashiea's{' '}
-                <Link to="/terms" className="font-medium transition-colors" style={{ color: C.blue }}>Terms</Link> and{' '}
-                <Link to="/privacy" className="font-medium transition-colors" style={{ color: C.blue }}>Privacy Policy</Link>
+                <Link to="/terms" className="font-medium text-accent hover:text-accent-strong transition-colors">Terms</Link> and{' '}
+                <Link to="/privacy" className="font-medium text-accent hover:text-accent-strong transition-colors">Privacy Policy</Link>
               </span>
             </label>
 
             {/* Submit */}
-            <button type="submit" disabled={loading} className="w-full font-semibold text-white py-4 rounded-xl transition-all hover:scale-[1.02] hover:shadow-xl flex items-center justify-center gap-2" style={{ fontSize: '16px', background: `linear-gradient(135deg, ${C.blue}, ${C.blueLight})`, boxShadow: `0 6px 20px ${C.blue}25` }}>
+            <button type="submit" disabled={loading} className="btn-primary w-full h-[52px] text-base hover:shadow-glow-accent disabled:hover:shadow-soft">
               {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Creating account...</> : <>Create Free Account <ArrowRight className="w-5 h-5" /></>}
             </button>
           </form>
 
           {/* Divider */}
           <div className="flex items-center gap-4 my-5">
-            <div className="flex-1 h-px" style={{ background: C.border }} />
-            <span className="text-sm" style={{ color: C.muted }}>or</span>
-            <div className="flex-1 h-px" style={{ background: C.border }} />
+            <div className="hairline flex-1" />
+            <span className="text-sm text-fg-subtle">or</span>
+            <div className="hairline flex-1" />
           </div>
 
-          <p className="text-center text-sm" style={{ color: C.textBody }}>
+          <p className="text-center text-sm text-fg-muted">
             Already have an account?{' '}
-            <Link to="/login" className="font-bold transition-colors" style={{ color: C.blue }} onMouseEnter={e => e.currentTarget.style.color = C.blueDark} onMouseLeave={e => e.currentTarget.style.color = C.blue}>Sign in</Link>
+            <Link to="/login" className="font-bold text-accent hover:text-accent-strong transition-colors">Sign in</Link>
           </p>
         </div>
       </div>
