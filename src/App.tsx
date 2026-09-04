@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import { useAuth } from './context/AuthContext'
-import { supabaseConfigured } from './lib/supabase'
+import { supabaseConfigured, supabaseConfigIssue } from './lib/supabase'
 import ProtectedRoute from './components/ProtectedRoute'
 import AppLayout from './components/AppLayout'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -64,8 +64,8 @@ function FullPageFallback() {
 function App() {
   const { user } = useAuth()
 
-  if (!supabaseConfigured) {
-    return <SetupScreen />
+  if (!supabaseConfigured || supabaseConfigIssue) {
+    return <SetupScreen issue={supabaseConfigIssue} />
   }
 
   return (
