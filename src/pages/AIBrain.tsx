@@ -35,16 +35,24 @@ export default function AIBrain() {
   const [predicting, setPredicting] = useState(false)
   const [showCorrect, setShowCorrect] = useState<Prediction | null>(null)
   const [correctionText, setCorrectionText] = useState('')
+  const isOwner = profile?.role === 'owner' && !profile.business_owner_id
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => {
+    if (!ownerId) { setMemory(null); setPredictions([]); setCorrections([]); setLoading(false); return }
+    let active = true
+    void loadData(() => active)
+    return () => { active = false }
+  }, [ownerId])
 
-  const loadData = async () => {
+  const loadData = async (isActive: () => boolean = () => true) => {
+    if (!ownerId) return
     setLoading(true)
     const [mem, preds, cors] = await Promise.all([
       supabase.from('business_memory').select('*').eq('user_id', ownerId).maybeSingle(),
       supabase.from('ai_predictions').select('*').eq('user_id', ownerId).order('created_at', { ascending: false }).limit(30),
       supabase.from('ai_corrections').select('*').eq('user_id', ownerId).order('created_at', { ascending: false }).limit(10),
     ])
+    if (!isActive()) return
     setMemory((mem.data as BusinessMemory) || null)
     setPredictions((preds.data as Prediction[]) || [])
     setCorrections((cors.data as Correction[]) || [])
@@ -52,6 +60,7 @@ export default function AIBrain() {
   }
 
   const learn = async () => {
+    if (!isOwner) { toast.error('Only the business owner can update the AI brain'); return }
     setLearning(true)
     try {
       const result = await callBrain('learn', {})
@@ -65,6 +74,7 @@ export default function AIBrain() {
   }
 
   const predict = async () => {
+    if (!isOwner) { toast.error('Only the business owner can generate AI predictions'); return }
     setPredicting(true)
     try {
       const result = await callBrain('predict', {})
@@ -82,9 +92,13 @@ export default function AIBrain() {
   }
 
   const decide = async (p: Prediction, status: 'approved' | 'denied' | 'dismissed', feedback?: string) => {
+    if (!isOwner) {
+      toast.error('Only the business owner can approve AI predictions')
+      return
+    }
     const { error } = await supabase.from('ai_predictions').update({
       status, decided_at: new Date().toISOString(), owner_feedback: feedback || null,
-    }).eq('id', p.id)
+    }).eq('id', p.id).eq('user_id', ownerId)
     if (error) { toast.error(error.message); return }
 
     // If denied with feedback, store a correction so the AI learns
@@ -120,8 +134,8 @@ export default function AIBrain() {
         icon={<Brain className="w-5 h-5" />}
         action={
           <div className="flex gap-2">
-            <button onClick={predict} disabled={predicting} className="btn-secondary text-sm"><Lightbulb className="w-4 h-4" /> {predicting ? 'Thinking...' : 'Predict tasks'}</button>
-            <button onClick={learn} disabled={learning} className="btn-primary text-sm">{learning ? <Loader2 className="w-4 h-4 animate-spin" /> : <GraduationCap className="w-4 h-4" />} {learning ? 'Learning...' : 'Re-learn'}</button>
+            {isOwner && <button onClick={predict} disabled={predicting} className="btn-secondary text-sm"><Lightbulb className="w-4 h-4" /> {predicting ? 'Thinking...' : 'Predict tasks'}</button>}
+            {isOwner && <button onClick={learn} disabled={learning} className="btn-primary text-sm">{learning ? <Loader2 className="w-4 h-4 animate-spin" /> : <GraduationCap className="w-4 h-4" />} {learning ? 'Learning...' : 'Re-learn'}</button>}
           </div>
         }
       />
@@ -139,7 +153,7 @@ export default function AIBrain() {
             <p className="text-slate-400 mb-4">The AI hasn't learned about your business yet. Connect your data sources and let it study your shop.</p>
             <div className="flex justify-center gap-3">
               <Link to="/app/integrations" className="btn-secondary text-sm"><Plug className="w-4 h-4" /> Connect data sources</Link>
-              <button onClick={learn} disabled={learning} className="btn-primary text-sm">{learning ? <Loader2 className="w-4 h-4 animate-spin" /> : <GraduationCap className="w-4 h-4" />} Learn from existing data</button>
+              {isOwner && <button onClick={learn} disabled={learning} className="btn-primary text-sm">{learning ? <Loader2 className="w-4 h-4 animate-spin" /> : <GraduationCap className="w-4 h-4" />} Learn from existing data</button>}
             </div>
           </div>
         ) : (
@@ -171,7 +185,7 @@ export default function AIBrain() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-semibold text-white flex items-center gap-2"><Lightbulb className="w-5 h-5 text-warning" /> Predicted Tasks <span className="text-xs text-slate-500 font-normal">({pending.length} pending)</span></h2>
-          <button onClick={predict} disabled={predicting} className="btn-ghost text-xs"><RefreshCw className="w-3.5 h-3.5" /> Refresh</button>
+          {isOwner && <button onClick={predict} disabled={predicting} className="btn-ghost text-xs"><RefreshCw className="w-3.5 h-3.5" /> Refresh</button>}
         </div>
         <p className="text-xs text-slate-500 mb-4">The AI predicts what needs doing. Nothing happens until you approve it. If you deny with a reason, the AI learns.</p>
 
@@ -195,12 +209,16 @@ export default function AIBrain() {
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-2 mt-3 justify-end">
-                  <button onClick={() => setShowCorrect(p)} className="btn-ghost text-xs text-negative hover:text-negative">Deny & teach</button>
-                  <button onClick={() => decide(p, 'dismissed')} className="btn-ghost text-xs">Dismiss</button>
-                  <button onClick={() => decide(p, 'denied')} className="btn-secondary text-xs"><XCircle className="w-3.5 h-3.5" /> Deny</button>
-                  <button onClick={() => decide(p, 'approved')} className="btn-primary text-xs"><CheckCircle2 className="w-3.5 h-3.5" /> Approve</button>
-                </div>
+                {isOwner ? (
+                  <div className="flex gap-2 mt-3 justify-end">
+                    <button onClick={() => setShowCorrect(p)} className="btn-ghost text-xs text-negative hover:text-negative">Deny & teach</button>
+                    <button onClick={() => decide(p, 'dismissed')} className="btn-ghost text-xs">Dismiss</button>
+                    <button onClick={() => decide(p, 'denied')} className="btn-secondary text-xs"><XCircle className="w-3.5 h-3.5" /> Deny</button>
+                    <button onClick={() => decide(p, 'approved')} className="btn-primary text-xs"><CheckCircle2 className="w-3.5 h-3.5" /> Approve</button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-fg-subtle mt-3 text-right">Owner approval is required before this prediction can be actioned.</p>
+                )}
               </div>
             ))}
           </div>
@@ -246,7 +264,7 @@ export default function AIBrain() {
       )}
 
       {/* Deny-with-reason modal */}
-      {showCorrect && (
+      {isOwner && showCorrect && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowCorrect(null)}>
           <div className="card p-4 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">

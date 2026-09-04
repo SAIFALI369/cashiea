@@ -20,29 +20,33 @@ function istDateStr(): string { return istNow().toISOString().split('T')[0] }
 function istMinutes(): number { const d = istNow(); return d.getUTCHours() * 60 + d.getUTCMinutes() }
 function flag(key: string): string | null { try { return localStorage.getItem(key) } catch { return null } }
 function setFlag(key: string, v: string): void { try { localStorage.setItem(key, v) } catch { /* ignore */ } }
+function diKey(kind: 's' | 'q', ownerId: string, date: string): string {
+  // Keep daily jobs isolated when two business accounts share one browser.
+  return `cashiea_di_${kind}:${ownerId}:${date}`
+}
 
-export function useDailyIntelligence(ownerId: string | null | undefined) {
+export function useDailyIntelligence(ownerId: string | null | undefined, enabled = true) {
   useEffect(() => {
-    if (!ownerId) return
+    if (!enabled || !ownerId) return
     const today = istDateStr()
     const mins = istMinutes()
 
     // 9:00 PM — business suggestions
-    if (mins >= 21 * 60 && !flag(`cashiea_di_s_${today}`)) {
-      setFlag(`cashiea_di_s_${today}`, 'running')
+    if (mins >= 21 * 60 && !flag(diKey('s', ownerId, today))) {
+      setFlag(diKey('s', ownerId, today), 'running')
       void generateSuggestions(ownerId, today)
     }
 
     // 9:10 PM — learning questions
-    if (mins >= 21 * 60 + 10 && !flag(`cashiea_di_q_${today}`)) {
-      setFlag(`cashiea_di_q_${today}`, 'running')
+    if (mins >= 21 * 60 + 10 && !flag(diKey('q', ownerId, today))) {
+      setFlag(diKey('q', ownerId, today), 'running')
       void generateQuestions(ownerId, today)
     }
-  }, [ownerId])
+  }, [ownerId, enabled])
 }
 
 async function generateSuggestions(ownerId: string, today: string) {
-  const FLAG = `cashiea_di_s_${today}`
+  const FLAG = diKey('s', ownerId, today)
   try {
     // Skip if already generated today
     const { data: existing } = await supabase
@@ -75,7 +79,7 @@ async function generateSuggestions(ownerId: string, today: string) {
 }
 
 async function generateQuestions(ownerId: string, today: string) {
-  const FLAG = `cashiea_di_q_${today}`
+  const FLAG = diKey('q', ownerId, today)
   try {
     const { data: existing } = await supabase
       .from('ai_predictions')

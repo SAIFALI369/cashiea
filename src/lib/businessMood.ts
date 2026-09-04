@@ -82,11 +82,11 @@ export function computeBusinessMood(s: BusinessSignals): BusinessMood {
  * is loading (callers can fall back to 'neutral').
  */
 export function useBusinessMood(): BusinessMood | null {
-  const { profile } = useAuth()
+  const { profile, ownerId } = useAuth()
   const [mood, setMood] = useState<BusinessMood | null>(null)
 
   useEffect(() => {
-    if (!profile) {
+    if (!profile || !ownerId) {
       setMood(null)
       return
     }
@@ -98,12 +98,12 @@ export function useBusinessMood(): BusinessMood | null {
         const windowStart = new Date(now.getTime() - 14 * 86400000).toISOString()
 
         const [todayRes, recentRes, overdueRes, stockRes] = await Promise.all([
-          supabase.from('transactions').select('created_at, total').eq('user_id', profile.id)
+          supabase.from('transactions').select('created_at, total').eq('user_id', ownerId)
             .eq('status', 'completed').gte('created_at', startToday),
-          supabase.from('transactions').select('created_at, total').eq('user_id', profile.id)
+          supabase.from('transactions').select('created_at, total').eq('user_id', ownerId)
             .eq('status', 'completed').gte('created_at', windowStart).lt('created_at', startToday),
-          supabase.from('invoices').select('id').eq('user_id', profile.id).eq('status', 'overdue'),
-          supabase.from('products').select('stock_quantity, low_stock_threshold').eq('user_id', profile.id),
+          supabase.from('invoices').select('id').eq('user_id', ownerId).eq('status', 'overdue'),
+          supabase.from('products').select('stock_quantity, low_stock_threshold').eq('user_id', ownerId),
         ])
         if (cancelled) return
 
@@ -125,7 +125,7 @@ export function useBusinessMood(): BusinessMood | null {
     return () => {
       cancelled = true
     }
-  }, [profile])
+  }, [profile, ownerId])
 
   return mood
 }

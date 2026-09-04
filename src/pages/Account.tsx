@@ -65,6 +65,10 @@ export default function Account() {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file || !user) return
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Please choose an image under 10 MB.')
+      return
+    }
     if (!file.type.startsWith('image/')) {
       toast.error('Please choose an image file.')
       return
@@ -113,11 +117,18 @@ export default function Account() {
   }
 
   const save = async () => {
+    const nextName = fullName.trim()
+    const nextCompany = company.trim()
+    const nextPhone = phone.trim()
+    if (nextName.length > 120 || nextCompany.length > 200 || nextPhone.length > 40) {
+      toast.error('Please keep your name, business name, and phone within the allowed lengths.')
+      return
+    }
     setSaving(true)
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ full_name: fullName, company_name: company, phone })
+        .update({ full_name: nextName, company_name: nextCompany, phone: nextPhone })
         .eq('id', profile!.id)
       if (error) throw error
       if (email && email !== user?.email) {
@@ -178,7 +189,7 @@ export default function Account() {
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg font-bold text-fg truncate">{displayName}</h2>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent-soft text-accent text-[10px] font-semibold tracking-wide">
-                <Shield className="w-3 h-3" /> Owner
+                <Shield className="w-3 h-3" /> {profile?.role ? `${profile.role[0].toUpperCase()}${profile.role.slice(1)}` : 'Account'}
               </span>
             </div>
             <p className="text-sm text-fg-muted mt-0.5 truncate">

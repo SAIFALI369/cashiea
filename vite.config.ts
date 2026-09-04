@@ -2,16 +2,15 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// PWA / offline cache is DISABLED — the service worker was serving a stale app
-// shell so pushed UI updates never appeared. To RE-ENABLE offline later:
-//   1) set PWA_ENABLED to true below
-//   2) delete public/sw.js (the destroy stub)
-//   3) remove the service-worker unregister block in src/main.tsx
-const PWA_ENABLED = false
+// Offline support is enabled through a versioned, build-generated service
+// worker. It precaches the immutable app shell while deliberately leaving
+// authenticated Supabase responses network-only; private data must never be
+// served from a cross-session cache.
+const PWA_ENABLED = true
 const PWA_OPTIONS = {
   registerType: 'autoUpdate',
   injectRegister: 'auto',
-  includeAssets: ['favicon.svg', 'icon-512.png'],
+  includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png'],
   manifest: {
     name: 'Cashiea — AI Shop Manager',
     short_name: 'Cashiea',
@@ -22,24 +21,20 @@ const PWA_OPTIONS = {
     start_url: '/',
     scope: '/',
     icons: [
-      { src: '/icon-512.png', sizes: '192x192', type: 'image/png' },
+      { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
       { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
       { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   },
-  runtimeCaching: [
-    {
-      urlPattern: /^https:\/\/[a-z0-9]+\.supabase\.co\/rest\//i,
-      handler: 'NetworkFirst',
-      options: {
-        cacheName: 'supabase-rest',
-        networkTimeoutSeconds: 4,
-        expiration: { maxEntries: 200, maxAgeSeconds: 7 * 24 * 60 * 60 },
-        cacheableResponse: { statuses: [0, 200] },
-      },
-    },
-  ],
-  workbox: { cacheId: 'cashiea-v3', cleanupOutdatedCaches: true },
+  // Do not runtime-cache Supabase REST/function responses: they include
+  // authenticated business data and may belong to a different account after a
+  // sign-out. Offline writes are handled by the authenticated intent queue.
+  runtimeCaching: [],
+  workbox: {
+    cacheId: 'cashiea-v4',
+    cleanupOutdatedCaches: true,
+    navigateFallbackDenylist: [/^\/api\//],
+  },
 }
 
 // https://vitejs.dev/config/

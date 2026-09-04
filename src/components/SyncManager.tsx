@@ -1,28 +1,31 @@
 import { useEffect } from 'react'
 import toast from 'react-hot-toast'
 import { drainQueue, getPending } from '../lib/offlineQueue'
+import { useAuth } from '../context/AuthContext'
 
 /**
- * SyncManager — invisible. Drains the offline mutation queue on app load,
- * on the browser going online, on window focus, and every 30s. Notifies the
- * owner when changes sync (or fail) after reconnect. Renders nothing.
+ * SyncManager — invisible. Drains only the active business's queue on app
+ * load, reconnect, focus, and every 30 seconds. A second account in the same
+ * browser never sees or replays the first account's pending writes.
  */
 export function SyncManager() {
+  const { ownerId } = useAuth()
+
   useEffect(() => {
+    if (!ownerId) return
     let syncing = false
     const run = async () => {
-      if (syncing) return
-      const before = getPending().length
-      if (!before) return
+      if (syncing || !getPending(ownerId).length) return
       syncing = true
       try {
-        const { synced } = await drainQueue()
+        const { synced, deadLettered } = await drainQueue()
         if (synced > 0) toast.success(`${synced} change${synced > 1 ? 's' : ''} synced 🔄`)
+        if (deadLettered > 0) toast.error(`${deadLettered} offline change${deadLettered > 1 ? 's' : ''} need attention`)
       } finally {
         syncing = false
       }
     }
-    run()
+    void run()
     window.addEventListener('online', run)
     window.addEventListener('focus', run)
     const interval = setInterval(run, 30000)
@@ -31,7 +34,7 @@ export function SyncManager() {
       window.removeEventListener('focus', run)
       clearInterval(interval)
     }
-  }, [])
+  }, [ownerId])
   return null
 }
 

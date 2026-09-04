@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useCan } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import { formatINR } from '../lib/format'
 import PageHeader from '../components/ui/PageHeader'
@@ -36,6 +37,7 @@ const emptyForm = { customer_name: '', customer_phone: '', amount: '', note: '' 
 
 export default function Khata() {
   const { ownerId } = useAuth()
+  const { isOwner } = useCan()
   const [entries, setEntries] = useState<KhataEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -45,21 +47,18 @@ export default function Khata() {
   const [confirmSettle, setConfirmSettle] = useState<KhataEntry | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<KhataEntry | null>(null)
 
-  useEffect(() => { load() }, [ownerId])
-
-  const load = async () => {
+  useEffect(() => {
+    if (!ownerId) { setEntries([]); setLoading(false); return }
+    let cancelled = false
     setLoading(true)
-    const { data } = await supabase
-      .from('khata_entries')
-      .select('*')
-      .eq('user_id', ownerId)
-      .order('created_at', { ascending: false })
-      .limit(200)
-    setEntries((data as KhataEntry[]) || [])
-    setLoading(false)
-  }
+    supabase.from('khata_entries').select('*').eq('user_id', ownerId).order('created_at', { ascending: false }).limit(200)
+      .then(({ data }) => { if (!cancelled) { setEntries((data as KhataEntry[]) || []); setLoading(false) } })
+    return () => { cancelled = true }
+  }, [ownerId])
 
   const add = async () => {
+    if (!isOwner) { toast.error('Only the business owner can change khata entries'); return }
+    if (!ownerId) { toast.error('Your shop is still loading — please try again'); return }
     if (!form.customer_name.trim() || !form.amount) return toast.error('Name and amount required')
     const { data, error } = await supabase
       .from('khata_entries')
@@ -80,6 +79,8 @@ export default function Khata() {
   }
 
   const settle = async (entry: KhataEntry) => {
+    if (!isOwner) { toast.error('Only the business owner can settle khata entries'); return }
+    if (!ownerId) return
     setConfirmSettle(null)
     // Optimistic update
     setEntries(entries.map((e) => e.id === entry.id ? { ...e, status: 'settled', settled_at: new Date().toISOString() } : e))
@@ -97,6 +98,8 @@ export default function Khata() {
   }
 
   const remove = async (entry: KhataEntry) => {
+    if (!isOwner) { toast.error('Only the business owner can delete khata entries'); return }
+    if (!ownerId) return
     setConfirmDelete(null)
     setEntries(entries.filter((e) => e.id !== entry.id))
     const { error } = await supabase.from('khata_entries').delete().eq('id', entry.id).eq('user_id', ownerId)
@@ -150,11 +153,11 @@ export default function Khata() {
         title="Khata"
         subtitle="Digital udhaar book — track credit, collect payments"
         icon={<BookOpen className="w-5 h-5" />}
-        action={
+        action={isOwner ? (
           <button onClick={() => { setForm(emptyForm); setShowForm(true) }} className="btn-primary text-sm">
             <Plus className="w-4 h-4" /> Add udhaar
           </button>
-        }
+        ) : <span className="text-xs text-fg-subtle">Owner-only changes</span>}
       />
 
       {/* Stats strip */}
@@ -252,12 +255,12 @@ export default function Khata() {
                 <div className="flex items-center gap-1.5 mt-2">
                   {e.status === 'pending' && (
                     <>
-                      <button
+                      {isOwner && <button
                         onClick={() => setConfirmSettle(e)}
                         className="text-xs font-bold text-positive bg-positive/10 rounded-control px-2.5 h-7 hover:bg-positive/20 transition-colors"
                       >
                         Received
-                      </button>
+                      </button>}
                       <button
                         onClick={() => sendReminder(e)}
                         className="text-xs font-bold text-accent bg-accent-soft rounded-control px-2.5 h-7 hover:bg-accent-soft/70 transition-colors"
@@ -267,13 +270,13 @@ export default function Khata() {
                       </button>
                     </>
                   )}
-                  <button
+                  {isOwner && <button
                     onClick={() => setConfirmDelete(e)}
                     className="text-xs text-fg-subtle hover:text-negative transition-colors p-1"
                     aria-label="Delete entry"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  </button>}
                 </div>
               </div>
             </div>
@@ -309,7 +312,7 @@ export default function Khata() {
       )}
 
       {/* Add udhaar form */}
-      {showForm && (
+      {isOwner && showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setShowForm(false)}>
           <div className="card w-full max-w-md rounded-t-2xl sm:rounded-card p-5" onClick={(ev) => ev.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">

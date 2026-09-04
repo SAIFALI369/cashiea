@@ -1,21 +1,18 @@
 import { createClient } from '@supabase/supabase-js'
 
 // ── Supabase configuration ─────────────────────────────────────────
-// Credentials come from environment variables ONLY — nothing is hardcoded.
-// This enables key rotation, self-hosting, and multi-environment builds.
-//
-// Setup:
-//   Local dev:  copy .env.example → .env.local and fill in your values
-//   Production: set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY in Vercel
-//
-// The anon key is public-safe by design (protected by Row Level Security),
-// but we still keep it in env vars so it can be rotated without a code change.
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || ''
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+// Credentials come from environment variables ONLY. The browser anon key is
+// public by design; every table/function still requires RLS/JWT enforcement.
+const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/+$/, '')
+const SUPABASE_ANON_KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '')
 
 export const supabaseConfigured = !!(SUPABASE_URL && SUPABASE_ANON_KEY)
+export const SUPABASE_FUNCTIONS_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : ''
+export const edgeFunctionUrl = (name: string) => `${SUPABASE_FUNCTIONS_URL}/${name}`
 
+// createClient requires a URL even for a deliberately unconfigured local
+// shell. AuthProvider stops all requests in that case and the UI shows a
+// useful setup error instead of silently sending data to a fake project.
 export const supabase = createClient(
   SUPABASE_URL || 'https://placeholder.supabase.co',
   SUPABASE_ANON_KEY || 'placeholder-key',
@@ -27,4 +24,4 @@ export const supabase = createClient(
   },
 )
 
-export const AI_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/ai-automation`
+export const AI_FUNCTION_URL = edgeFunctionUrl('ai-automation')

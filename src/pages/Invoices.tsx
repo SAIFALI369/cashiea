@@ -2,6 +2,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog'
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useCan } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import { validateGstin } from '../lib/validation'
 import { offlineInsert } from '../lib/mutations'
@@ -33,6 +34,7 @@ const statusColor: Record<string, string> = {
 
 export default function Invoices() {
   const { profile, ownerId } = useAuth()
+  const { isOwner } = useCan()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -60,6 +62,7 @@ export default function Invoices() {
 
   // ── Generate invoice via AI ────────────────────────────────────
   const handleGenerate = async () => {
+    if (!isOwner) return toast.error('Only the business owner can create invoices right now')
     if (!prompt.trim()) return toast.error('Describe the invoice first')
     setGenerating(true)
     try {
@@ -117,6 +120,7 @@ export default function Invoices() {
   const [showQuick, setShowQuick] = useState(false)
   const [quick, setQuick] = useState({ name: '', phone: '', gstin: '', item: '', qty: '1', price: '' })
   const handleQuickCreate = async () => {
+    if (!isOwner) return toast.error('Only the business owner can create invoices right now')
     if (!quick.name || !quick.item || !quick.price) return toast.error('Fill name, item, and price')
     if (quick.gstin.trim() && !validateGstin(quick.gstin).valid) return toast.error('Enter a valid 15-character GSTIN')
     setGenerating(true)
@@ -153,6 +157,7 @@ export default function Invoices() {
 
   // ── Mark as paid ───────────────────────────────────────────────
   const markPaid = async (inv: Invoice) => {
+    if (!isOwner) return toast.error('Only the business owner can record invoice payments')
     const { error } = await supabase.from('invoices').update({
       status: 'paid', paid_at: new Date().toISOString(),
     }).eq('id', inv.id).eq('user_id', ownerId)
@@ -198,6 +203,7 @@ export default function Invoices() {
   }
 
   const bulkMarkPaid = async () => {
+    if (!isOwner) return toast.error('Only the business owner can record invoice payments')
     const targets = invoices.filter((i) => selectedIds.has(i.id) && i.status !== 'paid')
     for (const inv of targets) await markPaid(inv)
     toast.success(`${targets.length} invoice${targets.length !== 1 ? 's' : ''} marked paid`)
@@ -205,6 +211,7 @@ export default function Invoices() {
   }
 
   const handleDelete = async (id: string) => {
+    if (!isOwner) return toast.error('Only the business owner can delete invoices')
     setConfirmDelete(null)
     const { error } = await supabase.from('invoices').delete().eq('id', id).eq('user_id', ownerId)
     if (!error) { setInvoices(invoices.filter((i) => i.id !== id)); toast.success('Deleted') }
@@ -237,13 +244,15 @@ export default function Invoices() {
 
   // Per-card ⋮ menu — replaces swipe actions on touch screens.
   const cardMenu = (inv: Invoice) => [
-    ...(inv.status !== 'paid' && inv.status !== 'draft'
+    ...(isOwner && inv.status !== 'paid' && inv.status !== 'draft'
       ? [{ label: 'Mark paid', icon: <CheckCircle2 className="w-4 h-4" />, onClick: () => markPaid(inv) }]
       : []),
     { label: 'Download PDF', icon: <FileDown className="w-4 h-4" />, onClick: () => downloadPdf(inv) },
     { label: 'Pay / Share', icon: <Share2 className="w-4 h-4" />, onClick: () => setShareInv(inv) },
-    { label: 'Make recurring', icon: <Repeat className="w-4 h-4" />, onClick: () => { setRecurringSeed(inv); setShowRecurring(true) } },
-    { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, danger: true, onClick: () => setConfirmDelete(inv.id) },
+    ...(isOwner ? [
+      { label: 'Make recurring', icon: <Repeat className="w-4 h-4" />, onClick: () => { setRecurringSeed(inv); setShowRecurring(true) } },
+      { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, danger: true, onClick: () => setConfirmDelete(inv.id) },
+    ] : []),
   ]
 
   // Stats
@@ -264,13 +273,13 @@ export default function Invoices() {
         title="Invoices"
         subtitle="Create, send via WhatsApp, and collect via UPI"
         icon={<FileText className="w-5 h-5" />}
-        action={
+        action={isOwner ? (
           <div className="flex gap-2">
             <button onClick={() => { setRecurringSeed(null); setShowRecurring(true) }} className="btn-secondary text-sm"><Repeat className="w-4 h-4" /> Recurring</button>
             <button onClick={() => setShowQuick(!showQuick)} className="btn-secondary text-sm"><Zap className="w-4 h-4" /> Quick</button>
             <button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showForm ? 'Close' : 'AI Invoice'}</button>
           </div>
-        }
+        ) : <span className="text-xs text-fg-subtle">Owner-only changes</span>}
       />
 
       {/* Unpaid summary */}
@@ -283,7 +292,7 @@ export default function Invoices() {
       )}
 
       {/* AI invoice form */}
-      {showForm && (
+      {isOwner && showForm && (
         <div className="card p-4 mb-6 animate-slide-up">
           <label className="label flex items-center gap-2"><Sparkles className="w-4 h-4 text-accent" /> Describe your invoice</label>
           <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={3} className="input-field resize-none"
@@ -299,7 +308,7 @@ export default function Invoices() {
       )}
 
       {/* Quick invoice (mobile-first) */}
-      {showQuick && (
+      {isOwner && showQuick && (
         <div className="card p-4 mb-6 animate-slide-up">
           <h3 className="font-semibold text-fg mb-3 flex items-center gap-2"><Zap className="w-4 h-4 text-warning" /> Quick Invoice — 30 seconds</h3>
           <div className="grid grid-cols-2 gap-3">
@@ -466,7 +475,7 @@ export default function Invoices() {
 
       {/* Recurring invoices manager */}
       <RecurringModal
-        open={showRecurring}
+        open={isOwner && showRecurring}
         ownerId={ownerId || ''}
         seed={recurringSeed}
         onDone={() => loadInvoices()}
@@ -483,9 +492,9 @@ export default function Invoices() {
           <div className="card p-3 flex items-center gap-3 shadow-float">
             <span className="text-sm font-bold text-fg whitespace-nowrap">{selectedIds.size} selected</span>
             <div className="flex-1" />
-            <button onClick={bulkMarkPaid} className="btn-primary text-xs h-11 px-4">
+            {isOwner && <button onClick={bulkMarkPaid} className="btn-primary text-xs h-11 px-4">
               <CheckCircle2 className="w-3.5 h-3.5" /> Mark Paid
-            </button>
+            </button>}
             <button onClick={selectAllVisible} className="btn-secondary text-xs h-11 px-4">
               <CheckSquare className="w-3.5 h-3.5" /> Select all
             </button>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useCan } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import { formatINR } from '../lib/format'
 import type { Quotation, Customer } from '../lib/types'
@@ -13,6 +14,7 @@ interface QuoteItem { description: string; quantity: string; unit_price: string 
 
 export default function Quotations() {
   const { profile, ownerId } = useAuth()
+  const { isOwner } = useCan()
   const navigate = useNavigate()
   const [quotes, setQuotes] = useState<Quotation[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -20,9 +22,13 @@ export default function Quotations() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<{ customer_id: string; customer_name: string; customer_email: string; tax_rate: string; valid_until: string; notes: string; items: QuoteItem[] }>({ customer_id: '', customer_name: '', customer_email: '', tax_rate: '', valid_until: '', notes: '', items: [{ description: '', quantity: '', unit_price: '' }] })
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => {
+    if (ownerId) loadData()
+    else { setQuotes([]); setCustomers([]); setLoading(false) }
+  }, [ownerId])
 
   const loadData = async () => {
+    if (!ownerId) return
     setLoading(true)
     const [q, c] = await Promise.all([
       supabase.from('quotations').select('*').eq('user_id', ownerId).order('created_at', { ascending: false }),
@@ -49,6 +55,7 @@ export default function Quotations() {
   }
 
   const create = async () => {
+    if (!isOwner) return toast.error('Only the business owner can create quotations')
     const validItems = form.items.filter((it) => it.description.trim() && it.quantity)
     if (!form.customer_name.trim()) return toast.error('Customer name required')
     if (validItems.length === 0) return toast.error('Add at least one item')
@@ -68,6 +75,7 @@ export default function Quotations() {
   }
 
   const convertToInvoice = async (q: Quotation) => {
+    if (!isOwner) return toast.error('Only the business owner can convert quotations')
     const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`
     const { error } = await supabase.from('invoices').insert({
       user_id: ownerId,
@@ -86,6 +94,7 @@ export default function Quotations() {
   }
 
   const del = async (id: string) => {
+    if (!isOwner) return toast.error('Only the business owner can delete quotations')
     const { error } = await supabase.from('quotations').delete().eq('id', id)
     if (!error) { setQuotes(quotes.filter((q) => q.id !== id)); toast.success('Deleted') }
   }
@@ -94,9 +103,9 @@ export default function Quotations() {
 
   return (
     <div className="animate-fade-in">
-      <PageHeader title="Quotations" subtitle="Create price quotes and convert them to invoices" icon={<FileSignature className="w-5 h-5" />} action={<button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showForm ? 'Close' : 'New Quote'}</button>} />
+      <PageHeader title="Quotations" subtitle="Create price quotes and convert them to invoices" icon={<FileSignature className="w-5 h-5" />} action={isOwner ? <button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showForm ? 'Close' : 'New Quote'}</button> : <span className="text-xs text-fg-subtle">Owner-only changes</span>} />
 
-      {showForm && (
+      {isOwner && showForm && (
         <div className="card p-4 mb-6 animate-slide-up">
           <div className="grid sm:grid-cols-2 gap-4 mb-4">
             <div><label className="label">Customer</label><select value={form.customer_id} onChange={(e) => selectCustomer(e.target.value)} className="input-field"><option value="">Walk-in / type name</option>{customers.map((c) => <option key={c.id} value={c.id} className="bg-surface">{c.name}</option>)}</select></div>
@@ -143,8 +152,8 @@ export default function Quotations() {
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <span className="font-semibold text-fg">{formatINR(Number(q.total), 0)}</span>
-                {(q.status === 'sent' || q.status === 'accepted') && <button onClick={() => convertToInvoice(q)} className="btn-primary text-xs whitespace-nowrap">Convert <ArrowRight className="w-3 h-3" /></button>}
-                <button onClick={() => del(q.id)} className="text-fg-subtle hover:text-negative"><Trash2 className="w-4 h-4" /></button>
+                {isOwner && (q.status === 'sent' || q.status === 'accepted') && <button onClick={() => convertToInvoice(q)} className="btn-primary text-xs whitespace-nowrap">Convert <ArrowRight className="w-3 h-3" /></button>}
+                {isOwner && <button onClick={() => del(q.id)} className="text-fg-subtle hover:text-negative"><Trash2 className="w-4 h-4" /></button>}
               </div>
             </div>
           ))}

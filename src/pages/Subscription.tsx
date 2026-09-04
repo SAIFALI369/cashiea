@@ -12,7 +12,7 @@ import toast from 'react-hot-toast'
 const STRIPE_ENABLED = import.meta.env.VITE_STRIPE_ENABLED === 'true'
 
 export default function Subscription() {
-  const { profile, ownerId, refreshProfile } = useAuth()
+  const { profile, refreshProfile } = useAuth()
   const [updating, setUpdating] = useState<PlanKey | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
   const currentPlan = profile?.plan || 'free'
@@ -38,49 +38,39 @@ export default function Subscription() {
     setUpdating(plan)
 
     try {
-      // Downgrading to free doesn't need checkout
+      // Downgrading must also go through the owner-authenticated server path so
+      // Stripe is canceled before the local entitlement is changed.
       if (plan === 'free') {
-        await applyPlan(plan)
+        if (!STRIPE_ENABLED) throw new Error('Payments are not configured; a plan cannot be changed in demo mode.')
+        const { data, error } = await supabase.functions.invoke('manage-subscription', {
+          body: { action: 'downgrade_free' },
+        })
+        if (error) throw error
+        if (!data?.ok) throw new Error(data?.error || 'Could not change plan')
+        await refreshProfile()
         toast.success('Switched to Free plan')
         return
       }
 
-      if (STRIPE_ENABLED) {
-        // ─── Real Stripe Checkout ───
-        const { data, error } = await supabase.functions.invoke('create-checkout', {
-          body: { plan },
-        })
-        if (error) throw error
-        if (data?.url) {
-          window.location.href = data.url // redirect to Stripe
-          return
-        }
-        throw new Error('No checkout URL returned')
-      } else {
-        // ─── Demo mode: update plan directly ───
-        await applyPlan(plan)
-        toast.success(`Upgraded to ${PLANS[plan].name}! 🎉 (demo mode)`)
+      if (!STRIPE_ENABLED) {
+        throw new Error('Payments are not configured yet. No plan or usage limit was changed.')
       }
+
+      // ─── Real Stripe Checkout ───
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { plan },
+      })
+      if (error) throw error
+      if (data?.url) {
+        window.location.href = data.url // redirect to Stripe
+        return
+      }
+      throw new Error('No checkout URL returned')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Update failed')
     } finally {
       setUpdating(null)
     }
-  }
-
-  // Helper: write the plan + usage limit to the DB (demo / downgrade path)
-  const applyPlan = async (plan: PlanKey) => {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ plan, api_usage_limit: PLANS[plan].usageLimit })
-      .eq('id', profile!.id)
-    if (error) throw error
-
-    await supabase
-      .from('subscriptions')
-      .upsert({ user_id: ownerId, plan, status: 'active' })
-
-    await refreshProfile()
   }
 
   return (
@@ -190,8 +180,8 @@ export default function Subscription() {
 
       <p className="text-center text-sm text-slate-500 mt-8">
         {STRIPE_ENABLED
-          ? '🔒 Secure checkout powered by Stripe.'
-          : '🔒 Demo mode — upgrades are applied instantly without payment. Add Stripe keys + set VITE_STRIPE_ENABLED=true to go live (see README).'}
+          ? '🔒 Secure checkout powered by Stripe. Plan changes are confirmed by the Stripe webhook.'
+          : '🔒 Payments are not configured in this deployment. Plan buttons are disabled until Stripe is connected.'}
       </p>
     </div>
   )

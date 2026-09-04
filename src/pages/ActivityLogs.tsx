@@ -14,26 +14,19 @@ const actionIcons: Record<string, typeof FileText> = {
 }
 
 export default function ActivityLogs() {
-  const { profile, ownerId } = useAuth()
+  const { ownerId } = useAuth()
   const [logs, setLogs] = useState<ActivityLog[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
 
   useEffect(() => {
-    loadLogs()
-  }, [])
-
-  const loadLogs = async () => {
+    if (!ownerId) { setLogs([]); setLoading(false); return }
+    let active = true
     setLoading(true)
-    const { data } = await supabase
-      .from('activity_logs')
-      .select('*')
-      .eq('user_id', ownerId)
-      .order('created_at', { ascending: false })
-      .limit(200)
-    setLogs((data as ActivityLog[]) || [])
-    setLoading(false)
-  }
+    supabase.from('activity_logs').select('*').eq('user_id', ownerId).order('created_at', { ascending: false }).limit(200)
+      .then(({ data }) => { if (active) { setLogs((data as ActivityLog[]) || []); setLoading(false) } })
+    return () => { active = false }
+  }, [ownerId])
 
   const filtered = filter === 'all' ? logs : logs.filter((l) => l.action_type === filter)
   const totalMinutes = logs.reduce((s, l) => s + l.time_saved_minutes, 0)

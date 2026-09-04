@@ -11,13 +11,14 @@ import { ConfirmDialog } from '../ConfirmDialog'
  * always asks first. Resuming restores the exact cart state.
  */
 export function HeldCartsModal({
-  open, heldCarts, loading, onResume, onDelete, onClose,
+  open, heldCarts, loading, onResume, onDelete, canDelete, onClose,
 }: {
   open: boolean
   heldCarts: HeldCart[]
   loading: boolean
   onResume: (h: HeldCart) => void
   onDelete: (h: HeldCart) => void
+  canDelete?: (h: HeldCart) => boolean
   onClose: () => void
 }) {
   const [confirmDelete, setConfirmDelete] = useState<HeldCart | null>(null)
@@ -80,9 +81,9 @@ export function HeldCartsModal({
                       <button onClick={() => onResume(h)} className="btn-primary flex-1 py-2 text-xs">
                         <Play className="w-3.5 h-3.5" /> Resume
                       </button>
-                      <button onClick={() => setConfirmDelete(h)} className="px-3 py-2 rounded-xl border border-line text-negative hover:bg-negative/10" aria-label={`Delete held cart ${h.label || ''}`}>
+                      {(!canDelete || canDelete(h)) && <button onClick={() => setConfirmDelete(h)} className="px-3 py-2 rounded-xl border border-line text-negative hover:bg-negative/10" aria-label={`Delete held cart ${h.label || ''}`}>
                         <Trash2 className="w-4 h-4" />
-                      </button>
+                      </button>}
                     </div>
                   </div>
                 )

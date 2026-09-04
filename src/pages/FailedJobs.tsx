@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { supabase, AI_FUNCTION_URL } from '../lib/supabase'
+import { useCan } from '../lib/permissions'
+import { supabase, edgeFunctionUrl, AI_FUNCTION_URL } from '../lib/supabase'
 import type { FailedJob } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
@@ -122,28 +123,26 @@ const typeIcon: Record<string, string> = {
 }
 
 export default function FailedJobs() {
-  const { profile, ownerId } = useAuth()
+  const { ownerId } = useAuth()
+  const { isOwner } = useCan()
   const navigate = useNavigate()
   const [jobs, setJobs] = useState<FailedJob[]>([])
   const [loading, setLoading] = useState(true)
   const [retrying, setRetrying] = useState<Set<string>>(new Set())
   const [expanded, setExpanded] = useState<string | null>(null)
 
-  useEffect(() => { loadJobs() }, [])
-
-  const loadJobs = async () => {
+  useEffect(() => {
+    if (!ownerId) { setJobs([]); setLoading(false); return }
+    let cancelled = false
     setLoading(true)
-    const { data } = await supabase
-      .from('failed_jobs')
-      .select('*')
-      .eq('user_id', ownerId)
-      .order('created_at', { ascending: false })
-      .limit(100)
-    setJobs((data as FailedJob[]) || [])
-    setLoading(false)
-  }
+    supabase.from('failed_jobs').select('*').eq('user_id', ownerId).order('created_at', { ascending: false }).limit(100)
+      .then(({ data }) => { if (!cancelled) { setJobs((data as FailedJob[]) || []); setLoading(false) } }, () => { if (!cancelled) { setJobs([]); setLoading(false) } })
+    return () => { cancelled = true }
+  }, [ownerId])
 
   const retry = async (job: FailedJob) => {
+    if (!isOwner) { toast.error('Only the business owner can retry failed jobs'); return }
+    if (!ownerId) { toast.error('Your shop is still loading — please try again'); return }
     setRetrying((prev) => new Set(prev).add(job.id))
     try {
       const fn = RETRY_FUNCTION[job.job_type]
@@ -151,26 +150,36 @@ export default function FailedJobs() {
         toast.error('This job type can\u2019t be auto-retried. Fix the cause and it\u2019ll resolve.')
         return
       }
-      const base = (import.meta.env.VITE_SUPABASE_URL || '').replace('.supabase.co', '.functions.supabase.co')
-      const { data: { session } } = await supabase.auth.getSession()
-      const res = await fetch(`${base}/${fn}`, {
+          const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+      const retryPayload = job.payload && typeof job.payload === 'object' ? job.payload : {}
+      const res = await fetch(edgeFunctionUrl(fn), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session!.access_token}`,
+          Authorization: `Bearer ${session.access_token}`,
           apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
-        body: JSON.stringify({ user_id: ownerId, retry: true, payload: job.payload }),
+        // Keep the original job payload nested for legacy workers, but expose
+        // only the specific identifiers needed by targeted retry endpoints.
+        body: JSON.stringify({
+          user_id: ownerId,
+          retry: true,
+          payload: retryPayload,
+          ...(fn === 'daily-reports' && typeof retryPayload.report_id === 'string' ? { report_id: retryPayload.report_id } : {}),
+          ...(fn === 'invoice-reminders' && typeof retryPayload.invoice_id === 'string' ? { invoice_id: retryPayload.invoice_id } : {}),
+        }),
       })
       const result = await res.json().catch(() => ({ error: 'No response' }))
       if (!res.ok) throw new Error(result?.error || `Retry failed (HTTP ${res.status})`)
 
       // Mark as retried locally + in DB
-      await supabase.from('failed_jobs').update({
+      const { error: updateError } = await supabase.from('failed_jobs').update({
         status: 'retried',
         retry_count: job.retry_count + 1,
         last_attempted_at: new Date().toISOString(),
-      }).eq('id', job.id)
+      }).eq('id', job.id).eq('user_id', ownerId)
+      if (updateError) throw updateError
       setJobs((prev) => prev.map((j) => j.id === job.id ? { ...j, status: 'retried', retry_count: j.retry_count + 1 } : j))
       toast.success('Retry triggered — check back in a minute')
     } catch (err) {
@@ -181,7 +190,9 @@ export default function FailedJobs() {
   }
 
   const dismiss = async (id: string) => {
-    await supabase.from('failed_jobs').update({ status: 'dead' }).eq('id', id)
+    if (!isOwner || !ownerId) return
+    const { error } = await supabase.from('failed_jobs').update({ status: 'dead' }).eq('id', id).eq('user_id', ownerId)
+    if (error) { toast.error(error.message); return }
     setJobs((prev) => prev.map((j) => j.id === id ? { ...j, status: 'dead' } : j))
     toast.success('Dismissed')
   }
@@ -221,34 +232,38 @@ export default function FailedJobs() {
             return (
               <div key={job.id} className="card overflow-hidden">
                 {/* Row (always visible) — tap to expand root cause */}
-                <button
-                  onClick={() => setExpanded(isOpen ? null : job.id)}
-                  className="w-full p-4 flex items-center gap-3 text-left hover:bg-surface-2/30 transition-colors"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-negative/10 border border-red-600/20 flex items-center justify-center flex-shrink-0 text-lg">
-                    {typeIcon[job.job_type] || '\u26A0\uFE0F'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-white text-sm">{cause.title}</h3>
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-negative/15 text-negative capitalize">{job.job_type.replace('_', ' ')}</span>
+                <div className="w-full p-4 flex items-center gap-3 hover:bg-surface-2/30 transition-colors">
+                  <button
+                    onClick={() => setExpanded(isOpen ? null : job.id)}
+                    className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                    aria-expanded={isOpen}
+                    aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${cause.title}`}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-negative/10 border border-red-600/20 flex items-center justify-center flex-shrink-0 text-lg">
+                      {typeIcon[job.job_type] || '\u26A0\uFE0F'}
                     </div>
-                    <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
-                      <Clock className="w-3 h-3" /> {new Date(job.created_at).toLocaleString()}
-                    </p>
-                  </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-white text-sm">{cause.title}</h3>
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-negative/15 text-negative capitalize">{job.job_type.replace('_', ' ')}</span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
+                        <Clock className="w-3 h-3" /> {new Date(job.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                    {isOpen ? <ChevronUp className="w-4 h-4 text-slate-500 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-slate-500 flex-shrink-0" />}
+                  </button>
                   {/* Retry icon — right side, always visible */}
                   <button
-                    onClick={(e) => { e.stopPropagation(); retry(job) }}
-                    disabled={isRetrying}
-                    className="btn-secondary text-xs whitespace-nowrap"
-                    title="Retry this job"
+                    onClick={() => retry(job)}
+                    disabled={isRetrying || !isOwner}
+                    className="btn-secondary text-xs whitespace-nowrap flex-shrink-0"
+                    title={isOwner ? 'Retry this job' : 'Only the owner can retry jobs'}
                   >
                     {isRetrying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                     <span className="hidden sm:inline ml-1">Retry</span>
                   </button>
-                  {isOpen ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
-                </button>
+                </div>
 
                 {/* Expanded: root cause + fix button */}
                 {isOpen && (

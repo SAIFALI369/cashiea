@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
+import { supabase, edgeFunctionUrl } from '../lib/supabase'
 import { formatINR } from '../lib/format'
 import { parseCsv, autoMapHeaders } from '../lib/csv'
 import EmptyState from '../components/ui/EmptyState'

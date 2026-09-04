@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
+import { supabase, edgeFunctionUrl } from '../lib/supabase'
 import type { TeamMember } from '../lib/types'
 import { validateEmail, validatePassword } from '../lib/validation'
 import PageHeader from '../components/ui/PageHeader'
@@ -45,7 +45,7 @@ export default function Team() {
   const [confirmDelete, setConfirmDelete] = useState<TeamMember | null>(null)
   const [roleSwitch, setRoleSwitch] = useState<{ member: TeamMember; role: LinkRole } | null>(null)
 
-  const isOwnerProfile = !profile?.business_owner_id
+  const isOwnerProfile = profile?.role === 'owner' && !profile.business_owner_id
 
   useEffect(() => { if (ownerId) loadMembers() }, [ownerId])
 
@@ -77,7 +77,7 @@ export default function Team() {
     setSaving(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/team-link`, {
+      const res = await fetch(edgeFunctionUrl('team-link'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,7 +102,7 @@ export default function Team() {
     setRoleSwitch(null)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/team-link`, {
+      const res = await fetch(edgeFunctionUrl('team-link'), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
         body: JSON.stringify({ memberId: member.id, role }),
@@ -120,7 +120,7 @@ export default function Team() {
     setConfirmRevoke(null)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/team-link?memberId=${member.id}&deleteAccount=false`, {
+      const res = await fetch(`${edgeFunctionUrl('team-link')}?memberId=${member.id}&deleteAccount=false`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${session?.access_token}` },
       })
@@ -137,7 +137,7 @@ export default function Team() {
     setConfirmDelete(null)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/team-link?memberId=${member.id}&deleteAccount=true`, {
+      const res = await fetch(`${edgeFunctionUrl('team-link')}?memberId=${member.id}&deleteAccount=true`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${session?.access_token}` },
       })

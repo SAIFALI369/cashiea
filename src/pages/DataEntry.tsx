@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useCan } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import { callAI, parseAIJson } from '../lib/ai'
 import type { DataEntry } from '../lib/types'
@@ -13,6 +14,7 @@ type Mode = 'single' | 'batch'
 
 export default function DataEntryPage() {
   const { profile, ownerId } = useAuth()
+  const { can } = useCan()
   const [entries, setEntries] = useState<DataEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -28,10 +30,12 @@ export default function DataEntryPage() {
   const [progress, setProgress] = useState({ done: 0, total: 0 })
 
   useEffect(() => {
-    loadEntries()
-  }, [])
+    if (ownerId) loadEntries()
+    else { setEntries([]); setLoading(false) }
+  }, [ownerId])
 
   const loadEntries = async () => {
+    if (!ownerId) return
     setLoading(true)
     const { data } = await supabase.from('data_entries').select('*').eq('user_id', ownerId).order('created_at', { ascending: false })
     setEntries((data as DataEntry[]) || [])
@@ -39,6 +43,8 @@ export default function DataEntryPage() {
   }
 
   const handleExtract = async () => {
+    if (!can('ai:use')) return toast.error('Your role cannot use AI features')
+    if (!ownerId) return toast.error('Your shop is still loading — please try again')
     if (!sourceText.trim()) {
       toast.error('Enter text to extract data from')
       return
@@ -96,6 +102,8 @@ export default function DataEntryPage() {
   }
 
   const handleBatchExtract = async () => {
+    if (!can('ai:use')) return toast.error('Your role cannot use AI features')
+    if (!ownerId) return toast.error('Your shop is still loading — please try again')
     const records = splitBatch(batchText)
     if (records.length === 0) {
       toast.error('Add some records to process')
@@ -146,7 +154,8 @@ export default function DataEntryPage() {
   }
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from('data_entries').delete().eq('id', id)
+    if (!can('ai:use') || !ownerId) return
+    const { error } = await supabase.from('data_entries').delete().eq('id', id).eq('user_id', ownerId)
     if (!error) {
       setEntries(entries.filter((e) => e.id !== id))
       toast.success('Entry deleted')

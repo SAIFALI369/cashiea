@@ -17,6 +17,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
 import { callAIWithFallback } from "../_shared/ai-call.ts";
+import { resolveBusiness } from "../_shared/business.ts";
+import { releaseApiUsage } from "../_shared/usage.ts";
 
 // AI calls now go through _shared/ai-call.ts (Groq primary + Gemini fallback — identical to Meraj chat).
 
@@ -33,7 +35,7 @@ async function gatherSnapshot(supabase: any, userId: string) {
     supabase.from("transactions").select("total,items,created_at,payment_method").eq("user_id", userId).eq("status", "completed").gte("created_at", startMonth).limit(200),
     supabase.from("suppliers").select("name,outstanding").eq("user_id", userId).limit(30),
     supabase.from("expenses").select("type,category,amount,date").eq("user_id", userId).gte("date", startMonth).limit(100),
-    supabase.from("integrations").select("provider,label,status,metadata,last_synced_at").eq("user_id", userId).eq("status", "connected"),
+    supabase.from("integrations").select("provider,label,status,last_synced_at").eq("user_id", userId).eq("status", "connected"),
     supabase.from("products").select("name,stock_quantity,low_stock_threshold").eq("user_id", userId),
     supabase.from("customers").select("name,total_orders,last_purchase_at").eq("user_id", userId).lt("last_purchase_at", sixtyDaysAgo).limit(30),
     supabase.from("business_memory").select("*").eq("user_id", userId).maybeSingle(),
@@ -63,20 +65,43 @@ async function gatherSnapshot(supabase: any, userId: string) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  const contentLength = Number(req.headers.get("content-length") || 0);
+  if (Number.isFinite(contentLength) && contentLength > 100_000) return json({ error: "Request is too large" }, 413);
+  let usageReserved = false;
+  let usageConsumed = false;
+  let usageOwner = "";
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: req.headers.get("Authorization")! } } });
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) return json({ error: "Unauthorized" }, 401);
 
-    const { data: profile } = await supabase.from("profiles").select("ai_provider, api_usage_count, api_usage_limit, trial_ends_at").eq("id", user.id).single();
-    const onTrial = profile?.trial_ends_at && new Date(profile.trial_ends_at) > new Date();
-    const limit = onTrial ? Math.max(profile.api_usage_limit, 500) : profile?.api_usage_limit || 50;
-    if (profile && profile.api_usage_count >= limit) return json({ error: "Usage limit reached" }, 429);
+    const service = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const business = await resolveBusiness(service, user.id);
+    if (!business) return json({ error: "Your account is not linked to exactly one active business" }, 403);
+    const { ownerId, isOwner } = business;
+    usageOwner = ownerId;
+    const { data: profile, error: profileError } = await service
+      .from("profiles")
+      .select("ai_provider, company_name, full_name")
+      .eq("id", ownerId).maybeSingle();
+    if (profileError || !profile) return json({ error: "Could not load business profile" }, 503);
 
-    const body = await req.json();
-    const mode = body.mode || "learn";
-    const provider = profile?.ai_provider || "openai";
-    const snap = await gatherSnapshot(supabase, user.id);
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Invalid JSON body" }, 400);
+    const mode = typeof body.mode === "string" ? body.mode : "learn";
+    if (!["learn", "predict", "correct"].includes(mode)) return json({ error: "Unknown mode. Use learn | predict | correct." }, 400);
+    if (mode === "learn" && !isOwner) return json({ error: "Only the business owner can update Meraj's business memory" }, 403);
+    if (mode === "predict" && !isOwner) return json({ error: "Only the business owner can generate AI predictions" }, 403);
+    if (mode === "correct" && !isOwner) return json({ error: "Only the business owner can correct Meraj" }, 403);
+    if (mode !== "correct") {
+      const { data: reserved, error: reserveError } = await service.rpc("reserve_api_usage", { p_user_id: ownerId, p_amount: 1 });
+      if (reserveError) return json({ error: "AI usage service is unavailable; deploy schema v27 first" }, 503);
+      if (!reserved) return json({ error: "Usage limit reached" }, 429);
+      usageReserved = true;
+    }
+    const provider = profile.ai_provider || "groq";
+    const snap = await gatherSnapshot(service, ownerId);
 
     // Owner-learned preferences injected into every prompt
     const learned = snap.recentCorrections.length
@@ -89,17 +114,21 @@ Deno.serve(async (req) => {
     if (mode === "correct") {
       // Store a correction for future learning (no AI call needed)
       const { category, context, correction } = body;
-      if (!correction) return json({ error: "correction is required" }, 400);
-      const { data, error: e } = await supabase.from("ai_corrections").insert({
-        user_id: user.id, category: category || "prediction",
-        context: context || null, correction,
+      if (typeof correction !== "string" || !correction.trim() || correction.length > 2000) return json({ error: "correction is required and must be under 2,000 characters" }, 400);
+      const safeCategory = typeof category === "string" && ["prediction", "summary", "output"].includes(category) ? category : "prediction";
+      const safeContext = typeof context === "string" ? context.slice(0, 2000) : null;
+      const { data, error: e } = await service.from("ai_corrections").insert({
+        user_id: ownerId, category: safeCategory,
+        context: safeContext, correction: correction.trim(),
       }).select().single();
       if (e) return json({ error: e.message }, 500);
       return json({ ok: true, correction: data });
     }
 
     if (mode === "learn") {
-      const manualNotes = body.manual_notes ? `\n\nOWNER-PROVIDED NOTES ABOUT THE BUSINESS:\n${body.manual_notes}` : "";
+      const manualNotes = typeof body.manual_notes === "string" && body.manual_notes.trim()
+        ? `\n\nOWNER-PROVIDED NOTES ABOUT THE BUSINESS:\n${body.manual_notes.trim().slice(0, 5_000)}`
+        : "";
       const integrationList = snap.integrations.length
         ? `\n\nCONNECTED DATA SOURCES: ${snap.integrations.map((i: any) => `${i.provider}${i.metadata?.connected_email ? ` (${i.metadata.connected_email})` : ""}`).join(", ")}`
         : "";
@@ -108,25 +137,32 @@ Return ONLY valid JSON: {"business_type":"one short phrase","summary":"3-5 sente
 Key facts should be specific, useful, and actionable (e.g. "Top product is X", "60% of customers are dormant", "Margin averages Y%"). No markdown.`;
       const prompt = `Business data snapshot:\n${JSON.stringify({ ...snap, existingMemory: snap.existingMemory?.summary }, null, 1)}${manualNotes}${integrationList}`;
       result = await callAIWithFallback(provider, sys, prompt, 2500);
+      usageConsumed = true;
 
       // Parse + persist the memory
       const cleaned = result.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
       try {
         const parsed = JSON.parse(cleaned);
+        const keyFacts = Array.isArray(parsed.key_facts)
+          ? parsed.key_facts.slice(0, 40).map((fact: any) => ({
+              fact: String(fact?.fact || fact || "").slice(0, 300),
+              source: ["data", "owner", "integrations"].includes(fact?.source) ? fact.source : "data",
+              confidence: ["high", "medium", "low"].includes(fact?.confidence) ? fact.confidence : "medium",
+            })).filter((fact: any) => fact.fact)
+          : [];
         const upsert = {
-          user_id: user.id,
-          summary: parsed.summary,
-          business_type: parsed.business_type,
-          key_facts: parsed.key_facts || [],
+          user_id: ownerId,
+          summary: String(parsed.summary || "").slice(0, 4_000),
+          business_type: String(parsed.business_type || "retail").slice(0, 120),
+          key_facts: keyFacts,
           preferences: snap.existingMemory?.preferences || {},
           last_updated_at: new Date().toISOString(),
         };
-        const { data: mem } = await supabase.from("business_memory").upsert(upsert, { onConflict: "user_id" }).select().single();
+        const { data: mem } = await service.from("business_memory").upsert(upsert, { onConflict: "user_id" }).select().single();
         extras.memory = mem;
       } catch { /* keep raw result if parse fails */ }
 
-      await supabase.rpc("increment_api_usage", { user_uuid: user.id });
-      await supabase.from("activity_logs").insert({ user_id: user.id, action_type: "summary", description: "AI learned about the business", time_saved_minutes: 20, money_saved: 10, provider });
+      await service.from("activity_logs").insert({ user_id: ownerId, action_type: "summary", description: "AI learned about the business", time_saved_minutes: 20, money_saved: 10, provider });
       return json({ result, ...extras });
     }
 
@@ -136,6 +172,7 @@ Return ONLY valid JSON: {"predictions":[{"prediction_type":"reorder|followup|inv
 Base each prediction on real signals in the data (low stock, dormant customers, overdue payments, trends). Do NOT propose generic advice — be specific with names and numbers.`;
       const prompt = `Business data snapshot:\n${JSON.stringify(snap, null, 1)}`;
       result = await callAIWithFallback(provider, sys, prompt, 2500);
+      usageConsumed = true;
 
       // Parse + insert predictions as pending
       const cleaned = result.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
@@ -143,28 +180,31 @@ Base each prediction on real signals in the data (low stock, dormant customers, 
       try {
         const parsed = JSON.parse(cleaned);
         if (Array.isArray(parsed.predictions) && parsed.predictions.length) {
-          const rows = parsed.predictions.map((p: any) => ({
-            user_id: user.id,
-            prediction_type: p.prediction_type || "custom",
+          const rows = parsed.predictions.slice(0, 20).map((p: any) => ({
+            user_id: ownerId,
+            prediction_type: ["reorder", "followup", "invoice", "offer", "alert", "expense", "custom"].includes(p.prediction_type) ? p.prediction_type : "custom",
             title: String(p.title || "Suggested task").slice(0, 200),
-            description: p.description || null,
-            rationale: p.rationale || null,
+            description: typeof p.description === "string" ? p.description.slice(0, 2000) : null,
+            rationale: typeof p.rationale === "string" ? p.rationale.slice(0, 2000) : null,
             priority: ["low", "medium", "high", "urgent"].includes(p.priority) ? p.priority : "medium",
             status: "pending",
             action_payload: {},
           }));
-          const { data } = await supabase.from("ai_predictions").insert(rows).select();
+          const { data } = await service.from("ai_predictions").insert(rows).select();
           inserted = data || [];
         }
       } catch { /* keep raw */ }
 
-      await supabase.rpc("increment_api_usage", { user_uuid: user.id });
-      await supabase.from("activity_logs").insert({ user_id: user.id, action_type: "summary", description: `AI predicted ${inserted.length} tasks`, time_saved_minutes: 15, money_saved: 8, provider });
+      await service.from("activity_logs").insert({ user_id: ownerId, action_type: "summary", description: `AI predicted ${inserted.length} tasks`, time_saved_minutes: 15, money_saved: 8, provider });
       return json({ result, predictions: inserted });
     }
 
-    return json({ error: "Unknown mode. Use learn | predict | correct." }, 400);
   } catch (e) {
-    return json({ error: e.message }, 500);
+    return json({ error: e instanceof Error ? e.message : String(e) }, 500);
+  } finally {
+    if (usageReserved && !usageConsumed) await releaseApiUsage(
+      createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } }),
+      usageOwner,
+    );
   }
 });

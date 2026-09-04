@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
+import { supabase, edgeFunctionUrl } from '../lib/supabase'
 import type { ApiKey } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
@@ -62,9 +62,17 @@ export default function ApiKeys() {
   const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null)
   const [docTab, setDocTab] = useState<'curl' | 'node' | 'python'>('curl')
 
-  useEffect(() => { loadKeys() }, [])
+  useEffect(() => {
+    if (!ownerId) { setKeys([]); setLoading(false); return }
+    let active = true
+    setLoading(true)
+    supabase.from('api_keys').select('*').eq('user_id', ownerId).order('created_at', { ascending: false })
+      .then(({ data }) => { if (active) { setKeys((data as ApiKey[]) || []); setLoading(false) } })
+    return () => { active = false }
+  }, [ownerId])
 
   const loadKeys = async () => {
+    if (!ownerId) return
     setLoading(true)
     const { data } = await supabase.from('api_keys').select('*').eq('user_id', ownerId).order('created_at', { ascending: false })
     setKeys((data as ApiKey[]) || [])
@@ -72,6 +80,7 @@ export default function ApiKeys() {
   }
 
   const handleCreate = async () => {
+    if (!ownerId) { toast.error('Your account is still loading — please try again'); return }
     if (!newName.trim()) return toast.error('Give your key a name')
     const fullKey = randomKey()
     const keyHash = await sha256(fullKey)
@@ -102,7 +111,7 @@ export default function ApiKeys() {
     }
   }
 
-  const apiUrl = (import.meta.env.VITE_SUPABASE_URL || 'https://YOUR-PROJECT.supabase.co') + '/functions/v1'
+  const apiUrl = edgeFunctionUrl('')
 
   const examples: Record<'curl' | 'node' | 'python', { title: string; snippet: (k: string) => string }> = {
     curl: {

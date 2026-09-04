@@ -10,26 +10,53 @@ import { Megaphone, Plus, Loader2, BarChart3, Mail, MousePointerClick, Reply, Do
 import toast from 'react-hot-toast'
 
 export default function Campaigns() {
-  const { profile } = useAuth()
+  const { ownerId } = useAuth()
   const [campaigns, setCampaigns] = useState<EmailCampaign[]>([])
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    loadCampaigns()
-  }, [])
+  const [retryingId, setRetryingId] = useState<string | null>(null)
 
   const loadCampaigns = async () => {
+    if (!ownerId) { setCampaigns([]); setLoading(false); return }
     setLoading(true)
-    const { data } = await supabase
-      .from('email_campaigns')
-      .select('*')
-      .order('created_at', { ascending: false })
+    const { data } = await supabase.from('email_campaigns').select('*').eq('user_id', ownerId).order('created_at', { ascending: false })
     setCampaigns((data as EmailCampaign[]) || [])
     setLoading(false)
   }
 
+  useEffect(() => {
+    let active = true
+    if (!ownerId) { setCampaigns([]); setLoading(false); return () => { active = false } }
+    void (async () => {
+      setLoading(true)
+      const { data } = await supabase.from('email_campaigns').select('*').eq('user_id', ownerId).order('created_at', { ascending: false })
+      if (active) { setCampaigns((data as EmailCampaign[]) || []); setLoading(false) }
+    })()
+    return () => { active = false }
+  }, [ownerId])
+
+  const retryCampaign = async (campaign: EmailCampaign) => {
+    if (retryingId || campaign.status === 'sending') return
+    setRetryingId(campaign.id)
+    try {
+      const { data, error } = await supabase.functions.invoke('campaign-send', { body: { campaign_id: campaign.id } })
+      if (error) throw error
+      if (!data?.success) throw new Error(data?.error || 'Retry failed')
+      toast.success(data.message || 'Campaign retry finished')
+      await loadCampaigns()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not retry campaign')
+    } finally {
+      setRetryingId(null)
+    }
+  }
+
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from('email_campaigns').delete().eq('id', id)
+    const campaign = campaigns.find((item) => item.id === id)
+    if (campaign?.status === 'sending') {
+      toast.error('Wait for the active send to finish before deleting')
+      return
+    }
+    const { error } = await supabase.from('email_campaigns').delete().eq('id', id).eq('user_id', ownerId)
     if (!error) {
       setCampaigns(campaigns.filter((c) => c.id !== id))
       toast.success('Campaign deleted')
@@ -40,7 +67,7 @@ export default function Campaigns() {
     const { data } = await supabase
       .from('campaign_recipients')
       .select('email, name, variant, status, sentiment, sentiment_score, sent_at, opened_at, clicked_at, replied_at')
-      .eq('campaign_id', c.id)
+      .eq('campaign_id', c.id).eq('user_id', ownerId)
     if (!data || data.length === 0) {
       toast.error('No recipient data to export')
       return
@@ -88,6 +115,8 @@ export default function Campaigns() {
                       c.status === 'sent' ? 'bg-positive/15 text-positive' :
                       c.status === 'sending' ? 'bg-info/15 text-info' :
                       c.status === 'scheduled' ? 'bg-warning/15 text-warning' :
+                      c.status === 'partial' ? 'bg-warning/15 text-warning' :
+                      c.status === 'failed' ? 'bg-negative/15 text-negative' :
                       'bg-slate-700 text-slate-400'
                     }`}>{c.status}</span>
                     {c.ab_enabled && (
@@ -107,11 +136,24 @@ export default function Campaigns() {
                   <button onClick={() => handleExport(c, 'csv')} className="btn-ghost text-xs" title="Export CSV">
                     <Download className="w-3.5 h-3.5" />
                   </button>
-                  <button onClick={() => handleDelete(c.id)} className="btn-ghost text-xs text-negative hover:text-negative">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {(c.status === 'partial' || c.status === 'failed') && (
+                    <button onClick={() => retryCampaign(c)} disabled={retryingId === c.id} className="btn-ghost text-xs text-accent disabled:opacity-50" title="Retry pending or failed recipients">
+                      {retryingId === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Retry'}
+                    </button>
+                  )}
+                  {c.status !== 'sending' && (
+                    <button onClick={() => handleDelete(c.id)} className="btn-ghost text-xs text-negative hover:text-negative" title="Delete campaign">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
+
+              {c.last_error && (c.status === 'partial' || c.status === 'failed') && (
+                <p className="mt-3 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-fg-muted">
+                  {c.last_error}
+                </p>
+              )}
 
               {/* Analytics */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

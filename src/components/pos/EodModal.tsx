@@ -15,10 +15,11 @@ import toast from 'react-hot-toast'
  * cash_sessions (one row per day, upserted).
  */
 export function EodModal({
-  open, ownerId, onClose,
+  open, ownerId, canSave, onClose,
 }: {
   open: boolean
   ownerId: string
+  canSave: boolean
   onClose: () => void
 }) {
   const [loading, setLoading] = useState(false)
@@ -71,6 +72,10 @@ export function EodModal({
   const variance = Math.round((countedNum - expected) * 100) / 100
 
   const save = async () => {
+    if (!canSave) {
+      toast.error('Only the business owner can save the day-end cash count')
+      return
+    }
     if (counted === '') {
       toast.error('Enter the counted cash amount')
       return
@@ -123,6 +128,12 @@ export function EodModal({
               <p className="mt-0.5"><FitAmount value={formatINR(expected)} base="text-2xl" minTier="text-base" className="font-extrabold text-fg" /></p>
             </div>
 
+            {!canSave && (
+              <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-xs text-fg-muted">
+                You can review today’s expected cash, but only the business owner can save the day-end count.
+              </div>
+            )}
+
             {/* Counted */}
             <div>
               <label className="label" htmlFor="eod-counted">Counted in drawer</label>
@@ -134,7 +145,8 @@ export function EodModal({
                 inputMode="decimal"
                 value={counted}
                 onChange={(e) => setCounted(e.target.value)}
-                className="input-field text-lg font-bold tabular-nums"
+                disabled={!canSave}
+                className="input-field text-lg font-bold tabular-nums disabled:opacity-60"
                 placeholder="0"
               />
             </div>
@@ -152,7 +164,7 @@ export function EodModal({
 
             <div>
               <label className="label" htmlFor="eod-notes">Notes</label>
-              <input id="eod-notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="input-field" placeholder="Optional" />
+              <input id="eod-notes" value={notes} onChange={(e) => setNotes(e.target.value)} disabled={!canSave} className="input-field disabled:opacity-60" placeholder="Optional" />
             </div>
 
             {saved && (
@@ -161,9 +173,11 @@ export function EodModal({
               </p>
             )}
 
-            <button onClick={save} disabled={saving} className="btn-primary w-full py-3 flex items-center justify-center gap-2 disabled:opacity-50">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Save cash count
-            </button>
+            {canSave && (
+              <button onClick={save} disabled={saving} className="btn-primary w-full py-3 flex items-center justify-center gap-2 disabled:opacity-50">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Save cash count
+              </button>
+            )}
           </div>
         )}
       </div>

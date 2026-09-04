@@ -33,16 +33,7 @@ function canManage(conn: Connection): boolean {
 
 // ─── Get a valid access token (refresh if expired) ──────────────
 async function getToken(supabase: any, conn: Connection): Promise<string | null> {
-  const integration = {
-    user_id: conn.user_id,
-    provider: 'google_sheets',
-    metadata: {
-      access_token: conn.access_token,
-      refresh_token: conn.refresh_token,
-      expires_at: conn.token_expires_at ? new Date(conn.token_expires_at).getTime() : null,
-    },
-  }
-  return await refreshGoogleToken(supabase, integration)
+  return await refreshGoogleToken(supabase, { ...conn, provider: 'google_sheets', app_slug: 'google-sheets' })
 }
 
 // ─── Public connector methods ───────────────────────────────────

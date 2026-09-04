@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from './supabase'
+import { supabase, edgeFunctionUrl } from './supabase'
 import { useAuth } from '../context/AuthContext'
 import type { Role } from './permissions'
 
@@ -118,29 +118,16 @@ export function usePendingApprovals() {
   return { items, loading, reload: load, count: items.length }
 }
 
-/** Owner side: replay an approved change (supports product actions). Runs as the owner. */
+/** Owner side: the database approves and applies the request atomically. */
 export async function executeChangeRequest(cr: ChangeRequest): Promise<void> {
-  let err: string | null = null
-  if (cr.action_type === 'product.add') {
-    const p = cr.payload as Record<string, unknown>
-    const { error } = await supabase.from('products').insert({ ...p, user_id: cr.owner_user_id })
-    if (error) err = error.message
-  } else if (cr.action_type === 'product.delete') {
-    const { error } = await supabase.from('products').delete().eq('id', String(cr.payload.id))
-    if (error) err = error.message
-  } else if (cr.action_type === 'product.restock') {
-    const { error } = await supabase.from('products').update({ stock_quantity: Number(cr.payload.stock_quantity) }).eq('id', String(cr.payload.id))
-    if (error) err = error.message
-  } else {
-    err = `Unsupported action: ${cr.action_type}`
-  }
-  if (err) throw new Error(err)
-  await supabase.from('change_requests').update({ status: 'approved', decided_at: new Date().toISOString() }).eq('id', cr.id)
+  const { error } = await supabase.rpc('approve_change_request', { p_request_id: cr.id })
+  if (error) throw error
 }
 
-/** Owner side: deny = delete the request everywhere. */
+/** Owner side: keep a durable denied decision for audit/history. */
 export async function denyChangeRequest(id: string): Promise<void> {
-  await supabase.from('change_requests').delete().eq('id', id)
+  const { error } = await supabase.rpc('deny_change_request', { p_request_id: id, p_decision_note: null })
+  if (error) throw error
 }
 
 export interface RequestActionResult { queued?: boolean; applied?: boolean; denied?: boolean; message?: string }
@@ -160,8 +147,7 @@ export async function requestAction(args: {
 }): Promise<RequestActionResult> {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('Not authenticated')
-  const base = (import.meta.env.VITE_SUPABASE_URL || '').replace('.supabase.co', '.functions.supabase.co')
-  const res = await fetch(`${base}/request-action`, {
+  const res = await fetch(edgeFunctionUrl('request-action'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
     body: JSON.stringify(args),

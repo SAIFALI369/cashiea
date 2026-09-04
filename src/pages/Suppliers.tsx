@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useCan } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import type { Supplier, PurchaseOrder } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
@@ -11,6 +12,7 @@ interface POFormItem { name: string; quantity: string; unit_price: string }
 
 export default function Suppliers() {
   const { profile, ownerId } = useAuth()
+  const { isOwner } = useCan()
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [pos, setPos] = useState<PurchaseOrder[]>([])
   const [loading, setLoading] = useState(true)
@@ -22,9 +24,13 @@ export default function Suppliers() {
   const [showPO, setShowPO] = useState(false)
   const [poForm, setPoForm] = useState<{ supplier_id: string; items: POFormItem[]; expected_date: string; notes: string }>({ supplier_id: '', items: [{ name: '', quantity: '', unit_price: '' }], expected_date: '', notes: '' })
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => {
+    if (ownerId) loadData()
+    else { setSuppliers([]); setPos([]); setLoading(false) }
+  }, [ownerId])
 
   const loadData = async () => {
+    if (!ownerId) return
     setLoading(true)
     const [s, p] = await Promise.all([
       supabase.from('suppliers').select('*').eq('user_id', ownerId).order('created_at', { ascending: false }),
@@ -36,6 +42,7 @@ export default function Suppliers() {
   }
 
   const saveSupplier = async () => {
+    if (!isOwner) return toast.error('Only the business owner can change suppliers')
     if (!supForm.name.trim()) return toast.error('Supplier name required')
     const { data, error } = await supabase.from('suppliers').insert({ user_id: ownerId, ...supForm }).select().single()
     if (error) { toast.error(error.message); return }
@@ -46,6 +53,7 @@ export default function Suppliers() {
   }
 
   const deleteSupplier = async (id: string) => {
+    if (!isOwner) return toast.error('Only the business owner can change suppliers')
     const { error } = await supabase.from('suppliers').delete().eq('id', id)
     if (!error) { setSuppliers(suppliers.filter((s) => s.id !== id)); toast.success('Deleted') }
   }
@@ -60,6 +68,7 @@ export default function Suppliers() {
   const poTotal = poSubtotal // tax omitted for PO simplicity
 
   const createPO = async () => {
+    if (!isOwner) return toast.error('Only the business owner can create purchase orders')
     if (!poForm.supplier_id) return toast.error('Select a supplier')
     const validItems = poForm.items.filter((it) => it.name.trim() && it.quantity)
     if (validItems.length === 0) return toast.error('Add at least one item')
@@ -82,6 +91,7 @@ export default function Suppliers() {
   }
 
   const markReceived = async (po: PurchaseOrder) => {
+    if (!isOwner) return toast.error('Only the business owner can update purchase orders')
     const { error } = await supabase.from('purchase_orders').update({ status: 'received' }).eq('id', po.id)
     if (!error) { setPos(pos.map((p) => p.id === po.id ? { ...p, status: 'received' } : p)); toast.success('Marked received') }
   }
@@ -94,9 +104,10 @@ export default function Suppliers() {
         title="Suppliers & Purchase Orders"
         subtitle="Manage vendors, create POs, and track outstanding payments"
         icon={<Truck className="w-5 h-5" />}
-        action={tab === 'suppliers'
+        action={isOwner ? (tab === 'suppliers'
           ? <button onClick={() => setShowSupplier(!showSupplier)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showSupplier ? 'Close' : 'Add Supplier'}</button>
-          : <button onClick={() => setShowPO(!showPO)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showPO ? 'Close' : 'New PO'}</button>}
+          : <button onClick={() => setShowPO(!showPO)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showPO ? 'Close' : 'New PO'}</button>)
+          : <span className="text-xs text-fg-subtle">Owner-only changes</span>}
       />
 
       <div className="flex gap-2 mb-4">
@@ -132,7 +143,7 @@ export default function Suppliers() {
                       <div className="w-10 h-10 rounded-xl bg-surface-2 flex items-center justify-center flex-shrink-0"><Truck className="w-5 h-5 text-accent" /></div>
                       <div className="min-w-0"><h3 className="font-semibold text-fg truncate">{s.name}</h3>{s.contact_person && <p className="text-xs text-fg-subtle truncate">{s.contact_person}</p>}</div>
                     </div>
-                    <button onClick={() => deleteSupplier(s.id)} className="text-fg-subtle hover:text-negative"><Trash2 className="w-4 h-4" /></button>
+                    {isOwner && <button onClick={() => deleteSupplier(s.id)} className="text-fg-subtle hover:text-negative"><Trash2 className="w-4 h-4" /></button>}
                   </div>
                   <div className="flex flex-wrap gap-3 mt-3 text-xs text-fg-muted">
                     {s.phone && <span>{s.phone}</span>}
@@ -174,7 +185,7 @@ export default function Suppliers() {
               {pos.map((po) => (
                 <div key={po.id} className="card p-4 flex items-center justify-between">
                   <div><div className="flex items-center gap-2"><span className="font-mono text-sm text-fg">{po.po_number}</span><span className={`text-xs px-2 py-0.5 rounded-full ${po.status === 'received' ? 'bg-positive/15 text-positive' : po.status === 'ordered' ? 'bg-info/15 text-info' : 'bg-surface-3 text-fg-muted'}`}>{po.status}</span></div><p className="text-xs text-fg-subtle mt-0.5">{supplierName(po.supplier_id)} · {po.items?.length || 0} items · {new Date(po.created_at).toLocaleDateString()}</p></div>
-                  <div className="flex items-center gap-3"><span className="font-semibold text-fg">₹{Number(po.total).toFixed(0)}</span>{po.status === 'ordered' && <button onClick={() => markReceived(po)} className="btn-secondary text-xs">Mark received</button>}</div>
+                  <div className="flex items-center gap-3"><span className="font-semibold text-fg">₹{Number(po.total).toFixed(0)}</span>{isOwner && po.status === 'ordered' && <button onClick={() => markReceived(po)} className="btn-secondary text-xs">Mark received</button>}</div>
                 </div>
               ))}
             </div>

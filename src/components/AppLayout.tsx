@@ -26,7 +26,7 @@ export default function AppLayout() {
   const location = useLocation()
   const { profile, ownerId } = useAuth()
   const isDesktop = useIsDesktop()
-  useDailyIntelligence(ownerId)
+  useDailyIntelligence(ownerId, profile?.role === 'owner' && !profile.business_owner_id)
   useKeyboardShortcuts()
   // Swipe left/right between Today → New Sale → Customers → Scan (mobile).
   useSwipeNavigation()

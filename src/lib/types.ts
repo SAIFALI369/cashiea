@@ -159,7 +159,7 @@ export interface EmailCampaign {
   id: string
   user_id: string
   name: string
-  status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'paused'
+  status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'partial' | 'failed' | 'paused'
   template_subject: string | null
   template_body: string | null
   tone: string
@@ -175,6 +175,10 @@ export interface EmailCampaign {
   clicked_count: number
   replied_count: number
   provider: string
+  send_run_id?: string | null
+  send_started_at?: string | null
+  send_heartbeat_at?: string | null
+  last_error?: string | null
   created_at: string
 }
 
@@ -185,7 +189,7 @@ export interface CampaignRecipient {
   name: string | null
   personalization: Record<string, unknown>
   variant: string | null
-  status: 'pending' | 'sent' | 'opened' | 'clicked' | 'replied' | 'bounced'
+  status: 'pending' | 'processing' | 'generated' | 'failed' | 'sent' | 'opened' | 'clicked' | 'replied' | 'bounced'
   sentiment: string | null
   sentiment_score: number | null
   generated_subject: string | null
@@ -311,6 +315,8 @@ export interface SalePayment {
 export interface HeldCart {
   id: string
   user_id: string
+  /** Authenticated actor who parked the cart; null only for legacy rows. */
+  created_by?: string | null
   label: string | null
   /** Full cart snapshot: lines + customer + totals context. */
   cart: Record<string, unknown>

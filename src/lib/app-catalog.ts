@@ -6,6 +6,7 @@
 // ════════════════════════════════════════════════════════════════
 
 export type PermissionMode = 'read_only' | 'read_write' | 'full_access'
+export type GoogleProvider = 'gmail' | 'google_sheets' | 'google_drive'
 export type AuthType = 'oauth2' | 'api_key' | 'manual'
 export type AppCategory = 'spreadsheets' | 'email' | 'payments' | 'crm' | 'ecommerce' | 'accounting' | 'storage' | 'design'
 
@@ -105,16 +106,16 @@ export const GMAIL: AppCatalogEntry = {
   ],
 }
 
-// ─── Google Drive (file-picker model — drive.file, no verification) ──
+// ─── Google Drive (server-mediated read-only file selection) ─────
 export const GOOGLE_DRIVE: AppCatalogEntry = {
   slug: 'google-drive',
   name: 'Google Drive',
   category: 'storage',
-  description: 'Pick specific files from your Google Drive for Meraj to read as context. You choose exactly what Cashiea can see — it never browses the rest of your Drive.',
+  description: 'Cashiea lists basic metadata for files available to the connected Google account through a server-side read-only connection. Choose up to 20 files for Meraj to read; only your saved selection is used as business context.',
   authType: 'oauth2',
   enabled: true,
   oauthScopes: [
-    'https://www.googleapis.com/auth/drive.file',
+    'https://www.googleapis.com/auth/drive.readonly',
     'https://www.googleapis.com/auth/userinfo.email',
     'openid',
   ],
@@ -125,10 +126,10 @@ export const GOOGLE_DRIVE: AppCatalogEntry = {
     {
       mode: 'read_only',
       label: 'Selected Files (Read Only)',
-      description: 'Cashiea can read only the files you pick with the Google file picker. It cannot see anything else, and cannot edit or delete any file.',
-      scopes: ['https://www.googleapis.com/auth/drive.file'],
-      allows: ['Read content of files you pick', 'See names of picked files'],
-      blocks: ['Browse all of your Drive', 'Edit or delete files', 'Access other Google services'],
+      description: 'Cashiea can list basic metadata available to the connected Google account so you can choose files. Meraj reads content only for the files you save, and cannot edit or delete any file.',
+      scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+      allows: ['List basic metadata for available files', 'Read content of files you select', 'Keep selected file IDs for Meraj context'],
+      blocks: ['Read content before you select a file', 'Edit or delete files', 'Share with others', 'Access other Google services'],
     },
   ],
 }
@@ -176,7 +177,7 @@ export function getPermissionOption(app: AppCatalogEntry, mode: PermissionMode):
 }
 
 /** Map a catalog slug to the OAuth provider key the google-oauth function expects. */
-export function oauthProviderForSlug(slug: string): string {
+export function oauthProviderForSlug(slug: string): GoogleProvider {
   if (slug === 'gmail') return 'gmail'
   if (slug === 'google-drive') return 'google_drive'
   return 'google_sheets'

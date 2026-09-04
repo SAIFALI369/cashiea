@@ -15,41 +15,46 @@ import { refreshGoogleToken, fetchSheet, appendSheetRows, createSpreadsheet } fr
 import { getDriveToken, readDriveFile } from "../_shared/connectors/google-drive.ts";
 import { sendWhatsAppText } from "../_shared/whatsapp.ts";
 import { fetchNews, fetchMedia, wantsNews, wantsMedia, extractNewsTopic, extractMediaSubject } from "../_shared/web.ts";
+import { resolveBusiness } from "../_shared/business.ts";
+import { releaseApiUsage } from "../_shared/usage.ts";
 
 // AI calls now go through _shared/ai-call.ts (Groq primary + Gemini fallback — identical to Meraj chat).
 
 // Live, best-effort recent-Gmail summary for the snapshot. Only fetches when
 // the owner has a connected Gmail integration. Concurrent + time-boxed so a
 // slow Gmail API can never stall the chat.
-async function getRecentEmails(supabase: any, userId: string): Promise<{ subject: string; from: string; snippet: string; date: string }[]> {
+async function getRecentEmails(
+  supabase: any,
+  userId: string,
+  secretSupabase: any = supabase,
+): Promise<{ subject: string; from: string; snippet: string; date: string }[]> {
   try {
-    const { data: gmail } = await supabase.from("integrations")
-      .select("status,metadata").eq("user_id", userId).eq("provider", "gmail").maybeSingle();
+    const { data: gmail } = await secretSupabase.from("connected_apps")
+      .select("*").eq("user_id", userId).eq("app_slug", "gmail").maybeSingle();
     if (!gmail || gmail.status !== "connected") return [];
 
     const token = await Promise.race([
-      refreshGoogleToken(supabase, { user_id: userId, provider: "gmail", metadata: gmail.metadata || {} }),
-      new Promise<null>((r) => setTimeout(() => r(null), 2500)),
+      refreshGoogleToken(secretSupabase, { ...gmail, provider: "gmail", app_slug: "gmail" }),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500)),
     ]);
     if (!token) return [];
 
-    const listRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=6`, {
+    const listRes = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=6", {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!listRes.ok) return [];
     const { messages = [] } = await listRes.json();
-
-    const msgs = await Promise.all(messages.map((m: any) =>
-      fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From`, {
+    const msgs = await Promise.all(messages.map((message: any) =>
+      fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From`, {
         headers: { Authorization: `Bearer ${token}` },
-      }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+      }).then((response) => (response.ok ? response.json() : null)).catch(() => null),
     ));
 
     return msgs.filter(Boolean).map((msg: any) => {
-      const h = msg.payload?.headers || [];
+      const headers = msg.payload?.headers || [];
       return {
-        subject: h.find((x: any) => x.name === "Subject")?.value || "(no subject)",
-        from: h.find((x: any) => x.name === "From")?.value || "",
+        subject: headers.find((header: any) => header.name === "Subject")?.value || "(no subject)",
+        from: headers.find((header: any) => header.name === "From")?.value || "",
         snippet: (msg.snippet || "").slice(0, 160),
         date: msg.internalDate ? new Date(Number(msg.internalDate)).toISOString() : "",
       };
@@ -59,22 +64,27 @@ async function getRecentEmails(supabase: any, userId: string): Promise<{ subject
   }
 }
 
-// Live, best-effort Google Drive context — reads the content of files the owner
-// explicitly picked (drive.file). Concurrent + time-boxed, never blocks the chat.
-async function getDriveContext(supabase: any, userId: string): Promise<{ name: string; excerpt: string }[]> {
+// Live, best-effort Google Drive context — reads the content only of files the
+// owner explicitly saved in connected_apps.metadata.selectedFiles. The OAuth
+// connection can enumerate metadata, but Meraj never uses unselected content.
+async function getDriveContext(
+  supabase: any,
+  userId: string,
+  secretSupabase: any = supabase,
+): Promise<{ name: string; excerpt: string }[]> {
   try {
-    const { data: drive } = await supabase.from("connected_apps")
+    const { data: drive } = await secretSupabase.from("connected_apps")
       .select("*").eq("user_id", userId).eq("app_slug", "google-drive").maybeSingle();
     if (!drive || drive.status !== "connected") return [];
-    const sel = (drive.metadata?.selectedFiles as any[]) || [];
-    if (!sel.length) return [];
+    const selected = (drive.metadata?.selectedFiles as any[]) || [];
+    if (!selected.length) return [];
     const token = await Promise.race([
-      getDriveToken(supabase, drive),
-      new Promise<null>((r) => setTimeout(() => r(null), 2500)),
+      getDriveToken(secretSupabase, drive),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500)),
     ]);
     if (!token) return [];
-    const out = await Promise.all(sel.slice(0, 6).map((f) => readDriveFile(token, f).catch(() => null)));
-    return out.filter(Boolean).map((c: any) => ({ name: c.name, excerpt: c.text.slice(0, 1200) }));
+    const out = await Promise.all(selected.slice(0, 6).map((file) => readDriveFile(token, file).catch(() => null)));
+    return out.filter(Boolean).map((content: any) => ({ name: content.name, excerpt: content.text.slice(0, 1200) }));
   } catch {
     return [];
   }
@@ -93,7 +103,7 @@ async function getRecentWhatsApp(supabase: any, userId: string): Promise<{ from:
 }
 
 // Build a compact business snapshot for the AI to reason over
-async function buildContext(supabase: any, userId: string, message = "", briefing = false): Promise<string> {
+async function buildContext(supabase: any, userId: string, message = "", briefing = false, secretSupabase: any = supabase): Promise<string> {
   const now = new Date();
   const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   const startMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
@@ -134,8 +144,8 @@ async function buildContext(supabase: any, userId: string, message = "", briefin
   const wantWa = briefing || /\b(whatsapp|message|customer (wrote|sent|asked))\b/i.test(message);
   const wantNews = wantsNews(message);
   const [recentEmails, driveFiles, recentWhatsApp, currentNews] = await Promise.all([
-    wantEmails ? getRecentEmails(supabase, userId) : Promise.resolve([]),
-    wantDrive ? getDriveContext(supabase, userId) : Promise.resolve([]),
+    wantEmails ? getRecentEmails(supabase, userId, secretSupabase) : Promise.resolve([]),
+    wantDrive ? getDriveContext(supabase, userId, secretSupabase) : Promise.resolve([]),
     wantWa ? getRecentWhatsApp(supabase, userId) : Promise.resolve([]),
     wantNews ? fetchNews(extractNewsTopic(message), Deno.env.get("GNEWS_API_KEY") || "") : Promise.resolve([]),
   ]);
@@ -283,39 +293,240 @@ const ALL_TOOLS = [{ function_declarations: [
 ] }];
 
 function computeInvoiceDraft(args: any) {
-  const items = (args.items || []).map((it: any) => ({ description: String(it.name || "Item"), quantity: Number(it.qty || 1), unit_price: Number(it.unit_price || 0) }));
-  const line = items.reduce((s: number, it: any) => s + it.quantity * it.unit_price, 0);
   const discountPct = Math.max(0, Math.min(100, Number(args.discount_pct || 0)));
+  const items = (args.items || []).map((it: any) => ({
+    description: String(it.name || "Item").trim(),
+    quantity: Number(it.qty),
+    unit_price: Number(it.unit_price),
+    gst_rate: Number(it.gst_rate ?? args.tax_rate ?? 0),
+    hsn_code: it.hsn_code ? String(it.hsn_code).trim() : null,
+  }));
+  const line = items.reduce((s: number, it: any) => s + it.quantity * it.unit_price, 0);
   const discountAmount = +(line * discountPct / 100).toFixed(2);
   const subtotal = +(line - discountAmount).toFixed(2);
-  const taxRate = Number(args.tax_rate || 0);
-  const taxAmount = +(subtotal * taxRate / 100).toFixed(2);
+  const hsnMap = new Map<string, any>();
+  let taxAmount = 0;
+  for (const item of items) {
+    const gross = item.quantity * item.unit_price;
+    const taxable = gross * (1 - discountPct / 100);
+    const tax = taxable * item.gst_rate / 100;
+    taxAmount += tax;
+    const key = `${item.hsn_code || ""}|${item.gst_rate}`;
+    const entry = hsnMap.get(key) || { hsn: item.hsn_code || "", rate: item.gst_rate, taxable: 0, tax: 0 };
+    entry.taxable += taxable;
+    entry.tax += tax;
+    hsnMap.set(key, entry);
+  }
+  taxAmount = +taxAmount.toFixed(2);
+  const taxRate = subtotal > 0 ? +(taxAmount / subtotal * 100).toFixed(2) : 0;
   const total = +(subtotal + taxAmount).toFixed(2);
-  return { items, line: +line.toFixed(2), discountPct, discountAmount, subtotal, taxRate, taxAmount, total, invoice_number: "INV-" + Date.now().toString(36).toUpperCase() };
+  const hsnSummary = Array.from(hsnMap.values()).map((entry) => ({
+    hsn: entry.hsn,
+    rate: entry.rate,
+    taxable: +entry.taxable.toFixed(2),
+    cgst: args.is_interstate ? 0 : +(entry.tax / 2).toFixed(2),
+    sgst: args.is_interstate ? 0 : +(entry.tax / 2).toFixed(2),
+    igst: args.is_interstate ? +entry.tax.toFixed(2) : 0,
+  }));
+  return {
+    items,
+    line: +line.toFixed(2),
+    discountPct,
+    discountAmount,
+    subtotal,
+    taxRate,
+    taxAmount,
+    total,
+    isInterstate: args.is_interstate === true,
+    hsnSummary,
+    invoice_number: "INV-" + Date.now().toString(36).toUpperCase(),
+  };
 }
-
 function formatDraftReply(name: string, d: any) {
   const lines = d.items.map((it: any) => `- ${it.description} \u00d7 ${it.quantity} @ \u20b9${it.unit_price} = \u20b9${(it.quantity * it.unit_price).toFixed(2)}`);
-  let r = `I've prepared this invoice \u2014 ready to create it, or want to change anything?\n\n**Customer:** ${name}\n**Items:**\n${lines.join("\n")}\n**Subtotal:** \u20b9${d.line}`;
+  let r = `I've prepared this invoice \u2014 ready to create it, or want to change anything?\n\n**Customer:** ${name}\n**Items:**\n${lines.join("\n")}\n**Subtotal:** \u20b9${d.subtotal}`;
   if (d.discountPct) r += `\n**Discount (${d.discountPct}%):** \u2212\u20b9${d.discountAmount}`;
   if (d.taxRate) r += `\n**Tax (${d.taxRate}%):** +\u20b9${d.taxAmount}`;
   r += `\n**Total: \u20b9${d.total}**\n\nTap **Create it** to save this invoice.`;
   return r;
 }
 
+
+const OWNER_ONLY_CONFIRMATIONS = new Set([
+  "create_invoice",
+  "add_product",
+  "add_products",
+  "sync_stock_from_sheet",
+  "export_to_sheet",
+]);
+const ALLOWED_CONFIRMATIONS = new Set([
+  ...OWNER_ONLY_CONFIRMATIONS,
+  "add_customer",
+  "send_whatsapp",
+]);
+
+const MAX_MONEY = 1_000_000_000;
+const MAX_QUANTITY = 1_000_000;
+
+function finiteNumber(value: any, min: number, max: number): number | null {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) && n >= min && n <= max ? n : null;
+}
+
+function cleanTaskText(value: any, max: number): string | null {
+  if (typeof value !== "string") return null;
+  const text = value.trim();
+  return text && text.length <= max ? text : null;
+}
+
+function validateInvoiceInput(input: any): string | null {
+  if (!input || typeof input !== "object") return "The invoice details are invalid.";
+  if (!cleanTaskText(input.customer_name, 200)) return "The customer name is invalid.";
+  if (!Array.isArray(input.items) || input.items.length < 1 || input.items.length > 100) return "An invoice must contain between 1 and 100 items.";
+  for (const item of input.items) {
+    if (!item || !cleanTaskText(item.name, 200)) return "Every invoice item needs a valid name.";
+    if (finiteNumber(item.qty, Number.EPSILON, MAX_QUANTITY) === null) return "Each item quantity must be a positive finite number.";
+    if (finiteNumber(item.unit_price, 0, MAX_MONEY) === null) return "Each item price must be a finite non-negative amount.";
+    if (item.gst_rate !== undefined && finiteNumber(item.gst_rate, 0, 100) === null) return "Each GST rate must be between 0 and 100.";
+    if (item.hsn_code !== undefined && item.hsn_code !== null && !cleanTaskText(item.hsn_code, 20)) return "An HSN code is invalid.";
+  }
+  if (input.discount_pct !== undefined && finiteNumber(input.discount_pct, 0, 100) === null) return "The discount must be between 0 and 100 percent.";
+  if (input.tax_rate !== undefined && finiteNumber(input.tax_rate, 0, 100) === null) return "The tax rate must be between 0 and 100 percent.";
+  if (input.is_interstate !== undefined && typeof input.is_interstate !== "boolean") return "The interstate flag is invalid.";
+  if (input.notes !== undefined && input.notes !== null && !cleanTaskText(input.notes, 2000)) return "The invoice notes are too long or invalid.";
+  if (input.customer_email !== undefined && input.customer_email !== null && !cleanTaskText(input.customer_email, 320)) return "The customer email is invalid.";
+  if (input.customer_phone !== undefined && input.customer_phone !== null && !cleanTaskText(input.customer_phone, 40)) return "The customer phone is invalid.";
+  return null;
+}
+
+function validateProductInput(input: any): string | null {
+  if (!input || typeof input !== "object") return "The product details are invalid.";
+  if (!cleanTaskText(input.name, 200)) return "The product name is invalid.";
+  if (finiteNumber(input.price, 0, MAX_MONEY) === null) return "The product price must be a finite non-negative amount.";
+  for (const field of ["stock_quantity", "low_stock_threshold"]) {
+    if (input[field] !== undefined && finiteNumber(input[field], 0, MAX_QUANTITY) === null) return `The ${field.replaceAll("_", " ")} is invalid.`;
+  }
+  if (input.cost !== undefined && finiteNumber(input.cost, 0, MAX_MONEY) === null) return "The product cost is invalid.";
+  for (const field of ["sku", "category"]) {
+    if (input[field] !== undefined && input[field] !== null && !cleanTaskText(input[field], 200)) return `The product ${field} is invalid.`;
+  }
+  return null;
+}
+
+function validateProductList(input: any, max = 50): string | null {
+  if (!Array.isArray(input) || input.length < 1 || input.length > max) return `A product action must contain between 1 and ${max} products.`;
+  for (const item of input) {
+    const error = validateProductInput(item);
+    if (error) return error;
+  }
+  return null;
+}
+
+function validateCustomerInput(input: any): string | null {
+  if (!input || typeof input !== "object" || !cleanTaskText(input.name, 200)) return "The customer name is invalid.";
+  if (input.phone !== undefined && input.phone !== null && !cleanTaskText(input.phone, 40)) return "The customer phone is invalid.";
+  if (input.email !== undefined && input.email !== null && !cleanTaskText(input.email, 320)) return "The customer email is invalid.";
+  if (input.company !== undefined && input.company !== null && !cleanTaskText(input.company, 200)) return "The customer company is invalid.";
+  return null;
+}
+
+function validatePhone(value: any): string | null {
+  const phone = cleanTaskText(value, 40);
+  return phone && /^[+\d][\d ()-]{5,38}$/.test(phone) ? phone : null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  const contentLength = Number(req.headers.get("content-length") || 0);
+  if (Number.isFinite(contentLength) && contentLength > 16_000_000) return json({ error: "Request is too large" }, 413);
+  let usageReserved = false;
+  let usageConsumed = false;
+  let usageOwner = "";
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: req.headers.get("Authorization")! } } });
+    const serviceSupabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) return json({ error: "Unauthorized" }, 401);
 
-    const { data: profile } = await supabase.from("profiles").select("ai_provider, api_usage_count, api_usage_limit, trial_ends_at, full_name").eq("id", user.id).single();
-    const onTrial = profile?.trial_ends_at && new Date(profile.trial_ends_at) > new Date();
-    const limit = onTrial ? Math.max(profile.api_usage_limit, 500) : profile?.api_usage_limit || 50;
-    if (profile && profile.api_usage_count >= limit) return json({ error: "Usage limit reached" }, 429);
+    const business = await resolveBusiness(serviceSupabase, user.id);
+    if (!business) return json({ error: "Your account is not linked to exactly one active business" }, 403);
+    const { ownerId, role: actorRole, isOwner } = business;
+    usageOwner = ownerId;
+    const { data: profile, error: profileError } = await serviceSupabase
+      .from("profiles")
+      .select("ai_provider, api_usage_count, api_usage_limit, trial_ends_at, full_name, company_name, shop_category, business_address, phone")
+      .eq("id", ownerId).maybeSingle();
+    if (profileError || !profile) return json({ error: "Could not load business profile" }, 503);
 
-    const { message, briefing, scope, mode, confirm, pageContext, history, image, category, businessName, city, answers, dashboardState } = await req.json();
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Invalid JSON body" }, 400);
+    const { message, briefing, scope, mode, confirm, pageContext, history, image, category, businessName, city, answers, dashboardState } = body as Record<string, any>;
+    if (message !== undefined && (typeof message !== "string" || message.length > 8_000)) return json({ error: "message is invalid or too long" }, 400);
+    if (briefing !== undefined && typeof briefing !== "boolean") return json({ error: "briefing is invalid" }, 400);
+    const allowedModes = new Set(["ask", "task", "dashboard_suggestions", "onboarding_questions", "onboarding_persona"]);
+    if (mode !== undefined && mode !== null && !allowedModes.has(String(mode))) return json({ error: "Unsupported assistant mode" }, 400);
+    if (history !== undefined && (!Array.isArray(history) || history.length > 30)) return json({ error: "history is invalid or too long" }, 400);
+    if (history) {
+      for (const turn of history) {
+        if (!turn || typeof turn !== "object" || typeof turn.text !== "string" || turn.text.length > 1_000) return json({ error: "history contains an invalid turn" }, 400);
+      }
+    }
+    if (pageContext !== undefined && pageContext !== null &&
+        (typeof pageContext !== "object" || typeof pageContext.name !== "string" || pageContext.name.length > 120 ||
+         typeof pageContext.description !== "string" || pageContext.description.length > 500)) return json({ error: "pageContext is invalid" }, 400);
+    if (image !== undefined && image !== null) {
+      if (typeof image !== "object" || typeof image.data !== "string" || typeof image.mimeType !== "string" ||
+          image.data.length === 0 || image.data.length > 14_000_000 || image.data.length % 4 === 1 ||
+          !/^[A-Za-z0-9+/]*={0,2}$/.test(image.data) || !["image/jpeg", "image/png", "image/webp"].includes(image.mimeType.toLowerCase().split(";", 1)[0].trim())) {
+        return json({ error: "image is invalid or too large" }, 400);
+      }
+    }
+    for (const [field, max] of [["category", 120], ["businessName", 200], ["city", 200]] as [string, number][]) {
+      if (body[field] !== undefined && (typeof body[field] !== "string" || body[field].length > max)) return json({ error: `${field} is invalid or too long` }, 400);
+    }
+    if (answers !== undefined && (typeof answers !== "object" || answers === null || Array.isArray(answers) || Object.keys(answers).length > 20)) return json({ error: "answers are invalid" }, 400);
+    if (answers) for (const value of Object.values(answers)) if (typeof value !== "string" || value.length > 500) return json({ error: "answers contain an invalid value" }, 400);
+    if (dashboardState !== undefined && (typeof dashboardState !== "object" || dashboardState === null || Array.isArray(dashboardState) || JSON.stringify(dashboardState).length > 5_000)) return json({ error: "dashboardState is invalid" }, 400);
+
+    // Onboarding edits the owner's profile and memory; a linked account must
+    // not invoke these modes merely to consume the owner's quota or generate
+    // misleading onboarding data.
+    if (["onboarding_questions", "onboarding_persona"].includes(String(mode || "")) && !isOwner) {
+      return json({ error: "Only the business owner can run onboarding" }, 403);
+    }
+
+    // The browser confirmation is only a request, never proof of permission.
+    // Validate the action name before charging usage or entering the tool path;
+    // otherwise an attacker could use arbitrary confirmation objects to burn a
+    // business owner's quota or make the model reinterpret the request.
+    if (confirm !== undefined && confirm !== null && typeof confirm !== "object") {
+      return json({ error: "Confirmation payload is invalid" }, 400);
+    }
+    const confirmationType = confirm && typeof confirm === "object" ? String(confirm.type || "") : "";
+    if (confirm && (!confirmationType || !ALLOWED_CONFIRMATIONS.has(confirmationType))) {
+      return json({ error: "Unsupported Meraj confirmation" }, 400);
+    }
+    if (confirmationType && OWNER_ONLY_CONFIRMATIONS.has(confirmationType) && !isOwner) {
+      return json({ error: "Only the business owner can approve this Meraj action" }, 403);
+    }
+    if (confirmationType === "send_whatsapp" && !isOwner && actorRole !== "manager") {
+      return json({ error: "Only the owner or an authorised manager can approve WhatsApp messages" }, 403);
+    }
+    if (confirmationType === "add_customer" && !isOwner && !["manager", "staff"].includes(actorRole)) {
+      return json({ error: "Your role cannot create customers through Meraj" }, 403);
+    }
+
+    // Reserve one usage unit atomically for the whole request. Incrementing at
+    // each early return let concurrent Meraj tabs overspend and also charged a
+    // single task more than once.
+    const { data: reserved, error: reserveError } = await serviceSupabase.rpc("reserve_api_usage", {
+      p_user_id: ownerId,
+      p_amount: 1,
+    });
+    if (reserveError) return json({ error: "AI usage service is unavailable; deploy schema v27 first" }, 503);
+    if (!reserved) return json({ error: "Usage limit reached" }, 429);
+    usageReserved = true;
 
     // ── DASHBOARD SUGGESTION PILLS (under the search bar) ──────────
     // Fresh, situation-specific questions — the client regenerates these every
@@ -332,6 +543,7 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
       let pills: string[] = [];
       try {
         const out = await callAIWithFallback("groq", sys, "Return the JSON array now.", 300, "dashboard-suggestions");
+        usageConsumed = true;
         const m = String(out).match(/\[[\s\S]*\]/);
         if (m) {
           const parsed = JSON.parse(m[0]);
@@ -346,7 +558,6 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
         fb.push("Who are my top customers this month?");
         pills = fb.slice(0, 4);
       }
-      try { await supabase.rpc("increment_api_usage", { user_uuid: user.id }); } catch { /* ignore */ }
       return json({ pills: pills.slice(0, 4) });
     }
 
@@ -357,6 +568,7 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
       let questions: any[] = [];
       try {
         const out = await callAIWithFallback("groq", sys, "Return the JSON now.", 900, "onboarding-questions");
+        usageConsumed = true;
         const m = String(out).match(/\{[\s\S]*\}/);
         if (m) { const parsed = JSON.parse(m[0]); if (Array.isArray(parsed.questions)) questions = parsed.questions; }
       } catch { /* fall through to the deterministic set below */ }
@@ -367,8 +579,15 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
           { q: "Who are most of your customers?", type: "choice", options: ["Local families", "Shops & businesses", "Walk-in passerby", "Bulk buyers"] },
         ];
       }
-      try { await supabase.rpc("increment_api_usage", { user_uuid: user.id }); } catch { /* ignore */ }
-      return json({ questions: questions.slice(0, 5).filter((q: any) => q && q.q) });
+      const safeQuestions = questions.slice(0, 5).map((q: any) => {
+        if (!q || typeof q !== "object" || typeof q.q !== "string") return null;
+        const type = q.type === "choice" ? "choice" : "text";
+        const options = type === "choice" && Array.isArray(q.options)
+          ? q.options.filter((option: any) => typeof option === "string" && option.trim()).slice(0, 5).map((option: string) => option.trim().slice(0, 80))
+          : undefined;
+        return { q: q.q.trim().slice(0, 240), type, ...(options?.length ? { options } : {}) };
+      }).filter((q: any) => q && q.q);
+      return json({ questions: safeQuestions });
     }
     // Page 3: Meraj builds his expert persona for this trade (e.g. pharmacy →
     // doctor-style expert predicting seasonal medicine demand; hardware → CEO/salesman).
@@ -377,6 +596,7 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
       let persona: any = null;
       try {
         const out = await callAIWithFallback("groq", sys, "Return the JSON now.", 900, "onboarding-persona");
+        usageConsumed = true;
         const m = String(out).match(/\{[\s\S]*\}/);
         if (m) persona = JSON.parse(m[0]);
       } catch { /* fall through */ }
@@ -387,7 +607,6 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
           skills: ["Watches daily sales and profit", "Predicts seasonal demand", "Flags low stock before you run out", "Suggests customer follow-ups"],
         };
       }
-      try { await supabase.rpc("increment_api_usage", { user_uuid: user.id }); } catch { /* ignore */ }
       return json({
         headline: String(persona.headline || "").slice(0, 60),
         persona: String(persona.persona || "").slice(0, 900),
@@ -430,7 +649,6 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
       const trimmed = String(message || "").trim().toLowerCase();
       if (/^(hi+|hello+|hey+|namaste|namaskar|good (morning|afternoon|evening)|yo|sup)\b/.test(trimmed) && trimmed.length < 25) {
         const ownerName = (profile?.full_name || "there").split(" ")[0];
-        try { await supabase.rpc("increment_api_usage", { user_uuid: user.id }); } catch { /* ignore */ }
         return json({ reply: `Namaste ${ownerName}! Main Meraj hoon — aapka AI shop manager. Aap pooch sakte hain aaj ki sales, stock, ya customers ke baare mein. Bolo "create an invoice" ya "show today's sales" — main turant kar doonga.` });
       }
     }
@@ -455,106 +673,124 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
       // EXECUTE a confirmed action
       if (confirm && confirm.type === "create_invoice" && confirm.input) {
         try {
+          const validationError = validateInvoiceInput(confirm.input);
+          if (validationError) return json({ reply: validationError, invalid: true }, 400);
           const d = computeInvoiceDraft(confirm.input);
-          const { data, error: ie } = await supabase.from("invoices").insert({
-            user_id: user.id, invoice_number: d.invoice_number,
-            client_name: String(confirm.input.customer_name || "Customer"),
+          const { data, error: ie } = await serviceSupabase.from("invoices").insert({
+            user_id: ownerId, invoice_number: d.invoice_number,
+            client_name: String(confirm.input.customer_name).trim(),
             client_email: confirm.input.customer_email || null,
-            client_address: confirm.input.customer_phone ? `Phone: ${confirm.input.customer_phone}` : null,
-            items: d.items, subtotal: d.subtotal, tax_rate: d.taxRate, tax_amount: d.taxAmount, total: d.total, status: "draft",
-            notes: confirm.input.notes || (d.discountPct ? `Discount: ${d.discountPct}%` : null),
+            client_phone: confirm.input.customer_phone || null,
+            items: d.items, subtotal: d.subtotal, discount: d.discountAmount,
+            tax_rate: d.taxRate, tax_amount: d.taxAmount, total: d.total,
+            is_interstate: d.isInterstate, hsn_summary: d.hsnSummary, status: "draft",
+            notes: confirm.input.notes || null,
           }).select().single();
           if (ie) return json({ reply: `I couldn't create the invoice: ${ie.message}. Want to try again?` });
-          await supabase.from("activity_logs").insert({ user_id: user.id, action_type: "invoice", description: `Meraj created invoice ${d.invoice_number} for ${confirm.input.customer_name} — \u20b9${d.total}`, time_saved_minutes: 15, money_saved: 7.5, provider: "meraj-task" });
-          await supabase.rpc("increment_api_usage", { user_uuid: user.id });
+          usageConsumed = true;
+          await serviceSupabase.from("activity_logs").insert({ user_id: ownerId, action_type: "invoice", description: `Meraj created invoice ${d.invoice_number} for ${confirm.input.customer_name} — \u20b9${d.total}`, time_saved_minutes: 15, money_saved: 7.5, provider: "meraj-task" });
           return json({ reply: `Done \u2014 invoice **${d.invoice_number}** created for **${confirm.input.customer_name}**, \u20b9${d.total} total${d.discountPct ? ` (${d.discountPct}% discount applied)` : ""}. Find it in your Invoices page.`, executed: { invoice_number: d.invoice_number, total: d.total } });
         } catch (ex) { return json({ reply: `Something went wrong creating the invoice: ${(ex as Error)?.message}. Please try again.` }); }
       }
       if (confirm && confirm.type === "add_product" && confirm.input) {
         const i = confirm.input;
-        const { error: pe } = await supabase.from("products").insert({ user_id: user.id, name: String(i.name), price: Number(i.price || 0), sku: i.sku || null, category: i.category || null, stock_quantity: Number(i.stock_quantity || 0), low_stock_threshold: Number(i.low_stock_threshold || 5), cost: Number(i.cost || 0) }).select().single();
+        const validationError = validateProductInput(i);
+        if (validationError) return json({ reply: validationError, invalid: true }, 400);
+        const { error: pe } = await serviceSupabase.from("products").insert({ user_id: ownerId, name: String(i.name).trim(), price: Number(i.price), sku: i.sku || null, category: i.category || null, stock_quantity: Number(i.stock_quantity || 0), low_stock_threshold: Number(i.low_stock_threshold ?? 5), cost: Number(i.cost || 0) }).select().single();
         if (pe) return json({ reply: `I couldn't add the product: ${pe.message}.` });
-        await supabase.from("activity_logs").insert({ user_id: user.id, action_type: "summary", description: `Meraj added product: ${i.name}`, time_saved_minutes: 5, money_saved: 2, provider: "meraj-task" });
-        await supabase.rpc("increment_api_usage", { user_uuid: user.id });
+        usageConsumed = true;
+        await serviceSupabase.from("activity_logs").insert({ user_id: ownerId, action_type: "summary", description: `Meraj added product: ${i.name}`, time_saved_minutes: 5, money_saved: 2, provider: "meraj-task" });
         return json({ reply: `Done \u2014 **${i.name}** added to your products${i.stock_quantity !== undefined ? ` (${i.stock_quantity} in stock)` : ""}. Find it in your Stock page.`, executed: { type: "product" } });
       }
       if (confirm && confirm.type === "add_products" && confirm.input) {
         // BULK product add — one batched INSERT for the whole list (2-50 items).
-        const items = (Array.isArray(confirm.input.products) ? confirm.input.products : []).filter((x: any) => x && x.name);
-        if (!items.length) return json({ reply: "No valid products in that list \u2014 nothing was added." });
-        const rows = items.map((i: any) => ({ user_id: user.id, name: String(i.name).slice(0, 200), price: Number(i.price || 0), sku: i.sku || null, category: i.category || null, stock_quantity: Number(i.stock_quantity || 0), low_stock_threshold: Number(i.low_stock_threshold || 5), cost: Number(i.cost || 0) }));
-        const { error: be } = await supabase.from("products").insert(rows);
+        const items = Array.isArray(confirm.input.products) ? confirm.input.products : [];
+        const validationError = validateProductList(items);
+        if (validationError) return json({ reply: validationError, invalid: true }, 400);
+        const rows = items.map((i: any) => ({ user_id: ownerId, name: String(i.name).slice(0, 200), price: Number(i.price || 0), sku: i.sku || null, category: i.category || null, stock_quantity: Number(i.stock_quantity || 0), low_stock_threshold: Number(i.low_stock_threshold || 5), cost: Number(i.cost || 0) }));
+        const { error: be } = await serviceSupabase.from("products").insert(rows);
         if (be) return json({ reply: `I couldn't add the products: ${be.message}.` });
-        await supabase.from("activity_logs").insert({ user_id: user.id, action_type: "summary", description: `Meraj added ${rows.length} products in bulk`, time_saved_minutes: 5 + rows.length, money_saved: 2 + rows.length, provider: "meraj-task" });
-        await supabase.rpc("increment_api_usage", { user_uuid: user.id });
+        usageConsumed = true;
+        await serviceSupabase.from("activity_logs").insert({ user_id: ownerId, action_type: "summary", description: `Meraj added ${rows.length} products in bulk`, time_saved_minutes: 5 + rows.length, money_saved: 2 + rows.length, provider: "meraj-task" });
         return json({ reply: `Done \u2014 **${rows.length} products** added to your stock. Find them in your Stock page.`, executed: { type: "products", count: rows.length } });
       }
       if (confirm && confirm.type === "add_customer" && confirm.input) {
         const i = confirm.input;
-        const { error: ce } = await supabase.from("customers").insert({ user_id: user.id, name: String(i.name), phone: i.phone || null, email: i.email || null, company: i.company || null }).select().single();
+        const validationError = validateCustomerInput(i);
+        if (validationError) return json({ reply: validationError, invalid: true }, 400);
+        const { error: ce } = await serviceSupabase.from("customers").insert({ user_id: ownerId, name: String(i.name).trim(), phone: i.phone || null, email: i.email || null, company: i.company || null }).select().single();
         if (ce) return json({ reply: `I couldn't add the customer: ${ce.message}.` });
-        await supabase.from("activity_logs").insert({ user_id: user.id, action_type: "summary", description: `Meraj added customer: ${i.name}`, time_saved_minutes: 5, money_saved: 2, provider: "meraj-task" });
-        await supabase.rpc("increment_api_usage", { user_uuid: user.id });
+        usageConsumed = true;
+        await serviceSupabase.from("activity_logs").insert({ user_id: ownerId, action_type: "summary", description: `Meraj added customer: ${i.name}`, time_saved_minutes: 5, money_saved: 2, provider: "meraj-task" });
         return json({ reply: `Done \u2014 **${i.name}** added to your customers. Find them in your Customers page.`, executed: { type: "customer" } });
       }
       // ── EXECUTE a confirmed sheet → stock sync ──
       if (confirm && confirm.type === "sync_stock_from_sheet" && confirm.input) {
         try {
-          const products = (Array.isArray(confirm.input.products) ? confirm.input.products : []).filter((x: any) => x && x.name);
-          if (!products.length) return json({ reply: "No products found in that sheet — nothing to sync." });
+          const products = Array.isArray(confirm.input.products) ? confirm.input.products : [];
+          const validationError = validateProductList(products, 500);
+          if (validationError) return json({ reply: validationError, invalid: true }, 400);
           // Upsert: update existing by name, insert new ones
-          const { data: existing } = await supabase.from("products").select("id,name").eq("user_id", user.id);
+          const { data: existing } = await supabase.from("products").select("id,name").eq("user_id", ownerId);
           const existingMap = new Map((existing || []).map((p: any) => [p.name.toLowerCase().trim(), p.id]));
           const toInsert = products.filter((p: any) => !existingMap.has(String(p.name).toLowerCase().trim()));
           const toUpdate = products.filter((p: any) => existingMap.has(String(p.name).toLowerCase().trim()));
           if (toInsert.length) {
-            const rows = toInsert.map((p: any) => ({ user_id: user.id, name: String(p.name).slice(0, 200), price: Number(p.price || 0), stock_quantity: Number(p.stock_quantity || 0), category: "imported" }));
-            const { error: ie } = await supabase.from("products").insert(rows);
+            const rows = toInsert.map((p: any) => ({ user_id: ownerId, name: String(p.name).slice(0, 200), price: Number(p.price || 0), stock_quantity: Number(p.stock_quantity || 0), category: "imported" }));
+            const { error: ie } = await serviceSupabase.from("products").insert(rows);
             if (ie) return json({ reply: `I couldn't insert the new products: ${ie.message}.` });
           }
-          for (const p of toUpdate.slice(0, 50)) {
+          // Process the complete validated batch. The former slice(0, 50)
+          // reported all rows as updated while silently leaving the rest stale.
+          for (const p of toUpdate) {
             const id = existingMap.get(String(p.name).toLowerCase().trim());
             if (id) {
-              await supabase.from("products").update({ price: Number(p.price || 0), stock_quantity: Number(p.stock_quantity || 0) }).eq("id", id);
+              const { error: updateError } = await serviceSupabase.from("products").update({ price: Number(p.price || 0), stock_quantity: Number(p.stock_quantity || 0) }).eq("id", id).eq("user_id", ownerId);
+              if (updateError) throw new Error("Could not update an imported product");
             }
           }
-          await supabase.from("activity_logs").insert({ user_id: user.id, action_type: "summary", description: `Meraj synced ${products.length} products from Google Sheets`, time_saved_minutes: 10 + products.length, money_saved: 5, provider: "meraj-task" });
-          await supabase.rpc("increment_api_usage", { user_uuid: user.id });
+          await serviceSupabase.from("activity_logs").insert({ user_id: ownerId, action_type: "summary", description: `Meraj synced ${products.length} products from Google Sheets`, time_saved_minutes: 10 + products.length, money_saved: 5, provider: "meraj-task" });
+          usageConsumed = true;
           return json({ reply: `Done \u2014 synced **${products.length} products** from your Google Sheet: **${toInsert.length} new** added, **${toUpdate.length} updated**. Find them all in your Stock page.`, executed: { type: "sheet_sync", count: products.length } });
         } catch (ex) { return json({ reply: `Something went wrong during the sync: ${(ex as Error)?.message}.` }); }
       }
       // ── EXECUTE a confirmed Cashiea → sheet export ──
       if (confirm && confirm.type === "export_to_sheet" && confirm.input) {
         try {
-          const dataType = String(confirm.input.data_type || "stock");
+          const dataType = String(confirm.input.data_type || "").toLowerCase();
+          if (!["stock", "customers", "sales"].includes(dataType)) return json({ reply: "I can export stock, customers, or sales only.", invalid: true }, 400);
           // Gather the data from Cashiea
           let header: string[] = [];
           let rows: (string | number)[][] = [];
           if (dataType === "stock") {
-            const { data: products } = await supabase.from("products").select("name,price,stock_quantity,category,low_stock_threshold").eq("user_id", user.id).limit(500);
+            const { data: products } = await supabase.from("products").select("name,price,stock_quantity,category,low_stock_threshold").eq("user_id", ownerId).limit(500);
             header = ["Name", "Price", "Stock Qty", "Category", "Reorder At"];
             rows = (products || []).map((p: any) => [p.name, p.price, p.stock_quantity, p.category || "", p.low_stock_threshold || ""]);
           } else if (dataType === "customers") {
-            const { data: customers } = await supabase.from("customers").select("name,phone,email,total_spent,total_orders").eq("user_id", user.id).limit(500);
+            const { data: customers } = await supabase.from("customers").select("name,phone,email,total_spent,total_orders").eq("user_id", ownerId).limit(500);
             header = ["Name", "Phone", "Email", "Total Spent", "Orders"];
             rows = (customers || []).map((c: any) => [c.name || "", c.phone || "", c.email || "", c.total_spent || 0, c.total_orders || 0]);
           } else {
             const now = new Date();
             const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-            const { data: tx } = await supabase.from("transactions").select("total,items,payment_method,created_at").eq("user_id", user.id).eq("status", "completed").gte("created_at", startToday);
+            const { data: tx } = await supabase.from("transactions").select("total,items,payment_method,created_at").eq("user_id", ownerId).eq("status", "completed").gte("created_at", startToday);
             header = ["Time", "Total", "Payment", "Items"];
             rows = (tx || []).map((t: any) => [new Date(t.created_at).toLocaleString("en-IN"), t.total, t.payment_method || "", (t.items || []).map((i: any) => `${i.name} x${i.quantity}`).join(", ")]);
           }
           if (!rows.length) return json({ reply: `You have no ${dataType} data yet to export.` });
           // Get the Google token + spreadsheet
-          const { data: integration } = await supabase.from("integrations")
-            .select("status,metadata").eq("user_id", user.id).eq("provider", "google_sheets").maybeSingle();
+          const { data: integration } = await serviceSupabase.from("connected_apps")
+            .select("*").eq("user_id", ownerId).eq("app_slug", "google-sheets").maybeSingle();
           if (!integration || integration.status !== "connected") {
             return json({ reply: "Google Sheets isn't connected. Go to **Connect Apps**, connect Sheets, then ask me to export." });
           }
-          const token = await refreshGoogleToken(supabase, { user_id: user.id, provider: "google_sheets", metadata: integration.metadata || {} });
+          if (!["read_write", "full_access"].includes(String(integration.permission_mode || ""))) {
+            return json({ reply: "Your Google Sheets connection is read-only. Reconnect it from **Connect Apps** with **Read & Write** permission before exporting Cashiea data." });
+          }
+          const token = await refreshGoogleToken(serviceSupabase, { ...integration, provider: "google_sheets", app_slug: "google-sheets" });
           if (!token) return json({ reply: "I couldn't refresh your Google token — try reconnecting from Connect Apps." });
           let sid = integration.metadata?.spreadsheet_id as string | undefined;
+          if (sid && !/^[A-Za-z0-9_-]{1,200}$/.test(sid)) sid = undefined;
           let createdNew = false;
           if (!sid) {
             // Create a new spreadsheet and store its ID
@@ -562,48 +798,58 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
             if (!created.ok || !created.spreadsheetId) return json({ reply: `I couldn't create a new spreadsheet: ${created.error}` });
             sid = created.spreadsheetId;
             createdNew = true;
-            await supabase.from("integrations").update({ metadata: { ...integration.metadata, spreadsheet_id: sid, spreadsheet_url: created.url } }).eq("user_id", user.id).eq("provider", "google_sheets");
+            await serviceSupabase.from("connected_apps").update({ metadata: { ...integration.metadata, spreadsheet_id: sid, spreadsheet_url: created.url }, updated_at: new Date().toISOString() }).eq("id", integration.id);
           }
           // Append header (if new sheet) + rows
           const dataToAppend = createdNew ? [header, ...rows] : rows;
           const result = await appendSheetRows(token, sid, "A1", dataToAppend);
           if (!result.ok) return json({ reply: `I couldn't write to the sheet: ${result.error}` });
-          await supabase.from("activity_logs").insert({ user_id: user.id, action_type: "summary", description: `Meraj exported ${dataType} to Google Sheets (${rows.length} rows)`, time_saved_minutes: 10, money_saved: 5, provider: "meraj-task" });
-          await supabase.rpc("increment_api_usage", { user_uuid: user.id });
+          await serviceSupabase.from("activity_logs").insert({ user_id: ownerId, action_type: "summary", description: `Meraj exported ${dataType} to Google Sheets (${rows.length} rows)`, time_saved_minutes: 10, money_saved: 5, provider: "meraj-task" });
           const url = `https://docs.google.com/spreadsheets/d/${sid}`;
+          usageConsumed = true;
           return json({ reply: `Done \u2014 exported **${rows.length} ${dataType} rows** ${createdNew ? "to a new spreadsheet" : "to your Google Sheet"}.\n\n[Open in Google Sheets](${url})`, executed: { type: "sheet_export", rows: rows.length } });
         } catch (ex) { return json({ reply: `Something went wrong during the export: ${(ex as Error)?.message}.` }); }
       }
       // ── EXECUTE a confirmed WhatsApp send ──
       if (confirm && confirm.type === "send_whatsapp" && confirm.input) {
-        const { to, message } = confirm.input;
-        const r = await sendWhatsAppText(String(to), String(message));
+        const to = validatePhone(confirm.input.to);
+        const outboundMessage = cleanTaskText(confirm.input.message, 4096);
+        if (!to || !outboundMessage) return json({ reply: "The WhatsApp phone number or message is invalid.", invalid: true }, 400);
+        const r = await sendWhatsAppText(to, outboundMessage);
         try {
-          await supabase.from("whatsapp_messages").insert({
-            user_id: user.id, to_phone: String(to), body: String(message),
+          await serviceSupabase.from("whatsapp_messages").insert({
+            user_id: ownerId, to_phone: to, body: outboundMessage,
             direction: "outbound", status: r.ok ? "sent" : "failed",
             wa_message_id: r.messageId || null, meta: r.error ? { error: r.error } : {},
           });
         } catch { /* best-effort log */ }
         if (!r.ok) return json({ reply: `I couldn't send the WhatsApp: ${r.error}. (Outside the 24-hour window, free text is blocked by Meta — an approved template is needed.)` });
-        await supabase.from("activity_logs").insert({ user_id: user.id, action_type: "summary", description: `Meraj sent a WhatsApp to ${to}`, time_saved_minutes: 3, money_saved: 1, provider: "meraj-task" });
-        await supabase.rpc("increment_api_usage", { user_uuid: user.id });
+        usageConsumed = true;
+        await serviceSupabase.from("activity_logs").insert({ user_id: ownerId, action_type: "summary", description: `Meraj sent a WhatsApp to ${to}`, time_saved_minutes: 3, money_saved: 1, provider: "meraj-task" });
         return json({ reply: `Done — WhatsApp sent to ${to}.`, executed: { type: "whatsapp" } });
       }
       // PREPARE: model decides tool-call vs text reply
-      const [ctx2, mem2] = await Promise.all([ buildContext(supabase, user.id, String(message || ""), false), buildMemory(supabase, user.id) ]);
+      const [ctx2, mem2] = await Promise.all([ buildContext(supabase, ownerId, String(message || ""), false, serviceSupabase), buildMemory(serviceSupabase, ownerId) ]);
       const tr = await callGeminiToolCall(TASK_SYSTEM + scopeFocus + pageFocus, `Owner: "${message}"\n\n${mem2.block}${historyBlock}\n\nSnapshot:\n${ctx2}`, ALL_TOOLS, { feature: "task-invoice", maxTokens: 3000 });
       if (!tr.ok) return json({ error: tr.value }, 500);
+      usageConsumed = true;
       if (tr.value.kind === "tool") {
         const tn = tr.value.name; const args = tr.value.args || {};
+        if (tn === "sync_stock_from_sheet" && !isOwner) {
+          return json({ reply: "Only the business owner can read or sync connected stock data." });
+        }
+        if (tn === "export_to_sheet" && !isOwner) {
+          return json({ reply: "Only the business owner can export business data to Google Sheets." });
+        }
         if (tn === "create_invoice") {
-          if (!args.customer_name || !Array.isArray(args.items) || args.items.length === 0)
-            return json({ reply: "I need a couple more details \u2014 the customer name and at least one item with quantity and price. Could you share those?" });
+          const validationError = validateInvoiceInput(args);
+          if (validationError) return json({ reply: `I need a little more detail: ${validationError}` });
           const d = computeInvoiceDraft(args);
           return json({ reply: formatDraftReply(args.customer_name, d), pending: { type: "create_invoice", input: args, preview: d } });
         }
         if (tn === "add_product") {
-          if (!args.name || args.price === undefined) return json({ reply: "I need the product name and price to add it. Could you share those?" });
+          const validationError = validateProductInput(args);
+          if (validationError) return json({ reply: `I need a little more detail: ${validationError}` });
           let r = `I've prepared this product \u2014 ready to add it?\n\n**Name:** ${args.name}\n**Price:** \u20b9${args.price}`;
           if (args.stock_quantity !== undefined) r += `\n**Stock:** ${args.stock_quantity} units`;
           if (args.category) r += `\n**Category:** ${args.category}`;
@@ -611,15 +857,17 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
           return json({ reply: r, pending: { type: "add_product", input: args, preview: args } });
         }
         if (tn === "add_products") {
-          const items = (Array.isArray(args.products) ? args.products : []).filter((x: any) => x && x.name && x.price !== undefined);
-          if (!items.length) return json({ reply: "I need each product's name and price to add them. Could you share the list?" });
+          const items = Array.isArray(args.products) ? args.products : [];
+          const validationError = validateProductList(items);
+          if (validationError) return json({ reply: `I need a little more detail: ${validationError}` });
           const totalQty = items.reduce((s: number, x: any) => s + Number(x.stock_quantity || 0), 0);
           const names = items.slice(0, 6).map((x: any) => `\u2022 ${x.name} \u2014 \u20b9${x.price}${x.stock_quantity !== undefined ? ` (${x.stock_quantity} pcs)` : ""}`).join("\n");
           const more = items.length > 6 ? `\n\u2022 \u2026 +${items.length - 6} more` : "";
           return json({ reply: `I've prepared **${items.length} products** to add in one go:\n\n${names}${more}\n\n**Total stock units:** ${totalQty}\n\nTap **Add it** to save all ${items.length}.`, pending: { type: "add_products", input: { products: items }, preview: { count: items.length } } });
         }
         if (tn === "add_customer") {
-          if (!args.name) return json({ reply: "I need at least the customer's name to add them. Could you share it?" });
+          const validationError = validateCustomerInput(args);
+          if (validationError) return json({ reply: `I need a little more detail: ${validationError}` });
           let r = `I've prepared this customer \u2014 ready to add?\n\n**Name:** ${args.name}`;
           if (args.phone) r += `\n**Phone:** ${args.phone}`;
           if (args.email) r += `\n**Email:** ${args.email}`;
@@ -627,8 +875,10 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
           return json({ reply: r, pending: { type: "add_customer", input: args, preview: args } });
         }
         if (tn === "send_whatsapp") {
-          if (!args.to || !args.message) return json({ reply: "I need a phone number and a message to send. Could you share those?" });
-          return json({ reply: `I'll send this on WhatsApp:\n\n**To:** ${args.to}\n**Message:** ${args.message}\n\nTap **Send it** to confirm.`, pending: { type: "send_whatsapp", input: { to: String(args.to), message: String(args.message) }, preview: args } });
+          const phone = validatePhone(args.to);
+          const outboundMessage = cleanTaskText(args.message, 4096);
+          if (!phone || !outboundMessage) return json({ reply: "I need a valid phone number and a message to send." });
+          return json({ reply: `I'll send this on WhatsApp:\n\n**To:** ${phone}\n**Message:** ${outboundMessage}\n\nTap **Send it** to confirm.`, pending: { type: "send_whatsapp", input: { to: phone, message: outboundMessage }, preview: args } });
         }
         if (tn === "generate_image") {
           // ── IMAGE GENERATION via Pollination.ai (free, no confirm needed) ──
@@ -673,7 +923,6 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
             return json({ reply: "Image service is unreachable — check your connection and try again." });
           }
 
-          try { await supabase.rpc("increment_api_usage", { user_uuid: user.id }); } catch { /* ignore */ }
           return json({
             reply: `Here's your image of **${rawPrompt.slice(0, 80)}** — ${dims.w}×${dims.h}${size === "banner" ? " (banner format)" : ""}. Tap to open the full size, or long-press to save.`,
             images: [{ url: imageUrl, prompt: rawPrompt, width: dims.w, height: dims.h }],
@@ -681,8 +930,8 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
         }
         if (tn === "sync_stock_from_sheet") {
           // Check if Google Sheets is connected
-          const { data: integration } = await supabase.from("integrations")
-            .select("status,metadata").eq("user_id", user.id).eq("provider", "google_sheets").maybeSingle();
+          const { data: integration } = await serviceSupabase.from("connected_apps")
+            .select("*").eq("user_id", ownerId).eq("app_slug", "google-sheets").maybeSingle();
           if (!integration || integration.status !== "connected") {
             return json({ reply: "Google Sheets isn't connected yet. Go to **Connect Apps** (in the sidebar) and connect your Google account with Sheets, then ask me again — I'll pull your stock straight from there." });
           }
@@ -692,7 +941,7 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
           }
           // Read the sheet and prepare a preview
           try {
-            const token = await refreshGoogleToken(supabase, { user_id: user.id, provider: "google_sheets", metadata: integration.metadata || {} });
+            const token = await refreshGoogleToken(serviceSupabase, { ...integration, provider: "google_sheets", app_slug: "google-sheets" });
             if (!token) return json({ reply: "I couldn't refresh your Google token — try reconnecting Sheets from Connect Apps." });
             const rows = await fetchSheet(token, sid, "A1:Z500");
             if (!rows.length) return json({ reply: "That spreadsheet is empty — add your product rows (name, price, quantity) and ask me again." });
@@ -701,10 +950,13 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
             const nameIdx = headers.findIndex((h) => /name|product|item/.test(h));
             const priceIdx = headers.findIndex((h) => /price|rate|mrp|cost/.test(h));
             const qtyIdx = headers.findIndex((h) => /qty|quantity|stock|count/.test(h));
-            const parsed = rows.slice(1).map((r: any) => ({
+            // fetchSheet already removes the header row and returns one object
+            // per data row. Dropping rows.slice(1) here silently lost the first
+            // real product on every import.
+            const parsed = rows.map((r: any) => ({
               name: String(r[Object.keys(r)[nameIdx >= 0 ? nameIdx : 0]] || "").trim(),
               price: Number(String(r[Object.keys(r)[priceIdx >= 0 ? priceIdx : 1]] || "0").replace(/[^\d.]/g, "")) || 0,
-              stock_quantity: Number(String(r[Object.keys(r)[qtyIdx >= 0 ? qtyIdx : 2]] || "0").replace(/[^\d]/g, "")) || 0,
+              stock_quantity: Number(String(r[Object.keys(r)[qtyIdx >= 0 ? qtyIdx : 2]] || "0").replace(/[^\d.-]/g, "")) || 0,
             })).filter((p: any) => p.name && p.price > 0);
             if (!parsed.length) return json({ reply: "I read the sheet but couldn't find product rows with a name and price. Make sure row 1 has headers (Name, Price, Quantity) and data starts from row 2." });
             const preview = parsed.slice(0, 5).map((p: any) => `\u2022 ${p.name} \u2014 \u20b9${p.price}${p.stock_quantity ? ` (${p.stock_quantity} pcs)` : ""}`).join("\n");
@@ -727,8 +979,8 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
     }
 
     const [context, mem] = await Promise.all([
-      buildContext(supabase, user.id, String(message || ""), briefing),
-      buildMemory(supabase, user.id),
+      buildContext(supabase, ownerId, String(message || ""), briefing, serviceSupabase),
+      buildMemory(serviceSupabase, ownerId),
     ]);
 
     const userPrompt = briefing
@@ -743,9 +995,11 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
     if (image && image.data) {
       const imgRes = await callGeminiWithImage(SYSTEM + scopeFocus + pageFocus + IMAGE_FOCUS, userPrompt, image, { maxTokens: 4000, feature: "image-analysis" });
       if (!imgRes.ok) throw new Error(imgRes.value);
+      usageConsumed = true;
       result = imgRes.value;
     } else {
       result = await callAIWithFallback(provider, SYSTEM + scopeFocus + pageFocus, userPrompt, 3000, "assistant");
+      usageConsumed = true;
     }
 
     // ── Persist memory (single upsert): append this turn to the transcript,
@@ -776,21 +1030,25 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
       if (newFacts.length > 40) newFacts = newFacts.slice(-40);
     }
 
-    // Single best-effort write — never fail the chat over memory persistence.
-    try {
-      await supabase.from("business_memory").upsert({
-        user_id: user.id,
-        summary: mem.memory.summary,
-        business_type: mem.memory.business_type,
-        key_facts: newFacts,
-        preferences: basePrefs,
-        last_updated_at: new Date().toISOString(),
-      }, { onConflict: "user_id" });
-    } catch { /* best-effort */ }
+    // Only the owner may change durable business memory. Team members can
+    // still use Meraj for read-only help, but their chat cannot rewrite the
+    // owner's summary, preferences, or remembered facts.
+    if (isOwner) {
+      // Single best-effort write — never fail the chat over memory persistence.
+      try {
+        await serviceSupabase.from("business_memory").upsert({
+          user_id: ownerId,
+          summary: mem.memory.summary,
+          business_type: mem.memory.business_type,
+          key_facts: newFacts,
+          preferences: basePrefs,
+          last_updated_at: new Date().toISOString(),
+        }, { onConflict: "user_id" });
+      } catch { /* best-effort */ }
+    }
 
-    await supabase.rpc("increment_api_usage", { user_uuid: user.id });
-    await supabase.from("activity_logs").insert({
-      user_id: user.id, action_type: "summary",
+    await serviceSupabase.from("activity_logs").insert({
+      user_id: ownerId, action_type: "summary",
       description: briefing ? "AI briefing generated" : `AI: ${String(message).slice(0, 60)}`,
       time_saved_minutes: 10, money_saved: 5, provider: profile?.ai_provider,
     });
@@ -798,5 +1056,10 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
     return json({ reply: result });
   } catch (e) {
     return json({ error: (e as Error)?.message || String(e) }, 500);
+  } finally {
+    if (usageReserved && !usageConsumed) await releaseApiUsage(
+      createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } }),
+      usageOwner,
+    );
   }
 });

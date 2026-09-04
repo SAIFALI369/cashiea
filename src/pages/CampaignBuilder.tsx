@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { supabase, AI_FUNCTION_URL } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import PageHeader from '../components/ui/PageHeader'
 import { Megaphone, Loader2, FlaskConical, Repeat, Users, Calendar, Sparkles, Send, Plus, X } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -36,6 +36,61 @@ export default function CampaignBuilder() {
   const [bulkPaste, setBulkPaste] = useState('')
   const [showBulk, setShowBulk] = useState(false)
   const [launching, setLaunching] = useState(false)
+  const [loadingCampaign, setLoadingCampaign] = useState(Boolean(id))
+
+  useEffect(() => {
+    if (!id || !ownerId) {
+      setLoadingCampaign(false)
+      return
+    }
+    let active = true
+    const load = async () => {
+      const { data: campaign, error } = await supabase
+        .from('email_campaigns')
+        .select('*')
+        .eq('id', id)
+        .eq('user_id', ownerId)
+        .maybeSingle()
+      if (!active) return
+      if (error || !campaign) {
+        toast.error('Campaign not found')
+        navigate('/app/campaigns')
+        return
+      }
+      if (campaign.status !== 'draft') {
+        toast.error('Only draft campaigns can be edited. Use Retry from the campaign list for a partial send.')
+        navigate('/app/campaigns')
+        return
+      }
+      setName(campaign.name || '')
+      setSubject(campaign.variant_a_subject || campaign.template_subject || '')
+      setVariantB(campaign.variant_b_subject || '')
+      setAbEnabled(Boolean(campaign.ab_enabled))
+      setBody(campaign.template_body || '')
+      setTone(campaign.tone || 'professional')
+      setFollowupEnabled(Boolean(campaign.followup_enabled))
+      setFollowupDelay(Number(campaign.followup_delay_days) || 2)
+      setFollowupCount(Number(campaign.followup_count) || 1)
+      setScheduledAt(campaign.scheduled_at ? new Date(campaign.scheduled_at).toISOString().slice(0, 16) : '')
+
+      const { data: rows } = await supabase
+        .from('campaign_recipients')
+        .select('email, name, personalization')
+        .eq('campaign_id', id)
+        .eq('user_id', ownerId)
+        .order('created_at', { ascending: true })
+      if (!active) return
+      setRecipients((rows || []).map((row: any) => ({
+        email: row.email || '',
+        name: row.name || '',
+        company: row.personalization?.company || '',
+        note: row.personalization?.note || '',
+      })))
+      setLoadingCampaign(false)
+    }
+    void load()
+    return () => { active = false }
+  }, [id, ownerId, navigate])
 
   const updateRecipient = (i: number, field: keyof RecipientInput, value: string) => {
     const next = [...recipients]
@@ -67,77 +122,88 @@ export default function CampaignBuilder() {
     toast.success(`Loaded ${parsed.length} recipients`)
   }
 
-  const validRecipients = recipients.filter((r) => r.email.includes('@'))
+  const validRecipients = recipients.filter((r) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email.trim()))
 
   const launchCampaign = async () => {
+    if (!ownerId) return toast.error('Your business is still loading — please try again')
+    if (loadingCampaign) return toast.error('Campaign is still loading')
     if (!name.trim()) return toast.error('Give your campaign a name')
     if (!subject.trim()) return toast.error('Add a subject line')
     if (!body.trim()) return toast.error('Write a base email body')
     if (abEnabled && !variantB.trim()) return toast.error('A/B test needs a variant B subject')
     if (validRecipients.length === 0) return toast.error('Add at least one valid recipient email')
+    if (validRecipients.length > 500) return toast.error('Use at most 500 recipients per campaign batch')
 
     setLaunching(true)
     try {
-      // 1. Create the campaign
-      const { data: campaign, error: cErr } = await supabase
-        .from('email_campaigns')
-        .insert({
-          user_id: ownerId,
-          name,
-          template_subject: subject,
-          template_body: body,
-          tone,
-          ab_enabled: abEnabled,
-          variant_a_subject: subject,
-          variant_b_subject: abEnabled ? variantB : null,
-          followup_enabled: followupEnabled,
-          followup_delay_days: followupDelay,
-          followup_count: followupCount,
-          scheduled_at: scheduledAt || null,
-          status: scheduledAt ? 'scheduled' : 'draft',
-        })
-        .select()
-        .single()
+      const campaignPayload = {
+        user_id: ownerId,
+        name: name.trim().slice(0, 200),
+        template_subject: subject.trim().slice(0, 500),
+        template_body: body.trim().slice(0, 50_000),
+        tone,
+        ab_enabled: abEnabled,
+        variant_a_subject: subject.trim().slice(0, 500),
+        variant_b_subject: abEnabled ? variantB.trim().slice(0, 500) : null,
+        followup_enabled: followupEnabled,
+        followup_delay_days: Math.max(1, Math.min(365, Number(followupDelay) || 2)),
+        followup_count: Math.max(1, Math.min(10, Number(followupCount) || 1)),
+        scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
+        status: scheduledAt ? 'scheduled' : 'draft',
+      }
 
-      if (cErr) throw cErr
+      let campaign: any
+      if (id) {
+        const { data, error: cErr } = await supabase
+          .from('email_campaigns')
+          .update(campaignPayload)
+          .eq('id', id)
+          .eq('user_id', ownerId)
+          .select()
+          .single()
+        if (cErr) throw cErr
+        campaign = data
+        // Editing replaces the pending audience. Never leave old recipients
+        // mixed with the newly reviewed list or accidentally resend them.
+        const { error: deleteError } = await supabase
+          .from('campaign_recipients').delete().eq('campaign_id', id).eq('user_id', ownerId)
+        if (deleteError) throw deleteError
+      } else {
+        const { data, error: cErr } = await supabase
+          .from('email_campaigns').insert(campaignPayload).select().single()
+        if (cErr) throw cErr
+        campaign = data
+      }
 
-      // 2. Insert recipients
       const recipientRows = validRecipients.map((r) => ({
         campaign_id: campaign.id,
         user_id: ownerId,
-        email: r.email,
-        name: r.name || null,
+        email: r.email.trim().toLowerCase(),
+        name: r.name.trim().slice(0, 200) || null,
         personalization: {
-          company: r.company || null,
-          note: r.note || null,
+          company: r.company.trim().slice(0, 300) || null,
+          note: r.note.trim().slice(0, 1000) || null,
         },
       }))
-
       const { error: rErr } = await supabase.from('campaign_recipients').insert(recipientRows)
       if (rErr) throw rErr
 
-      // 3. If scheduled, stop here (a cron/trigger would send later)
       if (scheduledAt) {
         toast.success(`Campaign scheduled for ${new Date(scheduledAt).toLocaleString()}`)
         navigate('/app/campaigns')
         return
       }
 
-      // 4. Launch immediately via the campaign-send edge function
-      const { data: session } = await supabase.auth.getSession()
-      const res = await fetch(`${AI_FUNCTION_URL.replace('ai-automation', 'campaign-send')}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.session!.access_token}`,
-          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ campaign_id: campaign.id }),
+      // invoke attaches the current JWT and keeps the client independent of
+      // hard-coded function hostnames. campaign-send resolves linked staff to
+      // the verified business owner before doing any work.
+      const { data: result, error: sendError } = await supabase.functions.invoke('campaign-send', {
+        body: { campaign_id: campaign.id },
       })
-      const result = await res.json()
-      if (!res.ok) throw new Error(result.error || 'Launch failed')
+      if (sendError) throw sendError
+      if (!result?.success) throw new Error(result?.error || 'Launch failed')
 
-      toast.success(`🚀 Sent ${result.processed} personalized emails!`)
+      toast.success(`🚀 Generated ${result.processed} personalized emails${result.delivered ? `, ${result.delivered} delivered` : ''}!`)
       navigate('/app/campaigns')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Launch failed')
@@ -299,9 +365,9 @@ export default function CampaignBuilder() {
           </div>
 
           {/* Launch */}
-          <button onClick={launchCampaign} disabled={launching} className="btn-primary w-full py-3.5">
-            {launching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-            {launching ? 'Personalizing & Sending...' : `Launch to ${validRecipients.length} recipients`}
+          <button onClick={launchCampaign} disabled={launching || loadingCampaign} className="btn-primary w-full py-3.5">
+            {launching || loadingCampaign ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+            {loadingCampaign ? 'Loading campaign…' : launching ? 'Personalizing & Sending...' : `Launch to ${validRecipients.length} recipients`}
           </button>
           <p className="text-xs text-slate-500 text-center">
             Uses {validRecipients.length} AI actions · {validRecipients.length * 10} min saved

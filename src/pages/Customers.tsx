@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useCan } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import { offlineInsert } from '../lib/mutations'
 import { formatINR } from '../lib/format'
@@ -25,7 +26,8 @@ function segmentOf(c: Customer): Exclude<Segment, 'all'> {
 }
 
 export default function Customers() {
-  const { profile, ownerId } = useAuth()
+  const { ownerId } = useAuth()
+  const { can } = useCan()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -37,9 +39,13 @@ export default function Customers() {
   const [loadingOrders, setLoadingOrders] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<Customer | null>(null)
 
-  useEffect(() => { loadCustomers() }, [ownerId])
+  useEffect(() => {
+    if (ownerId) void loadCustomers()
+    else { setCustomers([]); setLoading(false) }
+  }, [ownerId])
 
   const loadCustomers = async () => {
+    if (!ownerId) return
     setLoading(true)
     const { data } = await supabase.from('customers').select('*').eq('user_id', ownerId).order('created_at', { ascending: false })
     setCustomers((data as Customer[]) || [])
@@ -47,6 +53,8 @@ export default function Customers() {
   }
 
   const handleSave = async () => {
+    if (!can('customers:manage')) return toast.error('Your role cannot manage customers')
+    if (!ownerId) return toast.error('Your shop is still loading — please try again')
     if (!form.name.trim()) return toast.error('Customer name is required')
     const tags = form.tags.split(',').map((t) => t.trim()).filter(Boolean)
     const { data, error } = await offlineInsert('customers', {
@@ -67,12 +75,15 @@ export default function Customers() {
   }
 
   const handleDelete = async (c: Customer) => {
+    if (!can('customers:manage')) return toast.error('Your role cannot manage customers')
+    if (!ownerId) return
     setConfirmDelete(null)
     const { error } = await supabase.from('customers').delete().eq('id', c.id).eq('user_id', ownerId)
     if (!error) { setCustomers(customers.filter((x) => x.id !== c.id)); toast.success('Customer removed') }
   }
 
   const openDetail = async (c: Customer) => {
+    if (!ownerId) return
     setSelected(c)
     setLoadingOrders(true)
     const { data } = await supabase.from('transactions')
@@ -120,7 +131,7 @@ export default function Customers() {
       <PageHeader
         title="Customers"
         icon={<Users className="w-5 h-5" />}
-        action={<button onClick={() => { setForm(empty); setShowForm(true) }} className="btn-primary text-sm"><Plus className="w-4 h-4" /> Add customer</button>}
+        action={can('customers:manage') ? <button onClick={() => { setForm(empty); setShowForm(true) }} className="btn-primary text-sm"><Plus className="w-4 h-4" /> Add customer</button> : <span className="text-xs text-fg-subtle">Read-only access</span>}
       />
 
       {/* Stats strip */}
@@ -263,7 +274,7 @@ export default function Customers() {
       )}
 
       {/* Add customer form */}
-      {showForm && (
+      {can('customers:manage') && showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setShowForm(false)}>
           <div className="card w-full max-w-md rounded-t-2xl sm:rounded-card p-5 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
@@ -378,12 +389,12 @@ export default function Customers() {
 
             {/* Actions */}
             <div className="flex gap-2 mt-4 pt-4 border-t border-line">
-              <button
+              {can('customers:manage') && <button
                 onClick={() => { setConfirmDelete(selected); setSelected(null) }}
                 className="btn-secondary text-sm h-10 text-negative hover:border-negative/40"
               >
                 <Trash2 className="w-4 h-4" /> Remove
-              </button>
+              </button>}
             </div>
           </div>
         </div>

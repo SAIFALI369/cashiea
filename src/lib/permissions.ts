@@ -15,24 +15,29 @@ export type Role = 'owner' | 'manager' | 'accountant' | 'staff'
 
 export type Capability =
   | 'products:manage'    // add / edit / remove products & stock
+  | 'inventory:view'     // read catalog/supplier screens while requesting changes
   | 'sales:create'       // POS new sale / checkout
   | 'billing:manage'     // invoices, payments, quotations
+  | 'billing:view'       // read billing screens while requesting changes
   | 'expenses:manage'    // expenses, accounts (money in/out)
+  | 'expenses:view'      // read accounts/expense screens while requesting changes
   | 'customers:manage'   // add / edit customers & suppliers
   | 'campaigns:manage'   // campaigns, emails (non-money marketing)
   | 'team:manage'        // invite / manage staff
   | 'settings:manage'    // settings, API keys, subscription, integrations, compliance
   | 'ai:use'             // ask / task
+  | 'reports:view'       // financial and GST reports
   | 'everything'         // wildcard (owner)
 
 const MATRIX: Record<Role, Capability[]> = {
   owner: ['everything'],
   // Manager: non-money, non-inventory. Can manage customers + marketing + AI.
-  manager: ['customers:manage', 'campaigns:manage', 'ai:use'],
-  // Accountant: handles money (bills/expenses) + AI; no products/settings/team.
-  accountant: ['billing:manage', 'expenses:manage', 'ai:use'],
-  // Staff: most limited — assist + AI only.
-  staff: ['ai:use'],
+  manager: ['customers:manage', 'inventory:view', 'billing:view', 'expenses:view', 'campaigns:manage', 'ai:use', 'reports:view'],
+  // Accountant: handles money (bills/expenses), reports + AI; can review
+  // inventory screens but cannot directly change catalog/settings/team.
+  accountant: ['inventory:view', 'billing:view', 'expenses:view', 'ai:use', 'reports:view'],
+  // Cashier/staff: counter sales + AI only. Product/catalog changes remain owner-gated.
+  staff: ['sales:create', 'ai:use'],
 }
 
 export function can(role: string | null | undefined, capability: Capability): boolean {

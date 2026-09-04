@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { supabase, AI_FUNCTION_URL } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import PageHeader from '../components/ui/PageHeader'
 import { LifeBuoy, Mail, Loader2, Send, CheckCircle2, ExternalLink, Clock, MessageSquare } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -26,20 +26,19 @@ export default function Support() {
     }
     setSending(true)
     try {
-      // POST to the support-email edge function
-      const url = AI_FUNCTION_URL.replace('ai-automation', 'support-email')
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
-        body: JSON.stringify({
+      // functions.invoke attaches the current Supabase access token. The
+      // support function rejects anonymous requests; never send a form with
+      // only the public anon key.
+      const { data, error } = await supabase.functions.invoke('support-email', {
+        body: {
           name,
           email,
           subject: subject || `${category} enquiry`,
           message: `[${category}]\n\n${message}`,
-        }),
+        },
       })
-      const data = await res.json().catch(() => ({ error: 'No response from server' }))
-      if (!res.ok) throw new Error(data?.error || 'Failed to send')
+      if (error) throw error
+      if (data?.error) throw new Error(data.error)
 
       if (data.delivered) {
         setSent(true)

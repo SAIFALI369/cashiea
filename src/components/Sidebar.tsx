@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import clsx from 'clsx'
 import ThemeToggle from './ThemeToggle'
+import { can } from '../lib/permissions'
+import { requiredCapability } from '../lib/routeCapabilities'
 import { Avatar } from './Avatar'
 import {
   CashieaLogo } from './CashieaLogo'
@@ -108,7 +110,10 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
 
   const handleSignOut = async () => { await signOut(); navigate('/') }
 
-  const renderItem = (item: Item) => (
+  const renderItem = (item: Item) => {
+    const capability = requiredCapability(item.to)
+    if (profile && capability && !can(profile.role, capability)) return null
+    return (
     <NavLink
       key={item.to}
       to={item.to}
@@ -134,7 +139,8 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         <span className="bg-accent text-accent-fg text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{pendingApprovals > 9 ? '9+' : pendingApprovals}</span>
       )}
     </NavLink>
-  )
+    )
+  }
 
   return (
     <>
@@ -206,7 +212,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
             <Avatar url={profile?.avatar_url} name={profile?.full_name} size={36} />
             <div className="min-w-0 flex-1">
               <p className={clsx("text-sm font-medium text-fg truncate", collapsed && "lg:hidden")}>{profile?.full_name || 'User'}</p>
-              <p className="text-[11px] text-fg-subtle truncate">Owner · Edit account</p>
+              <p className="text-[11px] text-fg-subtle truncate">{profile?.role ? `${profile.role[0].toUpperCase()}${profile.role.slice(1)}` : 'Account'} · Edit account</p>
             </div>
           </NavLink>
           <button onClick={handleSignOut} className="w-full mt-1 flex items-center gap-2 px-3 py-2 rounded-control text-sm text-fg-muted hover:text-negative hover:bg-surface-2 transition-colors">

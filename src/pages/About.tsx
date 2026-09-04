@@ -12,6 +12,7 @@ export default function About() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!ownerId) { setMem(null); setLoading(false); return }
     let active = true
     ;(async () => {
       const { data } = await supabase

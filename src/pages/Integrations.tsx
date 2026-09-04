@@ -11,14 +11,16 @@ import toast from 'react-hot-toast'
 const PROVIDERS: { id: IntegrationProvider; name: string; icon: typeof Mail; desc: string; color: string }[] = [
   { id: 'gmail', name: 'Gmail', icon: Mail, desc: 'Read customer emails, orders, inquiries', color: 'text-negative' },
   { id: 'google_sheets', name: 'Google Sheets', icon: Sheet, desc: 'Import products, sales, customer lists', color: 'text-positive' },
-  { id: 'excel', name: 'Excel / CSV', icon: Sheet, desc: 'Upload inventory or sales data', color: 'text-emerald-400' },
-  { id: 'whatsapp', name: 'WhatsApp', icon: MessageCircle, desc: 'Customer messages & order chats', color: 'text-positive' },
-  { id: 'shopify', name: 'Shopify', icon: ShoppingCart, desc: 'Sync products, orders & customers', color: 'text-positive' },
-  { id: 'tally', name: 'Tally', icon: FileText, desc: 'Import accounting & GST data', color: 'text-info' },
+  { id: 'excel', name: 'Excel / CSV', icon: Sheet, desc: 'Paste an export to teach Meraj (direct sync is not connected yet)', color: 'text-emerald-400' },
+  { id: 'whatsapp', name: 'WhatsApp', icon: MessageCircle, desc: 'Use the configured WhatsApp sender/webhook; history import is not a direct connection', color: 'text-positive' },
+  { id: 'shopify', name: 'Shopify', icon: ShoppingCart, desc: 'Paste an export to teach Meraj (Shopify API connection is not configured)', color: 'text-positive' },
+  { id: 'tally', name: 'Tally', icon: FileText, desc: 'Paste an export to teach Meraj (Tally API connection is not configured)', color: 'text-info' },
 ]
 
+const LIVE_PROVIDERS = new Set<IntegrationProvider>(['gmail', 'google_sheets'])
+
 export default function Integrations() {
-  const { profile, ownerId } = useAuth()
+  const { ownerId } = useAuth()
   const [integrations, setIntegrations] = useState<Integration[]>([])
   const [loading, setLoading] = useState(true)
   const [connecting, setConnecting] = useState<IntegrationProvider | null>(null)
@@ -26,53 +28,35 @@ export default function Integrations() {
   const [pasteText, setPasteText] = useState('')
   const [learning, setLearning] = useState(false)
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { if (ownerId) void loadData() }, [ownerId])
 
   const loadData = async () => {
+    if (!ownerId) return
     setLoading(true)
-    const { data } = await supabase.from('integrations').select('*').eq('user_id', ownerId)
+    const { data } = await supabase.from('integrations').select('id,user_id,provider,label,status,last_synced_at,created_at').eq('user_id', ownerId)
     setIntegrations((data as Integration[]) || [])
     setLoading(false)
   }
 
-  const getStatus = (p: IntegrationProvider) => integrations.find((i) => i.provider === p)?.status || 'disconnected'
+  const getStatus = (p: IntegrationProvider) => LIVE_PROVIDERS.has(p) ? (integrations.find((i) => i.provider === p)?.status || 'disconnected') : 'manual'
   const getInt = (p: IntegrationProvider) => integrations.find((i) => i.provider === p)
 
   // Connect — Gmail/Sheets use real Google OAuth; others mark connected
   const connect = async (p: IntegrationProvider) => {
+    if (!ownerId) { toast.error('Your account is still loading — please try again'); return }
     // Real OAuth flow for Google sources (opens Google consent screen)
     if (p === 'gmail' || p === 'google_sheets') {
-      const url = googleAuthorizeUrl(ownerId!, p)
-      // If OAuth isn't configured, the function returns a 503; we open it
-      // in a new tab and the callback will redirect back here.
-      window.open(url, '_blank')
-      toast(`Opening Google to connect ${PROVIDERS.find((x) => x.id === p)?.name}…`)
+      try {
+        const url = await googleAuthorizeUrl(p)
+        window.location.assign(url)
+        toast(`Opening Google to connect ${PROVIDERS.find((x) => x.id === p)?.name}…`)
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Could not start Google connection')
+      }
       return
     }
 
-    // Non-Google sources: mark connected (paste-data feeds them)
-    setConnecting(p)
-    try {
-      const { data, error } = await supabase.from('integrations').upsert({
-        user_id: ownerId,
-        provider: p,
-        status: 'connected',
-        label: PROVIDERS.find((x) => x.id === p)?.name,
-        metadata: { connected_at: new Date().toISOString() },
-        last_synced_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,provider' }).select().single()
-
-      if (error) throw error
-      setIntegrations((prev) => {
-        const others = prev.filter((i) => i.provider !== p)
-        return [...others, data as Integration]
-      })
-      toast.success(`${PROVIDERS.find((x) => x.id === p)?.name} connected`)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Connection failed')
-    } finally {
-      setConnecting(null)
-    }
+    toast.error(`${PROVIDERS.find((x) => x.id === p)?.name} has no direct connection here yet — use Paste data.`)
   }
 
   // Live-sync a connected Google source (real Gmail/Sheets fetch)
@@ -114,7 +98,7 @@ export default function Integrations() {
     }
   }
 
-  const connectedCount = integrations.filter((i) => i.status === 'connected').length
+  const connectedCount = integrations.filter((i) => LIVE_PROVIDERS.has(i.provider) && i.status === 'connected').length
 
   return (
     <div className="animate-fade-in">
@@ -151,7 +135,7 @@ export default function Integrations() {
       ) : (
         <>
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm text-slate-400">{connectedCount} of {PROVIDERS.length} connected</p>
+            <p className="text-sm text-slate-400">{connectedCount} of 2 live connections connected</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {PROVIDERS.map((p) => {
@@ -166,11 +150,13 @@ export default function Integrations() {
                       </div>
                       <div>
                         <h3 className="font-semibold text-white">{p.name}</h3>
-                        {status === 'connected' && (
+                        {status === 'connected' ? (
                           <span className="inline-flex items-center gap-1 text-xs text-positive mt-0.5">
                             <CheckCircle2 className="w-3 h-3" /> Connected
                           </span>
-                        )}
+                        ) : status === 'manual' ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-fg-subtle mt-0.5">Manual import only</span>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -179,25 +165,22 @@ export default function Integrations() {
                     <p className="text-xs text-slate-600 mb-3">Last synced: {new Date(intObj.last_synced_at).toLocaleDateString()}</p>
                   )}
 
-                  {status === 'disconnected' ? (
+                  {!LIVE_PROVIDERS.has(p.id) ? (
+                    <button onClick={() => setShowPaste(p.id)} className="btn-secondary text-xs w-full" title="Paste data to teach the AI"><RefreshCw className="w-3.5 h-3.5" /> Paste data to teach Meraj</button>
+                  ) : status !== 'connected' ? (
                     <div className="flex gap-2">
                       <button onClick={() => connect(p.id)} disabled={connecting === p.id} className="btn-primary text-xs flex-1">
-                        {connecting === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plug className="w-3.5 h-3.5" />} Connect
+                        {connecting === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plug className="w-3.5 h-3.5" />} {status === 'disconnected' ? 'Connect' : 'Reconnect'}
                       </button>
                       <button onClick={() => setShowPaste(p.id)} className="btn-secondary text-xs" title="Paste data to teach the AI">Paste data</button>
                     </div>
                   ) : (
                     <div className="flex gap-2 flex-wrap">
-                      {(p.id === 'gmail' || p.id === 'google_sheets') && (
-                        <button onClick={() => liveSync(p.id)} disabled={syncing === p.id} className="btn-primary text-xs flex-1">
-                          {syncing === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} Live sync
-                        </button>
-                      )}
-                      {!(p.id === 'gmail' || p.id === 'google_sheets') && (
-                        <button onClick={() => setShowPaste(p.id)} className="btn-secondary text-xs flex-1"><RefreshCw className="w-3.5 h-3.5" /> Sync data</button>
-                      )}
+                      <button onClick={() => liveSync(p.id)} disabled={syncing === p.id} className="btn-primary text-xs flex-1">
+                        {syncing === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />} Live sync
+                      </button>
                       <button onClick={() => setShowPaste(p.id)} className="btn-secondary text-xs" title="Paste data to teach the AI">Paste</button>
-                      <button onClick={() => disconnect(p.id)} className="btn-ghost text-xs text-negative"><XCircle className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => disconnect(p.id)} className="btn-ghost text-xs text-negative" aria-label={`Disconnect ${p.name}`}><XCircle className="w-3.5 h-3.5" /></button>
                     </div>
                   )}
                 </div>

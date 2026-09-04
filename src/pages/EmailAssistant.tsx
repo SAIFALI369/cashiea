@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useCan } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import { callAI } from '../lib/ai'
 import type { Email } from '../lib/types'
@@ -21,31 +22,37 @@ const tones = ['professional', 'friendly', 'persuasive', 'formal', 'casual']
 
 export default function EmailAssistant() {
   const { profile, ownerId } = useAuth()
+  const { can } = useCan()
   const [emails, setEmails] = useState<Email[]>([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
 
-  const [emailType, setEmailType] = useState('cold_outreach')
+  const [emailType, setEmailType] = useState('custom')
   const [tone, setTone] = useState('professional')
   const [recipient, setRecipient] = useState('')
   const [subject, setSubject] = useState('')
   const [keyPoints, setKeyPoints] = useState('')
 
   useEffect(() => {
-    loadEmails()
-  }, [])
+    if (ownerId) loadEmails()
+    else { setEmails([]); setLoading(false) }
+  }, [ownerId])
 
   const loadEmails = async () => {
+    if (!ownerId) return
     setLoading(true)
     const { data } = await supabase
       .from('emails')
       .select('*')
+      .eq('user_id', ownerId)
       .order('created_at', { ascending: false })
     setEmails((data as Email[]) || [])
     setLoading(false)
   }
 
   const handleGenerate = async () => {
+    if (!can('campaigns:manage')) return toast.error('Your role cannot manage email drafts')
+    if (!ownerId) return toast.error('Your shop is still loading — please try again')
     if (!keyPoints.trim()) {
       toast.error('Add some key points for the email')
       return
@@ -104,7 +111,8 @@ export default function EmailAssistant() {
   }
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from('emails').delete().eq('id', id)
+    if (!can('campaigns:manage') || !ownerId) return
+    const { error } = await supabase.from('emails').delete().eq('id', id).eq('user_id', ownerId)
     if (!error) {
       setEmails(emails.filter((e) => e.id !== id))
       toast.success('Email deleted')

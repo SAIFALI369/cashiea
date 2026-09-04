@@ -4,8 +4,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { BarcodeScanner } from '../components/BarcodeScanner'
 import { ScanLine, Coins, History, LayoutGrid, List, Pause, Search, ShoppingCart, Loader2, UserPlus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useCan } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
-import { offlineInsert } from '../lib/mutations'
+import { offlineInsert, offlineRpc } from '../lib/mutations'
 import { formatINR } from '../lib/format'
 import {
   computeSale, effectiveRate, lineKey, topSoldProducts, tenderStatus,
@@ -27,7 +28,8 @@ import { EodModal } from '../components/pos/EodModal'
 import { ProductCard, ProductRow, FrequentTile } from '../components/pos/ProductViews'
 
 export default function POS() {
-  const { profile, ownerId } = useAuth()
+  const { profile, ownerId, user } = useAuth()
+  const { isOwner } = useCan()
 
   // ── Catalog data ──
   const [products, setProducts] = useState<Product[]>([])
@@ -130,9 +132,10 @@ export default function POS() {
   }
 
   const refreshHeld = async () => {
+    if (!ownerId) { setHeldCarts([]); setHeldLoading(false); return }
     if (!navigator.onLine) return
     setHeldLoading(true)
-    try { setHeldCarts(await listHeldCarts(ownerId!)) } catch { /* best-effort */ }
+    try { setHeldCarts(await listHeldCarts(ownerId)) } catch { /* best-effort */ }
     setHeldLoading(false)
   }
 
@@ -297,12 +300,29 @@ export default function POS() {
   }
 
   const handleCheckout = async () => {
+    if (!ownerId) {
+      toast.error('Your shop is still loading — please try again in a moment')
+      return
+    }
     if (cart.length === 0) {
       toast.error('Cart is empty')
       return
     }
     if (splitMode && !tender.covered) {
       toast.error('Tenders must cover the total before checkout')
+      return
+    }
+    if (cart.length > 200 || cart.some((line) =>
+      !Number.isFinite(line.quantity) || line.quantity <= 0 || line.quantity > 1000000 ||
+      !Number.isFinite(line.factor) || line.factor <= 0 || line.factor > 1000 ||
+      !Number.isFinite(line.unit_price) || line.unit_price < 0 || line.unit_price > 9999999999.99
+    )) {
+      toast.error('One or more cart lines are invalid — refresh the cart and try again')
+      return
+    }
+    if (!Number.isFinite(sale.subtotal) || !Number.isFinite(sale.taxTotal) || !Number.isFinite(sale.total) ||
+      sale.subtotal < 0 || sale.taxTotal < 0 || sale.total < 0 || sale.total > 9999999999.99) {
+      toast.error('This sale is outside the supported amount range')
       return
     }
     setProcessing(true)
@@ -312,72 +332,49 @@ export default function POS() {
       // a fully-discounted sale simply records no tender rows.
       const netTenders = (splitMode ? tender.netTenders : [{ method: paymentMethod as PaymentMethod, amount: sale.total }])
         .filter((t) => t.amount > 0.005)
-      const txnId = (crypto.randomUUID) ? crypto.randomUUID() : `id-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      const txnId = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `id-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      const saleItems = cart.map((l) => ({
+        product_id: l.product_id,
+        name: l.name,
+        quantity: l.quantity,
+        unit_price: l.unit_price,
+        unit: l.unit || null,
+        factor: l.factor || 1,
+        gst_rate: effectiveRate(l, defaultTaxRate),
+        gst_source: l.gst_source,
+        price_includes_tax: l.price_includes_tax,
+        line_discount: l.line_discount || 0,
+        line_discount_note: l.line_discount_note || null,
+      }))
 
-      const { error, queued } = await offlineInsert('transactions', {
-        id: txnId,
-        user_id: ownerId,
-        customer_id: selectedCustomer?.id || null,
-        receipt_number: receiptNumber,
-        items: cart.map((l) => ({
-          product_id: l.product_id,
-          name: l.name,
-          quantity: l.quantity,
-          unit_price: l.unit_price,
-          unit: l.unit || null,
-          factor: l.factor || 1,
-          gst_rate: effectiveRate(l, defaultTaxRate),
-          price_includes_tax: l.price_includes_tax,
-          line_discount: l.line_discount || 0,
-          line_discount_note: l.line_discount_note || null,
-        })),
-        subtotal: sale.subtotal,
-        tax_rate: sale.effectiveTaxRate,
-        tax_amount: sale.taxTotal,
-        discount: sale.discountTotal,
-        discount_reason: discountReason.trim() || null,
-        total: sale.total,
-        payment_method: netTenders.length > 1 ? 'split' : netTenders[0]?.method || paymentMethod,
-        status: 'completed',
-        served_by: profile?.full_name || null,
-      })
+      // Checkout is one idempotent server transaction. It validates the
+      // business membership, prices, tenders and stock, then writes the sale,
+      // payment lines, stock decrements, customer stats and audit event
+      // atomically. If the connection drops after commit, replaying this same
+      // transaction id returns the existing sale instead of double-selling.
+      const { error, queued } = await offlineRpc('complete_sale', {
+        p_transaction_id: txnId,
+        p_user_id: ownerId,
+        p_customer_id: selectedCustomer?.id || null,
+        p_receipt_number: receiptNumber,
+        p_items: saleItems,
+        p_subtotal: sale.subtotal,
+        p_tax_rate: sale.effectiveTaxRate,
+        p_tax_amount: sale.taxTotal,
+        p_discount: sale.discountTotal,
+        p_discount_reason: discountReason.trim() || null,
+        p_total: sale.total,
+        p_default_tax_rate: defaultTaxRate,
+        p_payment_method: netTenders.length > 1 ? 'split' : netTenders[0]?.method || paymentMethod,
+        p_payments: netTenders.map((t) => ({ method: t.method, amount: t.amount, reference: null })),
+        p_served_by: profile?.full_name || null,
+      }, { id: txnId, receipt_number: receiptNumber } as any)
       if (error) throw error
 
-      // Tender lines — one row per payment, summing exactly to the total.
-      for (const t of netTenders) {
-        await offlineInsert('sale_payments', {
-          user_id: ownerId,
-          transaction_id: txnId,
-          method: t.method,
-          amount: t.amount,
-          reference: null,
-        })
-      }
-
-      // Online-only side effects (stock decrement, customer stats, activity log)
-      if (!queued && navigator.onLine) {
-        await Promise.all(cart.map((l) =>
-          supabase.rpc('adjust_stock', {
-            p_id: l.product_id,
-            qty: Number((l.quantity * (l.factor || 1)).toFixed(3)),
-          }).then(({ error }) => {
-            if (error) console.warn('stock decrement failed for', l.product_id, error.message)
-          })
-        ))
-        if (selectedCustomer) {
-          await supabase.rpc('recompute_customer_stats', { customer_uuid: selectedCustomer.id })
-        }
-        await supabase.from('activity_logs').insert({
-          user_id: ownerId,
-          action_type: 'invoice',
-          description: `Sale ${receiptNumber} — ${itemCount} items, ₹${sale.total.toFixed(2)}${sale.discountTotal > 0 ? ` (discount ₹${sale.discountTotal.toFixed(2)})` : ''}`,
-          time_saved_minutes: 8,
-          money_saved: 4,
-          metadata: { receipt_number: receiptNumber, payment: netTenders.map((t) => `${t.method}:${t.amount}`).join(',') },
-        })
-      }
-
-      // Digital receipt
+      // Digital receipt. The server remains the source of truth; this local
+      // model is only the immediate print/share view while offline too.
       setReceipt({
         shopName: profile?.company_name || profile?.full_name || 'My Business',
         address: profile?.business_address,
@@ -430,9 +427,10 @@ export default function POS() {
   })
 
   const doHold = async (label: string) => {
+    if (!ownerId) { toast.error('Your shop is still loading — please try again'); return }
     if (cart.length === 0) return
     try {
-      const { queued, row } = await holdCart(ownerId!, label, currentSnapshot(), sale.total)
+      const { queued, row } = await holdCart(ownerId, label, currentSnapshot(), sale.total, user?.id || profile?.id || ownerId)
       setHoldDialog(false)
       setHoldLabel('')
       resetCartState()
@@ -467,10 +465,12 @@ export default function POS() {
 
     setShowHeld(false)
     setResumeSwap(null)
-    try {
-      await deleteHeldCart(h.id, ownerId!)
-    } catch {
-      toast('Held cart kept — connect to the internet to clear it')
+    if (isOwner || h.created_by === user?.id) {
+      try {
+        await deleteHeldCart(h.id, ownerId!)
+      } catch {
+        toast('Held cart kept — connect to the internet to clear it')
+      }
     }
     refreshHeld()
     if (clamped > 0) toast(`${clamped} line${clamped !== 1 ? 's' : ''} reduced to current stock`)
@@ -483,8 +483,12 @@ export default function POS() {
   }
 
   const onDeleteHeld = async (h: HeldCart) => {
+    if (!ownerId || (!isOwner && h.created_by !== user?.id)) {
+      toast.error('Only the owner or the cashier who parked this cart can delete it')
+      return
+    }
     try {
-      await deleteHeldCart(h.id, ownerId!)
+      await deleteHeldCart(h.id, ownerId)
       refreshHeld()
     } catch {
       toast.error('Connect to the internet to delete a held cart')
@@ -494,16 +498,18 @@ export default function POS() {
   // ── Inline new customer ───────────────────────────────────────
 
   const addNewCustomer = async () => {
+    if (!ownerId) { toast.error('Your shop is still loading — please try again'); return }
     if (!newCustomer.name.trim()) {
       toast.error('Name is required')
       return
     }
     try {
-      const { data } = await offlineInsert('customers', {
+      const { data, error } = await offlineInsert('customers', {
         user_id: ownerId,
         name: newCustomer.name.trim(),
         phone: newCustomer.phone.trim() || null,
       })
+      if (error || !data) throw error || new Error('Could not save the customer')
       const c = data as Customer
       setSelectedCustomer(c)
       setShowCustomerPicker(false)
@@ -858,6 +864,7 @@ export default function POS() {
         loading={heldLoading}
         onResume={onResumeClick}
         onDelete={onDeleteHeld}
+        canDelete={(h) => isOwner || h.created_by === user?.id}
         onClose={() => setShowHeld(false)}
       />
 
@@ -866,12 +873,13 @@ export default function POS() {
         open={showRecent}
         ownerId={ownerId!}
         profile={profile}
+        canVoid={isOwner}
         onVoided={() => loadData()}
         onClose={() => setShowRecent(false)}
       />
 
       {/* End-of-day cash reconciliation */}
-      <EodModal open={showEod} ownerId={ownerId!} onClose={() => setShowEod(false)} />
+      <EodModal open={showEod} ownerId={ownerId!} canSave={isOwner} onClose={() => setShowEod(false)} />
 
       {/* Quantity numpad */}
       <NumpadModal

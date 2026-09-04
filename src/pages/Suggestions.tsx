@@ -30,13 +30,15 @@ const outcomeOf = (p: Pred) => {
 }
 
 export default function Suggestions() {
-  const { ownerId } = useAuth()
+  const { profile, ownerId } = useAuth()
+  const isOwner = profile?.role === 'owner' && !profile.business_owner_id
   const [items, setItems] = useState<Pred[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'pending' | 'done'>('pending')
   const [runningId, setRunningId] = useState<string | null>(null)
 
   const load = async () => {
+    if (!ownerId) { setItems([]); setLoading(false); return }
     setLoading(true)
     const { data } = await supabase
       .from('ai_predictions')
@@ -47,11 +49,15 @@ export default function Suggestions() {
     setItems((data as Pred[]) || [])
     setLoading(false)
   }
-  useEffect(() => { load() }, [ownerId])
+  useEffect(() => { void load() }, [ownerId])
 
   // Dismiss = DELETE the suggestion entirely (it disappears from every tab).
   const dismiss = async (p: Pred) => {
-    const { error } = await supabase.from('ai_predictions').delete().eq('id', p.id)
+    if (!isOwner) {
+      toast.error('Only the business owner can manage suggestions')
+      return
+    }
+    const { error } = await supabase.from('ai_predictions').delete().eq('id', p.id).eq('user_id', ownerId)
     if (error) { toast.error('Could not delete'); return }
     setItems((cur) => cur.filter((x) => x.id !== p.id))
     toast.success('Deleted')
@@ -61,10 +67,14 @@ export default function Suggestions() {
   // data and returns a concrete outcome (draft message / reorder list / etc.),
   // which is stored on the prediction and shown in the card.
   const run = async (p: Pred) => {
+    if (!isOwner) {
+      toast.error('Only the business owner can approve suggestions')
+      return
+    }
     if (runningId) return
     setRunningId(p.id)
     try {
-      const { error } = await supabase.from('ai_predictions').update({ status: 'approved' }).eq('id', p.id)
+      const { error } = await supabase.from('ai_predictions').update({ status: 'approved' }).eq('id', p.id).eq('user_id', ownerId)
       if (error) throw new Error(error.message)
       const res = await askAssistant(
         `I approved your suggestion: "${p.title}". ${p.description || ''} Execute it now using my business data and give me the concrete outcome I can use directly: if it's a follow-up, write the exact message and who to send it to; if it's a reorder, list the items and quantities; if it's an offer, write the offer message; if it's an alert, tell me exactly what to check and why. Keep it short and actionable — no preamble.`,
@@ -74,7 +84,7 @@ export default function Suggestions() {
       await supabase
         .from('ai_predictions')
         .update({ status: 'executed', action_payload: { ...(p.action_payload || {}), outcome } })
-        .eq('id', p.id)
+        .eq('id', p.id).eq('user_id', ownerId)
       setItems((cur) => cur.map((x) => (x.id === p.id ? { ...x, status: 'executed', action_payload: { ...(x.action_payload || {}), outcome } } : x)))
       toast.success('Done — outcome ready')
       setFilter('done')
@@ -162,7 +172,7 @@ export default function Suggestions() {
                       </div>
                     )}
 
-                    {p.status === 'pending' ? (
+                    {isOwner && p.status === 'pending' ? (
                       <div className="flex gap-2 mt-3">
                         <button
                           onClick={() => run(p)}
@@ -180,7 +190,7 @@ export default function Suggestions() {
                           <Trash2 className="w-3.5 h-3.5" /> Delete
                         </button>
                       </div>
-                    ) : p.status === 'approved' && !outcome ? (
+                    ) : isOwner && p.status === 'approved' && !outcome ? (
                       <div className="flex gap-2 mt-3">
                         <button onClick={() => run(p)} disabled={!!runningId} className="inline-flex items-center gap-1.5 text-xs font-semibold bg-fg text-paper rounded-control px-3 h-8 hover:opacity-90 disabled:opacity-50 transition-opacity">
                           {isRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Retry
@@ -189,6 +199,8 @@ export default function Suggestions() {
                           <Trash2 className="w-3.5 h-3.5" /> Delete
                         </button>
                       </div>
+                    ) : !isOwner && p.status === 'pending' ? (
+                      <p className="text-xs text-fg-subtle mt-3">Owner approval is required before Meraj can run this suggestion.</p>
                     ) : null}
                   </div>
                 </div>
