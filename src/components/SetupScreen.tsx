@@ -1,11 +1,16 @@
 import { Sparkles, AlertTriangle } from 'lucide-react'
 
 /**
- * Shown when the app is deployed without Supabase env vars configured.
+ * Shown when the app is deployed without a working Supabase connection.
  * Prevents a confusing white screen / cryptic auth errors in front of
  * customers, and tells the owner exactly what to do.
+ *
+ * `issue` lets the runtime show a precise cause (missing env vars, the old
+ * project URL, placeholder creds, etc.) instead of a generic setup page.
  */
-export default function SetupScreen() {
+export default function SetupScreen({ issue }: { issue?: string }) {
+  const detail = issue || 'The owner needs to add the Supabase environment variables.'
+
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div className="max-w-lg w-full card p-5 text-center">
@@ -20,12 +25,13 @@ export default function SetupScreen() {
         </div>
         <h1 className="text-xl font-bold text-white mb-2">One-time setup needed</h1>
         <p className="text-slate-400 text-sm mb-6">
-          This app needs to be connected to a Supabase project before customers can sign up. The owner
-          needs to add environment variables (this is normal for any new SaaS deploy).
+          This app needs to be connected to a live Supabase project before customers can sign up.
         </p>
-        <div className="text-left bg-slate-900/60 rounded-xl p-4 border border-line text-xs text-slate-300 space-y-2">
+        <div className="text-left bg-slate-900/60 rounded-xl p-4 border border-line text-xs text-slate-300 space-y-3">
+          <p className="font-semibold text-white">What's wrong</p>
+          <p className="rounded-lg bg-warning/10 border border-warning/25 p-3 text-warning">{detail}</p>
           <p className="font-semibold text-white">In your hosting dashboard (e.g. Vercel), set:</p>
-          <p><code className="text-accent-strong">VITE_SUPABASE_URL</code> — your Supabase project URL</p>
+          <p><code className="text-accent-strong">VITE_SUPABASE_URL</code> — your Supabase project URL (e.g. <code className="text-accent-strong">https://prwvaetatdidsugczluv.supabase.co</code>)</p>
           <p><code className="text-accent-strong">VITE_SUPABASE_ANON_KEY</code> — your Supabase anon key</p>
           <p><code className="text-accent-strong">VITE_STRIPE_ENABLED</code> — <code>true</code> once payments are set up</p>
           <p className="text-slate-500 pt-2 border-t border-line mt-2">Find these at supabase.com → Project Settings → API. Then redeploy.</p>
