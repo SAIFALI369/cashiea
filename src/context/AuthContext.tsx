@@ -1,7 +1,33 @@
 import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react'
 import { Session, User } from '@supabase/supabase-js'
-import { supabase, supabaseConfigured } from '../lib/supabase'
+import { supabase, supabaseConfigured, supabaseConfigIssue } from '../lib/supabase'
+import { isTransientAuthError } from '../lib/auth-errors'
 import type { Profile } from '../lib/types'
+
+const supabaseReady = supabaseConfigured && !supabaseConfigIssue
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * Retries auth calls when Supabase itself has a transient hiccup (network
+ * drop, Cloudflare 5xx, empty gateway response). The user's credentials are
+ * valid and their Internet is fine; retrying avoids showing a fake
+ * "couldn't reach the sign-in service" message for a one-off blip.
+ */
+async function withTransientRetry<T>(fn: () => Promise<T>): Promise<T> {
+  let last: unknown
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await fn()
+    } catch (err) {
+      last = err
+      if (!isTransientAuthError(err) || attempt === 2) throw err
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) throw err
+      await wait(250 * (attempt + 1))
+    }
+  }
+  throw last
+}
 
 interface AuthContextValue {
   user: User | null
@@ -86,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     mounted.current = true
-    if (!supabaseConfigured) {
+    if (!supabaseReady) {
       setLoading(false)
       return () => { mounted.current = false }
     }
@@ -119,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const refreshProfile = async () => {
-    if (user && supabaseConfigured) {
+    if (user && supabaseReady) {
       await fetchProfile(user.id)
     }
   }
@@ -131,8 +157,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     companyName?: string,
     phone?: string,
   ) => {
-    if (!supabaseConfigured) throw new Error('Cashiea is not configured. Add the Supabase environment variables.')
-    const { data, error } = await supabase.auth.signUp({
+    if (!supabaseReady) throw new Error('Cashiea is not configured. Add the Supabase environment variables.')
+    const { data, error } = await withTransientRetry(() => supabase.auth.signUp({
       email,
       password,
       options: {
@@ -142,7 +168,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           phone: phone || '',
         },
       },
-    })
+    }))
 
     if (error) {
       console.error('[cashiea:auth] signUp error →', error)
@@ -155,8 +181,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signIn = async (email: string, password: string) => {
-    if (!supabaseConfigured) throw new Error('Cashiea is not configured. Add the Supabase environment variables.')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (!supabaseReady) throw new Error('Cashiea is not configured. Add the Supabase environment variables.')
+    const { error } = await withTransientRetry(() => supabase.auth.signInWithPassword({ email, password }))
     if (error) {
       console.error('[cashiea:auth] signIn error →', error)
       throw error
@@ -166,7 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     profileRequest.current += 1
     try { Object.keys(localStorage).filter((k) => k.startsWith('cashiea_meraj_')).forEach((k) => localStorage.removeItem(k)) } catch { /* ignore */ }
-    if (supabaseConfigured) await supabase.auth.signOut()
+    if (supabaseReady) await supabase.auth.signOut()
     setProfile(null)
     setUser(null)
     setSession(null)

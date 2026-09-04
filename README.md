@@ -76,6 +76,11 @@ Tests: `npm test` · Build: `npm run build`
 - **Edge functions:** GitHub Actions deploys `supabase/functions/**` on push
 - **Database:** versioned SQL migrations in `supabase/`
 
+> If login shows "We couldn't reach the sign-in service", check that Vercel's
+> `VITE_SUPABASE_URL` is `https://prwvaetatdidsugczluv.supabase.co`, not the old
+> `https://oxlwbxkifyrhggrsaoin.supabase.co` project (that ref no longer resolves,
+> so auth fails even when the user's connection is fine).
+
 ---
 
 Built for Indian retail. GST-aware, WhatsApp-native, offline-ready.

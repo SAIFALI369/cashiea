@@ -261,7 +261,7 @@ Cashiea is a **POS + CRM + AI automation SaaS** built for small retail shops in 
 | Gemini key | ✅ | Set as Supabase secret |
 | Security warnings | ✅ | All WARN-level resolved |
 | Vercel frontend | ❌ | Needs repo reconnection (bizautomate → cashiea rename) |
-| Vercel env vars | ❌ | Needs VITE_SUPABASE_URL updated to correct project |
+| Vercel env vars | ❌ | Needs `VITE_SUPABASE_URL` = `https://prwvaetatdidsugczluv.supabase.co` (the old `oxlwbxkifyrhggrsaoin` project no longer resolves) |
 
 ---
 
@@ -270,9 +270,9 @@ Cashiea is a **POS + CRM + AI automation SaaS** built for small retail shops in 
 ### Step 1: Vercel (frontend — 2 min)
 1. vercel.com → your project → Settings → Git
 2. Disconnect old repo → reconnect to `SAIFALI369/cashiea`
-3. Set Environment Variables:
-   - `VITE_SUPABASE_URL` = `https://oxlwbxkifyrhggrsaoin.supabase.co`
-   - `VITE_SUPABASE_ANON_KEY` = (the anon key)
+3. Set Environment Variables (use the CURRENT project, not the old one):
+   - `VITE_SUPABASE_URL` = `https://prwvaetatdidsugczluv.supabase.co`
+   - `VITE_SUPABASE_ANON_KEY` = (the current project's anon key)
    - `VITE_STRIPE_ENABLED` = `false`
 4. Deploy
 
