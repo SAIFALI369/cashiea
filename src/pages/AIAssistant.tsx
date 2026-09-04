@@ -312,7 +312,7 @@ export default function AIAssistant() {
   const lastIdx = messages.length - 1
 
   const scrollRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const galleryRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
   const [showCam, setShowCam] = useState(false)
@@ -521,41 +521,46 @@ export default function AIAssistant() {
   }
 
   return (
-    <div className="animate-fade-in flex flex-col min-h-0 flex-1 bg-surface">
+    <div className="meraj-page animate-fade-in relative flex flex-col min-h-0 flex-1 overflow-hidden">
       <input ref={galleryRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFile} />
 
-      {/* Top bar: history (left) · title · mark (right) */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-line">
-        <button onClick={() => setShowHistory(true)} className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors relative" aria-label="Conversation history">
-          <History className="w-5 h-5" strokeWidth={1.75} />
-          {convos.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />}
-        </button>
-        <div className="flex-1 flex items-center justify-center gap-2">
-          <MerajDevice interactionState={merajInteraction} businessMood={businessMood} size="sm" context="panel" />
-          <div className="text-left leading-tight">
-            <p className="font-semibold text-fg text-sm">Meraj</p>
-            <p className="text-[10px] text-fg-subtle">{userTyping ? 'Hello — ask me anything' : scopeLabel ? `Focused · ${scopeLabel}` : 'Your shop assistant'}</p>
+      {/* Top bar: history (left) · title · mark (right) — glassy professional panel */}
+      <div className="meraj-head-panel relative z-20">
+        <div className="mx-auto w-full max-w-3xl flex items-center gap-3 px-4 py-3">
+          <button onClick={() => setShowHistory(true)} className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors relative" aria-label="Conversation history">
+            <History className="w-5 h-5" strokeWidth={1.75} />
+            {convos.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />}
+          </button>
+          <div className="flex-1 min-w-0 flex items-center justify-center gap-2.5">
+            <span className="meraj-mascot-chip w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0">
+              <MerajDevice interactionState={merajInteraction} businessMood={businessMood} size="sm" context="panel" />
+            </span>
+            <div className="text-left leading-tight min-w-0">
+              <p className="font-bold text-fg text-sm">Meraj</p>
+              <p className="text-[10px] text-fg-subtle truncate">{userTyping ? 'Hello — ask me anything' : scopeLabel ? `Focused · ${scopeLabel}` : 'Your shop assistant'}</p>
+            </div>
           </div>
+          <Link to="/app" className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2"><ArrowLeft className="w-5 h-5" strokeWidth={1.75} /></Link>
         </div>
-        <Link to="/app" className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2"><ArrowLeft className="w-5 h-5" strokeWidth={1.75} /></Link>
       </div>
 
-      {/* ── Segmented control: Ask | Task (the command-center toggle) ── */}
-      <div className="px-4 pt-3 pb-2 flex justify-center">
-        <div className="relative inline-flex rounded-full border border-line bg-surface-2 p-1 shadow-inner">
+      {/* ── Segmented control: Ask | Execute (the command-center toggle) ── */}
+      <div className="relative z-10 px-4 pt-3 pb-2 flex justify-center">
+        <div className="relative inline-flex rounded-full border border-line bg-surface-2/80 p-1 shadow-inner backdrop-blur-sm">
           {(['ask', 'task'] as const).map((m) => (
             <button
               key={m}
               onClick={() => setMode(m)}
+              aria-pressed={mode === m}
               className={`relative z-10 flex items-center gap-1.5 rounded-full px-5 h-8 text-xs font-bold transition-all ${
                 mode === m
-                  ? 'bg-surface text-fg shadow-[0_2px_8px_rgba(0,0,0,0.12)] scale-[1.02]'
+                  ? 'meraj-mode-pill scale-[1.02]'
                   : 'text-fg-subtle hover:text-fg-muted'
               }`}
             >
               {m === 'ask' ? <MessageCircle className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />}
-              {m === 'ask' ? 'Ask' : 'Task'}
+              {m === 'ask' ? 'Ask' : 'Execute'}
             </button>
           ))}
         </div>
@@ -692,25 +697,29 @@ export default function AIAssistant() {
           {messages.map((m, i) =>
             m.role === 'user' ? (
               <div key={i} className="flex justify-end">
-                <div>
-                <div className="bg-surface-2/70 rounded-2xl rounded-br-md px-4 py-2.5 max-w-[75%]">
-                  {m.image && <img src={m.image} alt="sent" className="rounded-xl mb-2 max-h-52 w-auto max-w-full object-cover" />}
-                  {m.text && <p className="text-sm text-fg whitespace-pre-wrap">{m.text}</p>}
+                <div className="max-w-[88%] sm:max-w-[78%]">
+                  <div className="meraj-user-bubble">
+                    {m.image && <img src={m.image} alt="sent" className="rounded-xl mb-2 max-h-52 w-auto max-w-full object-cover" />}
+                    {m.text && <p className="text-sm font-medium whitespace-pre-wrap leading-relaxed">{m.text}</p>}
+                  </div>
+                  {m.ts && <p className="text-[10px] text-fg-subtle mt-1.5 text-right pr-1">{new Date(m.ts).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</p>}
                 </div>
-                {m.ts && <p className="text-[10px] text-fg-subtle mt-1 text-right pr-1">{new Date(m.ts).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</p>}
-              </div>
               </div>
             ) : (
-              <div key={i} className="flex gap-3">
-                <span className="w-8 h-8 rounded-lg bg-accent-soft text-accent flex items-center justify-center flex-shrink-0 mt-0.5"><MerajGlyph size={18} /></span>
-                <div className="flex-1 min-w-0 pt-0.5">
-                  <div className="text-sm">
+              <div key={i} className="flex justify-start">
+                <div className="meraj-response-card w-full max-w-full sm:max-w-[92%]">
+                  <div className="mb-2.5 flex items-center gap-2">
+                    <span className="meraj-badge"><MerajGlyph size={18} /></span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-accent">Meraj</span>
+                    {m.ts && <span className="ml-auto text-[10px] text-fg-subtle">{new Date(m.ts).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</span>}
+                  </div>
+                  <div className="meraj-render text-sm">
                     {typing && i === lastIdx
                       ? <TypewriterMessage text={m.text} onDone={() => setTyping(false)} />
                       : <SmartReply
                           text={m.text}
                           onEditDraft={(t) => { setInput(t); inputRef.current?.focus() }}
-                          onSendDraft={(t) => { setMode('task'); send(`Send this WhatsApp message: "${t.replace(/"/g, "'")}"`) }}
+                          onSendDraft={(t) => { setMode('task'); send(`Send this WhatsApp message: "${t.replace(/\"/g, "'")}"`) }}
                         />}
                   </div>
                   {m.images && m.images.length > 0 && (
@@ -733,7 +742,6 @@ export default function AIAssistant() {
                       ))}
                     </div>
                   )}
-                  {m.ts && <p className="text-[10px] text-fg-subtle mt-1.5">{new Date(m.ts).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</p>}
                   {m.pending && (
                     <div className="mt-3 flex gap-2">
                       <button onClick={() => confirmAction(m.pending)} disabled={loading} className="btn-primary text-sm flex-1 h-9"><Sparkles className="w-4 h-4" /> {m.pending?.type === "create_invoice" ? "Create it" : m.pending?.type === "send_whatsapp" ? "Send it" : m.pending?.type === "sync_stock_from_sheet" ? "Sync it" : m.pending?.type === "export_to_sheet" ? "Export it" : "Add it"}</button>
@@ -745,12 +753,20 @@ export default function AIAssistant() {
             )
           )}
           {loading && (
-            <div className="flex gap-3">
-              <span className="w-8 h-8 rounded-lg bg-accent-soft text-accent flex items-center justify-center flex-shrink-0 mt-0.5"><MerajGlyph size={18} /></span>
-              <div className="flex items-center gap-1.5 pt-2">
-                {[0, 1, 2].map((d) => (
-                  <motion.span key={d} className="w-1.5 h-1.5 rounded-full bg-accent" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1, repeat: Infinity, delay: d * 0.15 }} />
-                ))}
+            <div className="flex justify-start">
+              <div className="meraj-response-card min-w-[220px] max-w-[260px]">
+                <div className="mb-2.5 flex items-center gap-2">
+                  <span className="meraj-badge"><MerajGlyph size={18} /></span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-accent">Meraj</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-fg-muted">Thinking</span>
+                  <span className="flex items-center gap-1">
+                    {[0, 1, 2].map((d) => (
+                      <motion.span key={d} className="w-1.5 h-1.5 rounded-full bg-accent" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1, repeat: Infinity, delay: d * 0.15 }} />
+                    ))}
+                  </span>
+                </div>
               </div>
             </div>
           )}
@@ -776,48 +792,61 @@ export default function AIAssistant() {
         label="Drop image here"
         clickToBrowse={false}
       >
-      <div className="px-3 pb-3 pt-1 bg-gradient-to-t from-surface via-surface to-transparent">
-        {pendingImage && (
-          <div className="flex items-center gap-2 px-1 pb-2">
-            <img src={pendingImage.preview} className="w-12 h-12 rounded-xl object-cover border border-line" alt="preview" />
-            <span className="text-xs text-fg-muted flex-1">Image ready to send</span>
-            <button onClick={() => setPendingImage(null)} className="text-fg-subtle hover:text-negative"><X className="w-4 h-4" /></button>
-          </div>
-        )}
-        <div className="flex items-center gap-1.5 rounded-2xl border border-line bg-paper px-2 py-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.08)] focus-within:border-accent/50 transition-colors">
-          <div className="relative">
-            <button onClick={() => setShowCam((s) => !s)} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${showCam ? 'bg-accent-soft text-accent rotate-45' : 'text-fg-muted hover:text-fg hover:bg-surface-2'}`} aria-label="Add attachment">
-              <Plus className="w-[18px] h-[18px]" strokeWidth={2} />
+      <div className="relative z-10 px-3 pb-3 pt-2 sm:px-6 sm:pb-4">
+        <div className="mx-auto w-full max-w-3xl">
+          {pendingImage && (
+            <div className="meraj-image-card">
+              <img src={pendingImage.preview} alt="preview" />
+              <span className="text-xs text-fg-muted flex-1 min-w-0">Image ready to send with Meraj</span>
+              <button onClick={() => setPendingImage(null)} className="text-fg-subtle hover:text-negative" aria-label="Remove attachment"><X className="w-4 h-4" /></button>
+            </div>
+          )}
+          <div className="meraj-composer">
+            <div className="relative flex-shrink-0">
+              <button onClick={() => setShowCam((s) => !s)} className={`meraj-composer-btn ${showCam ? '!bg-accent-soft !text-accent rotate-45' : ''}`} aria-label="Add attachment">
+                <Plus className="w-[18px] h-[18px]" strokeWidth={2} />
+              </button>
+              <AnimatePresence>
+                {showCam && (
+                  <motion.div initial={{ opacity: 0, y: 8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 8, scale: 0.96 }} className="absolute bottom-14 left-0 w-48 overflow-hidden rounded-2xl border border-line bg-surface shadow-float z-20 p-1.5">
+                    <button onClick={() => cameraRef.current?.click()} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-fg hover:bg-surface-2"><Receipt className="w-4 h-4 text-accent" /> Scan Receipt</button>
+                    <button onClick={() => galleryRef.current?.click()} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-fg hover:bg-surface-2"><ImageIcon className="w-4 h-4 text-accent" /> Attach Photo</button>
+                    <button onClick={() => cameraRef.current?.click()} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-fg hover:bg-surface-2"><Camera className="w-4 h-4 text-accent" /> Take Photo</button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <button onClick={listening ? stopListen : startListen} className={`meraj-composer-btn ${listening ? '!text-negative !bg-negative/10' : ''}`} aria-label="Voice input" title="Voice input">
+              {listening ? <Square className="w-4 h-4" /> : <Mic className="w-[18px] h-[18px]" strokeWidth={1.75} />}
             </button>
-            <AnimatePresence>
-              {showCam && (
-                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} className="absolute bottom-12 left-0 card p-1.5 w-44 shadow-float z-10">
-                  <button onClick={() => cameraRef.current?.click()} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-fg hover:bg-surface-2"><Receipt className="w-4 h-4 text-accent" /> Scan Receipt</button>
-                  <button onClick={() => galleryRef.current?.click()} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-fg hover:bg-surface-2"><ImageIcon className="w-4 h-4 text-accent" /> Attach Photo</button>
-                  <button onClick={() => cameraRef.current?.click()} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-fg hover:bg-surface-2"><Camera className="w-4 h-4 text-accent" /> Take Photo</button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+
+            <textarea
+              ref={inputRef}
+              value={input}
+              rows={1}
+              onChange={(e) => {
+                setInput(e.target.value)
+                const el = e.currentTarget
+                el.style.height = 'auto'
+                el.style.height = Math.min(el.scrollHeight, 132) + 'px'
+              }}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  if (!loading) send()
+                }
+              }}
+              placeholder={mode === 'task' ? 'Tell Meraj what to do…' : 'Ask Meraj anything…'}
+              className="flex-1 px-1.5 py-2 text-sm outline-none min-w-0"
+              disabled={loading}
+            />
+            <button onClick={() => send()} disabled={loading || (!input.trim() && !pendingImage)} className="meraj-composer-btn meraj-composer-send" aria-label="Send">
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            </button>
           </div>
-
-          <button onClick={listening ? stopListen : startListen} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors flex-shrink-0 ${listening ? 'text-negative bg-negative/10' : 'text-fg-muted hover:text-fg hover:bg-surface-2'}`} aria-label="Voice input" title="Voice input">
-            {listening ? <Square className="w-4 h-4" /> : <Mic className="w-[18px] h-[18px]" strokeWidth={1.75} />}
-          </button>
-
-          <input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            onKeyDown={(e) => e.key === 'Enter' && send()}
-            placeholder={mode === 'task' ? 'Tell Meraj what to do…' : 'Ask Meraj anything…'}
-            className="flex-1 bg-transparent px-2 py-2 text-sm text-fg placeholder:text-fg-subtle outline-none min-w-0"
-            disabled={loading}
-          />
-          <button onClick={() => send()} disabled={loading || !input.trim()} className="w-10 h-10 rounded-xl bg-fg text-paper flex items-center justify-center flex-shrink-0 hover:opacity-90 disabled:opacity-40 transition-opacity" aria-label="Send">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          </button>
         </div>
       </div>
 
