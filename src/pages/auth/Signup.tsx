@@ -2,7 +2,7 @@ import { validatePassword, validateEmail, validatePhone } from '../../lib/valida
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, ArrowRight, Check, Store, Phone, User, MapPin, Zap, TrendingUp, Shield, ShieldCheck, Timer, BadgeCheck, WifiOff, MessageCircle, Receipt, Sparkles } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, ArrowRight, Check, Store, Phone, User, MapPin, Zap, Shield, ShieldCheck, Timer, BadgeCheck, WifiOff, MessageCircle, Receipt, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { friendlyAuthError } from '../../lib/auth-errors'
 import { useInputFocus, FOCUS_SCROLL_CLASS } from '../../lib/useInputFocus'
@@ -185,10 +185,10 @@ export default function Signup() {
         </div>
 
         <div className="relative mt-12 rounded-3xl p-5 bg-white/10 backdrop-blur-xl border border-white/15" style={{ animation: 'slideUp 0.6s ease-out 0.8s both' }}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex gap-1 text-white"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
-            <MonoLabel /> 
-          </div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex gap-1 text-white"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+              <span className="text-[10px] font-mono uppercase tracking-wider text-white/60">Trusted by 47+ shops</span>
+            </div>
           <p className="text-sm text-white/90 leading-relaxed">“I used to lose maybe ₹8,000–₹10,000 a month in forgotten udhaar. Now Meraj reminds them, and most people pay.”</p>
           <p className="mt-3 text-xs font-semibold text-white">{'Ramesh Kumar'} · <span className="text-white/65">Kirana, Patna</span></p>
         </div>
@@ -336,8 +336,4 @@ export default function Signup() {
       </div>
     </div>
   )
-}
-
-function MonoLabel() {
-  return <span className="text-[10px] font-mono uppercase tracking-wider text-white/60">Verified owner</span>
 }
