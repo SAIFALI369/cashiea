@@ -60,7 +60,7 @@ describe('callAI retry behavior', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
-  it('retries on 500 up to the limit, then fails', async () => {
+  it('does NOT retry on 500 (deterministic error — returns immediately)', async () => {
     const fetchMock = vi.fn().mockResolvedValue(makeResponse(500, { error: 'server error' }))
     vi.stubGlobal('fetch', fetchMock)
 
@@ -68,7 +68,9 @@ describe('callAI retry behavior', () => {
     pending.catch(() => {}) // attach handler early to avoid unhandled rejection
     await vi.runAllTimersAsync()
     await expect(pending).rejects.toThrow(/AI request failed|server error|status 500/)
-    expect(fetchMock).toHaveBeenCalledTimes(4)
+    // 500 is a deterministic server bug — retrying wastes tokens and time.
+    // Only 429/503/504 are transient and retried.
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('does NOT retry on a 400 client error', async () => {

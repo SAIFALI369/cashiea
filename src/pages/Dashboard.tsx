@@ -201,9 +201,11 @@ export default function Dashboard() {
       setInsights(ins.slice(0, 3))
 
       // ── AI suggestion pills (search bar) ─────────────────────────
-      // Situation-specific questions from the LIVE numbers, cached 3 hours per
-      // user — regenerated on app open when the cache is stale. Falls back to
-      // sensible contextual pills until (or if) the AI call returns.
+      // INSTANT: smart fallback pills built from the LIVE numbers render
+      // on the first paint (the owner never waits). The actual AI call
+      // fires 8 SECONDS later — if the owner has already moved to POS or
+      // Products by then, the call is skipped entirely (zero tokens
+      // wasted on a page nobody is looking at). Cache: 12 hours.
       const suggKey = `cashiea_suggestions_${ownerId}`
       const suggState = {
         date: new Date().toISOString().split('T')[0],
@@ -214,19 +216,36 @@ export default function Dashboard() {
         weekSales: buckets.reduce((s: number, v: number) => s + v, 0), weekExpenses: expensesWeek,
         topOverdueClient: topPriority?.client_name || null,
       }
+      // 1) INSTANT: live-number pills (replaces the old static fallbacks —
+      //    these are genuinely smart, built from today's actual data)
+      const smartInstant = [
+        `Why ${salesToday < salesYesterday ? 'are sales down' : 'is business strong'} today?`,
+        topPriority ? `How to collect ${formatINR(topAmount, 0)} from ${topPriority.client_name}?` : 'Which customers may delay payments?',
+        lowStock > 0 ? `What to reorder (${lowStock} low-stock items)?` : 'Which products to promote this week?',
+        'What should I do differently tomorrow?',
+      ]
+      setAiSuggestions(smartInstant)
+
+      // 2) DELAYED: AI-generated pills (8s — only if the owner is still
+      //    on the Dashboard), cached 12 hours
       try {
         const cached = JSON.parse(localStorage.getItem(suggKey) || 'null')
-        if (cached?.ts && Date.now() - cached.ts < 3 * 60 * 60 * 1000 && Array.isArray(cached.pills) && cached.pills.length >= 3) {
+        if (cached?.ts && Date.now() - cached.ts < 12 * 60 * 60 * 1000 && Array.isArray(cached.pills) && cached.pills.length >= 3) {
           setAiSuggestions(cached.pills)
         } else {
-          dashboardSuggestions(suggState)
-            .then((p) => {
-              if (p.length) {
-                setAiSuggestions(p)
-                try { localStorage.setItem(suggKey, JSON.stringify({ pills: p, ts: Date.now() })) } catch { /* ignore */ }
-              }
-            })
-            .catch(() => { /* fallback pills remain */ })
+          setTimeout(() => {
+            // Still on the Dashboard? Then the AI call is worth it.
+            if (document.visibilityState === 'visible' && window.location.pathname === '/app') {
+              dashboardSuggestions(suggState)
+                .then((p) => {
+                  if (p.length) {
+                    setAiSuggestions(p)
+                    try { localStorage.setItem(suggKey, JSON.stringify({ pills: p, ts: Date.now() })) } catch { /* ignore */ }
+                  }
+                })
+                .catch(() => { /* instant pills remain */ })
+            }
+          }, 8000)
         }
       } catch { /* ignore */ }
 
@@ -242,8 +261,8 @@ export default function Dashboard() {
   }
 
   const topAmount = topPriority ? Number(topPriority.total) : overdueSum
-  // Fallback pills (until the AI pills load / if the call fails) — still
-  // contextual, built from the live numbers.
+  // Safety net if aiSuggestions is somehow empty (AI failed + instant pills
+  // were cleared) — still contextual, built from the live numbers.
   const fallbackSuggestions = [
     'How were sales today?',
     topPriority ? `How do I collect ${formatINR(topAmount, 0)} overdue?` : 'Which customers may delay payments?',

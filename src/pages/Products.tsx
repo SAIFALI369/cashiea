@@ -440,7 +440,9 @@ export default function Products() {
             </div>
           )}
 
-          <div className="space-y-2">
+          {/* Desktop: 2-column grid (dense, workstation feel). Mobile: single
+              list with big touch targets. */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
             {filtered.map((p) => {
               const status = p.stock_quantity === 0 ? 'out' : p.stock_quantity <= p.low_stock_threshold ? 'low' : 'in'
               const statusLabel = status === 'out' ? 'Out of stock' : status === 'low' ? 'Low stock' : 'In stock'

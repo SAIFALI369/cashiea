@@ -51,10 +51,13 @@ function TypewriterMessage({ text, onDone }: { text: string; onDone: () => void 
   const cb = useRef(onDone); cb.current = onDone
   useEffect(() => {
     setCount(0)
-    const step = Math.max(2, Math.ceil(text.length / 45))
+    // 4× faster: bigger step + shorter tick = a typical 300-char reply
+    // completes in ~0.35s (was ~1.4s) — still reads as "typing" but
+    // never makes the owner wait for the answer they already earned.
+    const step = Math.max(3, Math.ceil(text.length / 16))
     const id = setInterval(() => {
       setCount((c) => { const nc = c + step; if (nc >= text.length) { clearInterval(id); setTimeout(() => cb.current(), 0); return text.length } return nc })
-    }, 30)
+    }, 22)
     return () => clearInterval(id)
   }, [text])
   return <span dangerouslySetInnerHTML={{ __html: render(text.slice(0, count)) + '\u258c' }} />

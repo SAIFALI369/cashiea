@@ -1,10 +1,10 @@
 // ════════════════════════════════════════════════════════════════
-// MERAJ DAILY THOUGHTS — 24/7 friendly refreshment storage.
+// MERAJ DAILY ADVICE — 24/7 actionable business suggestions.
 //
 // Every day at 5:00 AM IST, Meraj generates 20 short (3-7 word)
-// friendly sentences ("bhai, sales theek chal rahi hai", "aaj profit
-// acha hoga", etc.) — one per hour for the next 20 hours starting
-// at 6 AM (the 4am–5am slot is Meraj "sleeping").
+// ACTIONABLE suggestions — real advice the owner can act on today
+// (reorder, follow-up, discount, promote). No motivational fluff.
+// One per hour, 6 AM → 1 AM next day.
 //
 // The schedule:
 //   • 5:00 AM — if today's batch doesn't exist, AI-generates 20
@@ -33,32 +33,34 @@ const STORE_KEY = 'cashiea_meraj_thoughts_v1'
 function storeKey(ownerId?: string | null): string { return `${STORE_KEY}:${ownerId || 'anonymous'}` }
 
 // ── Fallback pool (used if the AI call fails / user is offline).
-// 3-7 word Hinglish friend phrases — warm, encouraging, shop-life vibes.
+// 3-7 word ACTIONABLE business suggestions — Meraj acts as the shop's
+// manager, giving specific advice the owner can act on today. No fluff,
+// no motivational filler — every line earns its place.
 const FALLBACK_POOL: string[] = [
-  'Aaj ka din achha jayega',
-  'Bhai, tu jeetega aaj',
-  'Sales badh rahi hain boss',
-  'Tu kar lega, bharosa hai',
-  'Thoda chai ho jaye?',
-  'Aaj customer ayenge pakka',
-  'Stock check kar le bhai',
-  'Profit dekh ke khush hoga',
-  'Hustle kar, fal milega',
-  'Tere jaisa koi nahi hai',
-  'Aaj bonus day banega',
-  'Bhai aaj focus karna',
-  'Sab theek ho jayega',
-  'Tu champion hai yaar',
-  'Aaj target pura hoga',
-  'Chinta mat, main hoon na',
-  'Customer ko haske welcome kar',
-  'Cash flow strong rakhna',
-  'Aaj naya try karte hain',
-  'Raat tak record banega',
-  'Subah subah energy high rakho',
-  'Har customer ek mauka hai',
-  'Aaj inventory check kar',
-  'Dhandha tere haath mein hai',
+  'Top seller reorder kar le',
+  'Dormant customer ko WhatsApp bhej',
+  'Low-stock items aaj hi order',
+  'Bestseller ko counter pe rakho',
+  'Slow items pe 10% discount',
+  'Aaj ka cash count abhi',
+  'Fast-mover bulk mein kharid',
+  'Slow-mover return ya exchange',
+  'UPI QR checkout pe laga',
+  'Overdue invoice reminder bhej',
+  'Weekend stock double rakh',
+  'Best margin item promote',
+  'Customer feedback aaj pucho',
+  'Supplier rate compare kar',
+  'Expiry-date items aage rakh',
+  'Peak hour pe extra stock',
+  'Naya combo offer try',
+  'Reorder point set kar',
+  'Cash-only items UPI pe',
+  'Weekly report CA ko bhej',
+  'Fast seller ke saath bundle',
+  'Old stock clearance sale',
+  'UPI payment reminder laga',
+  'Delivery area expand kar',
 ]
 
 function istNow(): Date { return new Date(Date.now() + 5.5 * 3600000) }
@@ -127,7 +129,7 @@ async function ensureTodayBatch(ownerId: string | null | undefined): Promise<Tho
     if (!localStorage.getItem(flagKey)) {
       localStorage.setItem(flagKey, 'running')
       askAssistant(
-        'Generate EXACTLY 20 very short friendly sentences (3 to 7 WORDS each, no longer) that a shop assistant friend named Meraj would say to the shop owner throughout the day. Mix Hinglish and English. Be warm, encouraging, casual, friend-like. NO lists, NO numbering, NO emoji, NO long lines. One short phrase per line. Examples of tone: "Aaj ka din achha jayega", "Tu champion hai yaar", "Thoda chai ho jaye?", "Sales badh rahi hain", "Har customer ek mauka hai". Output ONLY the 20 lines, one per line, nothing else.',
+        'You are Meraj, the shop manager. Give EXACTLY 20 ultra-short (3-7 words) ACTIONABLE business suggestions — specific advice the owner can act on TODAY. Mix Hinglish and English. Each line = one concrete action: reorder a fast-seller, follow up a dormant customer, discount a slow item, count cash, compare supplier rates, set reorder points, promote best-margin items, clear old stock, expand delivery, bundle products. NO fluff, NO motivational filler, NO generic praise. One suggestion per line. Examples of the bar: "Top seller reorder kar le", "Slow items pe 10% discount", "Overdue invoice reminder bhej". Output ONLY the 20 lines, nothing else.',
         false, undefined, 'ask',
       ).then((res) => {
         const lines = (res.reply || '')

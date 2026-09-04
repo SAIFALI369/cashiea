@@ -25,10 +25,14 @@ export interface AICallResult {
 }
 
 /**
- * Fetch with retry + exponential backoff.
- * Retries on network errors and 429/5xx responses (transient failures),
- * not on 4xx client errors.
+ * Fetch with retry + exponential backoff + a hard client-side timeout.
+ * Retries ONLY on transient failures (429 rate-limit, 503, 504 gateway
+ * timeouts) and network errors — not on other 5xx (those are usually
+ * deterministic bugs, retrying wastes tokens and time).
+ * 45-second timeout so a hung request never freezes the UI.
  */
+const AI_TIMEOUT_MS = 45_000
+
 async function fetchWithRetry(
   input: string,
   init: RequestInit,
@@ -37,10 +41,19 @@ async function fetchWithRetry(
 ): Promise<Response> {
   let lastError: Error | null = null
   for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), AI_TIMEOUT_MS)
     try {
-      const res = await fetch(input, init)
-      // Retry on rate-limit or server errors
-      if (res.status === 429 || res.status >= 500) {
+      const res = await fetch(input, {
+        ...init,
+        signal: controller.signal,
+        // Reuse the HTTP connection — saves ~100-200ms per call on repeat
+        // requests to the same edge function.
+        headers: { Connection: 'keep-alive', ...(init.headers as Record<string, string>) },
+      })
+      clearTimeout(timeoutId)
+      // Retry ONLY on transient failures: 429 (rate limit), 503, 504.
+      if (res.status === 429 || res.status === 503 || res.status === 504) {
         if (attempt === retries) return res // give back the last response
         const retryAfter = Number(res.headers.get('retry-after'))
         const delay = retryAfter ? retryAfter * 1000 : baseDelay * Math.pow(2, attempt)
@@ -49,6 +62,11 @@ async function fetchWithRetry(
       }
       return res
     } catch (err) {
+      clearTimeout(timeoutId)
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('abort') || controller.signal.aborted) {
+        throw new Error('Request took too long — please try again.')
+      }
       lastError = err instanceof Error ? err : new Error(String(err))
       if (attempt === retries) throw lastError
       const delay = baseDelay * Math.pow(2, attempt)
@@ -93,11 +111,11 @@ export async function callAI(params: AICallParams): Promise<AICallResult> {
  * Ask the AI Assistant a natural-language business question.
  * Uses the /functions/v1/ai-assistant edge function.
  */
-// ── Client-side AI response cache (≤1-2 MB, 50 entries, 30-min TTL) ──
-// Prevents repeat API calls for identical questions asked within 30 min.
+// ── Client-side AI response cache (≤1-2 MB, 80 entries, 60-min TTL) ──
+// Prevents repeat API calls for identical questions asked within an hour.
 const AI_CACHE_KEY = 'cashiea_ai_cache'
-const AI_CACHE_TTL = 30 * 60 * 1000
-const AI_CACHE_MAX = 50
+const AI_CACHE_TTL = 60 * 60 * 1000
+const AI_CACHE_MAX = 80
 
 function aiCacheRead(): Record<string, any> {
   try { return JSON.parse(localStorage.getItem(AI_CACHE_KEY) || '{}') } catch { return {} }

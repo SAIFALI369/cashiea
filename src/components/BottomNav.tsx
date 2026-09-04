@@ -45,14 +45,18 @@ const MOBILE_RIGHT: Item[] = [
 ]
 
 // ── Desktop items (7 slots; index 3 is the Meraj talk feature, not a page) ──
-const DESKTOP_ITEMS: (Item | { special: 'meraj'; label: string })[] = [
+// ── Desktop dock entries — 7 slots. 'meraj' and 'scanner' are special
+// (buttons, not NavLinks): Meraj opens voice, Scanner opens the camera.
+type DeskEntry = Item | { special: 'meraj'; label: string } | { special: 'scanner'; label: string }
+
+const DESKTOP_ITEMS: DeskEntry[] = [
   { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/app/pos', label: 'Sales (POS)', icon: ShoppingCart },
   { to: '/app/products', label: 'Stocks', icon: Package },
   { special: 'meraj', label: 'Meraj' },
   { to: '/app/customers', label: 'Customers', icon: Users },
   { to: '/app/suggestions', label: 'Suggestions', icon: Lightbulb },
-  { to: '/app/scanner-redirect', label: 'Scanner', icon: Camera },
+  { special: 'scanner', label: 'Scanner' },
 ]
 
 function deriveAvatarStateCompat({ listening, loading, speaking }: { listening: boolean; loading?: boolean; speaking: boolean }) {
@@ -260,11 +264,11 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
                 <div key="meraj" className="flex justify-center items-center col-span-1">
                   <button
                     onClick={startVoice}
-                    className="group relative flex flex-col items-center justify-center -mt-8"
+                    className="group relative flex flex-col items-center justify-center -mt-7"
                     aria-label="Talk to Meraj" title="Talk to Meraj"
                   >
                     <span className={clsx(
-                      'w-16 h-16 rounded-full ring-4 ring-paper flex items-center justify-center transition-all shadow-[0_8px_24px_-6px_rgb(var(--accent))]',
+                      'w-14 h-14 rounded-full ring-4 ring-paper flex items-center justify-center transition-all shadow-[0_8px_24px_-6px_rgb(var(--accent))]',
                       listening || speaking || voiceActive
                         ? 'bg-accent scale-105'
                         : 'bg-accent-strong hover:bg-accent'
@@ -276,14 +280,12 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
                         context="nav"
                       />
                     </span>
-                    <span className="text-[10px] font-bold text-accent mt-1">Talk to Meraj</span>
+                    <span className="text-[10px] font-bold text-accent mt-1">Meraj</span>
                   </button>
                 </div>
               )
             }
-            const item = entry as Item
-            // Scanner uses onCamera (same as mobile) instead of NavLink
-            if (item.label === 'Scanner') {
+            if ('special' in entry && entry.special === 'scanner') {
               return (
                 <button
                   key="scanner"
@@ -292,11 +294,12 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
                   aria-label="Open scanner"
                   title="Scan"
                 >
-                  <Camera className="w-5 h-5" strokeWidth={1.75} />
+                  <Camera className="w-[22px] h-[22px]" strokeWidth={1.75} />
                   <span className="text-[11px] font-semibold">Scanner</span>
                 </button>
               )
             }
+            const item = entry as Item
             return <DesktopSlot key={item.to} item={item} />
           })}
         </div>

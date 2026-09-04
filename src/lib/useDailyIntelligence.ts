@@ -31,16 +31,19 @@ export function useDailyIntelligence(ownerId: string | null | undefined, enabled
     const today = istDateStr()
     const mins = istMinutes()
 
-    // 9:00 PM — business suggestions
+    // 9:00 PM — business suggestions (2.5s delay so the page paints first;
+    // the AI call never blocks the owner's first interaction)
     if (mins >= 21 * 60 && !flag(diKey('s', ownerId, today))) {
       setFlag(diKey('s', ownerId, today), 'running')
-      void generateSuggestions(ownerId, today)
+      const t1 = setTimeout(() => { void generateSuggestions(ownerId, today) }, 2500)
+      return () => clearTimeout(t1)
     }
 
-    // 9:10 PM — learning questions
+    // 9:10 PM — learning questions (4.5s delay — well after paint)
     if (mins >= 21 * 60 + 10 && !flag(diKey('q', ownerId, today))) {
       setFlag(diKey('q', ownerId, today), 'running')
-      void generateQuestions(ownerId, today)
+      const t2 = setTimeout(() => { void generateQuestions(ownerId, today) }, 4500)
+      return () => clearTimeout(t2)
     }
   }, [ownerId, enabled])
 }

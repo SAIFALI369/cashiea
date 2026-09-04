@@ -48,6 +48,10 @@ export default function AppLayout() {
   // becomes a true "screen" between the desktop header and the desktop
   // bottom nav — Meraj fills that space completely, designed for desktop.
   const isAssistant = location.pathname.startsWith('/app/assistant')
+  // Primary all-day pages get a full-bleed desktop workspace (sidebar
+  // hidden, header shows a menu button instead). Everything else keeps
+  // the sidebar for its section navigation.
+  const PRIMARY_FULLBLEED = ['/app', '/app/pos', '/app/products', '/app/customers']
   // On desktop, the assistant remains framed by the desktop header + bottom nav.
   // On mobile it stays full-bleed, matching the existing chat-first experience.
   const showDesktopShell = !isAssistant || isDesktop
@@ -71,16 +75,24 @@ export default function AppLayout() {
   return (
     // Assistant: definite viewport height so its message list scrolls on mobile AND desktop.
     <div className={isAssistant ? 'h-dvh flex flex-col overflow-hidden bg-paper' : 'min-h-screen flex flex-col bg-paper'}>
-      {/* Sidebar hidden on the Meraj assistant page — that page is a dedicated
-          full-screen experience (especially on desktop where it fills the
-          entire screen with header+bottom nav already framing it). */}
+      {/* Sidebar: hidden on the Meraj assistant page (full-screen chat) AND
+          on desktop primary pages (Dashboard/POS/Stocks/Customers) where
+          the dock + header already navigate — a menu button in the header
+          opens the drawer when needed. Secondary pages (Settings, Reports,
+          etc.) keep the sidebar visible for its section navigation. */}
       {!isAssistant && <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
 
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         <OfflineBanner />
 
-        {/* ── Desktop header (≥lg) ── */}
-        {showDesktopShell && <DesktopHeader />}
+        {/* ── Desktop header (≥lg) — menu button on primary pages where
+            the sidebar is default-hidden ── */}
+        {showDesktopShell && (
+          <DesktopHeader
+            onMenu={() => setSidebarOpen(true)}
+            showMenuButton={PRIMARY_FULLBLEED.includes(location.pathname)}
+          />
+        )}
 
         {/* ── Mobile header (<lg) — menu · brand · sync · clock · account ── */}
         {!isAssistant && (

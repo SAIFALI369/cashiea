@@ -4,21 +4,32 @@ import { LiveClock } from './LiveClock'
 import { QueueBadge } from './QueueBadge'
 import { Avatar } from './Avatar'
 import { CashieaLogo } from './CashieaLogo'
-import { Settings, Search } from 'lucide-react'
+import { Settings, Search, Menu } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 /**
  * DesktopHeader — sticky top bar shown ONLY on the desktop shell (≥lg).
- * Brand (left) · global search · sync queue · clock · account (right).
- * Designed so the layout feels purpose-built for desktop, not just a
- * stretched mobile view.
+ * Brand (left) · optional menu button · global search · sync queue ·
+ * clock · account (right). `showMenuButton` appears on primary pages
+ * (Dashboard/POS/Stocks/Customers) where the sidebar is default-hidden
+ * for a full-bleed workstation feel — tapping it opens the drawer.
  */
-export default function DesktopHeader() {
+export default function DesktopHeader({ onMenu, showMenuButton }: { onMenu?: () => void; showMenuButton?: boolean }) {
   const { profile } = useAuth()
   const navigate = useNavigate()
 
   return (
     <header className="hidden lg:flex sticky top-0 z-30 bg-surface/85 backdrop-blur border-b border-line px-6 xl:px-10 h-16 items-center gap-4 shrink-0">
+      {showMenuButton && (
+        <button
+          onClick={onMenu}
+          className="w-10 h-10 rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors"
+          aria-label="Open menu"
+          title="Menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+      )}
       <Link to="/app" className="flex items-center gap-2.5 group">
         <CashieaLogo size={34} />
         <div className="min-w-0">
