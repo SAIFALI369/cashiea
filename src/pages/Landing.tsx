@@ -2,7 +2,12 @@ import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import MerajDevice, { MerajGlyph } from '../components/MerajDevice'
-import { ArrowRight, ArrowDown, ChevronDown, Check, Menu, X, Sparkles, Receipt, Package, Users, Wallet, MessageCircle, FileBarChart, ScanBarcode, WifiOff, Calculator, Mic, Repeat, FileSpreadsheet, BookOpen, Landmark } from 'lucide-react'
+import {
+  ArrowRight, ArrowDown, ChevronDown, Check, Menu, X, Sparkles, Receipt, Package, Users,
+  Wallet, MessageCircle, FileBarChart, ScanBarcode, WifiOff, Calculator, Mic, Repeat,
+  FileSpreadsheet, BookOpen, Landmark, ShieldCheck, Lock, Zap, Timer, TrendingUp,
+  BadgeCheck, Phone, MapPin, LayoutDashboard, Send, Bell, Clock,
+} from 'lucide-react'
 
 // ── Reveal (scroll-triggered, once) ──
 function Reveal({ children, delay = 0, className = '' }: { children: React.ReactNode; delay?: number; className?: string }) {
@@ -25,6 +30,80 @@ function Logo({ size = 28 }: { size?: number }) {
 function Mono({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return <span className={`font-mono text-[10px] uppercase tracking-[0.18em] ${className}`}>{children}</span>
 }
+
+// ── Small global helpers ──
+function SectionEyebrow({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return <Mono className={`text-fg-subtle flex items-center justify-center gap-2 ${className}`}><span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />{children}</Mono>
+}
+
+function TrustPill({ children, icon: Icon, className = '' }: { children: React.ReactNode; icon?: React.ComponentType<{ className?: string }>; className?: string }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-[11px] font-medium text-fg-muted ${className}`}>
+      {Icon && <Icon className="w-3.5 h-3.5 text-accent" />}
+      {children}
+    </span>
+  )
+}
+
+// ── Trust & proof copy ──
+const TRUST_POINTS = [
+  { icon: BadgeCheck, text: '14-day free trial' },
+  { icon: ShieldCheck, text: 'No card required' },
+  { icon: Users, text: '47+ Indian shops' },
+  { icon: Timer, text: 'Setup in 5 minutes' },
+  { icon: Lock, text: 'DPDP-ready' },
+  { icon: WifiOff, text: 'Works offline' },
+]
+
+const PROOF_METRICS = [
+  { value: '6 hrs', label: 'saved per week', note: 'billing, bookkeeping & follow-ups' },
+  { value: '₹12K', label: 'extra per month', note: 'dues recovered + dormant customers' },
+  { value: '90%', label: 'faster billing', note: 'cash + UPI split, barcode scan' },
+  { value: '10', label: 'Indian languages', note: 'talk to Meraj your way' },
+]
+
+const TESTIMONIALS = [
+  { initials: 'RK', name: 'Ramesh Kumar', role: 'Kirana · Patna', quote: 'I used to lose maybe ₹8,000–₹10,000 a month in forgotten udhaar. Now Meraj reminds them, and most people pay.' },
+  { initials: 'SE', name: 'Sharma Electricals', role: 'Hardware & appliances · Lucknow', quote: 'GST invoice used to take my brother 40 minutes. Now it prints at the counter in seconds — with HSN and tax split.' },
+  { initials: 'JS', name: 'Jyoti Store', role: 'General store · Ranchi', quote: 'The daily WhatsApp report changes everything. I know the day is fine even before I reach the shop.' },
+]
+
+const STEPS = [
+  { n: '01', title: 'Set up in 5 minutes', desc: 'Add your shop, import products from CSV (or start empty), and you’re billing.' },
+  { n: '02', title: 'Meraj starts watching', desc: 'Every sale, stock level and pending payment feeds the same brain. Nothing is ever entered twice.' },
+  { n: '03', title: 'You approve. It sends.', desc: 'Meraj drafts invoices, WhatsApp reminders and reports. Nothing goes out without your OK.' },
+]
+
+const COMPARE = [
+  {
+    label: 'A normal shop runs on',
+    tone: 'muted',
+    lines: [
+      'A register only you can read',
+      'Dues remembered by memory',
+      'Stock looked at when it’s empty',
+      'GST invoicing after the customer leaves',
+      'Reports only when someone forces it',
+    ],
+  },
+  {
+    label: 'Cashiea runs it on',
+    tone: 'accent',
+    lines: [
+      'A live ledger of every bill & payment',
+      'Automatic reminders + follow-ups',
+      'Low-stock alerts before it hurts',
+      'Rule-46 invoices at the counter',
+      'Tomorrow’s plan in today’s report',
+    ],
+  },
+]
+
+const SECURITY_POINTS = [
+  { icon: ShieldCheck, title: 'Your data belongs to you', desc: 'Row-level security means each shop only sees itself. Export anytime, cancel anytime.' },
+  { icon: Lock, title: 'DPDP Act 2023 aligned', desc: 'Built for India: encrypted in transit, hosted in India, and we never sell your customer list.' },
+  { icon: WifiOff, title: 'Doesn’t fail in your shop', desc: 'Power cuts and network dead zones don’t stop billing. Sales sync when you reconnect.' },
+]
 
 // ── Signal cards data ──
 const SIGNALS = [
@@ -67,14 +146,14 @@ const CONCERNS = [
   { key: 'stock', label: 'Stock keeps running out', diagnosis: 'Cooking oil, rice, sugar all hit zero this week. No reorder alerts were set.', steps: ['Turn on low-stock alerts for these 3', 'Set reorder levels from last month’s sales', 'Approve a restocking order'] },
 ]
 function ThinkingRoom() {
-  const [sel, setSel] = useState<number | null>(null)
+  const [sel, setSel] = useState<number | null>(0)
   const c = sel !== null ? CONCERNS[sel] : null
   return (
     <div className="max-w-lg mx-auto">
       <div className="flex flex-wrap gap-2 justify-center mb-6">
         {CONCERNS.map((cn, i) => (
           <button key={cn.key} onClick={() => setSel(i)} className="px-4 py-2 rounded-full text-sm font-medium transition-all"
-            style={{ background: sel === i ? 'rgb(var(--accent-fg) / 0.22)' : 'rgb(var(--accent-fg) / 0.1)', color: 'rgb(var(--accent-fg))', border: '1px solid rgb(var(--accent-fg) / 0.22)' }}>
+            style={{ background: sel === i ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
             {cn.label}
           </button>
         ))}
@@ -82,21 +161,21 @@ function ThinkingRoom() {
       <AnimatePresence mode="wait">
         {c && (
           <motion.div key={c.key} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}
-            className="rounded-3xl p-5" style={{ background: 'rgb(var(--accent-fg) / 0.1)', border: '1px solid rgb(var(--accent-fg) / 0.16)' }}>
+            className="rounded-3xl p-5" style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.15)' }}>
             <div className="flex items-start gap-3 mb-4">
-              <span className="w-8 h-8 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgb(var(--accent-fg) / 0.18)' }}><MerajGlyph size={18} className="text-accent-fg" /></span>
-              <p className="text-sm text-accent-fg leading-relaxed">{c.diagnosis}</p>
+              <span className="w-8 h-8 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.2)' }}><MerajGlyph size={18} className="text-white" /></span>
+              <p className="text-sm text-white leading-relaxed">{c.diagnosis}</p>
             </div>
             <div className="space-y-2">
               {c.steps.map((step, si) => (
                 <motion.div key={si} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 + si * 0.09 }}
-                  className="flex items-center gap-3 p-2.5 rounded-2xl" style={{ background: 'rgb(var(--accent-fg) / 0.08)' }}>
-                  <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 text-accent-fg" style={{ background: 'rgb(var(--accent-fg) / 0.18)' }}>{si + 1}</span>
-                  <span className="text-sm text-accent-fg/85">{step}</span>
+                  className="flex items-center gap-3 p-2.5 rounded-2xl" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                  <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 text-white" style={{ background: 'rgba(255,255,255,0.2)' }}>{si + 1}</span>
+                  <span className="text-sm" style={{ color: 'rgba(255,255,255,0.85)' }}>{step}</span>
                 </motion.div>
               ))}
             </div>
-            <Link to="/signup" className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-full bg-paper text-accent-strong text-sm font-bold hover:opacity-90 transition-opacity">
+            <Link to="/signup" className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-full bg-white text-sm font-bold" style={{ color: 'rgb(var(--accent-strong))' }}>
               <Sparkles className="w-4 h-4" /> Try with your data
             </Link>
           </motion.div>
@@ -132,60 +211,216 @@ const FAQS = [
   { q: 'Can I cancel anytime?', a: 'Yes. No lock-in contracts, no setup fees, no hidden charges. Cancel from your dashboard.' },
 ]
 
+// ── Hero product mock: a believable "morning with Meraj" dashboard ──
+function HeroDashboard() {
+  const stats = [
+    { label: 'Sales today', value: '₹24,320', delta: '+18%' },
+    { label: 'Dues recovered', value: '₹3,850', delta: 'today' },
+    { label: 'Low stock', value: '2 items', delta: 'alert' },
+    { label: 'Khata open', value: '₹18,400', delta: '4 dues' },
+  ]
+  return (
+    <div className="relative">
+      <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-accent/15 via-transparent to-gold/10 blur-2xl" />
+      <div className="absolute -inset-px rounded-[2rem] border border-line/70 bg-surface/70 backdrop-blur-xl shadow-float" />
+
+      <div className="relative card rounded-[1.75rem] overflow-hidden p-5 sm:p-6">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2.5">
+            <span className="w-8 h-8 rounded-xl bg-accent-strong text-accent-fg flex items-center justify-center"><MerajGlyph size={16} className="text-accent-fg" /></span>
+            <div>
+              <p className="text-sm font-bold text-fg">Meraj · Today</p>
+              <p className="text-[11px] text-fg-subtle">Tuesday · 8:05 AM</p>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-1 rounded-full bg-positive/10 px-2.5 py-1 text-[10px] font-mono text-positive"><span className="w-1.5 h-1.5 rounded-full bg-positive animate-pulse" />LIVE</span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2.5 mb-4">
+          {stats.map((s, i) => (
+            <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 + i * 0.08 }} className="rounded-xl border border-line bg-surface-2/60 p-3">
+              <Mono className="text-fg-subtle block mb-1">{s.label}</Mono>
+              <p className="text-lg font-bold text-fg leading-none">{s.value}</p>
+              <p className="mt-1 text-[10px] font-medium text-accent">{s.delta}</p>
+            </motion.div>
+          ))}
+        </div>
+
+        <div className="rounded-2xl p-4 text-white" style={{ background: 'linear-gradient(135deg, rgb(5 150 105 / 1), rgb(16 185 129 / .92))', boxShadow: '0 14px 30px -16px rgb(5 150 105 / .7)' }}>
+          <div className="flex items-center gap-2 mb-2"><Bell className="w-3.5 h-3.5" /><Mono className="text-white/80">MERAJ · GOOD MORNING</Mono></div>
+          <p className="text-sm leading-relaxed">Yesterday is up 18%. Cooking oil is at 3 units. 4 invoices are still pending. Want me to send the reminders?</p>
+          <div className="flex gap-2 mt-3">
+            <span className="inline-flex items-center gap-1 bg-white/20 rounded-full px-3 py-1.5 text-xs font-bold">Send now <Send className="w-3 h-3" /></span>
+            <span className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium text-white/85 border border-white/25">Later</span>
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs text-fg-muted">
+            <Clock className="w-3.5 h-3.5 text-fg-subtle" />
+            <span><strong className="text-fg">2 follow-ups</strong> ready · <strong className="text-fg">4 reminders</strong> drafted</span>
+          </div>
+          <Link to="/signup" className="inline-flex items-center gap-1 text-xs font-bold text-accent-strong">Open dashboard <ArrowRight className="w-3.5 h-3.5" /></Link>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Landing() {
   const [menu, setMenu] = useState(false)
-  const [faq, setFaq] = useState<number | null>(null)
+  const [faq, setFaq] = useState<number | null>(0)
+
   return (
     <div className="min-h-screen bg-paper text-fg">
       {/* ══ 1. NAV ══ */}
       <nav className="sticky top-0 z-50 backdrop-blur-md border-b border-line" style={{ background: 'rgb(var(--paper) / 0.85)' }}>
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2"><Logo /><span className="font-bold text-lg">Cashiea</span></Link>
+          <div className="hidden md:flex items-center gap-6 text-sm text-fg-muted">
+            <a href="#meraj" className="hover:text-fg transition-colors">What Meraj does</a>
+            <a href="#features" className="hover:text-fg transition-colors">Features</a>
+            <a href="#how" className="hover:text-fg transition-colors">How it works</a>
+            <a href="#pricing" className="hover:text-fg transition-colors">Pricing</a>
+            <a href="#faq" className="hover:text-fg transition-colors">FAQ</a>
+          </div>
           <div className="flex items-center gap-2">
-            <Link to="/signup" className="hidden sm:inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-accent-strong text-accent-fg text-sm font-semibold hover:bg-accent transition-colors">Start free trial <ArrowRight className="w-3.5 h-3.5" /></Link>
-            <button onClick={() => setMenu(!menu)} className="flex items-center justify-center w-10 h-10 rounded-full border border-line text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors">{menu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}</button>
+            <Link to="/login" className="hidden sm:inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors">Login</Link>
+            <Link to="/signup" className="hidden sm:inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-accent-strong text-accent-fg text-sm font-semibold hover:bg-accent transition-colors shadow-soft">Start free trial <ArrowRight className="w-3.5 h-3.5" /></Link>
+            <button onClick={() => setMenu(!menu)} className="md:hidden flex items-center justify-center w-10 h-10 rounded-full border border-line text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors">{menu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}</button>
           </div>
         </div>
-        {menu && <div className="sm:hidden border-t border-line px-4 py-3 space-y-1">
+        {menu && <div className="md:hidden border-t border-line px-4 py-3 space-y-1">
           <Link to="/login" className="block py-2 text-sm text-fg-muted">Login</Link>
           <Link to="/signup" className="block py-2 text-sm font-semibold text-accent">Start free trial</Link>
           <a href="#meraj" onClick={() => setMenu(false)} className="block py-2 text-sm text-fg-muted">What Meraj does</a>
           <a href="#features" onClick={() => setMenu(false)} className="block py-2 text-sm text-fg-muted">Features</a>
+          <a href="#how" onClick={() => setMenu(false)} className="block py-2 text-sm text-fg-muted">How it works</a>
           <a href="#pricing" onClick={() => setMenu(false)} className="block py-2 text-sm text-fg-muted">Pricing</a>
           <a href="#faq" onClick={() => setMenu(false)} className="block py-2 text-sm text-fg-muted">FAQ</a>
         </div>}
       </nav>
 
       {/* ══ 2. HERO ══ */}
-      <section className="relative overflow-hidden px-4 pt-20 pb-16">
-        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at top, rgb(var(--accent) / 0.08), transparent 60%)' }} />
-        <div className="relative max-w-3xl mx-auto text-center">
-          <Reveal>
-            <Mono className="text-accent inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full mb-6" >
-              <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" /> CASHIEA / EVERYTHING A SHOP NEEDS
-            </Mono>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.05] tracking-tight text-fg">
-              Meet Meraj — the staff member<br className="hidden sm:block" /> who does a <span className="text-accent">manager’s job</span>.
-            </h1>
-            <p className="mt-5 text-base sm:text-lg text-fg-muted max-w-xl mx-auto leading-relaxed">
-              He bills, tracks stock, chases payments, keeps the khata, and reports to you every morning. Cashiea is all a shop needs to run the business — from counter to books.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">
-              <Link to="/signup" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-accent-strong text-accent-fg text-sm font-bold hover:bg-accent transition-colors">
-                Start free trial <ArrowRight className="w-4 h-4" />
-              </Link>
-              <a href="#meraj" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-fg text-paper text-sm font-bold hover:opacity-90 transition-opacity">
-                See what Meraj does <ArrowDown className="w-4 h-4" />
-              </a>
-            </div>
+      <section className="relative overflow-hidden px-4 pt-14 pb-16 sm:pt-20 sm:pb-24">
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 20% -10%, rgb(var(--accent) / 0.12), transparent 60%), radial-gradient(ellipse at 90% 20%, rgb(var(--gold) / 0.10), transparent 55%)' }} />
+        <div className="relative max-w-7xl mx-auto grid lg:grid-cols-[1.05fr_0.95fr] gap-12 items-center">
+          <div className="text-center lg:text-left">
+            <Reveal>
+              <Mono className="text-accent inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-3.5 py-2 mb-6">
+                <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /> CASHIEA / AI FOR THE INDIAN SHOP
+              </Mono>
+            </Reveal>
+            <Reveal delay={40}>
+              <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-bold leading-[1.05] tracking-tight text-fg">
+                The manager who never sleeps.<br className="hidden sm:block" />
+                <span className="text-accent">Costs ₹250 a day.</span>
+              </h1>
+            </Reveal>
+            <Reveal delay={90}>
+              <p className="mt-5 text-base sm:text-lg text-fg-muted max-w-xl mx-auto lg:mx-0 leading-relaxed">
+                Meraj bills at the counter, chases every pending payment, catches low stock before it hurts, sends GST-ready invoices, and gives you tomorrow’s plan in today’s report — so your shop earns more even when you’re busy making it earn.
+              </p>
+            </Reveal>
+            <Reveal delay={140}>
+              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 mt-8">
+                <Link to="/signup" className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-accent-strong text-accent-fg text-sm font-bold hover:bg-accent hover:shadow-lift transition-all">Start your 14-day free trial <ArrowRight className="w-4 h-4" /></Link>
+                <a href="#meraj" className="inline-flex items-center gap-2 px-7 py-4 rounded-full bg-fg text-paper text-sm font-bold hover:opacity-90 transition-opacity">See what Meraj does <ArrowDown className="w-4 h-4" /></a>
+              </div>
+            </Reveal>
+            <Reveal delay={190}>
+              <div className="mt-7 flex flex-wrap justify-center lg:justify-start gap-2">
+                {TRUST_POINTS.map((t) => <TrustPill key={t.text} icon={t.icon}>{t.text}</TrustPill>)}
+              </div>
+            </Reveal>
+          </div>
+          <Reveal delay={120} className="relative">
+            <HeroDashboard />
           </Reveal>
         </div>
       </section>
 
-      {/* ══ 3. SIGNAL & FLOATING CARDS ══ */}
-      <section id="meraj" className="relative px-4 py-20" style={{ background: 'rgb(var(--surface))' }}>
+      {/* ══ 3. SOCIAL PROOF METRICS ══ */}
+      <section className="px-4 py-16" style={{ background: 'rgb(var(--surface))' }}>
+        <div className="max-w-6xl mx-auto">
+          <Reveal className="text-center mb-10">
+            <SectionEyebrow>01 / PROOF, NOT PROMISES</SectionEyebrow>
+            <h2 className="mt-3 text-3xl sm:text-4xl font-bold leading-tight text-fg">Why shops that try it<br className="hidden sm:block" /><span className="text-accent">don’t want to go back.</span></h2>
+          </Reveal>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {PROOF_METRICS.map((m, i) => (
+              <Reveal key={m.label} delay={i * 50}>
+                <div className="card card-hover p-5 text-center h-full">
+                  <p className="text-3xl font-bold text-accent-strong">{m.value}</p>
+                  <p className="mt-1 text-sm font-bold text-fg">{m.label}</p>
+                  <p className="mt-1 text-xs text-fg-subtle leading-relaxed">{m.note}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+          <Reveal delay={220} className="mt-10 text-center">
+            <p className="text-sm text-fg-muted max-w-xl mx-auto">These are the numbers our owners report after their first month. We’d rather show the outcome than a wall of features.</p>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ══ 4. TESTIMONIALS ══ */}
+      <section className="px-4 py-16">
+        <div className="max-w-6xl mx-auto">
+          <Reveal className="text-center mb-10">
+            <SectionEyebrow>02 / IN THEIR WORDS</SectionEyebrow>
+            <h2 className="mt-3 text-3xl sm:text-4xl font-bold leading-tight text-fg">Built for the shop.<br /><span className="text-accent">Trusted by the person who closes it.</span></h2>
+          </Reveal>
+          <div className="grid md:grid-cols-3 gap-3">
+            {TESTIMONIALS.map((t, i) => (
+              <Reveal key={t.name} delay={i * 60}>
+                <figure className="card card-hover h-full p-6 flex flex-col">
+                  <div className="mb-4 flex gap-1 text-accent">{[...Array(5)].map((_, j) => <span key={j} className="text-sm">★</span>)}</div>
+                  <blockquote className="text-sm text-fg-muted leading-relaxed flex-1">“{t.quote}”</blockquote>
+                  <figcaption className="mt-5 flex items-center gap-3">
+                    <span className="w-10 h-10 rounded-full bg-accent/10 text-accent-strong flex items-center justify-center text-sm font-bold">{t.initials}</span>
+                    <div>
+                      <p className="text-sm font-bold text-fg">{t.name}</p>
+                      <p className="text-xs text-fg-subtle">{t.role}</p>
+                    </div>
+                  </figcaption>
+                </figure>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══ 5. HOW IT WORKS ══ */}
+      <section id="how" className="px-4 py-20" style={{ background: 'rgb(var(--surface))' }}>
+        <div className="max-w-6xl mx-auto">
+          <Reveal className="text-center mb-12">
+            <SectionEyebrow>03 / HOW IT WORKS</SectionEyebrow>
+            <h2 className="mt-3 text-3xl sm:text-4xl font-bold leading-tight text-fg">From shop to system in 3 steps.</h2>
+            <p className="mt-4 text-sm text-fg-muted max-w-xl mx-auto">No IT guy. No migration call. No weekend lost to setup.</p>
+          </Reveal>
+          <div className="grid md:grid-cols-3 gap-3">
+            {STEPS.map((s, i) => (
+              <Reveal key={s.n} delay={i * 50}>
+                <div className="card card-hover h-full p-6 relative overflow-hidden">
+                  <Mono className="text-accent-strong text-lg">{s.n}</Mono>
+                  <h3 className="mt-4 text-lg font-bold text-fg">{s.title}</h3>
+                  <p className="mt-2 text-sm text-fg-muted leading-relaxed">{s.desc}</p>
+                  {i < 2 && <ArrowRight className="hidden md:block absolute top-1/2 -right-4 w-8 h-8 text-line-2" />}
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══ 6. MERAJ WATCHES YOUR SHOP ══ */}
+      <section id="meraj" className="relative px-4 py-20">
         <div className="max-w-4xl mx-auto">
-          <Reveal className="text-center mb-12"><Mono className="text-fg-subtle">01 / MERAJ WATCHES YOUR SHOP</Mono></Reveal>
+          <Reveal className="text-center mb-12">
+            <SectionEyebrow>04 / MERAJ WATCHES YOUR SHOP</SectionEyebrow>
+            <h2 className="mt-3 text-3xl sm:text-4xl font-bold leading-tight text-fg">It sees what you can’t see during rush hour.</h2>
+          </Reveal>
 
           <div className="relative max-w-2xl mx-auto">
             <div className="relative mx-auto w-56 h-56 mb-8 sm:mb-0">
@@ -195,9 +430,7 @@ export default function Landing() {
               <motion.div animate={{ y: [0, -6, 0] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }} className="absolute inset-0 flex items-center justify-center">
                 <MerajDevice interactionState="idle" businessMood="happy" size="md" context="panel" />
               </motion.div>
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-fg text-paper text-[10px] font-mono whitespace-nowrap z-10">
-                Meraj is watching
-              </div>
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-fg text-paper text-[10px] font-mono whitespace-nowrap z-10">Meraj is watching</div>
             </div>
 
             <div className="hidden sm:block">
@@ -232,12 +465,12 @@ export default function Landing() {
         </motion.div>
       </div>
 
-      {/* ══ 4. THE 90% SHOWCASE — a manager's job list ══ */}
+      {/* ══ 7. THE 90% SHOWCASE ─ a manager's job list ══ */}
       <section className="relative px-4 py-24 overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'radial-gradient(ellipse at center, rgb(var(--accent) / 0.06), transparent 50%)' }} />
         <Reveal className="relative max-w-3xl mx-auto text-center">
-          <Mono className="text-fg-subtle block mb-3">02 / THE MANAGER’S JOB LIST</Mono>
-          <h2 className="text-3xl sm:text-4xl font-bold leading-tight text-fg">90% of a manager’s work,<br /><span className="text-accent">done before you ask.</span></h2>
+          <SectionEyebrow>05 / THE MANAGER’S JOB LIST</SectionEyebrow>
+          <h2 className="mt-3 text-3xl sm:text-4xl font-bold leading-tight text-fg">90% of a manager’s work,<br /><span className="text-accent">done before you ask.</span></h2>
           <p className="mt-4 text-sm text-fg-muted max-w-xl mx-auto">The jobs that eat a shop owner’s evening are exactly what Meraj does all day. You keep the decisions — he does the legwork.</p>
         </Reveal>
         <div className="relative max-w-2xl mx-auto mt-10 space-y-2">
@@ -259,13 +492,13 @@ export default function Landing() {
         </Reveal>
       </section>
 
-      {/* ══ 5. HOW MERAJ THINKS ══ */}
+      {/* ══ 8. HOW MERAJ THINKS ══ */}
       <section id="thinking" className="px-4 py-8">
         <Reveal className="max-w-5xl mx-auto">
           <div className="rounded-3xl p-8 sm:p-14" style={{ background: 'rgb(var(--accent-strong))' }}>
-            <Mono className="text-accent-fg/70 block mb-4">03 / HOW MERAJ THINKS</Mono>
-            <h2 className="text-3xl sm:text-4xl font-bold text-accent-fg leading-tight mb-3">Spots. Understands. Guides.</h2>
-            <p className="text-sm text-accent-fg/80 max-w-lg mb-8 leading-relaxed">
+            <SectionEyebrow className="text-white/70">06 / HOW MERAJ THINKS</SectionEyebrow>
+            <h2 className="mt-3 text-3xl sm:text-4xl font-bold text-white leading-tight mb-3">Spots. Understands. Guides.</h2>
+            <p className="text-sm text-white/80 max-w-lg mb-8 leading-relaxed">
               Meraj watches every invoice, product, and payment as it happens. When something needs you, you get one clear action — ready to send. You approve before it goes out.
             </p>
             <ThinkingRoom />
@@ -273,18 +506,18 @@ export default function Landing() {
         </Reveal>
       </section>
 
-      {/* ══ 6. FEATURE GRID — everything a shop needs ══ */}
+      {/* ══ 9. FEATURE GRID — everything a shop needs ══ */}
       <section id="features" className="px-4 py-20" style={{ background: 'rgb(var(--surface))' }}>
         <div className="max-w-5xl mx-auto">
           <Reveal className="text-center mb-10">
-            <Mono className="text-fg-subtle block mb-3">04 / THE COMPLETE TOOLKIT</Mono>
-            <h2 className="text-2xl sm:text-3xl font-bold text-fg leading-tight">One app. <span className="text-accent">The whole shop.</span></h2>
+            <SectionEyebrow>07 / THE COMPLETE TOOLKIT</SectionEyebrow>
+            <h2 className="mt-3 text-2xl sm:text-3xl font-bold text-fg leading-tight">One app. <span className="text-accent">The whole shop.</span></h2>
             <p className="text-sm text-fg-muted mt-3 max-w-lg mx-auto">Stop stitching together a billing machine, a khata register, WhatsApp, and an accountant’s spreadsheet. Cashiea runs it all.</p>
           </Reveal>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {FEATURES.map((f, i) => (
               <Reveal key={f.label} delay={i * 40}>
-                <div className="card p-4 h-full">
+                <div className="card card-hover p-4 h-full">
                   <span className="w-9 h-9 rounded-2xl bg-accent-soft text-accent flex items-center justify-center mb-3"><f.icon className="w-4 h-4" strokeWidth={1.75} /></span>
                   <p className="text-sm font-bold text-fg">{f.label}</p>
                   <p className="text-xs text-fg-muted mt-1 leading-relaxed">{f.desc}</p>
@@ -300,32 +533,86 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ══ PRICING ══ */}
-      <section id="pricing" className="px-4 py-20">
-        <Reveal className="max-w-md mx-auto text-center">
-          <div className="card p-8">
-            <Mono className="text-fg-subtle block mb-2">CASHIEA</Mono>
-            <p className="text-4xl font-bold text-fg">₹7,500<span className="text-lg font-medium text-fg-muted">/mo</span></p>
-            <p className="text-sm text-fg-muted mt-1">Everything included. No tiers.</p>
-            <div className="mt-6 space-y-2 text-left">
-              {['Meraj AI — 90% of a manager’s work', 'GST tax invoices + UPI QR payments', 'Counter POS with split payments & offline mode', 'Khata, stock alerts, CSV import', 'Daily WhatsApp reports & payment reminders', 'AI reports with PDF & Excel export', 'Recurring invoices & cash reconciliation', '14-day free trial'].map((f) => (
-                <div key={f} className="flex items-center gap-2 text-sm text-fg-muted"><Check className="w-4 h-4 text-positive flex-shrink-0" /> {f}</div>
-              ))}
-            </div>
-            <Link to="/signup" className="btn-primary w-full mt-6 rounded-full">Start free trial</Link>
-            <p className="text-xs text-fg-subtle mt-3">No setup fee. Cancel anytime. GST as applicable.</p>
-          </div>
-        </Reveal>
+      {/* ══ 10. SECURITY & TRUST ══ */}
+      <section className="px-4 py-16">
+        <div className="max-w-6xl mx-auto">
+          <Reveal className="grid md:grid-cols-3 gap-3">
+            {SECURITY_POINTS.map((s, i) => (
+              <Reveal key={s.title} delay={i * 50}>
+                <div className="card card-hover h-full p-6">
+                  <span className="w-11 h-11 rounded-2xl bg-accent/10 text-accent-strong flex items-center justify-center mb-4"><s.icon className="w-5 h-5" strokeWidth={1.75} /></span>
+                  <h3 className="text-base font-bold text-fg">{s.title}</h3>
+                  <p className="mt-2 text-sm text-fg-muted leading-relaxed">{s.desc}</p>
+                </div>
+              </Reveal>
+            ))}
+          </Reveal>
+        </div>
       </section>
 
-      {/* ══ FAQ ══ */}
-      <section id="faq" className="px-4 py-16" style={{ background: 'rgb(var(--surface))' }}>
+      {/* ══ 11. VALUE / PRICING ══ */}
+      <section id="pricing" className="px-4 py-20" style={{ background: 'rgb(var(--surface))' }}>
+        <div className="max-w-6xl mx-auto">
+          <Reveal className="text-center mb-12">
+            <SectionEyebrow>08 / THE MATH</SectionEyebrow>
+            <h2 className="mt-3 text-3xl sm:text-4xl font-bold leading-tight text-fg">The price that makes sense.</h2>
+            <p className="mt-4 text-sm text-fg-muted max-w-xl mx-auto">Most shops waste more than ₹7,500 a month on forgotten dues, late stock and hours of bookkeeping. Cashiea is the cheapest full-time employee you’ll ever hire.</p>
+          </Reveal>
+
+          <div className="grid lg:grid-cols-2 gap-5 items-start">
+            <Reveal>
+              <div className="card card-hover p-8">
+                <Mono className="text-fg-subtle block mb-2">CASHIEA</Mono>
+                <p className="text-5xl font-bold text-fg">₹7,500<span className="text-lg font-medium text-fg-muted">/mo</span></p>
+                <p className="text-sm text-fg-muted mt-2">That’s <strong className="text-fg">₹250/day</strong> — less than one biryani, for the employee who never takes leave.</p>
+                <div className="mt-6 space-y-2 text-left">
+                  {['Meraj AI — 90% of a manager’s work', 'GST tax invoices + UPI QR payments', 'Counter POS with split payments & offline mode', 'Khata, stock alerts, CSV import', 'Daily WhatsApp reports & payment reminders', 'AI reports with PDF & Excel export', 'Recurring invoices & cash reconciliation', '14-day free trial'].map((f) => (
+                    <div key={f} className="flex items-center gap-2 text-sm text-fg-muted"><Check className="w-4 h-4 text-positive flex-shrink-0" /> {f}</div>
+                  ))}
+                </div>
+                <Link to="/signup" className="btn-primary w-full mt-6 rounded-full">Start free trial</Link>
+                <p className="text-xs text-fg-subtle mt-3 text-center">No setup fee. No lock-in. Cancel anytime. GST as applicable.</p>
+              </div>
+            </Reveal>
+
+            <Reveal delay={80}>
+              <div className="card card-hover p-6">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {COMPARE.map((c) => (
+                    <div key={c.label} className={`rounded-2xl border p-5 ${c.tone === 'accent' ? 'border-accent/30 bg-accent/5' : 'border-line bg-surface-2/50'}`}>
+                      <p className={`text-sm font-bold ${c.tone === 'accent' ? 'text-accent-strong' : 'text-fg'}`}>{c.label}</p>
+                      <ul className="mt-4 space-y-2.5">
+                        {c.lines.map((line) => (
+                          <li key={line} className="flex items-start gap-2 text-xs text-fg-muted leading-relaxed">
+                            <span className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${c.tone === 'accent' ? 'bg-accent text-accent-fg' : 'bg-surface-3 text-fg-subtle'}`}><Check className="w-2.5 h-2.5" /></span>
+                            {line}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 rounded-2xl border border-warning/30 bg-warning/10 p-4">
+                  <p className="text-sm text-fg font-semibold">Your return math</p>
+                  <p className="mt-1 text-xs text-fg-muted leading-relaxed">If Cashiea helps you recover just <strong className="text-fg">₹2,500</strong> of pending payment — or avoids one stock-out — the month is paid for. Your typical owners report recovering far more.</p>
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* ══ 12. FAQ ══ */}
+      <section id="faq" className="px-4 py-16">
         <div className="max-w-2xl mx-auto">
-          <Reveal><h2 className="text-xl font-bold text-fg mb-6 text-center">Questions</h2></Reveal>
+          <Reveal className="text-center mb-8">
+            <SectionEyebrow>09 / QUESTIONS</SectionEyebrow>
+            <h2 className="mt-3 text-2xl sm:text-3xl font-bold text-fg">Everything you’d ask before you start.</h2>
+          </Reveal>
           <div className="space-y-2.5">
             {FAQS.map((item, i) => (
               <Reveal key={i} delay={i * 30}>
-                <button onClick={() => setFaq(faq === i ? null : i)} className="w-full text-left card p-4">
+                <button onClick={() => setFaq(faq === i ? null : i)} className="w-full text-left card card-hover p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-fg">{item.q}</p>
                     <ChevronDown className={`w-4 h-4 text-fg-subtle transition-transform flex-shrink-0 ${faq === i ? 'rotate-180' : ''}`} />
@@ -338,23 +625,51 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ══ FINAL CTA ══ */}
+      {/* ══ 13. FINAL CTA ══ */}
       <section className="px-4 py-24 relative overflow-hidden">
-        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, rgb(var(--accent) / 0.08), transparent 60%)' }} />
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, rgb(var(--accent) / 0.10), transparent 60%)' }} />
         <Reveal className="relative max-w-xl mx-auto text-center">
           <div className="flex justify-center mb-5"><motion.div animate={{ y: [0, -5, 0] }} transition={{ duration: 3, repeat: Infinity }}><MerajDevice interactionState="idle" businessMood="happy" size="sm" context="panel" /></motion.div></div>
+          <Mono className="inline-flex items-center gap-2 mb-4 rounded-full border border-warning/30 bg-warning/10 px-3.5 py-2 text-warning"><Zap className="w-3.5 h-3.5" /> IF IT DOESN’T PAY FOR ITSELF, WALK AWAY</Mono>
           <h2 className="text-2xl sm:text-3xl font-bold text-fg leading-tight">Hire Meraj.<br /><span className="text-accent">Keep the shop that runs itself.</span></h2>
-          <p className="text-sm text-fg-muted mt-3">14-day free trial. No card required. Works on the phone in your pocket.</p>
-          <Link to="/signup" className="inline-flex items-center gap-2 mt-6 px-7 py-3.5 rounded-full bg-accent-strong text-accent-fg text-sm font-bold hover:bg-accent transition-colors">Start free trial <ArrowRight className="w-4 h-4" /></Link>
+          <p className="text-sm text-fg-muted mt-3">14-day free trial. No card required. Works on the phone in your pocket. Every day you wait is a day your dues and stock watch themselves.</p>
+          <Link to="/signup" className="inline-flex items-center gap-2 mt-6 px-8 py-4 rounded-full bg-accent-strong text-accent-fg text-sm font-bold hover:bg-accent hover:shadow-lift transition-all">Start free trial <ArrowRight className="w-4 h-4" /></Link>
+          <p className="mt-4 flex justify-center gap-4 text-[11px] text-fg-subtle"><span className="inline-flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-accent" /> No card</span><span className="inline-flex items-center gap-1"><Lock className="w-3.5 h-3.5 text-accent" /> DPDP-ready</span><span className="inline-flex items-center gap-1"><WifiOff className="w-3.5 h-3.5 text-accent" /> Works offline</span></p>
         </Reveal>
       </section>
 
       {/* ══ FOOTER ══ */}
-      <footer className="border-t border-line py-8 px-4">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2"><Logo size={22} /><span className="font-semibold text-sm">Cashiea</span></div>
-          <div className="flex items-center gap-4 text-xs text-fg-subtle"><Link to="/privacy" className="hover:text-fg">Privacy</Link><Link to="/terms" className="hover:text-fg">Terms</Link><a href="#faq" className="hover:text-fg">FAQ</a></div>
-          <p className="text-xs text-fg-subtle">Built for Indian retail.</p>
+      <footer className="border-t border-line py-10 px-4" style={{ background: 'rgb(var(--paper-deep))' }}>
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row items-start justify-between gap-8">
+            <div className="max-w-xs">
+              <div className="flex items-center gap-2"><Logo size={22} /><span className="font-semibold text-sm">Cashiea</span></div>
+              <p className="mt-3 text-xs text-fg-muted leading-relaxed">POS, CRM, GST billing, khata, WhatsApp automation and AI — built for small Indian shops.</p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 text-xs">
+              <div className="space-y-2">
+                <p className="font-bold text-fg">Product</p>
+                <a href="#meraj" className="block text-fg-muted hover:text-fg transition-colors">Meraj AI</a>
+                <a href="#features" className="block text-fg-muted hover:text-fg transition-colors">Features</a>
+                <a href="#pricing" className="block text-fg-muted hover:text-fg transition-colors">Pricing</a>
+              </div>
+              <div className="space-y-2">
+                <p className="font-bold text-fg">Get started</p>
+                <Link to="/signup" className="block text-fg-muted hover:text-fg transition-colors">Sign up free</Link>
+                <Link to="/login" className="block text-fg-muted hover:text-fg transition-colors">Login</Link>
+                <a href="#faq" className="block text-fg-muted hover:text-fg transition-colors">FAQ</a>
+              </div>
+              <div className="space-y-2">
+                <p className="font-bold text-fg">Legal</p>
+                <Link to="/privacy" className="block text-fg-muted hover:text-fg transition-colors">Privacy</Link>
+                <Link to="/terms" className="block text-fg-muted hover:text-fg transition-colors">Terms</Link>
+              </div>
+            </div>
+          </div>
+          <div className="mt-8 pt-5 border-t border-line flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p className="text-xs text-fg-subtle">Built for Indian retail. GST-aware. WhatsApp-native. Offline-ready.</p>
+            <p className="text-[11px] text-fg-subtle">© {new Date().getFullYear()} Cashiea · Made with care in India</p>
+          </div>
         </div>
       </footer>
 
