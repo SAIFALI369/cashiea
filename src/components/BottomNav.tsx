@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { useState, useRef } from 'react'
 import clsx from 'clsx'
+import { motion } from './motion'
 import {
   LayoutDashboard, ShoppingCart, Package, Users, Camera,
   Lightbulb,
@@ -71,14 +72,23 @@ const MobileSlot = ({ item }: { item: Item }) => (
     to={item.to}
     end={item.end}
     className={({ isActive }) => clsx(
-      'flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition-colors',
-      isActive ? 'text-accent' : 'text-fg-subtle hover:text-fg'
+      'relative flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition-colors',
+      isActive ? 'text-accent-strong' : 'text-fg-subtle hover:text-fg'
     )}
   >
     {({ isActive }) => (
       <>
-        <item.icon className="w-[22px] h-[22px]" strokeWidth={isActive ? 2.25 : 1.75} />
-        <span className="text-[10px] font-semibold">{item.label}</span>
+        {/* Active pill glides between slots — spring, never teleport. */}
+        {isActive && (
+          <motion.span
+            layoutId="mobile-nav-pill"
+            className="absolute inset-x-2.5 top-1 bottom-1 rounded-xl bg-accent-soft"
+            transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+            aria-hidden="true"
+          />
+        )}
+        <item.icon className="relative w-[22px] h-[22px]" strokeWidth={isActive ? 2.25 : 1.75} />
+        <span className="relative text-[10px] font-semibold">{item.label}</span>
       </>
     )}
   </NavLink>
@@ -90,12 +100,19 @@ const DesktopSlot = ({ item }: { item: Item }) => (
     end={item.end}
     className={({ isActive }) => clsx(
       'group flex flex-col items-center justify-center gap-1 py-2 h-full flex-1 transition-colors relative rounded-t-xl',
-      isActive ? 'text-accent' : 'text-fg-muted hover:text-fg hover:bg-surface-2/60'
+      isActive ? 'text-accent-strong' : 'text-fg-muted hover:text-fg hover:bg-surface-2/60'
     )}
   >
     {({ isActive }) => (
       <>
-        {isActive && <span className="absolute top-0 left-3 right-3 h-0.5 bg-accent rounded-full" />}
+        {isActive && (
+          <motion.span
+            layoutId="desktop-nav-underline"
+            className="absolute top-0 left-3 right-3 h-0.5 bg-accent rounded-full"
+            transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+            aria-hidden="true"
+          />
+        )}
         <item.icon className="w-5 h-5" strokeWidth={isActive ? 2.25 : 1.75} />
         <span className="text-[11px] font-semibold">{item.label}</span>
       </>

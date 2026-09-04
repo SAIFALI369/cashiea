@@ -74,7 +74,7 @@ function ThinkingRoom() {
       <div className="flex flex-wrap gap-2 justify-center mb-6">
         {CONCERNS.map((cn, i) => (
           <button key={cn.key} onClick={() => setSel(i)} className="px-4 py-2 rounded-full text-sm font-medium transition-all"
-            style={{ background: sel === i ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
+            style={{ background: sel === i ? 'rgb(var(--accent-fg) / 0.22)' : 'rgb(var(--accent-fg) / 0.1)', color: 'rgb(var(--accent-fg))', border: '1px solid rgb(var(--accent-fg) / 0.22)' }}>
             {cn.label}
           </button>
         ))}
@@ -82,21 +82,21 @@ function ThinkingRoom() {
       <AnimatePresence mode="wait">
         {c && (
           <motion.div key={c.key} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}
-            className="rounded-3xl p-5" style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.15)' }}>
+            className="rounded-3xl p-5" style={{ background: 'rgb(var(--accent-fg) / 0.1)', border: '1px solid rgb(var(--accent-fg) / 0.16)' }}>
             <div className="flex items-start gap-3 mb-4">
-              <span className="w-8 h-8 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.2)' }}><MerajGlyph size={18} className="text-white" /></span>
-              <p className="text-sm text-white leading-relaxed">{c.diagnosis}</p>
+              <span className="w-8 h-8 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgb(var(--accent-fg) / 0.18)' }}><MerajGlyph size={18} className="text-accent-fg" /></span>
+              <p className="text-sm text-accent-fg leading-relaxed">{c.diagnosis}</p>
             </div>
             <div className="space-y-2">
               {c.steps.map((step, si) => (
                 <motion.div key={si} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 + si * 0.09 }}
-                  className="flex items-center gap-3 p-2.5 rounded-2xl" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                  <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 text-white" style={{ background: 'rgba(255,255,255,0.2)' }}>{si + 1}</span>
-                  <span className="text-sm" style={{ color: 'rgba(255,255,255,0.85)' }}>{step}</span>
+                  className="flex items-center gap-3 p-2.5 rounded-2xl" style={{ background: 'rgb(var(--accent-fg) / 0.08)' }}>
+                  <span className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 text-accent-fg" style={{ background: 'rgb(var(--accent-fg) / 0.18)' }}>{si + 1}</span>
+                  <span className="text-sm text-accent-fg/85">{step}</span>
                 </motion.div>
               ))}
             </div>
-            <Link to="/signup" className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-full bg-white text-sm font-bold" style={{ color: 'rgb(var(--accent-strong))' }}>
+            <Link to="/signup" className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-full bg-paper text-accent-strong text-sm font-bold hover:opacity-90 transition-opacity">
               <Sparkles className="w-4 h-4" /> Try with your data
             </Link>
           </motion.div>
@@ -263,9 +263,9 @@ export default function Landing() {
       <section id="thinking" className="px-4 py-8">
         <Reveal className="max-w-5xl mx-auto">
           <div className="rounded-3xl p-8 sm:p-14" style={{ background: 'rgb(var(--accent-strong))' }}>
-            <Mono className="text-white/70 block mb-4">03 / HOW MERAJ THINKS</Mono>
-            <h2 className="text-3xl sm:text-4xl font-bold text-white leading-tight mb-3">Spots. Understands. Guides.</h2>
-            <p className="text-sm text-white/80 max-w-lg mb-8 leading-relaxed">
+            <Mono className="text-accent-fg/70 block mb-4">03 / HOW MERAJ THINKS</Mono>
+            <h2 className="text-3xl sm:text-4xl font-bold text-accent-fg leading-tight mb-3">Spots. Understands. Guides.</h2>
+            <p className="text-sm text-accent-fg/80 max-w-lg mb-8 leading-relaxed">
               Meraj watches every invoice, product, and payment as it happens. When something needs you, you get one clear action — ready to send. You approve before it goes out.
             </p>
             <ThinkingRoom />

@@ -20,22 +20,19 @@ function Logo({ size = 32 }: { size?: number }) {
   )
 }
 
-const C = { bg: 'rgb(var(--paper))', bgCard: 'rgb(var(--surface))', border: 'rgb(var(--line))', blue: 'rgb(var(--accent))', blueDark: 'rgb(var(--accent-strong))', blueLight: 'rgb(var(--gold))', green: 'rgb(var(--positive))', text: 'rgb(var(--fg))', textBody: 'rgb(var(--fg-muted))', muted: 'rgb(var(--fg-subtle))', red: 'rgb(var(--negative))' }
-
 // ── Defined at MODULE scope on purpose ─────────────────────────────
-// When this lived inside the Login component, every keystroke changed
-// the component's identity, React remounted the <input>, focus was
-// lost and the mobile keyboard dismissed after typing one letter.
-// A stable component keeps the input (and the keyboard) alive.
+// Keeps the <input>'s identity stable across keystrokes so focus (and
+// the mobile keyboard) survives every re-render.
 function Field({ icon: Icon, focusProps, ...props }: any) {
   return (
     <div className="relative group">
-      <Icon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors" style={{ color: C.muted }} />
+      <Icon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-fg-subtle pointer-events-none transition-colors group-focus-within:text-accent" />
       <input
         {...props}
         {...focusProps}
-        className={`${FOCUS_SCROLL_CLASS} w-full pl-12 pr-4 py-3.5 rounded-xl text-base outline-none transition-all duration-200`}
-        style={{ background: 'rgb(var(--surface))', border: `1px solid ${C.border}`, color: C.text }}
+        className={`${FOCUS_SCROLL_CLASS} w-full pl-12 pr-4 py-3.5 rounded-xl text-base bg-surface border border-line text-fg
+                    placeholder:text-fg-subtle outline-none transition-all duration-200 ease-butter
+                    focus:border-accent focus:ring-4 focus:ring-accent/15`}
       />
     </div>
   )
@@ -57,7 +54,11 @@ export default function Login() {
 
   // Mobile-friendly focus: keeps the focused input in view when the
   // on-screen keyboard opens so the keyboard doesn't auto-dismiss.
-  const focusProps = useInputFocus({ focusBorderColor: C.blue, focusShadow: `0 0 0 3px ${C.blue}15`, blurBorderColor: C.border })
+  const focusProps = useInputFocus({
+    focusBorderColor: 'rgb(var(--accent))',
+    focusShadow: '0 0 0 3px rgb(var(--accent) / 0.15)',
+    blurBorderColor: 'rgb(var(--line))',
+  })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -89,23 +90,25 @@ export default function Login() {
   }
 
   return (
-    <div className="flex" style={{ background: C.bg, minHeight: '100dvh' }}>
-      {/* ═══ LEFT: Brand Panel ═══ */}
-      <div className="hidden lg:flex flex-col justify-center w-[45%] p-16 relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${C.blue} 0%, ${C.blueDark} 100%)`, minHeight: '100dvh' }}>
+    <div className="flex min-h-dvh bg-paper">
+      {/* ═══ LEFT: Brand Panel (desktop) ═══ */}
+      <div className="hidden lg:flex flex-col justify-center w-[45%] p-16 relative overflow-hidden bg-gradient-to-br from-accent-strong via-accent-strong to-accent min-h-dvh">
         {/* Glow orbs */}
-        <div className="absolute top-10 right-10 w-80 h-80 rounded-full" style={{ background: `radial-gradient(circle, ${C.blueLight}20 0%, transparent 70%)` }} />
-        <div className="absolute bottom-10 left-10 w-60 h-60 rounded-full" style={{ background: `radial-gradient(circle, white 08 0%, transparent 70%)` }} />
+        <div className="absolute top-10 right-10 w-80 h-80 rounded-full bg-gold/25 blur-3xl animate-drift" aria-hidden="true" />
+        <div className="absolute bottom-10 left-10 w-64 h-64 rounded-full bg-accent-fg/10 blur-3xl animate-drift" style={{ animationDelay: '-6s' }} aria-hidden="true" />
 
         <div className="relative max-w-md">
           <div className="flex items-center gap-3 mb-12">
-            <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center p-1.5"><Logo size={36} /></div>
-            <span className="text-white font-bold text-xl" style={{ fontFamily: '"Plus Jakarta Sans"' }}>Cashiea</span>
+            <div className="w-12 h-12 rounded-2xl bg-accent-fg/15 backdrop-blur flex items-center justify-center p-1.5"><Logo size={36} /></div>
+            <span className="font-bold text-xl text-accent-fg">Cashiea</span>
           </div>
 
-          <h1 className="text-white font-bold mb-6" style={{ fontFamily: '"Plus Jakarta Sans"', fontSize: '36px', lineHeight: 1.25 }}>
+          <h1 className="text-accent-fg font-bold mb-6 text-4xl leading-[1.2] tracking-tight">
             Welcome back to your<br />smart shop assistant.
           </h1>
-          <p className="text-white/70 text-lg leading-relaxed mb-10">Sign in to manage sales, customers, stock, and AI tasks — all from one dashboard.</p>
+          <p className="text-accent-fg/75 text-lg leading-relaxed mb-10">
+            Sign in to manage sales, customers, stock, and AI tasks — all from one dashboard.
+          </p>
 
           <div className="space-y-4">
             {[
@@ -113,67 +116,68 @@ export default function Login() {
               { icon: TrendingUp, text: 'Daily WhatsApp reports with sales insights' },
               { icon: Shield, text: 'Your data is encrypted and private' },
             ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3 text-white/90" style={{ animation: `slideUp 0.5s ease-out ${i * 0.1}s both` }}>
-                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0"><item.icon className="w-4.5 h-4.5" /></div>
+              <div key={i} className="flex items-center gap-3 text-accent-fg/90" style={{ animation: `loginUp 0.5s cubic-bezier(0.22,1,0.36,1) ${i * 0.1 + 0.15}s both` }}>
+                <div className="w-9 h-9 rounded-xl bg-accent-fg/10 flex items-center justify-center flex-shrink-0"><item.icon className="w-4.5 h-4.5" /></div>
                 <span className="text-base">{item.text}</span>
               </div>
             ))}
           </div>
-        </div>
 
-        <style>{`@keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+          <style>{`@keyframes loginUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+        </div>
       </div>
 
       {/* ═══ RIGHT: Form ═══ */}
-      <div className="flex-1 flex items-start justify-center p-4 sm:p-12 py-12 cashiea-form-scroll" style={{ WebkitOverflowScrolling: 'touch' }}>
-        <div className="w-full max-w-[420px]" style={{ animation: 'fadeInUp 0.6s ease-out' }}>
-          <style>{`@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+      <div className="flex-1 flex items-start justify-center p-4 sm:p-12 py-12 cashiea-form-scroll">
+        <div className="w-full max-w-[420px]" style={{ animation: 'formIn 0.6s cubic-bezier(0.22,1,0.36,1) both' }}>
+          <style>{`@keyframes formIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }`}</style>
 
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2.5 mb-10 justify-center">
             <Logo size={40} />
-            <span className="font-bold text-xl" style={{ fontFamily: '"Plus Jakarta Sans"', color: C.text }}>Cashiea</span>
+            <span className="font-bold text-xl text-fg">Cashiea</span>
           </div>
 
           {/* Back link */}
-          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium mb-8 transition-colors" style={{ color: C.muted }} onMouseEnter={e => e.currentTarget.style.color = C.blue} onMouseLeave={e => e.currentTarget.style.color = C.muted}>
+          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium mb-8 text-fg-subtle hover:text-accent transition-colors">
             <ArrowLeft className="w-4 h-4" /> Back to home
           </Link>
 
-          <h2 className="font-bold mb-1" style={{ fontFamily: '"Plus Jakarta Sans"', fontSize: '28px', color: C.text }}>Sign in to Cashiea</h2>
-          <p className="mb-8" style={{ fontSize: '16px', color: C.muted }}>Enter your details to access your dashboard</p>
+          <h2 className="font-bold text-fg text-[28px] tracking-tight mb-1">Sign in to Cashiea</h2>
+          <p className="mb-8 text-base text-fg-muted">Enter your details to access your dashboard</p>
 
           {/* Error message */}
           {error && (
-            <div className="mb-5 p-3.5 rounded-xl text-sm animate-fade-in flex items-center gap-2" style={{ background: C.red + '10', border: `1px solid ${C.red}30`, color: C.red }}>
-              <span>{error}</span>
+            <div className="mb-5 p-3.5 rounded-xl text-sm animate-fade-in bg-negative/10 border border-negative/25 text-negative">
+              {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
             <div>
-              <label className="block text-sm font-semibold mb-1.5" style={{ color: C.text }}>Email Address</label>
+              <label className="block text-sm font-semibold mb-1.5 text-fg">Email Address</label>
               <Field icon={Mail} focusProps={focusProps} type="email" required value={email} onChange={(e: any) => setEmail(e.target.value)} placeholder="your@shop.com" autoComplete="email" inputMode="email" />
             </div>
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-semibold mb-1.5" style={{ color: C.text }}>Password</label>
+              <label className="block text-sm font-semibold mb-1.5 text-fg">Password</label>
               <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors" style={{ color: C.muted }} />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-fg-subtle pointer-events-none transition-colors group-focus-within:text-accent" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   {...focusProps}
-                  className={`${FOCUS_SCROLL_CLASS} w-full pl-12 pr-12 py-3.5 rounded-xl text-base outline-none transition-all duration-200`}
-                  style={{ background: 'rgb(var(--surface))', border: `1px solid ${C.border}`, color: C.text }}
+                  className={`${FOCUS_SCROLL_CLASS} w-full pl-12 pr-12 py-3.5 rounded-xl text-base bg-surface border border-line text-fg
+                              placeholder:text-fg-subtle outline-none transition-all duration-200 ease-butter
+                              focus:border-accent focus:ring-4 focus:ring-accent/15`}
                   placeholder="Enter your password"
                   autoComplete="current-password"
                 />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors" style={{ color: C.muted }} onMouseEnter={e => e.currentTarget.style.color = C.blue} onMouseLeave={e => e.currentTarget.style.color = C.muted}>
+                <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'} className="absolute right-4 top-1/2 -translate-y-1/2 text-fg-subtle hover:text-accent transition-colors">
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
@@ -184,33 +188,33 @@ export default function Login() {
               <label className="flex items-center gap-2 cursor-pointer">
                 <div className="relative">
                   <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="sr-only peer" />
-                  <div className="w-5 h-5 rounded-md border-2 transition-all peer-checked:bg-info peer-checked:border-info" style={{ borderColor: C.border }} />
-                  {remember && <Check className="absolute top-0.5 left-0.5 w-4 h-4 text-white pointer-events-none" />}
+                  <div className="w-5 h-5 rounded-md border-2 border-line transition-all peer-checked:bg-accent peer-checked:border-accent" />
+                  {remember && <Check className="absolute top-0.5 left-0.5 w-4 h-4 text-accent-fg pointer-events-none" />}
                 </div>
-                <span className="text-sm" style={{ color: C.textBody }}>Remember me</span>
+                <span className="text-sm text-fg-muted">Remember me</span>
               </label>
-              <button type="button" onClick={handleForgotPassword} disabled={resetting} className="text-sm font-medium transition-colors" style={{ color: C.blue }} onMouseEnter={e => e.currentTarget.style.color = C.blueDark} onMouseLeave={e => e.currentTarget.style.color = C.blue}>
+              <button type="button" onClick={handleForgotPassword} disabled={resetting} className="text-sm font-medium text-accent hover:text-accent-strong transition-colors disabled:opacity-50">
                 {resetting ? 'Sending...' : 'Forgot password?'}
               </button>
             </div>
 
             {/* Submit */}
-            <button type="submit" disabled={loading} className="w-full font-semibold text-white py-4 rounded-xl transition-all hover:scale-[1.02] hover:shadow-xl flex items-center justify-center gap-2" style={{ fontSize: '16px', background: `linear-gradient(135deg, ${C.blue}, ${C.blueLight})`, boxShadow: `0 6px 20px ${C.blue}25` }}>
+            <button type="submit" disabled={loading} className="btn-primary w-full h-[52px] text-base hover:shadow-glow-accent disabled:hover:shadow-soft">
               {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Signing in...</> : <>Sign In <ArrowRight className="w-5 h-5" /></>}
             </button>
           </form>
 
           {/* Divider */}
           <div className="flex items-center gap-4 my-6">
-            <div className="flex-1 h-px" style={{ background: C.border }} />
-            <span className="text-sm" style={{ color: C.muted }}>or</span>
-            <div className="flex-1 h-px" style={{ background: C.border }} />
+            <div className="hairline flex-1" />
+            <span className="text-sm text-fg-subtle">or</span>
+            <div className="hairline flex-1" />
           </div>
 
           {/* Sign up link */}
-          <p className="text-center text-sm" style={{ color: C.textBody }}>
+          <p className="text-center text-sm text-fg-muted">
             Don't have an account?{' '}
-            <Link to="/signup" className="font-bold transition-colors" style={{ color: C.blue }} onMouseEnter={e => e.currentTarget.style.color = C.blueDark} onMouseLeave={e => e.currentTarget.style.color = C.blue}>
+            <Link to="/signup" className="font-bold text-accent hover:text-accent-strong transition-colors">
               Sign up free
             </Link>
           </p>
