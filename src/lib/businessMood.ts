@@ -68,11 +68,12 @@ export function averageDailyRevenue(
 export function computeBusinessMood(s: BusinessSignals): BusinessMood {
   const significantDrop =
     s.recentAvgDailyRevenue !== null && s.todayRevenue < s.recentAvgDailyRevenue * 0.5
-  // Meraj is a reassuring companion by default. Only a demonstrable revenue
-  // loss changes his face; overdue invoices and low stock get advice cards,
-  // not emotional guilt or alarm.
-  if (significantDrop) return 'sad'
-  return 'happy'
+  if (significantDrop || s.overdueInvoiceCount > 0 || s.lowStockCount > 0) return 'sad'
+
+  const healthySales = s.recentAvgDailyRevenue !== null && s.todayRevenue >= s.recentAvgDailyRevenue
+  if (healthySales) return 'happy'
+
+  return 'neutral'
 }
 
 /**
