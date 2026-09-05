@@ -373,7 +373,11 @@ export default function PageStack({
       <motion.div
         className={clsx('relative z-10 min-w-0 w-full', fullBleed && 'flex-1 flex flex-col min-h-0')}
         style={{ x }}
-        onPointerDown={onPointerDown}
+        onPointerDown={(e) => {
+          // Keep vertical page scrolling native while allowing horizontal swipes.
+          if (e.pointerType !== 'mouse') e.currentTarget.setPointerCapture(e.pointerId)
+          onPointerDown(e)
+        }}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}

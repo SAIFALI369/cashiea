@@ -17,7 +17,7 @@ import { useAuth } from '../context/AuthContext'
 import { getPageContext } from '../lib/pageContext'
 import { useKeyboardShortcuts } from '../lib/useKeyboardShortcuts'
 import { useEdgeDrawer } from '../lib/useSwipeNavigation'
-import { Menu, Settings, ChevronLeft } from 'lucide-react'
+import { Menu, Settings, ChevronLeft, Lightbulb } from 'lucide-react'
 import { useIsDesktop } from '../lib/useIsDesktop'
 
 export default function AppLayout() {
@@ -98,6 +98,9 @@ export default function AppLayout() {
           <div className="flex-1 min-w-0">
             <span className="font-bold text-fg">{pageHeaderName}</span>
           </div>
+          <Link to="/app/suggestions" aria-label="Open suggestions" className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl">
+            <Lightbulb className="w-5 h-5 text-accent" />
+          </Link>
           <QueueBadge />
           <LiveClock />
           <Link to="/app/account" aria-label="Open account & settings" className="relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full">
@@ -145,7 +148,7 @@ export default function AppLayout() {
           talk button). On mobile, the bottom nav's center Meraj handles it;
           we keep the FAB for non-desktop / non-mobile? Keep existing logic
           but hide on desktop where the bottom-nav Meraj slot is visible. */}
-      {showFloatingMeraj && !isDesktop && <FloatingMeraj pathname={location.pathname} />}
+      {showFloatingMeraj && location.pathname !== '/app' && !isDesktop && <FloatingMeraj pathname={location.pathname} />}
       <CommandPalette />
       <SyncManager />
     </div>

@@ -8,7 +8,7 @@ import { useBusinessMood } from '../lib/businessMood'
 import { useMerajThought } from '../lib/useMerajThought'
 import { formatINR } from '../lib/format'
 import {
-  TrendingUp, TrendingDown, Package, Wallet, AlertTriangle, Sparkles,
+  TrendingUp, TrendingDown, Package, Wallet, AlertTriangle, Sparkles, Send, Mic,
   Users, Receipt, ArrowUpRight, Zap, Heart, Coffee, Moon, Sun,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -60,6 +60,7 @@ export default function MerajSection() {
 
   // Pulses are small, live business signals shown alongside Meraj.
   const [pulses, setPulses] = useState<Pulse[]>([])
+  const [ask, setAsk] = useState('')
   const [interaction, setInteraction] = useState<MerajInteractionState>('idle')
   const idleTimer = useRef<number | null>(null)
 
@@ -217,19 +218,26 @@ export default function MerajSection() {
                 exit={{ opacity: 0, y: -4, scale: 0.98 }}
                 transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                 onClick={(e) => { e.stopPropagation(); refreshNow() }}
-                className="relative rounded-2xl rounded-tl-sm bg-surface border border-line px-4 py-3 shadow-soft cursor-pointer hover:border-accent/30 transition-colors"
+                className="relative rounded-[1.4rem] rounded-tl-sm bg-surface/90 border border-accent/15 px-4 py-3 shadow-soft cursor-pointer hover:border-accent/30 transition-colors"
               >
                 <span className="absolute -left-2 top-4 text-accent/40 text-2xl leading-none select-none">💭</span>
                 <p className="text-sm sm:text-base font-semibold text-fg leading-snug pl-3">
-                  {awake ? (thought || 'Sab theek hai, bhai.') : 'So raha hoon… subah milte hain.'}
+                  {awake ? `💡 ${thought || 'Sab theek hai, bhai.'}` : '😴 So raha hoon… subah milte hain.'}
                 </p>
                 <p className="text-[10px] text-fg-subtle mt-1 pl-3">
-                  {awake ? 'Tap bubble for another · Tap card to chat' : 'I rest between 2–5 AM so I am sharp at 5 🌅'}
+                  {awake ? '✨ Tap for another idea · Tap Meraj to chat' : '🌅 I rest between 2–5 AM so I am sharp at 5'}
                 </p>
               </motion.div>
             </AnimatePresence>
           </div>
         </div>
+
+        {/* Ask is part of Meraj now: one character, one conversation surface. */}
+        <form onSubmit={(e) => { e.preventDefault(); const q = ask.trim(); if (q) navigate(`/app/assistant?q=${encodeURIComponent(q)}`) }} className="flex items-center gap-2 rounded-xl border border-line bg-surface/80 px-2 focus-within:border-accent/50 transition-colors" onClick={(e) => e.stopPropagation()}>
+          <input value={ask} onChange={(e) => setAsk(e.target.value)} placeholder="💭 Ask Meraj anything…" className="flex-1 bg-transparent py-2.5 px-2 text-sm text-fg placeholder:text-fg-subtle outline-none min-w-0" />
+          <button type="button" onClick={() => navigate('/app/assistant')} aria-label="Voice" className="w-8 h-8 rounded-lg text-fg-muted hover:text-fg hover:bg-surface-2 flex items-center justify-center"><Mic className="w-4 h-4" /></button>
+          <button type="submit" aria-label="Send" className="w-8 h-8 rounded-lg bg-fg text-paper flex items-center justify-center hover:opacity-90"><Send className="w-4 h-4" /></button>
+        </form>
 
         {/* Bottom: business-at-a-glance pulse chips (creative read) */}
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3 pt-1">

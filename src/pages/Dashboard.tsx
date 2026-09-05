@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
-import MerajDevice from '../components/MerajDevice'
 import MerajSection from '../components/MerajSection'
 import { useBusinessMood } from '../lib/businessMood'
 import { FitAmount } from '../components/FitAmount'
@@ -11,7 +10,7 @@ import { formatINR } from '../lib/format'
 import { dashboardSuggestions } from '../lib/ai'
 import {
   TrendingUp, Wallet, Package, MessageCircle, FileSignature, Users,
-  ArrowRight, AlertTriangle, Send, Mic, ChevronDown, BellRing, Check, X, Sparkles,
+  ArrowRight, AlertTriangle, ChevronDown, BellRing, Check, X, Sparkles,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -322,55 +321,6 @@ export default function Dashboard() {
           that cycles a friend-phrase every hour, and a creative business
           pulse strip showing profit/stocks/sales/problems/growth. */}
       <MerajSection />
-
-      {/* ASK MERAJ bar */}
-      <section>
-        <form onSubmit={(e) => { e.preventDefault(); goAsk() }} className="flex items-center gap-2 rounded-control border border-line bg-surface px-2 focus-within:border-accent/50 transition-colors">
-          <span className="pl-1.5 flex-shrink-0"><MerajDevice interactionState="idle" businessMood={merajMood} size="sm" context="card" /></span>
-          <input
-            value={ask}
-            onChange={(e) => setAsk(e.target.value)}
-            placeholder="Ask Meraj anything…"
-            className="flex-1 bg-transparent py-2.5 text-sm text-fg placeholder:text-fg-subtle outline-none min-w-0"
-          />
-          <button type="button" onClick={() => navigate('/app/assistant')} aria-label="Voice" className="w-8 h-8 rounded-control text-fg-muted hover:text-fg hover:bg-surface-2 flex items-center justify-center flex-shrink-0"><Mic className="w-4 h-4" /></button>
-          <button type="submit" aria-label="Send" className="w-8 h-8 rounded-control bg-fg text-paper flex items-center justify-center flex-shrink-0 hover:opacity-90 transition-opacity"><Send className="w-4 h-4" /></button>
-        </form>
-        {/* Quick bar — suggestion pills. Swipe (or tap X) to take it away;
-            it comes back from the small restore chip. */}
-        {showQuickBar ? (
-          <motion.div
-            data-no-swipe-nav
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.35}
-            onDragEnd={(_, info) => {
-              if (Math.abs(info.offset.x) > 64) hideQuickBar()
-            }}
-            className="relative flex flex-wrap gap-2 mt-2.5 touch-pan-y"
-          >
-            {suggestions.map((s) => (
-              <button key={s} onClick={() => goAsk(s)} className="text-xs font-medium text-fg-muted bg-surface-2 border border-line rounded-full px-3 py-1.5 hover:text-fg hover:border-accent/40 transition-colors">{s}</button>
-            ))}
-            <button onClick={() => navigate('/app/assistant')} className="text-xs font-medium text-accent bg-surface-2 border border-line rounded-full px-3 py-1.5 hover:border-accent/40 transition-colors inline-flex items-center gap-1">More <ChevronDown className="w-3 h-3" /></button>
-            <button
-              onClick={hideQuickBar}
-              aria-label="Hide suggestions"
-              title="Hide suggestions (swipe works too)"
-              className="w-6 h-6 rounded-full flex items-center justify-center text-fg-subtle hover:text-fg hover:bg-surface-2 flex-shrink-0"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </motion.div>
-        ) : (
-          <button
-            onClick={restoreQuickBar}
-            className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-medium text-fg-subtle hover:text-fg bg-surface-2 border border-line rounded-full px-3 py-1.5 transition-colors"
-          >
-            <Sparkles className="w-3 h-3" /> Show suggestions
-          </button>
-        )}
-      </section>
 
       {/* STATS grid — 3 per row (3/3) on tablet+ to feel purpose-built for desktop.
           Kept at 2 per row only on the smallest phones where 3 would crowd. */}
