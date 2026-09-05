@@ -7,6 +7,7 @@ import EmptyState from '../components/ui/EmptyState'
 import { TrendingUp, TrendingDown, Loader2, Landmark, BookOpen, Truck, Wallet, FileSpreadsheet, FileDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { downloadXlsx } from '../lib/xlsx'
+import { round2 } from '../lib/pos'
 
 /**
  * ProfitDashboard — where the shop actually stands.
@@ -38,6 +39,7 @@ export default function ProfitDashboard() {
     cogs: number
     cogsCoverage: number
     expenses: number
+    inventorySpend: number
     supplierDues: number
     khataPending: number
     salesRows: (string | number)[][]
@@ -88,9 +90,15 @@ export default function ProfitDashboard() {
         }
       }
 
-      const salesRevenue = txns.reduce((s, t) => s + Number(t.total || 0), 0)
-      const invoiceRevenue = invoices.reduce((s, i) => s + Number(i.total || 0), 0)
-      const expenseTotal = expenses.reduce((s, e) => s + Number(e.amount || 0), 0)
+      const salesRevenue = round2(txns.reduce((s, t) => s + Number(t.total || 0), 0))
+      const invoiceRevenue = round2(invoices.reduce((s, i) => s + Number(i.total || 0), 0))
+      // Stock purchases (category 'Inventory') are NOT an operating expense:
+      // their cost lands in COGS when the items actually sell. Counting both
+      // would double-charge the same stock.
+      const isInventory = (e: any) => String(e.category || '').toLowerCase() === 'inventory'
+      const operatingExpenses = round2(expenses.filter((e) => !isInventory(e)).reduce((s, e) => s + Number(e.amount || 0), 0))
+      const inventorySpend = round2(expenses.filter(isInventory).reduce((s, e) => s + Number(e.amount || 0), 0))
+      const expenseTotal = operatingExpenses
 
       setData({
         salesRevenue,
@@ -98,6 +106,7 @@ export default function ProfitDashboard() {
         cogs: Math.round(cogs * 100) / 100,
         cogsCoverage: totalLines ? Math.round((cogsLines / totalLines) * 100) : 0,
         expenses: expenseTotal,
+        inventorySpend,
         supplierDues: suppliers.reduce((s, x) => s + Number(x.outstanding || 0), 0),
         khataPending: khata.reduce((s, k) => s + Number(k.amount || 0), 0),
         salesRows: [
@@ -151,7 +160,7 @@ export default function ProfitDashboard() {
     return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>
   }
 
-  if (!data || (data.salesRevenue === 0 && data.invoiceRevenue === 0 && data.expenses === 0)) {
+  if (!data || (data.salesRevenue === 0 && data.invoiceRevenue === 0 && data.expenses === 0 && data.inventorySpend === 0)) {
     return (
       <EmptyState
         icon={TrendingUp}
@@ -166,7 +175,7 @@ export default function ProfitDashboard() {
     { label: 'Invoices paid', value: data.invoiceRevenue, icon: Landmark, tone: 'text-fg' },
     { label: 'COGS (estimated)', value: -data.cogs, icon: Truck, tone: 'text-fg-muted', hint: `${data.cogsCoverage}% of lines had cost data` },
     { label: 'Gross profit', value: figures!.gross, icon: figures!.gross >= 0 ? TrendingUp : TrendingDown, tone: figures!.gross >= 0 ? 'text-positive' : 'text-negative' },
-    { label: 'Expenses', value: -data.expenses, icon: Wallet, tone: 'text-fg-muted' },
+    { label: 'Expenses', value: -data.expenses, icon: Wallet, tone: 'text-fg-muted', hint: data.inventorySpend > 0 ? `excl. ${formatINR(data.inventorySpend, 0)} stock purchases` : undefined },
     { label: 'Net profit', value: figures!.net, icon: figures!.net >= 0 ? TrendingUp : TrendingDown, tone: figures!.net >= 0 ? 'text-positive' : 'text-negative' },
     { label: 'Supplier dues', value: data.supplierDues, icon: Truck, tone: data.supplierDues > 0 ? 'text-warning' : 'text-fg-muted' },
     { label: 'Customer udhaar', value: data.khataPending, icon: BookOpen, tone: data.khataPending > 0 ? 'text-warning' : 'text-fg-muted' },
@@ -213,7 +222,7 @@ export default function ProfitDashboard() {
       </div>
 
       <p className="text-[11px] text-fg-subtle mt-4 leading-relaxed max-w-2xl">
-        COGS is estimated from each sold product's cost price ({data.cogsCoverage}% of sale lines had cost data). Lines without cost data are excluded from COGS, so gross profit may be optimistic — fill in product costs in Stock for a truer picture.
+        COGS is estimated from each sold product's cost price ({data.cogsCoverage}% of sale lines had cost data). Lines without cost data are excluded from COGS, so gross profit may be optimistic — fill in product costs in Stock for a truer picture. Stock purchases logged under the Inventory category are excluded from Expenses here — their cost is counted once, when the items sell.
       </p>
     </div>
   )
