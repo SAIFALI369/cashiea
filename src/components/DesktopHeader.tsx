@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { LiveClock } from './LiveClock'
 import { QueueBadge } from './QueueBadge'
+import { SyncIndicator } from './SyncIndicator'
 import { Avatar } from './Avatar'
 import { CashieaLogo } from './CashieaLogo'
 import { Settings, Search, Menu } from 'lucide-react'
@@ -49,6 +50,7 @@ export default function DesktopHeader({ onMenu, showMenuButton }: { onMenu?: () 
       </button>
 
       <div className="flex items-center gap-2 ml-auto">
+        <SyncIndicator className="hidden xl:inline-flex" />
         <QueueBadge />
         <LiveClock />
         <Link to="/app/account" aria-label="Account & settings" className="relative flex items-center gap-2 rounded-full pl-1 pr-3 h-10 hover:bg-surface-2 transition-colors">
