@@ -84,7 +84,7 @@ export function resolveMerajFace(
   if (interactionState === 'thinking') return 'thinking'
   if (interactionState === 'speaking') return 'speaking'
   // idle → resting mood expression
-  return businessMood === 'happy' ? 'happy' : businessMood === 'sad' ? 'sad' : 'neutral'
+  return businessMood === 'sad' ? 'sad' : 'happy'
 }
 
 const PIXELS: Record<MerajSize, number> = { sm: 48, md: 80, lg: 150 }
@@ -155,7 +155,8 @@ export default function MerajDevice({
   // video loop — the sprite engine is used instead and CSS pins it to
   // its first frame.
   const reducedMotion = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-  const mode: MerajAnimationMode = animationMode ?? (size === 'lg' && !reducedMotion ? 'video' : 'sprite')
+  // Resting Meraj stays still; animation is reserved for real interaction. This avoids an endlessly changing TV screen on the dashboard.
+  const mode: MerajAnimationMode = animationMode ?? 'sprite'
   const { ref: inViewRef, inView } = useInView<HTMLSpanElement>()
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)

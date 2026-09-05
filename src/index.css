@@ -356,10 +356,14 @@ h1, h2, h3 {
 }
 .meraj-glow { animation: meraj-glow 4.5s ease-in-out infinite; }
 /* Soft ground shadow so the device reads as floating, not glued. */
-.meraj-body { filter: drop-shadow(0 10px 18px rgb(var(--shadow) / 0.28)); }
-.meraj-flipbook {
+.meraj-body {
+  /* Premium midnight-teal shell: calmer and more trustworthy than the bright green. */
+  filter: saturate(.62) hue-rotate(126deg) brightness(.82) drop-shadow(0 10px 18px rgb(var(--shadow) / 0.28));
+}
+.meraj-flipbook { animation: none; }
+.meraj-device[data-active='true'] .meraj-flipbook {
   animation: meraj-flipbook 0.667s steps(8, end) infinite;
-  animation-delay: -0.05s; /* de-syncs multiple devices on one screen */
+  animation-delay: -0.05s;
 }
 /* THE SCREEN WINDOW — clips the 8-frame strip to the hole in the body
    (matching its rounded corners) so only ONE frame is ever visible.

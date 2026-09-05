@@ -145,7 +145,7 @@ export default function AppLayout() {
           talk button). On mobile, the bottom nav's center Meraj handles it;
           we keep the FAB for non-desktop / non-mobile? Keep existing logic
           but hide on desktop where the bottom-nav Meraj slot is visible. */}
-      {showFloatingMeraj && !isDesktop && <FloatingMeraj pathname={location.pathname} />}
+      {showFloatingMeraj && location.pathname !== '/app' && !isDesktop && <FloatingMeraj pathname={location.pathname} />}
       <CommandPalette />
       <SyncManager />
     </div>
