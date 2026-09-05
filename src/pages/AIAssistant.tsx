@@ -11,6 +11,7 @@ import MerajDevice, { interactionFromAvatarState } from '../components/MerajDevi
 import { useBusinessMood } from '../lib/businessMood'
 import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft, Plus, MessageCircle, Zap, Wallet, Package, TrendingUp, Receipt, FileText, MessageSquareText, BarChart3, Download, Pencil } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import type { ActivityLog } from '../lib/types'
 import { formatINR } from '../lib/format'
 import toast from 'react-hot-toast'
 
@@ -37,6 +38,18 @@ const GREETINGS = [
 const SCOPE_LABELS: Record<string, string> = {
   receipts: 'Receipts', reports: 'Reports', emails: 'Emails', whatsapp: 'WhatsApp',
   expenses: 'Expenses', profits: 'Profits', stocks: 'Stocks', tasks: 'Tasks',
+}
+
+function timeAgo(iso: string): string {
+  const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000))
+  if (s < 60) return 'just now'
+  const m = Math.floor(s / 60)
+  if (m < 60) return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h}h ago`
+  const d = Math.floor(h / 24)
+  if (d < 7) return `${d}d ago`
+  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 }
 
 function render(md: string) {
@@ -309,6 +322,8 @@ export default function AIAssistant() {
   const [focused, setFocused] = useState(false)
   const [convos, setConvos] = useState<Convo[]>([])
   const [showHistory, setShowHistory] = useState(false)
+  const [showActivity, setShowActivity] = useState(false)
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
   const [mode, setMode] = useState<'ask' | 'task'>('ask')
 
   const [typing, setTyping] = useState(false)
@@ -327,6 +342,19 @@ export default function AIAssistant() {
   const STORE = STORE_BASE + (user?.id ? '_' + user.id : '')
   const CURRENT_KEY = CURRENT_BASE + (user?.id ? '_' + user.id : '')
   const ACTIVE_KEY = ACTIVE_BASE + (user?.id ? '_' + user.id : '')
+
+  // ── Activity pull-out — the clock icon in the header reveals a horizontal
+  //    line of the latest actions (time + money saved), refreshed every 60s. ──
+  useEffect(() => {
+    if (!showActivity || !ownerId) return
+    let active = true
+    const load = () =>
+      supabase.from('activity_logs').select('*').eq('user_id', ownerId).order('created_at', { ascending: false }).limit(12)
+        .then(({ data }) => { if (active) setActivityLogs((data as ActivityLog[]) || []) })
+    load()
+    const id = setInterval(load, 60000)
+    return () => { active = false; clearInterval(id) }
+  }, [showActivity, ownerId])
 
   // ── Morning Briefing: live business snapshot for the empty state ──
   interface Briefing { salesToday: number; pendingCount: number; pendingSum: number; lowStock: number }
@@ -531,7 +559,14 @@ export default function AIAssistant() {
       {/* Top bar: history (left) · title · mark (right) — glassy professional panel */}
       <div className="meraj-head-panel relative z-20">
         <div className="mx-auto w-full max-w-3xl flex items-center gap-3 px-4 py-3">
-          <button onClick={() => setShowHistory(true)} className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2 transition-colors relative" aria-label="Conversation history">
+          <button
+            onClick={() => setShowActivity(v => !v)}
+            className={`min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center transition-colors relative ${
+              showActivity ? 'text-accent-strong bg-accent-soft/60' : 'text-fg-muted hover:text-fg hover:bg-surface-2'
+            }`}
+            aria-label={showActivity ? 'Hide activity' : 'Pull out activity'}
+            title={showActivity ? 'Hide activity' : 'Pull out activity'}
+          >
             <History className="w-5 h-5" strokeWidth={1.75} />
             {convos.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />}
           </button>
@@ -546,6 +581,56 @@ export default function AIAssistant() {
           </div>
           <Link to="/app" className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2"><ArrowLeft className="w-5 h-5" strokeWidth={1.75} /></Link>
         </div>
+
+        {/* Activity pull-out — a horizontal line of the latest actions, opened
+            by the clock icon above. Newest event pulses at the far right. */}
+        <AnimatePresence>
+          {showActivity && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="overflow-hidden"
+            >
+              <div className="mx-auto w-full max-w-3xl px-4 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0 relative py-2.5">
+                    <div className="absolute left-0 right-0 top-[13px] h-px" style={{ background: 'rgb(var(--line-2))' }} />
+                    {activityLogs.length === 0 ? (
+                      <p className="relative text-[10px] text-fg-subtle">No activity yet — ask me to do your first task.</p>
+                    ) : (
+                      <div className="relative flex items-start justify-between gap-2 overflow-x-auto">
+                        {activityLogs.slice(0, 7).reverse().map((log, i, arr) => {
+                          const newest = i === arr.length - 1
+                          return (
+                            <div
+                              key={log.id}
+                              className="flex flex-col items-center gap-1 min-w-[64px]"
+                              title={`${log.description || log.action_type} · ${timeAgo(log.created_at)} · +${log.time_saved_minutes}m saved · ₹${Number(log.money_saved || 0).toFixed(0)}`}
+                            >
+                              <span
+                                className={`relative z-10 rounded-full ${newest ? 'w-3 h-3' : 'w-2.5 h-2.5'}`}
+                                style={{ background: 'rgb(var(--paper))', borderColor: newest ? 'rgb(var(--accent-strong))' : 'rgb(var(--line-2))', borderWidth: 2 }}
+                              >
+                                {newest && <span className="absolute inset-0 rounded-full animate-ping" style={{ background: 'rgb(var(--accent) / 0.35)' }} />}
+                              </span>
+                              <span className="text-[9px] font-semibold uppercase tracking-wide text-fg-subtle truncate max-w-full">{log.action_type}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  {convos.length > 0 && (
+                    <button onClick={() => setShowHistory(true)} className="text-[10px] font-bold whitespace-nowrap text-accent hover:text-accent-strong">Chats</button>
+                  )}
+                  <Link to="/app/activity" className="text-[10px] font-bold whitespace-nowrap text-accent hover:text-accent-strong">View all</Link>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* ── Segmented control: Ask | Execute (the command-center toggle) ── */}
