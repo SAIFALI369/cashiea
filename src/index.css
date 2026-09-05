@@ -369,7 +369,7 @@ h1, h2, h3 {
 /* Soft ground shadow so the device reads as floating, not glued. */
 .meraj-body {
   /* Premium midnight-teal shell: calmer and more trustworthy than the bright green. */
-  filter: saturate(.62) hue-rotate(126deg) brightness(.82) drop-shadow(0 10px 18px rgb(var(--shadow) / 0.28));
+  filter: sepia(.28) saturate(1.35) hue-rotate(58deg) brightness(.9) drop-shadow(0 10px 18px rgb(var(--shadow) / 0.28));
 }
 .meraj-flipbook { animation: none; }
 .meraj-device[data-active='true'] .meraj-flipbook {

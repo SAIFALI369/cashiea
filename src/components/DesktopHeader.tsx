@@ -5,7 +5,7 @@ import { QueueBadge } from './QueueBadge'
 import { SyncIndicator } from './SyncIndicator'
 import { Avatar } from './Avatar'
 import { CashieaLogo } from './CashieaLogo'
-import { Settings, Search, Menu } from 'lucide-react'
+import { Settings, Search, Menu, Lightbulb } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 /**
@@ -50,6 +50,10 @@ export default function DesktopHeader({ onMenu, showMenuButton }: { onMenu?: () 
       </button>
 
       <div className="flex items-center gap-2 ml-auto">
+        <Link to="/app/suggestions" aria-label="Open suggestions" title="Suggestions" className="relative icon-btn w-10 h-10 min-w-10">
+          <Lightbulb className="w-4.5 h-4.5 text-accent" />
+          <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-positive ring-2 ring-surface" aria-label="New suggestion available" />
+        </Link>
         <SyncIndicator className="hidden xl:inline-flex" />
         <QueueBadge />
         <LiveClock />

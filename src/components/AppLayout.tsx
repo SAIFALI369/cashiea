@@ -17,7 +17,7 @@ import { useAuth } from '../context/AuthContext'
 import { getPageContext } from '../lib/pageContext'
 import { useKeyboardShortcuts } from '../lib/useKeyboardShortcuts'
 import { useEdgeDrawer } from '../lib/useSwipeNavigation'
-import { Menu, Settings, ChevronLeft } from 'lucide-react'
+import { Menu, Settings, ChevronLeft, Lightbulb } from 'lucide-react'
 import { useIsDesktop } from '../lib/useIsDesktop'
 
 export default function AppLayout() {
@@ -98,6 +98,10 @@ export default function AppLayout() {
           <div className="flex-1 min-w-0">
             <span className="font-bold text-fg">{pageHeaderName}</span>
           </div>
+          <Link to="/app/suggestions" aria-label="Open suggestions" className="relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl">
+            <Lightbulb className="w-5 h-5 text-accent" />
+            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-positive ring-2 ring-surface" aria-label="New suggestion available" />
+          </Link>
           <QueueBadge />
           <LiveClock />
           <Link to="/app/account" aria-label="Open account & settings" className="relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full">
