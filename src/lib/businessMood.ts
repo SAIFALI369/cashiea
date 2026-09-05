@@ -57,23 +57,21 @@ export function averageDailyRevenue(
 }
 
 /**
- * Mood rules:
- *  - 'sad'    → a genuine problem signal: significant sales drop vs.
- *               recent average (< 50% of it), an overdue payment, or
- *               a low-stock alert.
- *  - 'happy'  → today's sales at/above recent average AND no overdue
- *               invoices AND no low-stock alerts.
- *  - 'neutral'→ everything else, including insufficient data yet.
+ * Mood rules (positive by default — the app should feel encouraging):
+ *  - 'sad'    → a demonstrable revenue problem: today's revenue has fallen
+ *               below 50% of the recent daily average. Overdue invoices and
+ *               low stock surface as advice cards instead — they are to-dos,
+ *               not reasons to look devastated.
+ *  - 'happy'  → everything else, including insufficient data yet. Meraj is
+ *               a reassuring companion, not an alarm.
  */
 export function computeBusinessMood(s: BusinessSignals): BusinessMood {
   const significantDrop =
     s.recentAvgDailyRevenue !== null && s.todayRevenue < s.recentAvgDailyRevenue * 0.5
-  if (significantDrop || s.overdueInvoiceCount > 0 || s.lowStockCount > 0) return 'sad'
-
-  const healthySales = s.recentAvgDailyRevenue !== null && s.todayRevenue >= s.recentAvgDailyRevenue
-  if (healthySales) return 'happy'
-
-  return 'neutral'
+  // Only a demonstrable revenue loss changes his face; problems become
+  // advice, not emotional guilt.
+  if (significantDrop) return 'sad'
+  return 'happy'
 }
 
 /**

@@ -83,8 +83,9 @@ export function resolveMerajFace(
   if (interactionState === 'listening') return 'listening'
   if (interactionState === 'thinking') return 'thinking'
   if (interactionState === 'speaking') return 'speaking'
-  // idle → resting mood expression
-  return businessMood === 'happy' ? 'happy' : businessMood === 'sad' ? 'sad' : 'neutral'
+  // idle → resting mood expression. Positive by default: only a real
+  // revenue problem puts a sad face on Meraj.
+  return businessMood === 'sad' ? 'sad' : 'happy'
 }
 
 const PIXELS: Record<MerajSize, number> = { sm: 48, md: 80, lg: 150 }
@@ -151,11 +152,11 @@ export default function MerajDevice({
   }, [face])
   const height = PIXELS[size]
   const width = height * (600 / 512) // TV form factor (1.171875 : 1)
-  // Accessibility: users who prefer reduced motion never get the 24fps
-  // video loop — the sprite engine is used instead and CSS pins it to
-  // its first frame.
-  const reducedMotion = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-  const mode: MerajAnimationMode = animationMode ?? (size === 'lg' && !reducedMotion ? 'video' : 'sprite')
+  // The mascot rests still by default — an endlessly looping screen feels
+  // gimmicky. The flipbook animates only while the device is active
+  // (interaction, via data-active), and callers can still opt into the
+  // 24fps video loop explicitly through animationMode.
+  const mode: MerajAnimationMode = animationMode ?? 'sprite'
   const { ref: inViewRef, inView } = useInView<HTMLSpanElement>()
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
