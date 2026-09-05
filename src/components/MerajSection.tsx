@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import MerajDevice, { MerajInteractionState } from './MerajDevice'
 import { useBusinessMood } from '../lib/businessMood'
 import { useMerajThought } from '../lib/useMerajThought'
+import { salesSignal } from '../lib/salesSignal'
 import { formatINR } from '../lib/format'
 import {
   TrendingUp, TrendingDown, Package, Wallet, AlertTriangle, Sparkles, Send, Mic,
@@ -102,13 +103,15 @@ export default function MerajSection() {
         const weekSales = (txWeek.data || []).reduce((s: number, r: any) => s + Number(r.total || 0), 0)
         const customerCount = custRes.count ?? 0
 
-        const delta = yesterdaySales > 0 ? Math.round(((todaySales - yesterdaySales) / yesterdaySales) * 100) : null
+        // Zero sales is NOT a loss — an empty morning stays neutral.
+        const sig = salesSignal(todaySales, yesterdaySales)
         const list: Pulse[] = [
           {
-            label: 'Sales today', icon: delta !== null && delta >= 0 ? TrendingUp : TrendingDown,
+            label: 'Sales today',
+            icon: sig.tone === 'bad' || (sig.tone === 'neutral' && todaySales === 0) ? TrendingDown : TrendingUp,
             value: formatINR(todaySales, 0),
-            tone: delta === null ? 'neutral' : delta >= 0 ? 'good' : 'bad',
-            hint: delta !== null ? `${delta >= 0 ? '+' : ''}${delta}% vs yesterday` : undefined,
+            tone: sig.tone,
+            hint: sig.delta !== null ? `${sig.delta >= 0 ? '+' : ''}${sig.delta}% vs yesterday` : todaySales > 0 ? 'First sales today' : 'No sales yet',
           },
           {
             label: 'Low stock', icon: Package,
