@@ -24,12 +24,6 @@
     --accent-strong: 5 150 105;  /* emerald-600 */
     --accent-soft: 209 250 229;  /* emerald-100 tint */
     --accent-fg: 255 255 255;    /* readable text on accent (dark-on-gold works too) */
-    /* Semantic trust states: use these instead of styling by component mood. */
-    --info: 59 130 246;
-    --ai: 124 92 231;
-    --offline: 234 179 8;
-    --synced: 16 185 129;
-    --pending: 245 158 11;
     --gold: 189 156 99;
     --copper: 167 110 63;
     --olive: 121 128 92;
@@ -58,11 +52,6 @@
     --accent-strong: 214 178 108;
     --accent-soft: 60 49 32;
     --accent-fg: 22 19 16;       /* dark text on gold */
-    --info: 96 165 250;
-    --ai: 167 139 250;
-    --offline: 251 191 36;
-    --synced: 52 211 153;
-    --pending: 251 191 36;
     --gold: 214 178 108;
     --copper: 196 138 88;
     --olive: 142 154 110;
@@ -367,14 +356,10 @@ h1, h2, h3 {
 }
 .meraj-glow { animation: meraj-glow 4.5s ease-in-out infinite; }
 /* Soft ground shadow so the device reads as floating, not glued. */
-.meraj-body {
-  /* Premium midnight-teal shell: calmer and more trustworthy than the bright green. */
-  filter: sepia(.28) saturate(1.35) hue-rotate(58deg) brightness(.9) drop-shadow(0 10px 18px rgb(var(--shadow) / 0.28));
-}
-.meraj-flipbook { animation: none; }
-.meraj-device[data-active='true'] .meraj-flipbook {
+.meraj-body { filter: drop-shadow(0 10px 18px rgb(var(--shadow) / 0.28)); }
+.meraj-flipbook {
   animation: meraj-flipbook 0.667s steps(8, end) infinite;
-  animation-delay: -0.05s;
+  animation-delay: -0.05s; /* de-syncs multiple devices on one screen */
 }
 /* THE SCREEN WINDOW — clips the 8-frame strip to the hole in the body
    (matching its rounded corners) so only ONE frame is ever visible.
