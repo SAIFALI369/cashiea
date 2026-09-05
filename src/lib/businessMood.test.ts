@@ -2,6 +2,12 @@
  * businessMood — the shared signal-detection logic behind Meraj's
  * resting expression, and the face-priority resolution used by
  * <MerajDevice />.
+ *
+ * Mood policy (positive by default): Meraj is a reassuring companion.
+ * Only a demonstrable revenue problem (today's revenue falling below
+ * 50% of the recent daily average) makes him sad. Overdue invoices and
+ * low stock surface as advice cards instead — they are to-dos, not a
+ * reason to look devastated.
  */
 import { describe, it, expect } from 'vitest'
 import {
@@ -27,27 +33,32 @@ describe('computeBusinessMood', () => {
 
   it("is 'sad' on a significant sales drop vs. the recent average", () => {
     expect(computeBusinessMood({ ...base, todayRevenue: 400 })).toBe('sad') // < 50% of avg
+    expect(computeBusinessMood({ ...base, todayRevenue: 100, overdueInvoiceCount: 0, lowStockCount: 0 })).toBe('sad')
   })
 
-  it("is 'sad' when any invoice is overdue", () => {
-    expect(computeBusinessMood({ ...base, overdueInvoiceCount: 1 })).toBe('sad')
+  it("stays 'happy' when an invoice is overdue — that becomes an advice card, not a sad face", () => {
+    expect(computeBusinessMood({ ...base, overdueInvoiceCount: 1 })).toBe('happy')
+    expect(computeBusinessMood({ ...base, overdueInvoiceCount: 5 })).toBe('happy')
   })
 
-  it("is 'sad' when a low-stock alert exists", () => {
-    expect(computeBusinessMood({ ...base, lowStockCount: 1 })).toBe('sad')
+  it("stays 'happy' on a low-stock alert — restock advice, not a sad face", () => {
+    expect(computeBusinessMood({ ...base, lowStockCount: 1 })).toBe('happy')
+    expect(computeBusinessMood({ ...base, lowStockCount: 3 })).toBe('happy')
   })
 
-  it("is 'neutral' on a mild shortfall that isn't a significant drop", () => {
-    expect(computeBusinessMood({ ...base, todayRevenue: 800 })).toBe('neutral')
+  it("stays 'happy' on a mild shortfall that isn't a significant drop", () => {
+    expect(computeBusinessMood({ ...base, todayRevenue: 800 })).toBe('happy')
+    expect(computeBusinessMood({ ...base, todayRevenue: 600 })).toBe('happy')
   })
 
-  it("is 'neutral' when there is insufficient history (no average yet)", () => {
-    expect(computeBusinessMood({ ...base, recentAvgDailyRevenue: null, todayRevenue: 0 })).toBe('neutral')
-    expect(computeBusinessMood({ ...base, recentAvgDailyRevenue: null, todayRevenue: 500 })).toBe('neutral')
+  it("stays 'happy' when there is insufficient history (no average yet)", () => {
+    expect(computeBusinessMood({ ...base, recentAvgDailyRevenue: null, todayRevenue: 0 })).toBe('happy')
+    expect(computeBusinessMood({ ...base, recentAvgDailyRevenue: null, todayRevenue: 500 })).toBe('happy')
   })
 
-  it('lets problem signals win even when sales look healthy', () => {
-    expect(computeBusinessMood({ ...base, todayRevenue: 2000, lowStockCount: 2 })).toBe('sad')
+  it("stays positive when problem signals exist but sales are healthy", () => {
+    expect(computeBusinessMood({ ...base, todayRevenue: 2000, lowStockCount: 2 })).toBe('happy')
+    expect(computeBusinessMood({ ...base, todayRevenue: 2000, overdueInvoiceCount: 1, lowStockCount: 2 })).toBe('happy')
   })
 })
 
@@ -90,9 +101,10 @@ describe('resolveMerajFace (interaction states beat mood)', () => {
     expect(resolveMerajFace('thinking', 'happy')).toBe('thinking')
   })
 
-  it('defers to businessMood only while idle', () => {
+  it('defers to businessMood only while idle (positive by default)', () => {
     expect(resolveMerajFace('idle', 'happy')).toBe('happy')
     expect(resolveMerajFace('idle', 'sad')).toBe('sad')
-    expect(resolveMerajFace('idle', 'neutral')).toBe('neutral')
+    // a 'neutral' input renders as the positive resting face
+    expect(resolveMerajFace('idle', 'neutral')).toBe('happy')
   })
 })
