@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext'
 import { useCan } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import { formatINR } from '../lib/format'
+import { quoteTotals } from '../lib/quoteMath'
+import { nextDocNumber } from '../lib/docnum'
 import type { Quotation, Customer } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
@@ -45,9 +47,14 @@ export default function Quotations() {
   const addItem = () => setForm({ ...form, items: [...form.items, { description: '', quantity: '', unit_price: '' }] })
   const removeItem = (i: number) => setForm({ ...form, items: form.items.filter((_, idx) => idx !== i) })
 
-  const subtotal = form.items.reduce((s, it) => s + (Number(it.quantity) || 0) * (Number(it.unit_price) || 0), 0)
-  const taxAmount = (subtotal * (Number(form.tax_rate) || 0)) / 100
-  const total = subtotal + taxAmount
+  // One source of truth: totals come from the SAME validated lines that get
+  // saved, rounded to the paisa. (The old code summed every form row, then
+  // saved only some of them — stored numbers could disagree with items.)
+  const doc = quoteTotals(form.items, form.tax_rate)
+  const subtotal = doc.subtotal
+  const taxAmount = doc.taxAmount
+  const total = doc.total
+  const invalidRows = form.items.length - doc.lines.length
 
   const selectCustomer = (id: string) => {
     const c = customers.find((x) => x.id === id)
@@ -56,15 +63,15 @@ export default function Quotations() {
 
   const create = async () => {
     if (!isOwner) return toast.error('Only the business owner can create quotations')
-    const validItems = form.items.filter((it) => it.description.trim() && it.quantity)
     if (!form.customer_name.trim()) return toast.error('Customer name required')
-    if (validItems.length === 0) return toast.error('Add at least one item')
-    const quoteNumber = `QT-${Date.now().toString().slice(-7)}`
+    if (doc.lines.length === 0) return toast.error('Add at least one item with a description and quantity')
+    if (invalidRows > 0) toast(`${invalidRows} incomplete row${invalidRows > 1 ? 's' : ''} skipped`, { icon: '⚠️' })
+    const quoteNumber = nextDocNumber('QT')
     const { data, error } = await supabase.from('quotations').insert({
       user_id: ownerId, customer_id: form.customer_id || null, quote_number: quoteNumber,
       customer_name: form.customer_name, customer_email: form.customer_email || null,
-      items: validItems.map((it) => ({ description: it.description, quantity: Number(it.quantity), unit_price: Number(it.unit_price) || 0 })),
-      subtotal, tax_rate: Number(form.tax_rate) || 0, tax_amount: taxAmount, total,
+      items: doc.lines,
+      subtotal, tax_rate: doc.taxRate, tax_amount: taxAmount, total,
       status: 'sent', valid_until: form.valid_until || null, notes: form.notes || null,
     }).select().single()
     if (error) { toast.error(error.message); return }
@@ -76,14 +83,18 @@ export default function Quotations() {
 
   const convertToInvoice = async (q: Quotation) => {
     if (!isOwner) return toast.error('Only the business owner can convert quotations')
-    const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`
+    // Recompute from the stored lines so a legacy quote whose saved totals
+    // drifted converts into a consistent invoice.
+    const t = quoteTotals(q.items, q.tax_rate)
+    if (t.lines.length === 0) { toast.error('This quotation has no valid items to convert'); return }
+    const invoiceNumber = nextDocNumber('INV')
     const { error } = await supabase.from('invoices').insert({
       user_id: ownerId,
       invoice_number: invoiceNumber,
       client_name: q.customer_name,
       client_email: q.customer_email,
-      items: q.items.map((it) => ({ description: it.description, quantity: it.quantity, unit_price: it.unit_price })),
-      subtotal: q.subtotal, tax_rate: q.tax_rate, tax_amount: q.tax_amount, total: q.total,
+      items: t.lines,
+      subtotal: t.subtotal, tax_rate: t.taxRate, tax_amount: t.taxAmount, total: t.total,
       status: 'sent', notes: `Converted from ${q.quote_number}`,
     })
     if (error) { toast.error(error.message); return }

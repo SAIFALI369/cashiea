@@ -122,7 +122,7 @@ export async function gatherBusinessData(ownerId: string, days = 30): Promise<Bu
   if (expenses.length) {
     lines.push(`EXPENSES: total ${rs(expTotal)}${incomeTotal ? `, other income ${rs(incomeTotal)}` : ''}.`)
     if (topExpenses.length) lines.push(`Top expense categories: ${topExpenses.map(([c, v]) => `${c} ${rs(v)}`).join(', ')}.`)
-    lines.push(`Net profit (sales − expenses): ${rs(revenue - expTotal)}.`)
+    lines.push(`Net (sales + other income − expenses): ${rs(round2(revenue + incomeTotal - expTotal))}.`)
   }
   if (invoices.length) {
     lines.push(`RECEIVABLES: ${unpaid.length} unpaid invoices worth ${rs(unpaidTotal)}${overdue.length ? `, ${overdue.length} overdue` : ''}.`)

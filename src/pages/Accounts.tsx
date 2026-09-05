@@ -58,10 +58,11 @@ export default function Accounts() {
     if (!isOwner) { toast.error('Only the business owner can record accounts entries'); return }
     if (!ownerId) { toast.error('Your shop is still loading — please try again'); return }
     if (!form.description.trim()) return toast.error('Description required')
-    if (!form.amount) return toast.error('Amount required')
+    const amount = Number(form.amount)
+    if (!Number.isFinite(amount) || amount <= 0) return toast.error('Enter a valid amount greater than ₹0')
     const { data, error } = await offlineInsert('expenses', {
       user_id: ownerId, type: form.type, category: form.category, description: form.description,
-      amount: Number(form.amount), payment_method: form.payment_method, date: form.date, notes: form.notes || null,
+      amount: Math.round(amount * 100) / 100, payment_method: form.payment_method, date: form.date, notes: form.notes || null,
     })
     if (error) { toast.error(error.message); return }
     setEntries([data as Expense, ...entries])

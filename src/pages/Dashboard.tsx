@@ -8,6 +8,7 @@ import { FitAmount } from '../components/FitAmount'
 import { motion } from '../components/motion'
 import { formatINR } from '../lib/format'
 import { dashboardSuggestions } from '../lib/ai'
+import { salesSignal } from '../lib/salesSignal'
 import {
   TrendingUp, Wallet, Package, MessageCircle, FileSignature, Users,
   ArrowRight, AlertTriangle, ChevronDown, BellRing, Check, X, Sparkles,
@@ -57,6 +58,7 @@ export default function Dashboard() {
   const [dailyExp, setDailyExp] = useState<number[]>([0, 0, 0, 0, 0, 0, 0])
   const [weekSales, setWeekSales] = useState(0)
   const [weekExpenses, setWeekExpenses] = useState(0)
+  const [weekIncome, setWeekIncome] = useState(0)
   const [ask, setAsk] = useState('')
   const [aiGreeting, setAiGreeting] = useState('')
   const [activeDay, setActiveDay] = useState<number | null>(null)
@@ -120,6 +122,7 @@ export default function Dashboard() {
       const orders = Number(s.pending_orders) || 0
       const staffN = Number(s.active_staff) || 0
       const expensesWeek = Number(s.week_expenses) || 0
+      const incomeWeek = Number(s.week_income) || 0
 
       // overdue (from the single RPC)
       const overdue = (s.overdue || []) as OverdueInv[]
@@ -132,16 +135,20 @@ export default function Dashboard() {
       while (buckets.length < 7) buckets.push(0)
       setDaily(buckets)
       setWeekSales(Number(s.week_sales_total) || buckets.reduce((s2: number, v: number) => s2 + v, 0))
-      setDailyExp([0, 0, 0, 0, 0, 0, 0]) // expenses per-day not in RPC; total is used for the chart
+      const expBuckets = (s.week_expenses_daily || []).map((d: any) => Number(d.amount) || 0)
+      while (expBuckets.length < 7) expBuckets.push(0)
+      setDailyExp(expBuckets)
       setWeekExpenses(expensesWeek)
+      setWeekIncome(incomeWeek)
 
       // stats (enriched, dense)
-      const salesDelta = salesYesterday > 0 ? Math.round(((salesToday - salesYesterday) / salesYesterday) * 100) : null
+      // Zero sales is NOT a loss — an empty morning stays neutral.
+      const sig = salesSignal(salesToday, salesYesterday)
       setStats([
         {
           label: 'Sales today', value: formatINR(salesToday, 0), count: salesToday, icon: TrendingUp,
-          delta: salesDelta !== null ? `${salesDelta >= 0 ? '+' : ''}${salesDelta}% vs yesterday` : undefined,
-          deltaTone: salesDelta === null ? 'neutral' : salesDelta >= 0 ? 'good' : 'bad',
+          delta: sig.delta !== null ? `${sig.delta >= 0 ? '+' : ''}${sig.delta}% vs yesterday` : salesToday > 0 ? 'First sales today' : 'No sales yet',
+          deltaTone: sig.tone,
           footer: `Yesterday ${formatINR(salesYesterday, 0)}`, footerTone: 'muted',
           to: '/app/reports',
         },
@@ -189,7 +196,7 @@ export default function Dashboard() {
       // Meraj insights (Hinglish voice, real-derived)
       const ins: Insight[] = []
       if (overdue.length > 0) ins.push({ severity: 'critical', title: `${overdue.length} bill${overdue.length > 1 ? 's' : ''} overdue`, subtitle: `${formatINR(overdue.reduce((s, r) => s + Number(r.total || 0), 0), 0)} collect karna baki hai` })
-      if (salesYesterday > 0 && salesToday < salesYesterday) {
+      if (salesToday > 0 && salesYesterday > 0 && salesToday < salesYesterday) {
         const pct = Math.round(((salesYesterday - salesToday) / salesYesterday) * 100)
         ins.push({ severity: 'warning', title: 'Aaj sales thodi kam hain', subtitle: `Kal ke mukable ${pct}% kam abhi tak` })
       } else if (salesToday > 0) {
@@ -218,7 +225,7 @@ export default function Dashboard() {
       // 1) INSTANT: live-number pills (replaces the old static fallbacks —
       //    these are genuinely smart, built from today's actual data)
       const smartInstant = [
-        `Why ${salesToday < salesYesterday ? 'are sales down' : 'is business strong'} today?`,
+        salesToday === 0 ? 'How do I get the first sale of the day?' : `Why ${salesToday < salesYesterday ? 'are sales down' : 'is business strong'} today?`,
         topPriority ? `How to collect ${formatINR(topAmount, 0)} from ${topPriority.client_name}?` : 'Which customers may delay payments?',
         lowStock > 0 ? `What to reorder (${lowStock} low-stock items)?` : 'Which products to promote this week?',
         'What should I do differently tomorrow?',
@@ -277,7 +284,8 @@ export default function Dashboard() {
   const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
   const maxDay = Math.max(1, ...daily, ...dailyExp)
   const todayIdx = (new Date().getDay() + 6) % 7
-  const weekProfit = weekSales - weekExpenses
+  // Honest weekly net: sales + other income − expenses. ₹0 on a quiet week is neutral, not a profit.
+  const weekProfit = weekSales + weekIncome - weekExpenses
 
   return (
     <div className="animate-fade-in space-y-6 lg:space-y-8">
@@ -367,7 +375,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-5">
             <div><p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Sales</p><p className="text-xl font-bold text-accent tabular-nums">{formatINR(weekSales, 0)}</p></div>
             <div><p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Expenses</p><p className="text-xl font-bold text-fg-muted tabular-nums">{formatINR(weekExpenses, 0)}</p></div>
-            <div><p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Profit</p><p className={`text-xl font-bold tabular-nums ${weekProfit >= 0 ? 'text-positive' : 'text-negative'}`}>{formatINR(weekProfit, 0)}</p></div>
+            <div><p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Profit</p><p className={`text-xl font-bold tabular-nums ${weekProfit > 0 ? 'text-positive' : weekProfit < 0 ? 'text-negative' : 'text-fg-muted'}`}>{formatINR(weekProfit, 0)}</p>{weekIncome > 0 && <p className="text-[10px] text-positive mt-0.5">incl. {formatINR(weekIncome, 0)} other income</p>}</div>
           </div>
 
           {/* Legend */}

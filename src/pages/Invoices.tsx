@@ -6,6 +6,8 @@ import { useCan } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import { validateGstin } from '../lib/validation'
 import { offlineInsert } from '../lib/mutations'
+import { quoteTotals, computeDocTotals } from '../lib/quoteMath'
+import { nextDocNumber } from '../lib/docnum'
 import { callAI, parseAIJson } from '../lib/ai'
 import {
   buildUpiLink, buildInvoiceMessage,
@@ -75,12 +77,14 @@ export default function Invoices() {
       }>(result)
       if (!parsed) throw new Error('Could not parse invoice. Try again.')
 
-      const items = parsed.items || []
-      const subtotal = items.reduce((s, it) => s + (it.quantity || 0) * (it.unit_price || 0), 0)
-      const taxRate = parsed.tax_rate || 0
-      const taxAmount = (subtotal * taxRate) / 100
-      const total = subtotal + taxAmount
-      const invoiceNumber = parsed.invoice_number || `INV-${Date.now()}`
+      const doc = quoteTotals(parsed.items || [], parsed.tax_rate || 0)
+      if (doc.lines.length === 0) throw new Error('Invoice needs at least one valid item (description, quantity and price)')
+      const items = doc.lines
+      const subtotal = doc.subtotal
+      const taxRate = doc.taxRate
+      const taxAmount = doc.taxAmount
+      const total = doc.total
+      const invoiceNumber = parsed.invoice_number || nextDocNumber('INV')
 
       // Build UPI payment link if merchant has a UPI ID set
       let paymentLink: string | null = null
@@ -124,16 +128,19 @@ export default function Invoices() {
     if (!quick.name || !quick.item || !quick.price) return toast.error('Fill name, item, and price')
     if (quick.gstin.trim() && !validateGstin(quick.gstin).valid) return toast.error('Enter a valid 15-character GSTIN')
     setGenerating(true)
-    const qty = Number(quick.qty) || 1
+    const qty = Number(quick.qty)
     const price = Number(quick.price)
-    const total = qty * price
-    const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`
+    if (!Number.isFinite(qty) || qty <= 0) { setGenerating(false); return toast.error('Quantity must be a number greater than 0') }
+    if (!Number.isFinite(price) || price < 0) { setGenerating(false); return toast.error('Enter a valid price') }
+    const doc = computeDocTotals([{ description: quick.item.trim(), quantity: qty, unit_price: price }], 0)
+    const total = doc.total
+    const invoiceNumber = nextDocNumber('INV')
     const { data, error } = await offlineInsert('invoices', {
       user_id: ownerId,
       invoice_number: invoiceNumber,
       client_name: quick.name, client_phone: quick.phone || null,
       client_gstin: quick.gstin.trim().toUpperCase() || null,
-      items: [{ description: quick.item, quantity: qty, unit_price: price }],
+      items: doc.lines,
       subtotal: total, tax_rate: 0, tax_amount: 0, total,
       status: 'sent',
     })
@@ -257,7 +264,7 @@ export default function Invoices() {
 
   // Stats
   const unpaid = invoices.filter((i) => i.status !== 'paid' && i.status !== 'draft')
-  const unpaidTotal = unpaid.reduce((s, i) => s + Number(i.total), 0)
+  const unpaidTotal = unpaid.reduce((s, i) => s + (Number(i.total) || 0), 0)
   const overdueCount = invoices.filter((i) => i.status === 'overdue').length
 
   const filteredInvoices = invoices.filter((inv) => {
