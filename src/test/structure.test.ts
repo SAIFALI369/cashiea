@@ -192,6 +192,7 @@ describe('app pages are linked (sidebar, dashboard, or settings)', () => {
     '/app/team',
     '/app/failed-jobs',
     '/app/auto-reorder',
+    '/app/manifest',
     '/app/cash-flow',
     '/app/reminders',
     '/app/duplicates',
