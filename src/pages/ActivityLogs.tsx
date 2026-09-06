@@ -61,18 +61,18 @@ export default function ActivityLogs() {
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="card p-4">
           <Clock className="w-5 h-5 text-positive mb-1" />
-          <p className="text-xl font-bold text-white">{(totalMinutes / 60).toFixed(1)}h</p>
-          <p className="text-xs text-slate-400">Time saved</p>
+          <p className="text-xl font-bold text-fg">{(totalMinutes / 60).toFixed(1)}h</p>
+          <p className="text-xs text-fg-subtle">Time saved</p>
         </div>
         <div className="card p-4">
-          <DollarSign className="w-5 h-5 text-emerald-400 mb-1" />
-          <p className="text-xl font-bold text-white">${totalMoney.toFixed(0)}</p>
-          <p className="text-xs text-slate-400">Money saved</p>
+          <DollarSign className="w-5 h-5 text-positive mb-1" />
+          <p className="text-xl font-bold text-fg tabular-nums">₹{totalMoney.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+          <p className="text-xs text-fg-subtle">Money saved</p>
         </div>
         <div className="card p-4">
           <History className="w-5 h-5 text-accent mb-1" />
-          <p className="text-xl font-bold text-white">{logs.length}</p>
-          <p className="text-xs text-slate-400">Total actions</p>
+          <p className="text-xl font-bold text-fg">{logs.length}</p>
+          <p className="text-xs text-fg-subtle">Total actions</p>
         </div>
       </div>
 
@@ -83,7 +83,7 @@ export default function ActivityLogs() {
             key={f}
             onClick={() => setFilter(f)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all border ${
-              filter === f ? 'border-accent-strong bg-accent-strong/20 text-accent-strong' : 'border-slate-700 text-slate-400 hover:text-white'
+              filter === f ? 'border-secondary/40 bg-secondary-soft text-secondary-strong' : 'border-line-2 text-fg-subtle hover:text-fg'
             }`}
           >
             {f}
@@ -105,8 +105,8 @@ export default function ActivityLogs() {
                   <Icon className="w-4 h-4 text-accent" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-slate-200 truncate">{log.description || log.action_type}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-sm text-fg-muted truncate">{log.description || log.action_type}</p>
+                  <p className="text-xs text-fg-subtle">
                     {new Date(log.created_at).toLocaleString()} · {log.action_type}
                     {log.provider && ` · ${log.provider}`}
                   </p>
