@@ -42,7 +42,7 @@ export default function DesktopHeader({ onMenu, showMenuButton }: { onMenu?: () 
       {/* Global search bar (Ctrl+K eventually wired) */}
       <button
         onClick={() => window.dispatchEvent(new CustomEvent('cashiea:command-palette'))}
-        className="flex-1 max-w-xl mx-4 flex items-center gap-2 px-4 h-10 rounded-control bg-surface-2 border border-line text-fg-subtle hover:text-fg hover:border-line-2 transition-colors text-sm"
+        className="flex-1 max-w-xl mx-4 flex items-center gap-2 px-4 h-10 rounded-control bg-surface-2 border border-line text-fg-subtle hover:text-fg hover:border-secondary/40 focus-visible:ring-4 focus-visible:ring-secondary/25 outline-none transition-colors text-sm"
       >
         <Search className="w-4 h-4 flex-shrink-0" />
         <span className="truncate text-left flex-1">Search anything… customers, products, bills</span>
@@ -51,7 +51,7 @@ export default function DesktopHeader({ onMenu, showMenuButton }: { onMenu?: () 
 
       <div className="flex items-center gap-2 ml-auto">
         <Link to="/app/suggestions" aria-label="Open suggestions" title="Suggestions" className="icon-btn w-10 h-10 min-w-10">
-          <Lightbulb className="w-4.5 h-4.5 text-accent" />
+          <Lightbulb className="w-4.5 h-4.5 text-secondary" />
         </Link>
         <SyncIndicator className="hidden xl:inline-flex" />
         <QueueBadge />
