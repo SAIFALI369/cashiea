@@ -225,7 +225,7 @@ export default function CampaignBuilder() {
         <div className="lg:col-span-2 space-y-6">
           {/* Basics */}
           <div className="card p-4">
-            <h2 className="font-semibold text-white mb-4">1. Campaign Details</h2>
+            <h2 className="font-semibold text-fg mb-4">1. Campaign Details</h2>
             <div className="space-y-4">
               <div>
                 <label className="label">Campaign Name</label>
@@ -239,7 +239,7 @@ export default function CampaignBuilder() {
                 <div>
                   <label className="label">Tone</label>
                   <select value={tone} onChange={(e) => setTone(e.target.value)} className="input-field">
-                    {tones.map((t) => <option key={t} value={t} className="bg-slate-900 capitalize">{t}</option>)}
+                    {tones.map((t) => <option key={t} value={t} className="bg-surface-3 capitalize">{t}</option>)}
                   </select>
                 </div>
               </div>
@@ -261,14 +261,14 @@ export default function CampaignBuilder() {
           {/* A/B test */}
           <div className="card p-4">
             <label className="flex items-center justify-between cursor-pointer mb-3">
-              <h2 className="font-semibold text-white flex items-center gap-2">
+              <h2 className="font-semibold text-fg flex items-center gap-2">
                 <FlaskConical className="w-4 h-4 text-purple-400" /> A/B Test Subject Lines
               </h2>
               <input type="checkbox" checked={abEnabled} onChange={(e) => setAbEnabled(e.target.checked)} className="w-5 h-5 accent-accent" />
             </label>
             {abEnabled && (
               <div className="animate-fade-in">
-                <p className="text-sm text-slate-400 mb-3">Half your list gets subject A, half gets B. Track which wins.</p>
+                <p className="text-sm text-fg-subtle mb-3">Half your list gets subject A, half gets B. Track which wins.</p>
                 <label className="label">Variant B Subject</label>
                 <input value={variantB} onChange={(e) => setVariantB(e.target.value)} className="input-field" placeholder="An idea worth 2 minutes of your time" />
               </div>
@@ -278,7 +278,7 @@ export default function CampaignBuilder() {
           {/* Follow-ups */}
           <div className="card p-4">
             <label className="flex items-center justify-between cursor-pointer mb-3">
-              <h2 className="font-semibold text-white flex items-center gap-2">
+              <h2 className="font-semibold text-fg flex items-center gap-2">
                 <Repeat className="w-4 h-4 text-cyan-400" /> Follow-up Sequence
               </h2>
               <input type="checkbox" checked={followupEnabled} onChange={(e) => setFollowupEnabled(e.target.checked)} className="w-5 h-5 accent-accent" />
@@ -303,10 +303,10 @@ export default function CampaignBuilder() {
           {/* Recipients */}
           <div className="card p-4">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-white flex items-center gap-2">
+              <h2 className="font-semibold text-fg flex items-center gap-2">
                 <Users className="w-4 h-4 text-accent" /> Recipients
               </h2>
-              <span className="text-xs text-slate-500">{validRecipients.length} valid</span>
+              <span className="text-xs text-fg-subtle">{validRecipients.length} valid</span>
             </div>
 
             <button onClick={() => setShowBulk(!showBulk)} className="btn-secondary text-xs w-full mb-3">
@@ -327,7 +327,7 @@ export default function CampaignBuilder() {
             ) : (
               <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                 {recipients.map((r, i) => (
-                  <div key={i} className="bg-slate-900/60 rounded-lg p-2.5">
+                  <div key={i} className="bg-surface-3/60 rounded-lg p-2.5">
                     <input value={r.email} onChange={(e) => updateRecipient(i, 'email', e.target.value)} className="input-field text-sm py-2 mb-1.5" placeholder="email@company.com" />
                     <div className="grid grid-cols-2 gap-1.5">
                       <input value={r.name} onChange={(e) => updateRecipient(i, 'name', e.target.value)} className="input-field text-xs py-1.5" placeholder="Name" />
@@ -352,7 +352,7 @@ export default function CampaignBuilder() {
 
           {/* Schedule */}
           <div className="card p-4">
-            <h2 className="font-semibold text-white flex items-center gap-2 mb-4">
+            <h2 className="font-semibold text-fg flex items-center gap-2 mb-4">
               <Calendar className="w-4 h-4 text-warning" /> Schedule (optional)
             </h2>
             <input
@@ -361,7 +361,7 @@ export default function CampaignBuilder() {
               onChange={(e) => setScheduledAt(e.target.value)}
               className="input-field"
             />
-            <p className="text-xs text-slate-500 mt-2">Leave empty to launch immediately.</p>
+            <p className="text-xs text-fg-subtle mt-2">Leave empty to launch immediately.</p>
           </div>
 
           {/* Launch */}
@@ -369,7 +369,7 @@ export default function CampaignBuilder() {
             {launching || loadingCampaign ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
             {loadingCampaign ? 'Loading campaign…' : launching ? 'Personalizing & Sending...' : `Launch to ${validRecipients.length} recipients`}
           </button>
-          <p className="text-xs text-slate-500 text-center">
+          <p className="text-xs text-fg-subtle text-center">
             Uses {validRecipients.length} AI actions · {validRecipients.length * 10} min saved
           </p>
         </div>
