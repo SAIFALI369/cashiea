@@ -25,7 +25,7 @@ interface Section { label: string; items: Item[] }
 
 // ── CORE NAVIGATION (always visible — the 80% the shop owner uses daily) ──
 const CORE: Section[] = [
-  { label: 'Today', items: [{ to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true }] },
+  { label: 'Today', items: [{ to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true }, { to: '/app/manifest', label: "Meraj's Plan", icon: CalendarClock, badge: true }] },
   { label: 'Sell', items: [
     { to: '/app/pos', label: 'New Sale', icon: ShoppingCart },
     { to: '/app/invoices', label: 'Bills', icon: Receipt },
