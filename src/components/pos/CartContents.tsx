@@ -255,7 +255,7 @@ export function CartContents({
                 <button
                   key={m}
                   onClick={() => setPaymentMethod(m)}
-                  className={`py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${paymentMethod === m ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}
+                  className={`py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${paymentMethod === m ? 'bg-secondary-soft text-secondary-strong' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}
                 >
                   {m}
                 </button>

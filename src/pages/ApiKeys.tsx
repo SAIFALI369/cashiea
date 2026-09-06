@@ -258,7 +258,7 @@ export default function ApiKeys() {
               key={t}
               onClick={() => setDocTab(t)}
               className={`text-xs font-semibold px-3 h-8 rounded-control border transition-colors ${
-                docTab === t ? 'bg-fg text-paper border-fg' : 'bg-surface text-fg-muted border-line hover:text-fg'
+                docTab === t ? 'bg-secondary-soft text-secondary-strong border-secondary/40' : 'bg-surface text-fg-muted border-line hover:text-fg'
               }`}
             >
               {examples[t].title}

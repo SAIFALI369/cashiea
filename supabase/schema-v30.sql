@@ -1,0 +1,17 @@
+-- ════════════════════════════════════════════════════════════════
+-- Cashiea schema v30 — correction to v28 (2026-09-06)
+--
+-- v28 revoked EXECUTE on can_create_customer(uuid) from authenticated
+-- after a reference check reported zero policy usage. That check had a
+-- false negative: the customers INSERT policy "Team can create customers"
+-- uses it in WITH CHECK, and PostgreSQL requires EXECUTE on functions
+-- evaluated inside RLS policies for the querying role. Result: every
+-- customer creation failed with "permission denied for function
+-- can_create_customer" (surfaced in the Customers page).
+--
+-- FIX: restore the grant. Rule confirmed (again): any function referenced
+-- by a policy — in USING or WITH CHECK — MUST keep EXECUTE for the roles
+-- that query the table. Applied live 2026-09-06; verified end-to-end
+-- (signup → customer INSERT → HTTP 201).
+-- ════════════════════════════════════════════════════════════════
+GRANT EXECUTE ON FUNCTION public.can_create_customer(uuid) TO authenticated;

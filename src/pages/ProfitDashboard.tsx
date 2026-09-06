@@ -188,7 +188,7 @@ export default function ProfitDashboard() {
         <div className="flex gap-2">
           {PERIODS.map((p) => (
             <button key={p.key} onClick={() => setDays(p.key)}
-              className={`px-3.5 py-2 rounded-full text-xs font-semibold transition-all ${days === p.key ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}>
+              className={`px-3.5 py-2 rounded-full text-xs font-semibold transition-all ${days === p.key ? 'bg-secondary-soft text-secondary-strong' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}>
               {p.label}
             </button>
           ))}

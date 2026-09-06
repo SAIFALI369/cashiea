@@ -361,7 +361,7 @@ export default function Invoices() {
             <div className="flex gap-2 flex-shrink-0">
               <button
                 onClick={selectedIds.size > 0 ? clearSelection : selectAllVisible}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${selectedIds.size > 0 ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${selectedIds.size > 0 ? 'bg-secondary-soft text-secondary-strong' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}
                 aria-label={selectedIds.size > 0 ? 'Clear selection' : 'Select all visible invoices'}
               >
                 {selectedIds.size > 0 ? <X className="w-3.5 h-3.5" /> : <CheckSquare className="w-3.5 h-3.5" />}

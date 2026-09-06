@@ -151,7 +151,7 @@ export default function EmailAssistant() {
               onClick={() => setEmailType(t.value)}
               className={`p-3 rounded-xl border text-left transition-all ${
                 emailType === t.value
-                  ? 'border-accent-strong bg-accent-strong/15'
+                  ? 'border-secondary/50 bg-secondary-soft/70'
                   : 'border-slate-700 bg-slate-900/50 hover:border-slate-600'
               }`}
             >
