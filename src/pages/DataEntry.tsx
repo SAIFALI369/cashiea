@@ -194,10 +194,10 @@ export default function DataEntryPage() {
 
       {/* Mode toggle */}
       <div className="flex gap-2 mb-4">
-        <button onClick={() => setMode('single')} className={`flex-1 p-3 rounded-xl border text-sm font-medium transition-all ${mode === 'single' ? 'border-secondary/50 bg-secondary-soft/70 text-secondary-strong' : 'border-slate-700 text-slate-400 hover:text-white'}`}>
+        <button onClick={() => setMode('single')} className={`flex-1 p-3 rounded-xl border text-sm font-medium transition-all ${mode === 'single' ? 'border-secondary/50 bg-secondary-soft/70 text-secondary-strong' : 'border-line-2 text-fg-subtle hover:text-fg'}`}>
           <Database className="w-4 h-4 inline mr-1.5" /> Single Record
         </button>
-        <button onClick={() => setMode('batch')} className={`flex-1 p-3 rounded-xl border text-sm font-medium transition-all ${mode === 'batch' ? 'border-secondary/50 bg-secondary-soft/70 text-secondary-strong' : 'border-slate-700 text-slate-400 hover:text-white'}`}>
+        <button onClick={() => setMode('batch')} className={`flex-1 p-3 rounded-xl border text-sm font-medium transition-all ${mode === 'batch' ? 'border-secondary/50 bg-secondary-soft/70 text-secondary-strong' : 'border-line-2 text-fg-subtle hover:text-fg'}`}>
           <Layers className="w-4 h-4 inline mr-1.5" /> Batch (200+ at once)
         </button>
       </div>
@@ -207,11 +207,11 @@ export default function DataEntryPage() {
         <div className="mb-4">
           <label className="label">Category</label>
           <select value={category} onChange={(e) => setCategory(e.target.value)} className="input-field">
-            <option value="general" className="bg-slate-900">General</option>
-            <option value="contacts" className="bg-slate-900">Contacts</option>
-            <option value="products" className="bg-slate-900">Products</option>
-            <option value="transactions" className="bg-slate-900">Transactions</option>
-            <option value="tasks" className="bg-slate-900">Tasks</option>
+            <option value="general" className="bg-surface-3">General</option>
+            <option value="contacts" className="bg-surface-3">Contacts</option>
+            <option value="products" className="bg-surface-3">Products</option>
+            <option value="transactions" className="bg-surface-3">Transactions</option>
+            <option value="tasks" className="bg-surface-3">Tasks</option>
           </select>
         </div>
 
@@ -237,12 +237,12 @@ export default function DataEntryPage() {
             <div className="flex flex-wrap items-center gap-3 mb-3">
               <label className="label mb-0">Split records by:</label>
               <select value={delimiter} onChange={(e) => setDelimiter(e.target.value)} className="input-field py-1.5 px-3 text-sm w-auto">
-                <option value="blank-line" className="bg-slate-900">Blank line between records</option>
-                <option value="newline" className="bg-slate-900">Each line = 1 record</option>
-                <option value="comma" className="bg-slate-900">Comma separated</option>
-                <option value="pipe" className="bg-slate-900">Pipe ( | ) separated</option>
+                <option value="blank-line" className="bg-surface-3">Blank line between records</option>
+                <option value="newline" className="bg-surface-3">Each line = 1 record</option>
+                <option value="comma" className="bg-surface-3">Comma separated</option>
+                <option value="pipe" className="bg-surface-3">Pipe ( | ) separated</option>
               </select>
-              <span className="text-xs text-slate-500 ml-auto">{batchPreview.length} records detected</span>
+              <span className="text-xs text-fg-subtle ml-auto">{batchPreview.length} records detected</span>
             </div>
             <label className="label flex items-center gap-2"><Layers className="w-4 h-4 text-accent" /> Paste many records (e.g. 200 emails/day)</label>
             <textarea
@@ -254,7 +254,7 @@ export default function DataEntryPage() {
             />
             {generating && (
               <div className="mt-3">
-                <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
+                <div className="flex items-center justify-between text-xs text-fg-subtle mb-1">
                   <span>Processing batch...</span>
                   <span>{progress.done} / {progress.total}</span>
                 </div>
@@ -264,7 +264,7 @@ export default function DataEntryPage() {
               </div>
             )}
             <div className="flex items-center justify-between mt-4">
-              <p className="text-xs text-slate-500">Each record uses 1 AI action. {batchPreview.length} needed.</p>
+              <p className="text-xs text-fg-subtle">Each record uses 1 AI action. {batchPreview.length} needed.</p>
               <button onClick={handleBatchExtract} disabled={generating || batchPreview.length === 0} className="btn-primary text-sm">
                 {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Layers className="w-4 h-4" />}
                 {generating ? `Processing ${progress.done}/${progress.total}` : `Process ${batchPreview.length} records`}
@@ -286,7 +286,7 @@ export default function DataEntryPage() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <span className="text-xs px-2 py-0.5 rounded-full bg-warning/15 text-amber-300 capitalize">{entry.category}</span>
-                  <span className="text-xs text-slate-500">{new Date(entry.created_at).toLocaleDateString()}</span>
+                  <span className="text-xs text-fg-subtle">{new Date(entry.created_at).toLocaleDateString()}</span>
                 </div>
                 <div className="flex gap-1">
                   <button onClick={() => handleCopy(entry.extracted_data)} className="btn-ghost text-xs"><Copy className="w-3.5 h-3.5" /> Copy</button>
@@ -298,15 +298,15 @@ export default function DataEntryPage() {
                   const valueStr = renderValue(val)
                   const isJson = valueStr.startsWith('{') || valueStr.startsWith('[')
                   return (
-                    <div key={key} className="bg-slate-900/60 rounded-lg p-3">
+                    <div key={key} className="bg-surface-3/60 rounded-lg p-3">
                       <p className="text-xs font-semibold text-accent capitalize mb-1">{key.replace(/_/g, ' ')}</p>
-                      <p className={`text-sm text-slate-300 ${isJson ? 'font-mono text-xs break-all' : 'break-words'}`}>{valueStr.length > 200 ? valueStr.slice(0, 200) + '...' : valueStr}</p>
+                      <p className={`text-sm text-fg-muted ${isJson ? 'font-mono text-xs break-all' : 'break-words'}`}>{valueStr.length > 200 ? valueStr.slice(0, 200) + '...' : valueStr}</p>
                     </div>
                   )
                 })}
               </div>
               {Object.keys(entry.extracted_data).length > 8 && (
-                <p className="text-xs text-slate-500 mt-2">+ {Object.keys(entry.extracted_data).length - 8} more fields</p>
+                <p className="text-xs text-fg-subtle mt-2">+ {Object.keys(entry.extracted_data).length - 8} more fields</p>
               )}
             </div>
           ))}
