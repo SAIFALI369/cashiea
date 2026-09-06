@@ -152,12 +152,12 @@ export default function EmailAssistant() {
               className={`p-3 rounded-xl border text-left transition-all ${
                 emailType === t.value
                   ? 'border-secondary/50 bg-secondary-soft/70'
-                  : 'border-slate-700 bg-slate-900/50 hover:border-slate-600'
+                  : 'border-line-2 bg-surface-3 hover:border-line'
               }`}
             >
               <div className="text-lg mb-0.5">{t.icon}</div>
-              <div className="text-sm font-semibold text-white">{t.label}</div>
-              <div className="text-xs text-slate-400">{t.desc}</div>
+              <div className="text-sm font-semibold text-fg">{t.label}</div>
+              <div className="text-xs text-fg-subtle">{t.desc}</div>
             </button>
           ))}
         </div>
@@ -193,7 +193,7 @@ export default function EmailAssistant() {
                 className={`px-3.5 py-1.5 rounded-full text-sm font-medium capitalize transition-all border ${
                   tone === t
                     ? 'border-accent-strong bg-accent-strong/20 text-accent-strong'
-                    : 'border-slate-700 text-slate-400 hover:border-slate-600 hover:text-white'
+                    : 'border-line-2 text-fg-subtle hover:border-line hover:text-fg'
                 }`}
               >
                 {t}
@@ -241,10 +241,10 @@ export default function EmailAssistant() {
                   <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 capitalize">
                     {emailTypes.find((t) => t.value === email.email_type)?.icon} {email.email_type.replace('_', ' ')}
                   </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 capitalize">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-fg-muted capitalize">
                     {email.tone}
                   </span>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-fg-subtle">
                     · {new Date(email.created_at).toLocaleDateString()}
                   </span>
                 </div>
@@ -265,14 +265,14 @@ export default function EmailAssistant() {
               </div>
 
               <div className="mb-2">
-                <span className="text-xs text-slate-500">Subject: </span>
-                <span className="font-semibold text-white">{email.subject}</span>
+                <span className="text-xs text-fg-subtle">Subject: </span>
+                <span className="font-semibold text-fg">{email.subject}</span>
               </div>
               {email.recipient && (
-                <p className="text-xs text-slate-500 mb-2">To: {email.recipient}</p>
+                <p className="text-xs text-fg-subtle mb-2">To: {email.recipient}</p>
               )}
               {email.generated_body && (
-                <div className="whitespace-pre-wrap text-sm text-slate-300 leading-relaxed bg-slate-900/50 rounded-xl p-4 mt-2 border border-line">
+                <div className="whitespace-pre-wrap text-sm text-fg-muted leading-relaxed bg-surface-3 rounded-xl p-4 mt-2 border border-line">
                   {email.generated_body}
                 </div>
               )}
