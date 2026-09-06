@@ -4,8 +4,9 @@ import { useCan } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import type { Supplier, PurchaseOrder } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
+import { StatStrip } from '../components/ui/StatStrip'
 import EmptyState from '../components/ui/EmptyState'
-import { Truck, Plus, Loader2, Trash2, X, Package } from 'lucide-react'
+import { ClipboardList, Loader2, Package, Plus, Trash2, Truck, Wallet, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface POFormItem { name: string; quantity: string; unit_price: string }
@@ -97,6 +98,8 @@ export default function Suppliers() {
   }
 
   const supplierName = (id: string | null) => suppliers.find((s) => s.id === id)?.name || 'Unknown'
+  const totalOutstanding = suppliers.reduce((s, x) => s + Number(x.outstanding || 0), 0)
+  const pendingPOs = pos.filter((p) => p.status !== 'received').length
 
   return (
     <div className="animate-fade-in">
@@ -110,9 +113,17 @@ export default function Suppliers() {
           : <span className="text-xs text-fg-subtle">Owner-only changes</span>}
       />
 
+      {!loading && suppliers.length > 0 && (
+        <StatStrip stats={[
+          { label: 'Suppliers', value: String(suppliers.length), icon: Truck, tone: 'default' },
+          { label: 'Outstanding dues', value: `₹${totalOutstanding.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: Wallet, tone: totalOutstanding > 0 ? 'warning' : 'positive' },
+          { label: 'Purchase orders', value: String(pos.length), icon: ClipboardList, tone: 'secondary', hint: `${pendingPOs} pending` },
+        ]} />
+      )}
+
       <div className="flex gap-2 mb-4">
-        <button onClick={() => setTab('suppliers')} className={`flex-1 p-2.5 rounded-xl border text-sm font-medium ${tab === 'suppliers' ? 'border-accent-strong bg-accent-strong/15 text-fg' : 'border-line text-fg-muted'}`}>Suppliers ({suppliers.length})</button>
-        <button onClick={() => setTab('orders')} className={`flex-1 p-2.5 rounded-xl border text-sm font-medium ${tab === 'orders' ? 'border-accent-strong bg-accent-strong/15 text-fg' : 'border-line text-fg-muted'}`}>Purchase Orders ({pos.length})</button>
+        <button onClick={() => setTab('suppliers')} className={`flex-1 p-2.5 rounded-xl border text-sm font-medium ${tab === 'suppliers' ? 'border-secondary/40 bg-secondary-soft/60 text-secondary-strong' : 'border-line text-fg-muted hover:text-fg'}`}>Suppliers ({suppliers.length})</button>
+        <button onClick={() => setTab('orders')} className={`flex-1 p-2.5 rounded-xl border text-sm font-medium ${tab === 'orders' ? 'border-secondary/40 bg-secondary-soft/60 text-secondary-strong' : 'border-line text-fg-muted hover:text-fg'}`}>Purchase Orders ({pos.length})</button>
       </div>
 
       {loading ? (
@@ -137,10 +148,10 @@ export default function Suppliers() {
           ) : (
             <div className="grid sm:grid-cols-2 gap-3">
               {suppliers.map((s) => (
-                <div key={s.id} className="card p-4">
+                <div key={s.id} className="card card-hover p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-surface-2 flex items-center justify-center flex-shrink-0"><Truck className="w-5 h-5 text-accent" /></div>
+                      <div className="w-10 h-10 rounded-xl bg-secondary-soft text-secondary-strong flex items-center justify-center flex-shrink-0"><Truck className="w-5 h-5" /></div>
                       <div className="min-w-0"><h3 className="font-semibold text-fg truncate">{s.name}</h3>{s.contact_person && <p className="text-xs text-fg-subtle truncate">{s.contact_person}</p>}</div>
                     </div>
                     {isOwner && <button onClick={() => deleteSupplier(s.id)} className="text-fg-subtle hover:text-negative"><Trash2 className="w-4 h-4" /></button>}
@@ -150,7 +161,7 @@ export default function Suppliers() {
                     {s.email && <span className="truncate">{s.email}</span>}
                     {s.gstin && <span className="font-mono">GST: {s.gstin}</span>}
                   </div>
-                  {Number(s.outstanding) > 0 && <div className="mt-3 px-2.5 py-1 rounded-lg bg-warning/10 text-amber-300 text-xs font-medium inline-block">Outstanding: ₹{Number(s.outstanding).toFixed(0)}</div>}
+                  {Number(s.outstanding) > 0 && <div className="mt-3 px-2.5 py-1 rounded-lg bg-warning/10 text-warning text-xs font-bold inline-block tabular-nums">Outstanding: ₹{Number(s.outstanding).toFixed(0)}</div>}
                 </div>
               ))}
             </div>
