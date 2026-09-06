@@ -133,7 +133,7 @@ export default function GstExport() {
         <div className="flex gap-2 overflow-x-auto no-scrollbar">
           {([['this_month', 'This month'], ['last_month', 'Last month'], ['quarter', 'This quarter'], ['fy', 'This FY']] as const).map(([k, label]) => (
             <button key={k} onClick={() => setPeriod(k)}
-              className={`px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${period === k ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}>
+              className={`px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${period === k ? 'bg-secondary-soft text-secondary-strong' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}>
               {label}
             </button>
           ))}
