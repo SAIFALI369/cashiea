@@ -100,7 +100,6 @@ export default function AppLayout() {
             <Lightbulb className="w-5 h-5 text-secondary" />
           </Link>
           <QueueBadge />
-          <LiveClock />
           <Link to="/app/account" aria-label="Open account & settings" className="relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full">
             <Avatar url={profile?.avatar_url} name={profile?.full_name} size={34} />
             <span className="absolute bottom-[3px] right-[3px] w-[16px] h-[16px] rounded-full bg-surface border border-line flex items-center justify-center shadow-soft">
