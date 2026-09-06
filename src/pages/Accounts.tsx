@@ -5,6 +5,7 @@ import { supabase, edgeFunctionUrl } from '../lib/supabase'
 import { offlineInsert } from '../lib/mutations'
 import type { Expense } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
+import { StatStrip } from '../components/ui/StatStrip'
 import EmptyState from '../components/ui/EmptyState'
 import { exportToCSV } from '../lib/export'
 import { Wallet, Plus, Loader2, Trash2, TrendingDown, TrendingUp, Download, Camera } from 'lucide-react'
@@ -91,13 +92,13 @@ export default function Accounts() {
     <div className="animate-fade-in">
       <PageHeader title="Accounts" subtitle="Track expenses, income, cash flow & profit" icon={<Wallet className="w-5 h-5" />} action={<div className="flex gap-2">{isOwner && <><input ref={scanRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={scanReceipt} /><button onClick={() => scanRef.current?.click()} disabled={scanning} className="btn-secondary text-xs">{scanning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />} Scan</button></>}<button onClick={() => exportToCSV('accounts', entries as unknown as Record<string, unknown>[])} className="btn-secondary text-xs"><Download className="w-3.5 h-3.5" /> Export</button>{isOwner && <button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showForm ? 'Close' : 'Add Entry'}</button>}</div>} />
 
-      {/* Overview cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="card p-4"><div className="flex items-center gap-2 mb-1"><TrendingUp className="w-4 h-4 text-positive" /><span className="text-xs text-fg-muted">Today's Income</span></div><p className="text-xl font-bold text-positive">₹{todayIncome.toFixed(0)}</p></div>
-        <div className="card p-4"><div className="flex items-center gap-2 mb-1"><TrendingDown className="w-4 h-4 text-negative" /><span className="text-xs text-fg-muted">Today's Expenses</span></div><p className="text-xl font-bold text-negative">₹{todayExpenses.toFixed(0)}</p></div>
-        <div className="card p-4"><span className="text-xs text-fg-muted block mb-1">Month Income</span><p className="text-xl font-bold text-positive">₹{monthIncome.toFixed(0)}</p></div>
-        <div className="card p-4"><span className="text-xs text-fg-muted block mb-1">Month Expenses</span><p className="text-xl font-bold text-negative">₹{monthExpenses.toFixed(0)}</p><p className="text-xs text-fg-subtle mt-0.5">Net: ₹{(monthIncome - monthExpenses).toFixed(0)}</p></div>
-      </div>
+      {/* Overview — numbers are the hero */}
+      <StatStrip stats={[
+        { label: 'Income today', value: `₹${todayIncome.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: TrendingUp, tone: 'positive' },
+        { label: 'Expenses today', value: `₹${todayExpenses.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: TrendingDown, tone: 'negative' },
+        { label: 'Net this month', value: `₹${(monthIncome - monthExpenses).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: Wallet, tone: monthIncome - monthExpenses >= 0 ? 'positive' : 'negative' },
+        { label: 'Month expenses', value: `₹${monthExpenses.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: TrendingDown, tone: 'default', hint: `of ₹${monthIncome.toLocaleString('en-IN', { maximumFractionDigits: 0 })} income` },
+      ]} />
 
       {isOwner && showForm && (
         <div className="card p-4 mb-6 animate-slide-up">
@@ -123,12 +124,12 @@ export default function Accounts() {
       ) : (
         <div className="card divide-y divide-line">
           {entries.slice(0, 50).map((e) => (
-            <div key={e.id} className="p-4 flex items-center justify-between">
+            <div key={e.id} className="p-4 flex items-center justify-between hover:bg-surface-2/50 transition-colors">
               <div className="flex items-center gap-3 min-w-0">
                 <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${e.type === 'income' ? 'bg-positive/15' : 'bg-negative/15'}`}>{e.type === 'income' ? <TrendingUp className="w-4 h-4 text-positive" /> : <TrendingDown className="w-4 h-4 text-negative" />}</div>
                 <div className="min-w-0"><p className="text-sm text-fg truncate">{e.description}</p><p className="text-xs text-fg-subtle">{e.category} · {e.date} · {e.payment_method}</p></div>
               </div>
-              <div className="flex items-center gap-3 flex-shrink-0"><span className={`font-semibold ${e.type === 'income' ? 'text-positive' : 'text-negative'}`}>{e.type === 'income' ? '+' : '−'}₹{Number(e.amount).toFixed(0)}</span>{isOwner && <button onClick={() => del(e.id)} className="text-fg-subtle hover:text-negative"><Trash2 className="w-3.5 h-3.5" /></button>}</div>
+              <div className="flex items-center gap-3 flex-shrink-0"><span className={`font-bold tabular-nums ${e.type === 'income' ? 'text-positive' : 'text-negative'}`}>{e.type === 'income' ? '+' : '−'}₹{Number(e.amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>{isOwner && <button onClick={() => del(e.id)} className="text-fg-subtle hover:text-negative"><Trash2 className="w-3.5 h-3.5" /></button>}</div>
             </div>
           ))}
         </div>
