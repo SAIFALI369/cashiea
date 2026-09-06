@@ -210,9 +210,9 @@ export default function FailedJobs() {
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="card p-4"><p className="text-xl font-bold text-negative">{pending.length}</p><p className="text-xs text-slate-400">Need attention</p></div>
-        <div className="card p-4"><p className="text-xl font-bold text-warning">{jobs.filter((j) => j.status === 'retried').length}</p><p className="text-xs text-slate-400">Retried</p></div>
-        <div className="card p-4"><p className="text-xl font-bold text-slate-500">{jobs.filter((j) => j.status === 'dead').length}</p><p className="text-xs text-slate-400">Dismissed</p></div>
+        <div className="card p-4"><p className="text-xl font-bold text-negative">{pending.length}</p><p className="text-xs text-fg-subtle">Need attention</p></div>
+        <div className="card p-4"><p className="text-xl font-bold text-warning">{jobs.filter((j) => j.status === 'retried').length}</p><p className="text-xs text-fg-subtle">Retried</p></div>
+        <div className="card p-4"><p className="text-xl font-bold text-fg-subtle">{jobs.filter((j) => j.status === 'dead').length}</p><p className="text-xs text-fg-subtle">Dismissed</p></div>
       </div>
 
       {loading ? (
@@ -244,14 +244,14 @@ export default function FailedJobs() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-white text-sm">{cause.title}</h3>
+                        <h3 className="font-semibold text-fg text-sm">{cause.title}</h3>
                         <span className="text-xs px-1.5 py-0.5 rounded bg-negative/15 text-negative capitalize">{job.job_type.replace('_', ' ')}</span>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
+                      <p className="text-xs text-fg-subtle mt-0.5 flex items-center gap-1.5">
                         <Clock className="w-3 h-3" /> {new Date(job.created_at).toLocaleString()}
                       </p>
                     </div>
-                    {isOpen ? <ChevronUp className="w-4 h-4 text-slate-500 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-slate-500 flex-shrink-0" />}
+                    {isOpen ? <ChevronUp className="w-4 h-4 text-fg-subtle flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-fg-subtle flex-shrink-0" />}
                   </button>
                   {/* Retry icon — right side, always visible */}
                   <button
@@ -267,19 +267,19 @@ export default function FailedJobs() {
 
                 {/* Expanded: root cause + fix button */}
                 {isOpen && (
-                  <div className="border-t border-line p-4 bg-slate-900/40 animate-fade-in">
+                  <div className="border-t border-line p-4 bg-surface-3/40 animate-fade-in">
                     <div className="flex items-start gap-3 mb-3">
                       <Wrench className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
                       <div className="flex-1">
                         <p className="text-xs font-semibold text-warning uppercase tracking-wide mb-1">Root cause</p>
-                        <p className="text-sm text-slate-200 leading-relaxed">{cause.explanation}</p>
+                        <p className="text-sm text-fg-muted leading-relaxed">{cause.explanation}</p>
                       </div>
                     </div>
 
                     {/* Raw error for debugging */}
                     <details className="mb-3">
-                      <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-300">Technical details</summary>
-                      <pre className="text-xs text-slate-400 mt-2 bg-slate-950 rounded-lg p-3 overflow-x-auto font-mono whitespace-pre-wrap break-all">{job.error}</pre>
+                      <summary className="text-xs text-fg-subtle cursor-pointer hover:text-fg-muted">Technical details</summary>
+                      <pre className="text-xs text-fg-subtle mt-2 bg-slate-950 rounded-lg p-3 overflow-x-auto font-mono whitespace-pre-wrap break-all">{job.error}</pre>
                     </details>
 
                     {/* Fix this button → routes to the page that solves it */}
@@ -294,7 +294,7 @@ export default function FailedJobs() {
 
                     <button
                       onClick={() => dismiss(job.id)}
-                      className="btn-ghost text-xs text-slate-500 ml-0 sm:ml-2 mt-2 sm:mt-0"
+                      className="btn-ghost text-xs text-fg-subtle ml-0 sm:ml-2 mt-2 sm:mt-0"
                     >
                       <X className="w-3.5 h-3.5" /> Dismiss
                     </button>
@@ -309,16 +309,16 @@ export default function FailedJobs() {
       {/* Resolved history */}
       {resolved.length > 0 && (
         <div className="mt-8">
-          <h2 className="text-sm font-semibold text-slate-400 mb-3 uppercase tracking-wide">Recently resolved</h2>
+          <h2 className="text-sm font-semibold text-fg-subtle mb-3 uppercase tracking-wide">Recently resolved</h2>
           <div className="card divide-y divide-line">
             {resolved.map((job) => (
               <div key={job.id} className="p-3 flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="flex-shrink-0">{typeIcon[job.job_type]}</span>
-                  <span className="text-slate-400 truncate">{diagnose(job).title}</span>
+                  <span className="text-fg-subtle truncate">{diagnose(job).title}</span>
                 </div>
                 <span className={`text-xs px-1.5 py-0.5 rounded capitalize flex-shrink-0 ml-2 ${
-                  job.status === 'retried' ? 'bg-positive/15 text-positive' : 'bg-slate-700 text-slate-500'
+                  job.status === 'retried' ? 'bg-positive/15 text-positive' : 'bg-slate-700 text-fg-subtle'
                 }`}>
                   {job.status === 'retried' ? <CheckCircle2 className="w-3 h-3 inline mr-0.5" /> : <XCircle className="w-3 h-3 inline mr-0.5" />}
                   {job.status}

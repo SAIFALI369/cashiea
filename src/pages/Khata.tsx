@@ -198,7 +198,7 @@ export default function Khata() {
             key={key}
             onClick={() => setFilter(key)}
             className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
-              filter === key ? 'bg-accent text-accent-fg shadow-soft' : 'bg-surface-2 text-fg-muted hover:text-fg'
+              filter === key ? 'bg-secondary-soft text-secondary-strong' : 'bg-surface-2 text-fg-muted hover:text-fg'
             }`}
           >
             <Icon className="w-3.5 h-3.5" />

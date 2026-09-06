@@ -110,14 +110,14 @@ export default function Campaigns() {
               <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-bold text-white text-lg">{c.name}</h3>
+                    <h3 className="font-bold text-fg text-lg">{c.name}</h3>
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                       c.status === 'sent' ? 'bg-positive/15 text-positive' :
                       c.status === 'sending' ? 'bg-info/15 text-info' :
                       c.status === 'scheduled' ? 'bg-warning/15 text-warning' :
                       c.status === 'partial' ? 'bg-warning/15 text-warning' :
                       c.status === 'failed' ? 'bg-negative/15 text-negative' :
-                      'bg-slate-700 text-slate-400'
+                      'bg-slate-700 text-fg-subtle'
                     }`}>{c.status}</span>
                     {c.ab_enabled && (
                       <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-purple-500/15 text-purple-300">
@@ -128,7 +128,7 @@ export default function Campaigns() {
                       <span className="px-2 py-0.5 rounded-full text-xs bg-cyan-500/15 text-cyan-300">Follow-ups</span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-fg-subtle mt-1">
                     {new Date(c.created_at).toLocaleDateString()} · {c.tone} tone
                   </p>
                 </div>
@@ -157,35 +157,35 @@ export default function Campaigns() {
 
               {/* Analytics */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-slate-900/60 rounded-xl p-3">
-                  <div className="flex items-center gap-1.5 text-slate-400 mb-1">
+                <div className="bg-surface-3/60 rounded-xl p-3">
+                  <div className="flex items-center gap-1.5 text-fg-subtle mb-1">
                     <Mail className="w-3.5 h-3.5" />
                     <span className="text-xs">Sent</span>
                   </div>
-                  <p className="text-xl font-bold text-white">{c.sent_count}</p>
+                  <p className="text-xl font-bold text-fg">{c.sent_count}</p>
                 </div>
-                <div className="bg-slate-900/60 rounded-xl p-3">
-                  <div className="flex items-center gap-1.5 text-slate-400 mb-1">
+                <div className="bg-surface-3/60 rounded-xl p-3">
+                  <div className="flex items-center gap-1.5 text-fg-subtle mb-1">
                     <BarChart3 className="w-3.5 h-3.5" />
                     <span className="text-xs">Open Rate</span>
                   </div>
                   <p className="text-xl font-bold text-positive">{openRate(c)}%</p>
-                  <p className="text-xs text-slate-500">{c.opened_count} opens</p>
+                  <p className="text-xs text-fg-subtle">{c.opened_count} opens</p>
                 </div>
-                <div className="bg-slate-900/60 rounded-xl p-3">
-                  <div className="flex items-center gap-1.5 text-slate-400 mb-1">
+                <div className="bg-surface-3/60 rounded-xl p-3">
+                  <div className="flex items-center gap-1.5 text-fg-subtle mb-1">
                     <MousePointerClick className="w-3.5 h-3.5" />
                     <span className="text-xs">Clicks</span>
                   </div>
                   <p className="text-xl font-bold text-info">{c.clicked_count}</p>
                 </div>
-                <div className="bg-slate-900/60 rounded-xl p-3">
-                  <div className="flex items-center gap-1.5 text-slate-400 mb-1">
+                <div className="bg-surface-3/60 rounded-xl p-3">
+                  <div className="flex items-center gap-1.5 text-fg-subtle mb-1">
                     <Reply className="w-3.5 h-3.5" />
                     <span className="text-xs">Reply Rate</span>
                   </div>
                   <p className="text-xl font-bold text-purple-400">{replyRate(c)}%</p>
-                  <p className="text-xs text-slate-500">{c.replied_count} replies</p>
+                  <p className="text-xs text-fg-subtle">{c.replied_count} replies</p>
                 </div>
               </div>
 
