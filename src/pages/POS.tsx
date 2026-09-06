@@ -648,7 +648,7 @@ export default function POS() {
                   <div className="flex items-center rounded-xl border border-line overflow-hidden flex-shrink-0" role="group" aria-label="Product view">
                     <button
                       onClick={() => setView('grid')}
-                      className={`w-10 h-10 flex items-center justify-center ${view === 'grid' ? 'bg-accent text-accent-fg' : 'text-fg-subtle hover:text-fg'}`}
+                      className={`w-10 h-10 flex items-center justify-center ${view === 'grid' ? 'bg-secondary-soft text-secondary-strong' : 'text-fg-subtle hover:text-fg'}`}
                       aria-label="Grid view"
                       aria-pressed={view === 'grid'}
                     >
@@ -656,7 +656,7 @@ export default function POS() {
                     </button>
                     <button
                       onClick={() => setView('list')}
-                      className={`w-10 h-10 flex items-center justify-center ${view === 'list' ? 'bg-accent text-accent-fg' : 'text-fg-subtle hover:text-fg'}`}
+                      className={`w-10 h-10 flex items-center justify-center ${view === 'list' ? 'bg-secondary-soft text-secondary-strong' : 'text-fg-subtle hover:text-fg'}`}
                       aria-label="List view"
                       aria-pressed={view === 'list'}
                     >
