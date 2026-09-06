@@ -13,13 +13,13 @@ const priorityColor: Record<string, string> = {
   urgent: 'border-negative/50 bg-negative/5',
   high: 'border-orange-600/50 bg-orange-600/5',
   medium: 'border-warning/40 bg-warning/5',
-  low: 'border-slate-700 bg-slate-900/40',
+  low: 'border-line-2 bg-surface-3/40',
 }
 const priorityBadge: Record<string, string> = {
   urgent: 'bg-negative/15 text-negative',
   high: 'bg-orange-500/15 text-orange-400',
   medium: 'bg-warning/15 text-warning',
-  low: 'bg-slate-700 text-slate-400',
+  low: 'bg-slate-700 text-fg-subtle',
 }
 const typeIcon: Record<string, string> = {
   reorder: '📦', followup: '🔄', invoice: '🧾', offer: '🏷️', alert: '⚠️', expense: '💸', custom: '✨',
@@ -143,14 +143,14 @@ export default function AIBrain() {
       {/* About My Business — the living summary */}
       <div className="card p-4 mb-6 bg-gradient-to-br from-accent-strong/10 to-transparent">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold text-white flex items-center gap-2"><Sparkles className="w-5 h-5 text-accent" /> About My Business</h2>
-          {memory?.last_updated_at && <span className="text-xs text-slate-500">Updated {new Date(memory.last_updated_at).toLocaleString()}</span>}
+          <h2 className="font-semibold text-fg flex items-center gap-2"><Sparkles className="w-5 h-5 text-accent" /> About My Business</h2>
+          {memory?.last_updated_at && <span className="text-xs text-fg-subtle">Updated {new Date(memory.last_updated_at).toLocaleString()}</span>}
         </div>
         {loading ? (
           <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-accent" /></div>
         ) : !memory?.summary ? (
           <div className="text-center py-6">
-            <p className="text-slate-400 mb-4">The AI hasn't learned about your business yet. Connect your data sources and let it study your shop.</p>
+            <p className="text-fg-subtle mb-4">The AI hasn't learned about your business yet. Connect your data sources and let it study your shop.</p>
             <div className="flex justify-center gap-3">
               <Link to="/app/integrations" className="btn-secondary text-sm"><Plug className="w-4 h-4" /> Connect data sources</Link>
               {isOwner && <button onClick={learn} disabled={learning} className="btn-primary text-sm">{learning ? <Loader2 className="w-4 h-4 animate-spin" /> : <GraduationCap className="w-4 h-4" />} Learn from existing data</button>}
@@ -163,14 +163,14 @@ export default function AIBrain() {
                 <TrendingUp className="w-3.5 h-3.5" /> {memory.business_type}
               </div>
             )}
-            <p className="text-slate-200 leading-relaxed">{memory.summary}</p>
+            <p className="text-fg-muted leading-relaxed">{memory.summary}</p>
             {memory.key_facts?.length > 0 && (
               <div className="mt-4 grid sm:grid-cols-2 gap-2">
                 {memory.key_facts.slice(0, 6).map((f, i) => (
-                  <div key={i} className="bg-slate-900/60 rounded-lg p-2.5 flex items-start gap-2">
+                  <div key={i} className="bg-surface-3/60 rounded-lg p-2.5 flex items-start gap-2">
                     <span className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${f.confidence === 'high' ? 'bg-positive' : f.confidence === 'medium' ? 'bg-warning' : 'bg-slate-500'}`} />
                     <div>
-                      <p className="text-sm text-slate-200">{f.fact}</p>
+                      <p className="text-sm text-fg-muted">{f.fact}</p>
                       <p className="text-xs text-slate-600 capitalize">{f.source}</p>
                     </div>
                   </div>
@@ -184,10 +184,10 @@ export default function AIBrain() {
       {/* Predictions pending approval */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold text-white flex items-center gap-2"><Lightbulb className="w-5 h-5 text-warning" /> Predicted Tasks <span className="text-xs text-slate-500 font-normal">({pending.length} pending)</span></h2>
+          <h2 className="font-semibold text-fg flex items-center gap-2"><Lightbulb className="w-5 h-5 text-warning" /> Predicted Tasks <span className="text-xs text-fg-subtle font-normal">({pending.length} pending)</span></h2>
           {isOwner && <button onClick={predict} disabled={predicting} className="btn-ghost text-xs"><RefreshCw className="w-3.5 h-3.5" /> Refresh</button>}
         </div>
-        <p className="text-xs text-slate-500 mb-4">The AI predicts what needs doing. Nothing happens until you approve it. If you deny with a reason, the AI learns.</p>
+        <p className="text-xs text-fg-subtle mb-4">The AI predicts what needs doing. Nothing happens until you approve it. If you deny with a reason, the AI learns.</p>
 
         {pending.length === 0 ? (
           <EmptyState icon={Lightbulb} title="No pending predictions" description="Click 'Predict tasks' to let the AI scan your business and suggest actions. It waits for your approval before doing anything." />
@@ -200,12 +200,12 @@ export default function AIBrain() {
                     <span className="text-xl flex-shrink-0">{typeIcon[p.prediction_type] || '✨'}</span>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-white">{p.title}</h3>
+                        <h3 className="font-semibold text-fg">{p.title}</h3>
                         <span className={`text-xs px-1.5 py-0.5 rounded capitalize ${priorityBadge[p.priority]}`}>{p.priority}</span>
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-surface-2 text-slate-400 capitalize">{p.prediction_type}</span>
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-surface-2 text-fg-subtle capitalize">{p.prediction_type}</span>
                       </div>
-                      {p.description && <p className="text-sm text-slate-300 mt-1">{p.description}</p>}
-                      {p.rationale && <p className="text-xs text-slate-500 mt-1.5 italic">Why: {p.rationale}</p>}
+                      {p.description && <p className="text-sm text-fg-muted mt-1">{p.description}</p>}
+                      {p.rationale && <p className="text-xs text-fg-subtle mt-1.5 italic">Why: {p.rationale}</p>}
                     </div>
                   </div>
                 </div>
@@ -228,18 +228,18 @@ export default function AIBrain() {
       {/* Recent decisions */}
       {decided.length > 0 && (
         <div className="card p-5 mb-6">
-          <h3 className="font-semibold text-white mb-3 text-sm">Recent decisions</h3>
+          <h3 className="font-semibold text-fg mb-3 text-sm">Recent decisions</h3>
           <div className="space-y-2">
             {decided.map((p) => (
               <div key={p.id} className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2 min-w-0">
                   <span>{typeIcon[p.prediction_type]}</span>
-                  <span className="text-slate-300 truncate">{p.title}</span>
+                  <span className="text-fg-muted truncate">{p.title}</span>
                 </div>
                 <span className={`text-xs px-1.5 py-0.5 rounded capitalize flex-shrink-0 ml-2 ${
                   p.status === 'approved' ? 'bg-positive/15 text-positive' :
                   p.status === 'denied' ? 'bg-negative/15 text-negative' :
-                  'bg-slate-700 text-slate-400'
+                  'bg-slate-700 text-fg-subtle'
                 }`}>{p.status}</span>
               </div>
             ))}
@@ -250,13 +250,13 @@ export default function AIBrain() {
       {/* Learning log */}
       {corrections.length > 0 && (
         <div className="card p-5">
-          <h3 className="font-semibold text-white mb-1 flex items-center gap-2"><GraduationCap className="w-4 h-4 text-accent" /> What the AI has learned from you</h3>
-          <p className="text-xs text-slate-500 mb-3">These corrections shape future predictions and summaries.</p>
+          <h3 className="font-semibold text-fg mb-1 flex items-center gap-2"><GraduationCap className="w-4 h-4 text-accent" /> What the AI has learned from you</h3>
+          <p className="text-xs text-fg-subtle mb-3">These corrections shape future predictions and summaries.</p>
           <div className="space-y-2">
             {corrections.map((c) => (
-              <div key={c.id} className="bg-slate-900/60 rounded-lg p-2.5 text-sm">
-                {c.context && <p className="text-xs text-slate-500 mb-0.5">{c.context}</p>}
-                <p className="text-slate-200">{c.correction}</p>
+              <div key={c.id} className="bg-surface-3/60 rounded-lg p-2.5 text-sm">
+                {c.context && <p className="text-xs text-fg-subtle mb-0.5">{c.context}</p>}
+                <p className="text-fg-muted">{c.correction}</p>
               </div>
             ))}
           </div>
@@ -268,11 +268,11 @@ export default function AIBrain() {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowCorrect(null)}>
           <div className="card p-4 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-white">Teach the AI</h3>
-              <button onClick={() => setShowCorrect(null)} className="text-slate-500 hover:text-white"><X className="w-5 h-5" /></button>
+              <h3 className="font-semibold text-fg">Teach the AI</h3>
+              <button onClick={() => setShowCorrect(null)} className="text-fg-subtle hover:text-fg"><X className="w-5 h-5" /></button>
             </div>
-            <p className="text-sm text-slate-400 mb-2">You're denying: <span className="text-white">{showCorrect.title}</span></p>
-            <p className="text-sm text-slate-400 mb-3">Tell the AI what it should have done or considered instead. It'll apply this to future predictions.</p>
+            <p className="text-sm text-fg-subtle mb-2">You're denying: <span className="text-fg">{showCorrect.title}</span></p>
+            <p className="text-sm text-fg-subtle mb-3">Tell the AI what it should have done or considered instead. It'll apply this to future predictions.</p>
             <textarea value={correctionText} onChange={(e) => setCorrectionText(e.target.value)} rows={4} className="input-field resize-none" placeholder="e.g. Don't suggest reordering on weekends — supplier is closed. Or: This customer prefers email, not SMS." />
             <div className="flex justify-end gap-2 mt-3">
               <button onClick={() => decide(showCorrect, 'denied')} className="btn-secondary text-sm">Deny without teaching</button>
