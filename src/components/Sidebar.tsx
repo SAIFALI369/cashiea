@@ -123,7 +123,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         'group relative flex items-center gap-3 rounded-control font-medium text-sm transition-colors min-h-[40px] px-3 py-2',
         collapsed && 'lg:justify-center lg:px-2',
         isActive
-          ? 'bg-accent-soft text-accent-strong font-semibold'
+          ? 'bg-secondary-soft text-secondary-strong font-semibold'
           : item.ai
             ? 'text-accent hover:bg-surface-2'
             : 'text-fg-muted hover:text-fg hover:bg-surface-2'
@@ -131,7 +131,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
     >
       {({ isActive }) => (
         <>
-          {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-accent" aria-hidden="true" />}
+          {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-secondary" aria-hidden="true" />}
           <item.icon className="w-[18px] h-[18px] flex-shrink-0" strokeWidth={1.75} />
           <span className={clsx("flex-1 truncate", collapsed && "lg:hidden")}>{item.label}</span>
           {item.ai && <span className="text-[9px] font-bold tracking-wide px-1.5 py-0.5 rounded-full bg-accent text-accent-fg">AI</span>}

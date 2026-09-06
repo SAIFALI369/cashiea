@@ -73,7 +73,8 @@ const MobileSlot = ({ item }: { item: Item }) => (
     end={item.end}
     className={({ isActive }) => clsx(
       'relative flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] transition-colors',
-      isActive ? 'text-accent-strong' : 'text-fg-subtle hover:text-fg'
+      // Sapphire = navigation. Emerald stays for actions (Meraj, Scan).
+      isActive ? 'text-secondary-strong' : 'text-fg-subtle hover:text-fg'
     )}
   >
     {({ isActive }) => (
@@ -82,7 +83,7 @@ const MobileSlot = ({ item }: { item: Item }) => (
         {isActive && (
           <motion.span
             layoutId="mobile-nav-pill"
-            className="absolute inset-x-2.5 top-1 bottom-1 rounded-xl bg-accent-soft"
+            className="absolute inset-x-2.5 top-1 bottom-1 rounded-xl bg-secondary-soft"
             transition={{ type: 'spring', stiffness: 420, damping: 34 }}
             aria-hidden="true"
           />
@@ -100,7 +101,8 @@ const DesktopSlot = ({ item }: { item: Item }) => (
     end={item.end}
     className={({ isActive }) => clsx(
       'group flex flex-col items-center justify-center gap-1 py-2 h-full flex-1 transition-colors relative rounded-t-xl',
-      isActive ? 'text-accent-strong' : 'text-fg-muted hover:text-fg hover:bg-surface-2/60'
+      // Sapphire = navigation (the way you move). Meraj stays emerald.
+      isActive ? 'text-secondary-strong' : 'text-fg-muted hover:text-fg hover:bg-surface-2/60'
     )}
   >
     {({ isActive }) => (
@@ -108,7 +110,7 @@ const DesktopSlot = ({ item }: { item: Item }) => (
         {isActive && (
           <motion.span
             layoutId="desktop-nav-underline"
-            className="absolute top-0 left-3 right-3 h-0.5 bg-accent rounded-full"
+            className="absolute top-0 left-3 right-3 h-0.5 bg-secondary rounded-full"
             transition={{ type: 'spring', stiffness: 420, damping: 34 }}
             aria-hidden="true"
           />
