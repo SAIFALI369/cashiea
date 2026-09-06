@@ -275,6 +275,34 @@ async function tryExtract(
   }
 }
 
+// ── Rolling long-term memory (ChatGPT-style, token-conscious) ──────
+// Every few exchanges the older turns are folded into a compact durable
+// summary, so Meraj remembers across chats WITHOUT storing transcripts.
+// Total storage per business stays in the low KBs — far under budget.
+async function tryCondense(
+  provider: string,
+  prevSummary: string,
+  turns: { role: string; text: string }[],
+): Promise<{ summary: string; facts: string[]; remember: string[]; owner_name: string | null } | null> {
+  if (!turns.length) return null;
+  try {
+    const sys = `You maintain the long-term memory of an AI shop manager (like ChatGPT's memory). You receive the OLD memory summary plus RECENT chat turns that are being archived. Write the NEW memory summary: a compact, information-dense recap (max 900 characters) of everything durable about this owner and their shop — name, shop, what they sell, ongoing situations, decisions made, preferences, important numbers, and anything they asked to remember. Drop small talk and one-off data lookups. Also list up to 5 NEW durable facts (short phrases) and anything the owner explicitly asked to remember. Return ONLY JSON (no prose, no markdown fences): {"summary": string, "facts": [string], "remember": [string], "owner_name": string|null}. Use null when unknown and empty arrays when nothing applies.`;
+    const usr = `OLD MEMORY SUMMARY:\n${prevSummary || "(none yet)"}\n\nARCHIVED CHAT TURNS:\n${turns.map((t) => `${t.role === "owner" ? "Owner" : "Meraj"}: ${String(t.text || "").slice(0, 400)}`).join("\n")}\n\nReturn the JSON now.`;
+    const out = await callAIWithFallback(provider, sys, usr, 450, "assistant-memory");
+    const m = String(out).match(/\{[\s\S]*\}/);
+    if (!m) return null;
+    const parsed = JSON.parse(m[0]);
+    return {
+      summary: typeof parsed?.summary === "string" ? parsed.summary : "",
+      facts: Array.isArray(parsed?.facts) ? parsed.facts.map((x: any) => String(x).trim()).filter(Boolean).slice(0, 5) : [],
+      remember: Array.isArray(parsed?.remember) ? parsed.remember.map((x: any) => String(x).trim()).filter(Boolean).slice(0, 5) : [],
+      owner_name: parsed?.owner_name ? String(parsed.owner_name).trim().slice(0, 80) : null,
+    };
+  } catch {
+    return null; // memory is best-effort — never fail the chat over it
+  }
+}
+
 
 // ── Task mode: function-calling for real actions ──────────────────
 const TASK_SYSTEM = `You are Meraj in TASK mode — a capable staff member who prepares and executes real actions in the shop, but ONLY after the owner confirms. Speak briefly, like a good employee following instructions. When the owner asks to create an invoice/bill, add a product/item, or add a customer/client, call the appropriate tool (create_invoice, add_product, or add_customer) with all details. When the owner shares a LIST of products to add — a pasted list, a stock sheet, or items read from a photo — call add_products ONCE with every product in the products array (up to 50 items); never call add_product repeatedly. If any essential detail is missing or ambiguous (customer name, item, quantity, or price), DO NOT call the tool — ask the owner in plain text. Never guess a price, phone number, or discount percentage. For team roles, subscriptions, API keys, or account/login changes, tell the owner those must be done directly in Settings — do not attempt them.`;
@@ -466,10 +494,19 @@ Deno.serve(async (req) => {
     if (briefing !== undefined && typeof briefing !== "boolean") return json({ error: "briefing is invalid" }, 400);
     const allowedModes = new Set(["ask", "task", "dashboard_suggestions", "onboarding_questions", "onboarding_persona"]);
     if (mode !== undefined && mode !== null && !allowedModes.has(String(mode))) return json({ error: "Unsupported assistant mode" }, 400);
-    if (history !== undefined && (!Array.isArray(history) || history.length > 30)) return json({ error: "history is invalid or too long" }, 400);
-    if (history) {
+    // History is SANITIZED, never rejected: long conversations are normal,
+    // and Meraj's own formatted replies routinely exceed 1,000 characters —
+    // the old hard reject broke every long chat with "history contains an
+    // invalid turn". Malformed turns are dropped; valid ones are trimmed to
+    // stay token-conscious. There is no practical limit on chat length.
+    const MAX_HISTORY_TURNS = 40;
+    const safeHistory: { role: string; text: string }[] = [];
+    if (history !== undefined && !Array.isArray(history)) return json({ error: "history is invalid" }, 400);
+    if (Array.isArray(history)) {
+      if (history.length > MAX_HISTORY_TURNS) return json({ error: "history is too long" }, 400);
       for (const turn of history) {
-        if (!turn || typeof turn !== "object" || typeof turn.text !== "string" || turn.text.length > 1_000) return json({ error: "history contains an invalid turn" }, 400);
+        if (!turn || typeof turn !== "object" || typeof turn.text !== "string" || !turn.text.trim()) continue;
+        safeHistory.push({ role: (turn.role === "user" || turn.role === "owner") ? "user" : "meraj", text: turn.text.slice(0, 1_600) });
       }
     }
     if (pageContext !== undefined && pageContext !== null &&
@@ -634,8 +671,8 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
     // owner is looking at, so "this", "here", or "this page" questions are
     // answered against the page they're actually on.
     // Ongoing-chat context so Meraj remembers the current conversation (no repeating).
-    const historyBlock = Array.isArray(history) && history.length
-      ? "\n\nONGOING CONVERSATION (the current chat — use it for continuity; the owner should never have to repeat themselves):\n" + history.slice(-10).map((h: any) => `${h?.role === "user" ? "Owner" : "Meraj"}: ${String(h?.text || "").slice(0, 500)}`).join("\n") + "\n"
+    const historyBlock = safeHistory.length
+      ? "\n\nONGOING CONVERSATION (the current chat — use it for continuity; the owner should never have to repeat themselves):\n" + safeHistory.slice(-12).map((h) => `${h.role === "user" ? "Owner" : "Meraj"}: ${h.text.slice(0, 800)}`).join("\n") + "\n"
       : "";
 
     const pageFocus = pageContext && pageContext.name
@@ -1016,18 +1053,37 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
     if (basePrefs.chat.length > 20) basePrefs.chat = basePrefs.chat.slice(-20);
 
     let newFacts: any[] = Array.isArray(mem.memory.key_facts) ? [...mem.memory.key_facts] : [];
-    if (!briefing && message && isMemoryWorthy(String(message))) {
-      const extracted = await tryExtract(provider, String(message), mem.profile, basePrefs.remember, newFacts);
+    let newSummary: string = typeof mem.memory.summary === "string" ? mem.memory.summary : "";
+    const mergeExtracted = (extracted: { facts: string[]; remember: string[]; owner_name: string | null }) => {
       if (extracted.owner_name && !mem.profile.full_name && !basePrefs.preferred_name) {
         basePrefs.preferred_name = extracted.owner_name;
       }
       for (const r of extracted.remember) if (!basePrefs.remember.includes(r)) basePrefs.remember.push(r);
       if (basePrefs.remember.length > 30) basePrefs.remember = basePrefs.remember.slice(-30);
       for (const f of extracted.facts) {
-        const s = String(f);
+        const s = String(f).slice(0, 160);
         if (!newFacts.some((x) => (typeof x === "string" ? x === s : x?.fact === s))) newFacts.push(s);
       }
       if (newFacts.length > 40) newFacts = newFacts.slice(-40);
+    };
+
+    // Fast path — explicit memory requests ("remember that…", "my name is…").
+    if (!briefing && message && isMemoryWorthy(String(message))) {
+      mergeExtracted(await tryExtract(provider, String(message), mem.profile, basePrefs.remember, newFacts));
+    }
+
+    // Rolling memory: every 6 persisted turns, fold the older turns into
+    // the durable summary and keep only the recent tail as transcript.
+    // One small AI call (≤450 tokens) per ~3 exchanges — token-conscious.
+    if (!briefing && isOwner && basePrefs.chat.length >= 12 && basePrefs.chat.length % 6 === 0) {
+      const keep = 6;
+      const archived = basePrefs.chat.slice(0, basePrefs.chat.length - keep);
+      const condensed = await tryCondense(provider, newSummary, archived);
+      if (condensed) {
+        if (condensed.summary) newSummary = condensed.summary.slice(0, 2_000);
+        mergeExtracted(condensed);
+        basePrefs.chat = basePrefs.chat.slice(-keep);
+      }
     }
 
     // Only the owner may change durable business memory. Team members can
@@ -1038,7 +1094,7 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
       try {
         await serviceSupabase.from("business_memory").upsert({
           user_id: ownerId,
-          summary: mem.memory.summary,
+          summary: newSummary,
           business_type: mem.memory.business_type,
           key_facts: newFacts,
           preferences: basePrefs,

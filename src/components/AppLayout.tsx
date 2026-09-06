@@ -1,7 +1,6 @@
 import { Suspense, useState } from 'react'
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom'
 import Sidebar from './Sidebar'
-import FloatingMeraj from './FloatingMeraj'
 import BottomNav from './BottomNav'
 import DesktopHeader from './DesktopHeader'
 import { CommandPalette } from './CommandPalette'
@@ -46,7 +45,6 @@ export default function AppLayout() {
   // On mobile it stays full-bleed, matching the existing chat-first experience.
   const showDesktopShell = !isAssistant || isDesktop
   // Persistent AI access on every non-assistant screen (desktop FAB / mobile bottom-nav center).
-  const showFloatingMeraj = !isAssistant
 
   // ── Page name for the header (replaces 'Cashiea' on non-dashboard pages) ──
   const pageHeaderName = (() => {
@@ -143,12 +141,6 @@ export default function AppLayout() {
       {/* Bottom nav — shapes itself for mobile vs desktop internally. */}
       {showDesktopShell && <BottomNav onMore={() => setSidebarOpen(true)} />}
 
-      {/* Desktop persistent voice Meraj (FAB) — only shown on non-assistant pages
-          when NOT on desktop (the desktop bottom nav already has a Meraj
-          talk button). On mobile, the bottom nav's center Meraj handles it;
-          we keep the FAB for non-desktop / non-mobile? Keep existing logic
-          but hide on desktop where the bottom-nav Meraj slot is visible. */}
-      {showFloatingMeraj && location.pathname !== '/app' && !isDesktop && <FloatingMeraj pathname={location.pathname} />}
       <CommandPalette />
       <SyncManager />
     </div>

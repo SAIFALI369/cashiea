@@ -94,9 +94,17 @@ const pageVariants: Variants = {
       case 'lateral':
         return { x: -28 * c.sign + '%', opacity: 0, zIndex: 1, transition: { duration: 0.26, ease: EASE_SWIPE } }
       case 'instant':
-        // A committed drag already played the transition under the
-        // finger — swap the pages with no exit animation at all.
-        return { opacity: 1, zIndex: 0, transition: { duration: 0 } }
+        // A committed drag already played the transition under the finger.
+        // The exit still needs a real value change and at least one frame:
+        // framer-motion only unmounts an exiting child once its exit
+        // animation COMPLETES, and a zero-delta, zero-duration exit
+        // (opacity: 1, duration: 0 — what this used to be) never fires
+        // completion. The outgoing clone then stayed mounted under the
+        // live page forever — the "ghost text" bug (two instances of the
+        // page in DevTools until a refresh). Fading to 0 over 50 ms is
+        // invisible in practice (the drag already moved the page away)
+        // and guarantees the node is removed.
+        return { opacity: 0, zIndex: 0, transition: { duration: 0.05, ease: 'linear' } }
       default:
         return { opacity: 0, zIndex: 1, transition: { duration: 0.18 } }
     }

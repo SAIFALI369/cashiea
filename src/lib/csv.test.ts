@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   parseCsv, csvEscape, autoMapHeaders, validateProductRows,
-  buildProductCsvTemplate, productsToCsv,
+  buildProductCsvTemplate, productsToCsv, parseLooseAmount,
 } from './csv'
 
 describe('parseCsv', () => {
@@ -135,5 +135,51 @@ describe('productsToCsv', () => {
     expect(parsed.rows[0][0]).toBe('Rice, 5kg')
     expect(parsed.rows[0][1]).toBe('RICE-5')
     expect(parsed.rows[0][3]).toBe('520')
+  })
+})
+
+describe('parseCsv — real-world Excel files', () => {
+  it('parses semicolon-delimited files (some Excel locales)', () => {
+    const out = parseCsv('Name;Price;Stock\r\nRice;100;5\r\nSoap;35;12\r\n')
+    expect(out.headers).toEqual(['Name', 'Price', 'Stock'])
+    expect(out.rows).toEqual([['Rice', '100', '5'], ['Soap', '35', '12']])
+  })
+
+  it('parses tab-delimited files', () => {
+    const out = parseCsv('Name\tPrice\nRice\t100')
+    expect(out.headers).toEqual(['Name', 'Price'])
+    expect(out.rows).toEqual([['Rice', '100']])
+  })
+})
+
+describe('parseLooseAmount — Indian shop formats', () => {
+  it.each([
+    ['1200', 1200], ['₹1,200', 1200], ['1,200.50', 1200.5], ['Rs. 125', 125],
+    ['RS250', 250], ['1 200', 1200], ['1200/-', 1200], ['18%', 18], ['35.50', 35.5],
+  ])('parses %s', (input, expected) => {
+    expect(parseLooseAmount(input as string)).toBe(expected)
+  })
+
+  it('rejects non-numbers with NaN', () => {
+    expect(Number.isNaN(parseLooseAmount('abc'))).toBe(true)
+    expect(Number.isNaN(parseLooseAmount(''))).toBe(true)
+    expect(Number.isNaN(parseLooseAmount(null as unknown as string))).toBe(true)
+  })
+})
+
+describe('validateProductRows — tolerant amount formats (the reported import bug)', () => {
+  const headers = ['name', 'price', 'cost', 'stock', 'low', 'gst']
+  const mapping = { name: 'name', price: 'price', cost: 'cost', stock_quantity: 'stock', low_stock_threshold: 'low', gst_rate: 'gst' }
+  it('accepts ₹1,200-style comma-thousands prices from Excel exports', () => {
+    const out = validateProductRows([['Rice', '₹1,200', '1,000', '25', '5', '5%']], mapping, headers, new Set())
+    expect(out[0].errors).toEqual([])
+    expect(out[0].product?.price).toBe(1200)
+    expect(out[0].product?.cost).toBe(1000)
+    expect(out[0].product?.gst_rate).toBe(5)
+  })
+  it('still rejects genuinely invalid amounts', () => {
+    const out = validateProductRows([['Rice', 'cheap', '', '', '', '']], mapping, headers, new Set())
+    expect(out[0].errors.join(' ')).toContain('not a valid amount')
+    expect(out[0].product).toBeNull()
   })
 })
