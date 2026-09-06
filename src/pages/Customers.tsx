@@ -4,6 +4,7 @@ import { useCan } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import { offlineInsert } from '../lib/mutations'
 import { formatINR } from '../lib/format'
+import { enrichCustomers, winbackText, type Customer360 } from '../lib/customer360'
 import type { Customer, Transaction } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import { StatStrip } from '../components/ui/StatStrip'
@@ -28,7 +29,7 @@ function segmentOf(c: Customer): Exclude<Segment, 'all'> {
 }
 
 export default function Customers() {
-  const { ownerId } = useAuth()
+  const { ownerId, profile } = useAuth()
   const { can } = useCan()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
@@ -38,8 +39,10 @@ export default function Customers() {
   const [segment, setSegment] = useState<Segment>('all')
   const [selected, setSelected] = useState<Customer | null>(null)
   const [orders, setOrders] = useState<Transaction[]>([])
+  const [detail360, setDetail360] = useState<Customer360 | null>(null)
   const [loadingOrders, setLoadingOrders] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<Customer | null>(null)
+  const [applyingCredit, setApplyingCredit] = useState(false)
 
   useEffect(() => {
     if (ownerId) void loadCustomers()
@@ -87,12 +90,45 @@ export default function Customers() {
   const openDetail = async (c: Customer) => {
     if (!ownerId) return
     setSelected(c)
+    setDetail360(null)
     setLoadingOrders(true)
     const { data } = await supabase.from('transactions')
-      .select('*').eq('user_id', ownerId).eq('customer_id', c.id)
-      .order('created_at', { ascending: false }).limit(10)
-    setOrders((data as Transaction[]) || [])
+      .select('id,customer_id,created_at,total,status,payment_method,items')
+      .eq('user_id', ownerId).eq('customer_id', c.id)
+      .order('created_at', { ascending: false }).limit(80)
+    const rows = (data as Transaction[]) || []
+    setOrders(rows)
+    setDetail360(enrichCustomers(customers, rows).get(c.id) || null)
     setLoadingOrders(false)
+  }
+
+  const list360 = useMemo(() => enrichCustomers(customers, []), [customers])
+
+  const applySuggestedCredit = async () => {
+    if (!ownerId || !selected || !detail360?.suggestedCredit) return
+    if (!can('customers:manage')) return toast.error('Your role cannot manage customers')
+    setApplyingCredit(true)
+    const { error } = await supabase.from('customers')
+      .update({ credit_limit: detail360.suggestedCredit })
+      .eq('id', selected.id).eq('user_id', ownerId)
+    setApplyingCredit(false)
+    if (error) return toast.error(error.message)
+    const next = { ...selected, credit_limit: detail360.suggestedCredit }
+    setSelected(next)
+    setCustomers((prev) => prev.map((x) => x.id === next.id ? next : x))
+    toast.success(`Credit limit set to ${formatINR(detail360.suggestedCredit, 0)}`)
+  }
+
+  const copyWinback = async () => {
+    if (!selected) return
+    const shop = profile?.company_name || profile?.full_name || 'our shop'
+    const text = winbackText(selected.name, shop, detail360?.topItems[0]?.name)
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success('Win-back message copied')
+    } catch {
+      toast.error('Could not copy')
+    }
   }
 
   const filtered = useMemo(() => {
@@ -246,6 +282,12 @@ export default function Customers() {
                     <span>Last: {new Date(c.last_purchase_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
                   </div>
                 )}
+                {list360.get(c.id)?.churnRisk === 'high' && (
+                  <p className="text-[10px] font-semibold text-warning mt-1.5">At risk — quiet longer than usual</p>
+                )}
+                {(list360.get(c.id)?.tier === 'platinum' || list360.get(c.id)?.tier === 'gold') && (
+                  <p className="text-[10px] font-semibold text-accent mt-1 capitalize">{list360.get(c.id)!.tier} in this shop</p>
+                )}
 
                 {/* Chevron */}
                 <ChevronRight className="w-4 h-4 text-fg-subtle absolute right-3 top-1/2 -translate-y-1/2" />
@@ -322,9 +364,43 @@ export default function Customers() {
               </div>
             </div>
             {Number(selected.credit_limit) > 0 && (
-              <div className="rounded-control bg-surface-2 px-3 py-2.5 text-center">
+              <div className="rounded-control bg-surface-2 px-3 py-2.5 text-center mb-4">
                 <p className="text-[9px] font-bold uppercase text-fg-subtle">Credit Limit</p>
                 <p className="text-base font-bold text-warning tabular-nums">{formatINR(Number(selected.credit_limit), 0)}</p>
+              </div>
+            )}
+
+            {detail360 && (
+              <div className="rounded-control border border-line bg-surface-2 p-3 mb-4">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-fg-subtle mb-1">Customer 360</p>
+                <p className="text-xs text-fg leading-relaxed">{detail360.insight}</p>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-secondary-soft text-secondary-strong">{detail360.tier}</span>
+                  {detail360.cadenceDays != null && (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-surface text-fg-muted">Every {detail360.cadenceDays}d</span>
+                  )}
+                  {detail360.preferredPay && (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-surface text-fg-muted capitalize">{detail360.preferredPay}</span>
+                  )}
+                  {detail360.topItems.map((it) => (
+                    <span key={it.name} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-surface text-fg-muted">{it.name}</span>
+                  ))}
+                </div>
+                {detail360.suggestedCredit != null && Number(selected.credit_limit || 0) !== detail360.suggestedCredit && can('customers:manage') && (
+                  <button
+                    onClick={applySuggestedCredit}
+                    disabled={applyingCredit}
+                    className="btn-secondary text-xs h-8 mt-3"
+                  >
+                    {applyingCredit ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                    Set credit limit to {formatINR(detail360.suggestedCredit, 0)}
+                  </button>
+                )}
+                {detail360.churnRisk === 'high' && (
+                  <button onClick={copyWinback} className="btn-ghost text-xs h-8 mt-2">
+                    Copy win-back message
+                  </button>
+                )}
               </div>
             )}
 

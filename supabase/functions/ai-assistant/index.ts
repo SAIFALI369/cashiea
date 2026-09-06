@@ -112,7 +112,7 @@ async function buildContext(supabase: any, userId: string, message = "", briefin
   const [todayTx, monthTx, products, customers, expenses, lowStock, dormant, suppliers] = await Promise.all([
     supabase.from("transactions").select("*").eq("user_id", userId).eq("status", "completed").gte("created_at", startToday),
     supabase.from("transactions").select("*").eq("user_id", userId).eq("status", "completed").gte("created_at", startMonth),
-    supabase.from("products").select("name,sku,category,price,stock_quantity,low_stock_threshold").eq("user_id", userId).limit(100),
+    supabase.from("products").select("name,sku,category,price,cost,stock_quantity,low_stock_threshold,gst_rate,hsn_code").eq("user_id", userId).limit(100),
     supabase.from("customers").select("name,email,phone,total_spent,total_orders,last_purchase_at").eq("user_id", userId).limit(100),
     supabase.from("expenses").select("*").eq("user_id", userId).gte("date", startMonth),
     supabase.from("products").select("name,stock_quantity,low_stock_threshold").eq("user_id", userId).limit(50),
@@ -158,7 +158,7 @@ async function buildContext(supabase: any, userId: string, message = "", briefin
     topProducts: topProducts.map((p) => ({ name: p.name, qty: p.qty, revenue: +p.rev.toFixed(2) })),
     lowStock: lowStockItems.map((p: any) => ({ name: p.name, stock: p.stock_quantity, reorderAt: p.low_stock_threshold })),
     dormantCustomers: (dormant.data || []).slice(0, 6).map((c: any) => ({ name: c.name, orders: c.total_orders, lastPurchase: c.last_purchase_at })),
-    productCatalog: (products.data || []).slice(0, 6).map((p: any) => ({ name: p.name, category: p.category, price: p.price, stock: p.stock_quantity })),
+    productCatalog: (products.data || []).slice(0, 24).map((p: any) => ({ name: p.name, category: p.category, price: p.price, stock: p.stock_quantity, cost: p.cost, gst_rate: p.gst_rate, hsn_code: p.hsn_code })),
     customers: (customers.data || []).slice(0, 6).map((c: any) => ({ name: c.name, phone: c.phone, spent: +Number(c.total_spent).toFixed(2), orders: c.total_orders, last: c.last_purchase_at })),
     suppliersOwed: (suppliers.data || []).filter((s: any) => s.outstanding > 0).map((s: any) => ({ name: s.name, outstanding: s.outstanding })),
     recentEmails,
@@ -197,6 +197,20 @@ FORMATTING (the app renders these as visual components — follow exactly):
 - STOCK / INVENTORY LISTS: use - bullet items that include the quantity or stock context (e.g. "- Cement — 4 bags left") — the app adds red/yellow/green status dots automatically. Say "out of stock" or "0 left" for red, "low" for yellow.
 - MESSAGE DRAFTS: when you draft a WhatsApp/SMS/message for the owner to send, put ONLY the message text in a blockquote (each line starting with > ). The app renders it as a sendable WhatsApp bubble with Edit and Send buttons. Never put anything else in the blockquote.
 - Keep it scannable — no long paragraphs. Prefer short blocks separated by blank lines so each renders as its own card.
+
+DESKS you can send the owner to (always as a markdown link like [Open Auto-reorder](/app/auto-reorder)):
+- Auto-reorder (/app/auto-reorder) — draft a PO from 30-day sales
+- Price suggestions (/app/pricing) — raise or markdown, never below cost
+- Cash flow (/app/cash-flow) — 30/60/90-day picture
+- Reminders (/app/reminders) — GST, dues, festivals, follow-ups
+- Data hygiene (/app/duplicates) — duplicates, repeat bills, stale stock
+- Snapshot (/app/snapshot) — shareable card
+- Goals (/app/goals) — streak and weekly grade
+- Supplier scorecard (/app/scorecard) — no invented on-time percent
+- Social drafts (/app/social) — captions, never auto-posted
+- GST working (/app/gst-export) — not a GSTN filing
+- Bank match (/app/bank-import)
+When you spot a real chance (stock running out, money waiting, a price that should move), name the desk and link it.
 
 ${INDIA_KNOWLEDGE}
 `;
@@ -305,9 +319,15 @@ async function tryCondense(
 
 
 // ── Task mode: function-calling for real actions ──────────────────
-const TASK_SYSTEM = `You are Meraj in TASK mode — a capable staff member who prepares and executes real actions in the shop, but ONLY after the owner confirms. Speak briefly, like a good employee following instructions. When the owner asks to create an invoice/bill, add a product/item, or add a customer/client, call the appropriate tool (create_invoice, add_product, or add_customer) with all details. When the owner shares a LIST of products to add — a pasted list, a stock sheet, or items read from a photo — call add_products ONCE with every product in the products array (up to 50 items); never call add_product repeatedly. If any essential detail is missing or ambiguous (customer name, item, quantity, or price), DO NOT call the tool — ask the owner in plain text. Never guess a price, phone number, or discount percentage. For team roles, subscriptions, API keys, or account/login changes, tell the owner those must be done directly in Settings — do not attempt them.`;
+const TASK_SYSTEM = `You are Meraj in TASK mode — a capable staff member who prepares and executes real actions in the shop, but ONLY after the owner confirms. Speak briefly, like a good employee following instructions. When the owner asks to create an invoice/bill, add a product/item, or add a customer/client, call the appropriate tool (create_invoice, add_product, or add_customer) with all details. Look up catalogue prices and GST when the snapshot lists the item; never invent a price. When the owner shares a LIST of products to add — a pasted list, a stock sheet, or items read from a photo — call add_products ONCE with every product in the products array (up to 50 items); never call add_product repeatedly. If any essential detail is missing or ambiguous (customer name, item, quantity, or price), DO NOT call the tool — ask the owner in plain text. Never guess a price, phone number, or discount percentage.
 
-const CREATE_INVOICE_TOOL = [{ function_declarations: [{ name: "create_invoice", description: "Create a GST invoice/bill for a customer. Use when the owner asks to make, create, or generate an invoice or bill. Automatically splits GST into CGST/SGST (intra-state) or IGST (inter-state).", parameters: { type: "OBJECT", properties: { customer_name: { type: "STRING", description: "Customer name" }, customer_phone: { type: "STRING", description: "Customer phone (optional)" }, items: { type: "ARRAY", description: "Line items", items: { type: "OBJECT", properties: { name: { type: "STRING" }, qty: { type: "NUMBER" }, unit_price: { type: "NUMBER", description: "Price per unit in rupees (pre-tax)" }, gst_rate: { type: "NUMBER", description: "GST % for this item: 0, 5, 12, 18, or 28 (default 0)" }, hsn_code: { type: "STRING", description: "HSN code for this item (optional)" } }, required: ["name", "qty", "unit_price"] } }, discount_pct: { type: "NUMBER", description: "Discount % (optional, 0-100)" }, is_interstate: { type: "BOOLEAN", description: "true if customer is in a different state (uses IGST instead of CGST+SGST)" }, notes: { type: "STRING" } }, required: ["customer_name", "items"] } }] }];
+The shop has desks you can open or run:
+- auto-reorder (/app/auto-reorder) — velocity-based draft PO
+- pricing (/app/pricing) — raise/markdown, never below cost
+- cash-flow, reminders, duplicates, snapshot, goals, scorecard, social, gst-export, bank-import, invoices, reports, customers
+When the owner asks about one of these, first answer with live numbers from the snapshot, then call open_desk so they can tap Open it. When they ask you to actually draft a purchase order, call draft_purchase_order (use_suggestions true if they did not name the lines). When they ask you to apply a new selling price, call apply_price_changes — never below cost. For team roles, subscriptions, API keys, or account/login changes, tell the owner those must be done directly in Settings — do not attempt them.`;
+
+const CREATE_INVOICE_TOOL = [{ function_declarations: [{ name: "create_invoice", description: "Create a GST invoice/bill for a customer. Use when the owner asks to make, create, or generate an invoice or bill. Automatically splits GST into CGST/SGST (intra-state) or IGST (inter-state). Look up unit_price, gst_rate and hsn_code from the product catalogue in the snapshot when the owner does not name a price.", parameters: { type: "OBJECT", properties: { customer_name: { type: "STRING", description: "Customer name" }, customer_phone: { type: "STRING", description: "Customer phone (optional)" }, customer_email: { type: "STRING" }, customer_gstin: { type: "STRING", description: "Buyer GSTIN for B2B (optional)" }, due_date: { type: "STRING", description: "Due date YYYY-MM-DD (optional, default +7 days)" }, items: { type: "ARRAY", description: "Line items", items: { type: "OBJECT", properties: { name: { type: "STRING" }, qty: { type: "NUMBER" }, unit_price: { type: "NUMBER", description: "Price per unit in rupees (pre-tax). Omit if the catalogue has this item." }, gst_rate: { type: "NUMBER", description: "GST % for this item: 0, 5, 12, 18, or 28 (default 0)" }, hsn_code: { type: "STRING", description: "HSN code for this item (optional)" } }, required: ["name", "qty"] } }, discount_pct: { type: "NUMBER", description: "Discount % (optional, 0-100)" }, is_interstate: { type: "BOOLEAN", description: "true if customer is in a different state (uses IGST instead of CGST+SGST)" }, notes: { type: "STRING" } }, required: ["customer_name", "items"] } }] }];
 
 const ALL_TOOLS = [{ function_declarations: [
   ...CREATE_INVOICE_TOOL[0].function_declarations,
@@ -318,7 +338,90 @@ const ALL_TOOLS = [{ function_declarations: [
   { name: "generate_image", description: "Generate an image using AI. Use when the owner asks to create, generate, make, or design an image, picture, photo, banner, poster, advertisement, or social media visual (Instagram, Facebook, etc.). Describe what the image should show clearly and visually.", parameters: { type: "OBJECT", properties: { prompt: { type: "STRING", description: "A clear, detailed description of what the image should show — style, colors, subject, setting" }, size: { type: "STRING", description: "Image shape: square (default, 1024x1024), banner (wide 1024x512), or portrait (512x1024)" } }, required: ["prompt"] } },
   { name: "sync_stock_from_sheet", description: "Read product/stock data from the owner's connected Google Sheet and prepare to update/add products in Cashiea. Shows a preview for the owner to confirm first.", parameters: { type: "OBJECT", properties: {}, required: [] } },
   { name: "export_to_sheet", description: "Export data from Cashiea (stock, customers, or sales) as rows appended to the owner's connected Google Sheet — or a new sheet if none is connected. Use when the owner asks to export, save, or write data to Google Sheets.", parameters: { type: "OBJECT", properties: { data_type: { type: "STRING", description: "What to export: stock, customers, or sales" } }, required: ["data_type"] } },
+  { name: "open_desk", description: "Open one of the shop's automation desks after a short live briefing. Use when the owner asks about reorder, prices, cash flow, reminders, duplicates, snapshot, goals, supplier scorecard, social captions, GST working, bank matching, invoices, reports, or customers.", parameters: { type: "OBJECT", properties: { desk: { type: "STRING", description: "One of: auto-reorder, pricing, cash-flow, reminders, duplicates, snapshot, goals, scorecard, social, gst-export, bank-import, invoices, reports, customers" } }, required: ["desk"] } },
+  { name: "draft_purchase_order", description: "Prepare a draft purchase order from named lines, or from current low-stock alerts when use_suggestions is true. Owner confirms before it is saved.", parameters: { type: "OBJECT", properties: { use_suggestions: { type: "BOOLEAN", description: "true = size the PO from products at or below their alert" }, supplier_name: { type: "STRING" }, items: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, quantity: { type: "NUMBER" }, unit_price: { type: "NUMBER" } }, required: ["name", "quantity"] } }, notes: { type: "STRING" } }, required: [] } },
+  { name: "apply_price_changes", description: "Apply new selling prices. A price must never go below the product's cost. Owner confirms before anything is written.", parameters: { type: "OBJECT", properties: { changes: { type: "ARRAY", items: { type: "OBJECT", properties: { product_name: { type: "STRING" }, product_id: { type: "STRING" }, price: { type: "NUMBER" } }, required: ["price"] } } }, required: ["changes"] } },
 ] }];
+
+const DESKS: Record<string, { label: string; href: string; desc: string }> = {
+  "auto-reorder": { label: "Auto-reorder", href: "/app/auto-reorder", desc: "velocity-based draft purchase orders" },
+  pricing: { label: "Price suggestions", href: "/app/pricing", desc: "raise or markdown from 30-day sales — never below cost" },
+  "cash-flow": { label: "Cash flow", href: "/app/cash-flow", desc: "30/60/90-day cash picture" },
+  reminders: { label: "Reminders", href: "/app/reminders", desc: "GST dates, dues, festivals, follow-ups" },
+  duplicates: { label: "Data hygiene", href: "/app/duplicates", desc: "duplicates, repeat bills, stale stock" },
+  snapshot: { label: "Snapshot", href: "/app/snapshot", desc: "shareable card of today, the week or the month" },
+  goals: { label: "Goals", href: "/app/goals", desc: "billing streak and weekly grade" },
+  scorecard: { label: "Supplier scorecard", href: "/app/scorecard", desc: "grades from POs and dues — no invented on-time percent" },
+  social: { label: "Social drafts", href: "/app/social", desc: "WhatsApp Status captions — never auto-posted" },
+  "gst-export": { label: "GST working", href: "/app/gst-export", desc: "health flags and JSON/Excel — not a GSTN filing" },
+  "bank-import": { label: "Bank match", href: "/app/bank-import", desc: "match credits to unpaid invoices" },
+  invoices: { label: "Invoices", href: "/app/invoices", desc: "GST bills — review, then save" },
+  reports: { label: "Reports", href: "/app/reports", desc: "briefings from live Cashiea numbers" },
+  customers: { label: "Customers", href: "/app/customers", desc: "who spends, who has gone quiet" },
+};
+
+function nextDocNumber(prefix: string): string {
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(2);
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const seq = String(Math.floor(Math.random() * 10000) % 10000).padStart(4, "0");
+  return `${prefix}-${yy}${mm}${dd}-${seq}`;
+}
+
+function defaultDueDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+  return d.toISOString().slice(0, 10);
+}
+
+async function summarizeDesk(supabase: any, userId: string, desk: string): Promise<string> {
+  const info = DESKS[desk];
+  const title = info ? `**${info.label}** — ${info.desc}.` : "Here is what I can see.";
+  try {
+    if (desk === "auto-reorder" || desk === "pricing") {
+      const { data } = await supabase.from("products").select("name,stock_quantity,low_stock_threshold,price,cost").eq("user_id", userId).limit(400);
+      const low = (data || []).filter((p: any) => Number(p.stock_quantity) <= Number(p.low_stock_threshold));
+      if (desk === "auto-reorder") {
+        if (!low.length) return `${title}\n\nStock looks healthy against your own alerts.`;
+        return `${title}\n\n**${low.length} item${low.length === 1 ? "" : "s"}** sit at or below their alert:\n` + low.slice(0, 6).map((p: any) => `- ${p.name} — ${p.stock_quantity} left (alert ${p.low_stock_threshold})`).join("\n");
+      }
+      return `${title}\n\nI will not invent a market price. Open the desk to Apply a raise or a markdown — a cut never goes below cost.`;
+    }
+    if (desk === "cash-flow" || desk === "bank-import" || desk === "invoices" || desk === "reminders") {
+      const { data } = await supabase.from("invoices").select("invoice_number,client_name,total,status,due_date").eq("user_id", userId).in("status", ["sent", "viewed", "partial", "overdue"]).limit(40);
+      const rows = data || [];
+      const sum = rows.reduce((s: number, r: any) => s + Number(r.total || 0), 0);
+      if (!rows.length) return `${title}\n\nNo unpaid invoices on the book right now.`;
+      return `${title}\n\n**${rows.length} unpaid invoice${rows.length === 1 ? "" : "s"}** totalling ₹${sum.toLocaleString("en-IN")}.\n` + rows.slice(0, 5).map((r: any) => `- ${r.invoice_number} · ${r.client_name} · ₹${Number(r.total).toLocaleString("en-IN")}`).join("\n");
+    }
+    if (desk === "scorecard") {
+      const { data } = await supabase.from("suppliers").select("name,outstanding").eq("user_id", userId).limit(40);
+      const owed = (data || []).filter((s: any) => Number(s.outstanding) > 0);
+      if (!owed.length) return `${title}\n\nNo supplier dues on the book.`;
+      return `${title}\n\nYou owe **${owed.length}** supplier${owed.length === 1 ? "" : "s"}:\n` + owed.slice(0, 6).map((s: any) => `- ${s.name} · ₹${Number(s.outstanding).toLocaleString("en-IN")}`).join("\n");
+    }
+    if (desk === "snapshot" || desk === "goals" || desk === "reports" || desk === "social") {
+      const now = new Date();
+      const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      const { data } = await supabase.from("transactions").select("total").eq("user_id", userId).eq("status", "completed").gte("created_at", startToday);
+      const sales = (data || []).reduce((s: number, t: any) => s + Number(t.total || 0), 0);
+      return `${title}\n\nToday's completed sales: **₹${sales.toLocaleString("en-IN")}** across ${(data || []).length} bill${(data || []).length === 1 ? "" : "s"}.`;
+    }
+    if (desk === "customers") {
+      const { data } = await supabase.from("customers").select("name,total_spent,last_purchase_at").eq("user_id", userId).order("total_spent", { ascending: false }).limit(6);
+      if (!data?.length) return `${title}\n\nNo customers on the book yet.`;
+      return `${title}\n\nTop of the book:\n` + data.map((c: any) => `- ${c.name} · ₹${Number(c.total_spent || 0).toLocaleString("en-IN")}`).join("\n");
+    }
+    if (desk === "gst-export") {
+      return `${title}\n\nThis is a working sheet — not a GSTN filing. Open it to check mismatches and export JSON or Excel.`;
+    }
+    if (desk === "duplicates") {
+      return `${title}\n\nI'll open Data hygiene so you can flag duplicate customers or products, same-day repeat bills, and stock that has not sold in 90 days. Nothing is merged until you say so.`;
+    }
+  } catch { /* briefing is best-effort */ }
+  return title;
+}
 
 function computeInvoiceDraft(args: any) {
   const discountPct = Math.max(0, Math.min(100, Number(args.discount_pct || 0)));
@@ -367,7 +470,7 @@ function computeInvoiceDraft(args: any) {
     total,
     isInterstate: args.is_interstate === true,
     hsnSummary,
-    invoice_number: "INV-" + Date.now().toString(36).toUpperCase(),
+    invoice_number: nextDocNumber("INV"),
   };
 }
 function formatDraftReply(name: string, d: any) {
@@ -386,11 +489,14 @@ const OWNER_ONLY_CONFIRMATIONS = new Set([
   "add_products",
   "sync_stock_from_sheet",
   "export_to_sheet",
+  "draft_purchase_order",
+  "apply_price_changes",
 ]);
 const ALLOWED_CONFIRMATIONS = new Set([
   ...OWNER_ONLY_CONFIRMATIONS,
   "add_customer",
   "send_whatsapp",
+  "open_desk",
 ]);
 
 const MAX_MONEY = 1_000_000_000;
@@ -405,6 +511,24 @@ function cleanTaskText(value: any, max: number): string | null {
   if (typeof value !== "string") return null;
   const text = value.trim();
   return text && text.length <= max ? text : null;
+}
+
+async function fillInvoiceFromCatalog(supabase: any, userId: string, args: any): Promise<{ args: any; missing: string[] }> {
+  const items = Array.isArray(args?.items) ? args.items : [];
+  const { data } = await supabase.from("products").select("name,price,gst_rate,hsn_code").eq("user_id", userId).limit(800);
+  const map = new Map((data || []).map((p: any) => [String(p.name || "").toLowerCase().trim(), p]));
+  const missing: string[] = [];
+  const filled = items.map((it: any) => {
+    const hit = map.get(String(it.name || "").toLowerCase().trim());
+    const next = { ...it };
+    const price = Number(next.unit_price);
+    if (!(Number.isFinite(price) && price >= 0) && hit) next.unit_price = Number(hit.price) || 0;
+    if (next.gst_rate === undefined && hit?.gst_rate != null) next.gst_rate = Number(hit.gst_rate);
+    if (!next.hsn_code && hit?.hsn_code) next.hsn_code = hit.hsn_code;
+    if (!(Number.isFinite(Number(next.unit_price)) && Number(next.unit_price) >= 0)) missing.push(String(it.name || "item"));
+    return next;
+  });
+  return { args: { ...args, items: filled, due_date: args.due_date || defaultDueDate() }, missing };
 }
 
 function validateInvoiceInput(input: any): string | null {
@@ -424,6 +548,13 @@ function validateInvoiceInput(input: any): string | null {
   if (input.notes !== undefined && input.notes !== null && !cleanTaskText(input.notes, 2000)) return "The invoice notes are too long or invalid.";
   if (input.customer_email !== undefined && input.customer_email !== null && !cleanTaskText(input.customer_email, 320)) return "The customer email is invalid.";
   if (input.customer_phone !== undefined && input.customer_phone !== null && !cleanTaskText(input.customer_phone, 40)) return "The customer phone is invalid.";
+  if (input.customer_gstin !== undefined && input.customer_gstin !== null && String(input.customer_gstin).trim()) {
+    const gstin = String(input.customer_gstin).trim().toUpperCase();
+    if (!/^[0-9A-Z]{15}$/.test(gstin)) return "The buyer GSTIN must be 15 characters.";
+  }
+  if (input.due_date !== undefined && input.due_date !== null && String(input.due_date).trim()) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(input.due_date).trim())) return "The due date must be YYYY-MM-DD.";
+  }
   return null;
 }
 
@@ -483,7 +614,7 @@ Deno.serve(async (req) => {
     usageOwner = ownerId;
     const { data: profile, error: profileError } = await serviceSupabase
       .from("profiles")
-      .select("ai_provider, api_usage_count, api_usage_limit, trial_ends_at, full_name, company_name, shop_category, business_address, phone")
+      .select("ai_provider, api_usage_count, api_usage_limit, trial_ends_at, full_name, company_name, shop_category, business_address, phone, gstin, upi_id, business_state")
       .eq("id", ownerId).maybeSingle();
     if (profileError || !profile) return json({ error: "Could not load business profile" }, 503);
 
@@ -713,15 +844,23 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
           const validationError = validateInvoiceInput(confirm.input);
           if (validationError) return json({ reply: validationError, invalid: true }, 400);
           const d = computeInvoiceDraft(confirm.input);
+          const payee = profile?.upi_id ? String(profile.upi_id).trim() : "";
+          const payeeName = String(profile?.company_name || profile?.full_name || "Shop");
+          const paymentLink = payee
+            ? `upi://pay?pa=${encodeURIComponent(payee)}&pn=${encodeURIComponent(payeeName)}&am=${d.total.toFixed(2)}&cu=INR&tr=${encodeURIComponent(d.invoice_number)}&tn=${encodeURIComponent("Invoice " + d.invoice_number)}`
+            : null;
           const { data, error: ie } = await serviceSupabase.from("invoices").insert({
             user_id: ownerId, invoice_number: d.invoice_number,
             client_name: String(confirm.input.customer_name).trim(),
             client_email: confirm.input.customer_email || null,
             client_phone: confirm.input.customer_phone || null,
+            client_gstin: confirm.input.customer_gstin ? String(confirm.input.customer_gstin).toUpperCase() : null,
             items: d.items, subtotal: d.subtotal, discount: d.discountAmount,
             tax_rate: d.taxRate, tax_amount: d.taxAmount, total: d.total,
             is_interstate: d.isInterstate, hsn_summary: d.hsnSummary, status: "draft",
+            due_date: confirm.input.due_date || defaultDueDate(),
             notes: confirm.input.notes || null,
+            payment_link: paymentLink,
           }).select().single();
           if (ie) return json({ reply: `I couldn't create the invoice: ${ie.message}. Want to try again?` });
           usageConsumed = true;
@@ -865,6 +1004,60 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
         await serviceSupabase.from("activity_logs").insert({ user_id: ownerId, action_type: "summary", description: `Meraj sent a WhatsApp to ${to}`, time_saved_minutes: 3, money_saved: 1, provider: "meraj-task" });
         return json({ reply: `Done — WhatsApp sent to ${to}.`, executed: { type: "whatsapp" } });
       }
+      if (confirm && confirm.type === "draft_purchase_order" && confirm.input) {
+        try {
+          const items = Array.isArray(confirm.input.items) ? confirm.input.items : [];
+          if (!items.length || items.length > 200) return json({ reply: "A purchase order needs between 1 and 200 lines.", invalid: true }, 400);
+          const rows = items.map((it: any) => ({
+            name: String(it.name || "").trim().slice(0, 200),
+            quantity: Number(it.quantity),
+            unit_price: Number(it.unit_price || 0),
+          })).filter((it: any) => it.name && Number.isFinite(it.quantity) && it.quantity > 0);
+          if (!rows.length) return json({ reply: "Those purchase-order lines are not valid.", invalid: true }, 400);
+          const subtotal = +rows.reduce((s: number, it: any) => s + it.quantity * it.unit_price, 0).toFixed(2);
+          const poNumber = nextDocNumber("PO");
+          const { data, error: pe } = await serviceSupabase.from("purchase_orders").insert({
+            user_id: ownerId,
+            po_number: poNumber,
+            items: rows,
+            subtotal,
+            tax_amount: 0,
+            total: subtotal,
+            status: "draft",
+            notes: confirm.input.notes || "Drafted by Meraj",
+          }).select().single();
+          if (pe) return json({ reply: `I couldn't save the purchase order: ${pe.message}.` });
+          usageConsumed = true;
+          await serviceSupabase.from("activity_logs").insert({ user_id: ownerId, action_type: "summary", description: `Meraj drafted PO ${poNumber} (${rows.length} lines)`, time_saved_minutes: 12, money_saved: 5, provider: "meraj-task" });
+          return json({ reply: `Done — draft **${data.po_number}** is ready with **${rows.length}** line${rows.length === 1 ? "" : "s"} totalling ₹${subtotal.toLocaleString("en-IN")}. Review it under Auto-reorder or Suppliers.`, executed: { type: "purchase_order", po_number: data.po_number } });
+        } catch (ex) { return json({ reply: `Something went wrong drafting the PO: ${(ex as Error)?.message}.` }); }
+      }
+      if (confirm && confirm.type === "apply_price_changes" && confirm.input) {
+        try {
+          const changes = Array.isArray(confirm.input.changes) ? confirm.input.changes : [];
+          if (!changes.length || changes.length > 50) return json({ reply: "I can apply between 1 and 50 price changes at a time.", invalid: true }, 400);
+          const { data: products } = await supabase.from("products").select("id,name,price,cost").eq("user_id", ownerId).limit(2000);
+          const byId = new Map((products || []).map((p: any) => [p.id, p]));
+          const byName = new Map((products || []).map((p: any) => [String(p.name || "").toLowerCase().trim(), p]));
+          let applied = 0;
+          const skipped: string[] = [];
+          for (const c of changes) {
+            const price = Number(c.price);
+            if (!Number.isFinite(price) || price < 0) { skipped.push("invalid price"); continue; }
+            const prod = (c.product_id && byId.get(c.product_id)) || byName.get(String(c.product_name || "").toLowerCase().trim());
+            if (!prod) { skipped.push(String(c.product_name || c.product_id || "unknown")); continue; }
+            const cost = Math.max(0, Number(prod.cost) || 0);
+            if (cost > 0 && price < cost) { skipped.push(`${prod.name} (below cost)`); continue; }
+            const { error: ue } = await serviceSupabase.from("products").update({ price }).eq("id", prod.id).eq("user_id", ownerId);
+            if (ue) { skipped.push(prod.name); continue; }
+            applied++;
+          }
+          if (!applied) return json({ reply: `I couldn't apply those prices${skipped.length ? ` (${skipped.slice(0, 4).join(", ")})` : ""}.` });
+          usageConsumed = true;
+          await serviceSupabase.from("activity_logs").insert({ user_id: ownerId, action_type: "summary", description: `Meraj applied ${applied} price change${applied === 1 ? "" : "s"}`, time_saved_minutes: 8, money_saved: 4, provider: "meraj-task" });
+          return json({ reply: `Done — **${applied}** selling price${applied === 1 ? "" : "s"} updated${skipped.length ? `. Skipped: ${skipped.slice(0, 4).join(", ")}` : ""}.`, executed: { type: "prices", count: applied } });
+        } catch (ex) { return json({ reply: `Something went wrong applying prices: ${(ex as Error)?.message}.` }); }
+      }
       // PREPARE: model decides tool-call vs text reply
       const [ctx2, mem2] = await Promise.all([ buildContext(supabase, ownerId, String(message || ""), false, serviceSupabase), buildMemory(serviceSupabase, ownerId) ]);
       const tr = await callGeminiToolCall(TASK_SYSTEM + scopeFocus + pageFocus, `Owner: "${message}"\n\n${mem2.block}${historyBlock}\n\nSnapshot:\n${ctx2}`, ALL_TOOLS, { feature: "task-invoice", maxTokens: 3000 });
@@ -879,10 +1072,14 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
           return json({ reply: "Only the business owner can export business data to Google Sheets." });
         }
         if (tn === "create_invoice") {
-          const validationError = validateInvoiceInput(args);
+          const filled = await fillInvoiceFromCatalog(supabase, ownerId, args);
+          if (filled.missing.length) {
+            return json({ reply: `I found those items but I still need a price for: **${filled.missing.join(", ")}**. What should I charge?` });
+          }
+          const validationError = validateInvoiceInput(filled.args);
           if (validationError) return json({ reply: `I need a little more detail: ${validationError}` });
-          const d = computeInvoiceDraft(args);
-          return json({ reply: formatDraftReply(args.customer_name, d), pending: { type: "create_invoice", input: args, preview: d } });
+          const d = computeInvoiceDraft(filled.args);
+          return json({ reply: formatDraftReply(filled.args.customer_name, d), pending: { type: "create_invoice", input: filled.args, preview: d } });
         }
         if (tn === "add_product") {
           const validationError = validateProductInput(args);
@@ -1010,6 +1207,43 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
             return json({ reply: "I can export **stock**, **customers**, or **sales**. Which one?" });
           }
           return json({ reply: `I'll export your **${dataType}** to Google Sheets\n\nTap **Export it** to proceed.`, pending: { type: "export_to_sheet", input: { data_type: dataType }, preview: { data_type: dataType } } });
+        }
+        if (tn === "open_desk") {
+          const desk = String(args.desk || "").toLowerCase().trim();
+          const info = DESKS[desk];
+          if (!info) return json({ reply: "Which desk should I open — Auto-reorder, Prices, Cash flow, Reminders, Hygiene, Snapshot, Goals, Scorecard, Social, GST, Bank match, Invoices, Reports or Customers?" });
+          const briefing = await summarizeDesk(supabase, ownerId, desk);
+          return json({ reply: briefing + `\n\nTap **Open it** to work this on the ${info.label} page.`, pending: { type: "open_desk", input: { desk, href: info.href, label: info.label }, preview: { href: info.href } } });
+        }
+        if (tn === "draft_purchase_order") {
+          if (!isOwner) return json({ reply: "Only the business owner can draft a purchase order." });
+          let items = Array.isArray(args.items) ? args.items : [];
+          if (args.use_suggestions || !items.length) {
+            const { data: products } = await supabase.from("products").select("name,stock_quantity,low_stock_threshold,cost").eq("user_id", ownerId).limit(400);
+            items = (products || []).filter((p: any) => Number(p.stock_quantity) <= Number(p.low_stock_threshold)).map((p: any) => {
+              const stock = Number(p.stock_quantity) || 0;
+              const threshold = Math.max(1, Number(p.low_stock_threshold) || 1);
+              const qty = Math.max(threshold * 2 - stock, threshold, 1);
+              return { name: p.name, quantity: Math.ceil(qty), unit_price: Math.max(0, Number(p.cost) || 0) };
+            });
+          }
+          const rows = items.map((it: any) => ({
+            name: String(it.name || "").trim(),
+            quantity: Number(it.quantity ?? it.qty),
+            unit_price: Number(it.unit_price || 0),
+          })).filter((it: any) => it.name && Number.isFinite(it.quantity) && it.quantity > 0);
+          if (!rows.length) return json({ reply: "Nothing is below its alert, and you didn't name any lines. Want me to open Auto-reorder anyway?" });
+          const subtotal = +rows.reduce((s: number, it: any) => s + it.quantity * it.unit_price, 0).toFixed(2);
+          const preview = rows.slice(0, 6).map((it: any) => `- ${it.name} × ${it.quantity}`).join("\n");
+          const more = rows.length > 6 ? `\n- … +${rows.length - 6} more` : "";
+          return json({ reply: `I've prepared a **draft purchase order** — ${rows.length} line${rows.length === 1 ? "" : "s"}, about ₹${subtotal.toLocaleString("en-IN")}.\n\n${preview}${more}\n\nTap **Draft the PO** to save it. Nothing is sent to a supplier.`, pending: { type: "draft_purchase_order", input: { items: rows, notes: args.notes || "Drafted by Meraj" }, preview: { count: rows.length, subtotal } } });
+        }
+        if (tn === "apply_price_changes") {
+          if (!isOwner) return json({ reply: "Only the business owner can change a selling price." });
+          const changes = Array.isArray(args.changes) ? args.changes : [];
+          if (!changes.length) return json({ reply: "Which products should I reprice, and to what?" });
+          const lines = changes.slice(0, 8).map((c: any) => `- ${c.product_name || c.product_id || "item"} → ₹${Number(c.price).toLocaleString("en-IN")}`).join("\n");
+          return json({ reply: `I'll write these selling prices (a cut never goes below cost):\n\n${lines}\n\nTap **Apply prices** to confirm.`, pending: { type: "apply_price_changes", input: { changes }, preview: { count: changes.length } } });
         }
       }
       return json({ reply: tr.value.text || "How can I help?" });

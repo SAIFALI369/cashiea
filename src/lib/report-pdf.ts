@@ -1,23 +1,21 @@
 // ════════════════════════════════════════════════════════════════
-// Report PDF — renders a generated report (markdown) into a clean
-// A4 PDF: title header band, section headings, bullets, paragraphs
-// and simple tables. Uses the app's semantic palette; "Rs." because
-// jsPDF standard fonts cannot render the ₹ glyph.
+// Report PDF — a drafted briefing on A4, not a markdown dump.
+// jsPDF standard fonts cannot render ₹, so we write "Rs.".
 // ════════════════════════════════════════════════════════════════
 
 import { jsPDF } from 'jspdf'
 import type { Profile, Report } from './types'
 
-const PAGE = { w: 210, h: 297, margin: 16 }
+const PAGE = { w: 210, h: 297, margin: 18 }
 const COLOR = {
-  accent: [16, 185, 129] as [number, number, number],     // --accent
-  accentSoft: [209, 250, 229] as [number, number, number], // --accent-soft
-  dark: [41, 37, 31] as [number, number, number],          // --fg
-  muted: [92, 84, 73] as [number, number, number],         // --fg-muted
-  subtle: [132, 123, 108] as [number, number, number],     // --fg-subtle
-  line: [226, 217, 201] as [number, number, number],       // --line
-  surface: [245, 239, 228] as [number, number, number],    // --surface-2
+  ink: [28, 25, 23] as [number, number, number],
+  muted: [87, 83, 78] as [number, number, number],
+  faint: [120, 113, 108] as [number, number, number],
+  line: [214, 211, 209] as [number, number, number],
+  band: [28, 25, 23] as [number, number, number],
+  paper: [250, 250, 249] as [number, number, number],
   white: [255, 255, 255] as [number, number, number],
+  accent: [5, 150, 105] as [number, number, number],
 }
 
 interface Block {
@@ -41,7 +39,6 @@ export function markdownToBlocks(md: string): Block[] {
     const line = rawLine.trimEnd()
     if (/^\s*\|.*\|\s*$/.test(line)) {
       const cells = line.trim().slice(1, -1).split('|').map((c) => c.trim())
-      // separator rows like |---|---|
       if (cells.every((c) => /^:?-{2,}:?$/.test(c))) continue
       tableRows = tableRows || []
       tableRows.push(cells)
@@ -67,83 +64,98 @@ export function markdownToBlocks(md: string): Block[] {
 
 const stripMd = (s: string) => s.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1').replace(/`(.*?)`/g, '$1')
 
+const rupeeSafe = (s: string) => s.replace(/₹/g, 'Rs. ')
+
 export function buildReportPdf(report: Pick<Report, 'title' | 'report_type' | 'created_at' | 'generated_content'>, profile: Profile | null): jsPDF {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const business = profile?.company_name || profile?.full_name || 'My Business'
+  const title = report.title || `${report.report_type} report`
+  const dated = new Date(report.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
   let y = 0
 
   const ensureSpace = (needed: number) => {
-    if (y + needed > PAGE.h - 18) { doc.addPage(); y = 16 }
+    if (y + needed > PAGE.h - 20) {
+      doc.addPage()
+      y = 22
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(...COLOR.faint)
+      doc.text(`${business}  ·  ${title}`, PAGE.margin, 12)
+      doc.setDrawColor(...COLOR.line)
+      doc.setLineWidth(0.2)
+      doc.line(PAGE.margin, 15, PAGE.w - PAGE.margin, 15)
+    }
   }
 
-  // ── Header band (page 1) ──
-  doc.setFillColor(...COLOR.accent)
-  doc.rect(0, 0, PAGE.w, 26, 'F')
+  // ── Cover band ──
+  doc.setFillColor(...COLOR.band)
+  doc.rect(0, 0, PAGE.w, 42, 'F')
   doc.setTextColor(...COLOR.white)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  doc.text('CONFIDENTIAL BRIEFING', PAGE.margin, 12)
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(15)
-  doc.text(report.title || `${report.report_type} report`, PAGE.margin, 12)
+  doc.setFontSize(16)
+  const titleLines = doc.splitTextToSize(title, PAGE.w - 2 * PAGE.margin) as string[]
+  doc.text(titleLines.slice(0, 2), PAGE.margin, 22)
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
-  const meta = [
-    business,
-    new Date(report.created_at).toLocaleDateString('en-IN', { dateStyle: 'long' }),
-    `${report.report_type} report`,
-  ].join('  ·  ')
-  doc.text(meta, PAGE.margin, 19)
-  y = 34
+  doc.text(`${business}  ·  ${dated}  ·  ${report.report_type} report`, PAGE.margin, 36)
+  y = 52
 
   const blocks = markdownToBlocks(report.generated_content || '')
+  let firstProse = true
 
   for (const b of blocks) {
-    const text = stripMd(b.text)
+    const text = rupeeSafe(stripMd(b.text))
     if (b.kind === 'h1' || b.kind === 'h2') {
-      ensureSpace(14)
-      y += 4
+      ensureSpace(16)
+      y += 5
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(b.kind === 'h1' ? 13 : 11)
-      doc.setTextColor(...COLOR.dark)
-      doc.text(doc.splitTextToSize(text, PAGE.w - 2 * PAGE.margin), PAGE.margin, y)
-      y += 5.5
+      doc.setFontSize(b.kind === 'h1' ? 12.5 : 11)
+      doc.setTextColor(...COLOR.ink)
+      const wrapped = doc.splitTextToSize(text, PAGE.w - 2 * PAGE.margin) as string[]
+      doc.text(wrapped, PAGE.margin, y)
+      y += wrapped.length * 5 + 1
       doc.setDrawColor(...COLOR.accent)
-      doc.setLineWidth(0.6)
-      doc.line(PAGE.margin, y, PAGE.margin + 14, y)
-      y += 3
+      doc.setLineWidth(0.7)
+      doc.line(PAGE.margin, y, PAGE.margin + 18, y)
+      y += 4
     } else if (b.kind === 'h3') {
       ensureSpace(10)
-      y += 2.5
+      y += 2
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(10)
-      doc.setTextColor(...COLOR.dark)
-      doc.text(doc.splitTextToSize(text, PAGE.w - 2 * PAGE.margin), PAGE.margin, y)
-      y += 4.5
+      doc.setTextColor(...COLOR.ink)
+      const wrapped = doc.splitTextToSize(text, PAGE.w - 2 * PAGE.margin) as string[]
+      doc.text(wrapped, PAGE.margin, y)
+      y += wrapped.length * 4.5 + 1
     } else if (b.kind === 'bullet') {
-      const wrapped = doc.splitTextToSize(text, PAGE.w - 2 * PAGE.margin - 5) as string[]
+      const wrapped = doc.splitTextToSize(text, PAGE.w - 2 * PAGE.margin - 6) as string[]
       ensureSpace(wrapped.length * 4.6 + 2)
       doc.setFillColor(...COLOR.accent)
-      doc.circle(PAGE.margin + 1.4, y - 0.9, 0.8, 'F')
+      doc.circle(PAGE.margin + 1.5, y - 1, 0.7, 'F')
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(9.5)
       doc.setTextColor(...COLOR.muted)
-      doc.text(wrapped, PAGE.margin + 5, y)
-      y += wrapped.length * 4.6 + 1.2
+      doc.text(wrapped, PAGE.margin + 6, y)
+      y += wrapped.length * 4.6 + 1.4
     } else if (b.kind === 'table' && b.rows && b.rows.length) {
       const cols = Math.max(...b.rows.map((r) => r.length))
       const colW = (PAGE.w - 2 * PAGE.margin) / cols
-      // crude width estimate per cell to pick a font size
       const longest = Math.max(...b.rows.flat().map((c) => stripMd(c).length))
-      const fs = longest > 60 ? 7.5 : longest > 34 ? 8.5 : 9.5
+      const fs = longest > 60 ? 7.5 : longest > 34 ? 8.5 : 9
       for (let r = 0; r < b.rows.length; r++) {
-        const rowCells = b.rows[r].map((c) => stripMd(c))
+        const rowCells = b.rows[r].map((c) => rupeeSafe(stripMd(c)))
         const rowH = Math.max(...rowCells.map((c) => (doc.splitTextToSize(c, colW - 3) as string[]).length)) * (fs * 0.42 + 1.4) + 2
         ensureSpace(rowH + 2)
         if (r === 0) {
-          doc.setFillColor(...COLOR.surface)
+          doc.setFillColor(...COLOR.paper)
           doc.rect(PAGE.margin, y - 2, PAGE.w - 2 * PAGE.margin, rowH, 'F')
         }
         doc.setFont('helvetica', r === 0 ? 'bold' : 'normal')
         doc.setFontSize(fs)
-        doc.setTextColor(...(r === 0 ? COLOR.dark : COLOR.muted))
+        doc.setTextColor(...(r === 0 ? COLOR.ink : COLOR.muted))
         rowCells.forEach((c, ci) => {
           const wrapped = doc.splitTextToSize(c, colW - 3) as string[]
           doc.text(wrapped, PAGE.margin + ci * colW + 1.5, y + 1.5)
@@ -157,25 +169,40 @@ export function buildReportPdf(report: Pick<Report, 'title' | 'report_type' | 'c
       }
       y += 3
     } else {
-      const wrapped = doc.splitTextToSize(text, PAGE.w - 2 * PAGE.margin) as string[]
-      ensureSpace(wrapped.length * 4.6 + 2)
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(9.5)
-      doc.setTextColor(...COLOR.muted)
-      doc.text(wrapped, PAGE.margin, y)
-      y += wrapped.length * 4.6 + 1.5
+      const wrapped = doc.splitTextToSize(text, PAGE.w - 2 * PAGE.margin - (firstProse ? 4 : 0)) as string[]
+      const boxH = wrapped.length * 4.8 + 8
+      if (firstProse) {
+        ensureSpace(boxH + 4)
+        doc.setFillColor(...COLOR.paper)
+        doc.roundedRect(PAGE.margin - 2, y - 5, PAGE.w - 2 * PAGE.margin + 4, boxH, 1.5, 1.5, 'F')
+        doc.setDrawColor(...COLOR.accent)
+        doc.setLineWidth(1.2)
+        doc.line(PAGE.margin - 2, y - 5, PAGE.margin - 2, y - 5 + boxH)
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10)
+        doc.setTextColor(...COLOR.ink)
+        doc.text(wrapped, PAGE.margin + 4, y)
+        y += boxH + 2
+        firstProse = false
+      } else {
+        ensureSpace(wrapped.length * 4.8 + 2)
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(9.5)
+        doc.setTextColor(...COLOR.muted)
+        doc.text(wrapped, PAGE.margin, y)
+        y += wrapped.length * 4.8 + 1.8
+      }
     }
   }
 
-  // ── Footer on every page ──
   const pages = doc.getNumberOfPages()
   for (let p = 1; p <= pages; p++) {
     doc.setPage(p)
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7.5)
-    doc.setTextColor(...COLOR.subtle)
-    doc.text('Generated by Cashiea', PAGE.margin, PAGE.h - 8)
-    doc.text(`${p} / ${pages}`, PAGE.w - PAGE.margin, PAGE.h - 8, { align: 'right' })
+    doc.setFontSize(7)
+    doc.setTextColor(...COLOR.faint)
+    doc.text(`${business}  ·  prepared for the owner  ·  Cashiea`, PAGE.margin, PAGE.h - 8)
+    doc.text(`${p} of ${pages}`, PAGE.w - PAGE.margin, PAGE.h - 8, { align: 'right' })
   }
 
   return doc

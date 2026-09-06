@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useCan } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
@@ -105,7 +106,7 @@ export default function Suppliers() {
     <div className="animate-fade-in">
       <PageHeader
         title="Suppliers & Purchase Orders"
-        subtitle="Manage vendors, create POs, and track outstanding payments"
+        subtitle="Manage vendors, create POs, and track outstanding payments. Scorecard grades live under Automation."
         icon={<Truck className="w-5 h-5" />}
         action={isOwner ? (tab === 'suppliers'
           ? <button onClick={() => setShowSupplier(!showSupplier)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showSupplier ? 'Close' : 'Add Supplier'}</button>
@@ -120,6 +121,8 @@ export default function Suppliers() {
           { label: 'Purchase orders', value: String(pos.length), icon: ClipboardList, tone: 'secondary', hint: `${pendingPOs} pending` },
         ]} />
       )}
+
+      <Link to="/app/scorecard" className="text-xs font-semibold text-secondary-strong hover:underline mb-3 inline-block">Open supplier scorecard →</Link>
 
       <div className="flex gap-2 mb-4">
         <button onClick={() => setTab('suppliers')} className={`flex-1 p-2.5 rounded-xl border text-sm font-medium ${tab === 'suppliers' ? 'border-secondary/40 bg-secondary-soft/60 text-secondary-strong' : 'border-line text-fg-muted hover:text-fg'}`}>Suppliers ({suppliers.length})</button>

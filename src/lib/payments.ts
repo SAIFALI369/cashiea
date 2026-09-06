@@ -73,14 +73,19 @@ export interface InvoiceShare {
  * Build the message text for sharing an invoice (WhatsApp / SMS / email).
  */
 export function buildInvoiceMessage(inv: InvoiceShare): string {
+  const amount = `₹${inv.amount.toFixed(2)}`
   const lines = [
-    `🧾 *Invoice ${inv.invoiceNumber}*`,
-    `To: ${inv.clientName}`,
-    `Amount: ₹${inv.amount.toFixed(2)}`,
+    `Namaste ${inv.clientName},`,
+    '',
+    `Please find *Invoice ${inv.invoiceNumber}* for ${amount}.`,
   ]
-  if (inv.dueDate) lines.push(`Due: ${inv.dueDate}`)
-  if (inv.paymentLink) lines.push('', '💳 Pay instantly via UPI:', inv.paymentLink)
-  lines.push('', `— ${inv.payeeName}`)
+  if (inv.dueDate) lines.push(`Kindly settle by ${inv.dueDate}.`)
+  if (inv.paymentLink) {
+    lines.push('', 'Pay instantly on UPI (PhonePe, GPay, Paytm, BHIM):', inv.paymentLink)
+  } else {
+    lines.push('', 'Reply here if you would like a UPI link or a PDF copy.')
+  }
+  lines.push('', `With thanks,`, inv.payeeName)
   return lines.join('\n')
 }
 

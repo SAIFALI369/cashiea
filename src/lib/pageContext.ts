@@ -18,11 +18,11 @@ const PAGE_CONTEXT: Record<string, PageContextInfo> = {
   },
   '/app/gst-export': {
     name: 'GST Export',
-    description: 'the GST export sheet — rate-wise GST summary (CGST/SGST/IGST), B2B vs B2C split and invoice list for GSTR-1 filing preparation',
+    description: 'the GST working sheet — rate-wise summary, B2B vs B2C, JSON/Excel export, and filing-health flags (not a GSTN filing)',
   },
   '/app/bank-import': {
     name: 'Bank Import',
-    description: 'the bank statement import — upload a bank CSV, match credits to unpaid invoices, and mark matched invoices paid',
+    description: 'the bank statement import — upload a bank CSV, match credits to unpaid invoices by amount, name in the narration and due date, and mark matched invoices paid',
   },
   '/app/pos': {
     name: 'Point of Sale',
@@ -34,7 +34,7 @@ const PAGE_CONTEXT: Record<string, PageContextInfo> = {
   },
   '/app/customers': {
     name: 'Customers',
-    description: 'your customer list — names, phone, email, total spent, number of orders, and last purchase date',
+    description: 'your customer list — names, phone, email, total spent, number of orders, last purchase date, and a 360 view (LTV tier, cadence, churn, preferred pay, top items)',
   },
   '/app/suppliers': {
     name: 'Suppliers',
@@ -139,6 +139,42 @@ const PAGE_CONTEXT: Record<string, PageContextInfo> = {
   '/app/permissions': {
     name: 'Permissions',
     description: 'data and app permissions',
+  },
+  '/app/auto-reorder': {
+    name: 'Auto-reorder',
+    description: 'velocity-based stock reorder suggestions and draft purchase orders sized from recent sales',
+  },
+  '/app/cash-flow': {
+    name: 'Cash flow',
+    description: 'the 30/60/90-day cash projection — unpaid invoices by due date versus supplier dues and average expenses',
+  },
+  '/app/reminders': {
+    name: 'Reminders',
+    description: 'smart reminders — GST filing dates, overdue bills, Indian festivals, dormant customers and low stock',
+  },
+  '/app/duplicates': {
+    name: 'Data hygiene',
+    description: 'duplicate customer and product detection, same-day repeat bills, and products with no completed sale in 90 days',
+  },
+  '/app/snapshot': {
+    name: 'Snapshot',
+    description: 'a shareable business snapshot card of sales, bills, profit and top item for today, the week or the month',
+  },
+  '/app/goals': {
+    name: 'Goals',
+    description: 'billing streak, weekly grade versus last week, and device-local revenue / billing-day / new-customer targets',
+  },
+  '/app/pricing': {
+    name: 'Price suggestions',
+    description: 'raise or markdown suggestions from the last 30 days of sales — Apply writes the selling price, a cut never goes below cost',
+  },
+  '/app/scorecard': {
+    name: 'Supplier scorecard',
+    description: 'supplier grades from purchase-order volume, outstanding dues and open POs past expected date — no invented on-time percent',
+  },
+  '/app/social': {
+    name: 'Social drafts',
+    description: 'WhatsApp Status captions from today\'s bills and nearby festivals — copy or share, never auto-posted, never brags profit',
   },
 }
 

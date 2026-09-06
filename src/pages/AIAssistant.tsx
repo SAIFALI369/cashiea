@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { DropZone } from '../components/DropZone'
-import { useSearchParams, Link } from 'react-router-dom'
+import { useSearchParams, Link, useNavigate } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -9,7 +9,9 @@ import { MerajGlyph } from '../components/MerajDevice'
 import { useAuth } from '../context/AuthContext'
 import MerajDevice, { interactionFromAvatarState } from '../components/MerajDevice'
 import { useBusinessMood } from '../lib/businessMood'
-import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft, Plus, MessageCircle, Zap, Wallet, Package, TrendingUp, Receipt, FileText, MessageSquareText, BarChart3, Download, Pencil } from 'lucide-react'
+import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft, Plus, MessageCircle, Zap, Wallet, Package, TrendingUp, Receipt, FileText, MessageSquareText, BarChart3, Download, Pencil, RefreshCw, Tag, Bell, Copy, Target, Truck, Share2, FileSpreadsheet, Landmark, Users, type LucideIcon } from 'lucide-react'
+import { getPageContext } from '../lib/pageContext'
+import { MERAJ_DESKS, merajConfirmLabel } from '../lib/merajDesks'
 import { supabase } from '../lib/supabase'
 import type { ActivityLog } from '../lib/types'
 import { formatINR } from '../lib/format'
@@ -38,6 +40,13 @@ const GREETINGS = [
 const SCOPE_LABELS: Record<string, string> = {
   receipts: 'Receipts', reports: 'Reports', emails: 'Emails', whatsapp: 'WhatsApp',
   expenses: 'Expenses', profits: 'Profits', stocks: 'Stocks', tasks: 'Tasks',
+}
+
+const DESK_ICONS: Record<string, LucideIcon> = {
+  'auto-reorder': RefreshCw, pricing: Tag, 'cash-flow': Wallet, reminders: Bell,
+  duplicates: Copy, snapshot: Camera, goals: Target, scorecard: Truck,
+  social: Share2, 'gst-export': FileSpreadsheet, 'bank-import': Landmark,
+  invoices: FileText, reports: BarChart3, customers: Users,
 }
 
 function timeAgo(iso: string): string {
@@ -311,6 +320,7 @@ function SmartReply({ text, onEditDraft, onSendDraft }: { text: string; onEditDr
 
 export default function AIAssistant() {
   const [params] = useSearchParams()
+  const navigate = useNavigate()
   const scope = params.get('scope') || undefined
   const qParam = params.get('q')
   const photoParam = params.get('photo')
@@ -443,7 +453,8 @@ export default function AIAssistant() {
     // kill the chat with "history contains an invalid turn").
     const history = messages.slice(-12).map((m) => ({ role: m.role, text: m.text.length > 1600 ? m.text.slice(0, 1600) + '…' : m.text }))
     try {
-      const res = await askAssistant(q || '(shared an image)', false, scope, sendMode, undefined, undefined, history, img || undefined)
+      const page = getPageContext('/app/assistant')
+      const res = await askAssistant(q || '(shared an image)', false, scope, sendMode, undefined, page ? { name: page.name, description: page.description } : undefined, history, img || undefined)
       setPendingImage(null)
         const done = [...next, { role: 'meraj' as const, text: res.reply, pending: res.pending, media: res.media, images: res.images, ts: Date.now() }]
       setMessages(done)
@@ -488,8 +499,17 @@ export default function AIAssistant() {
 
   const confirmAction = async (pending: any) => {
     if (loading) return
+    const confirmText = '✓ ' + merajConfirmLabel(pending?.type)
+    if (pending?.type === 'open_desk' && pending?.input?.href) {
+      const href = String(pending.input.href)
+      const label = String(pending.input.label || 'that desk')
+      const done = [...messages, { role: 'user' as const, text: confirmText, ts: Date.now() }, { role: 'meraj' as const, text: `Opening **${label}**.`, ts: Date.now() }]
+      setMessages(done)
+      upsertConvo(done, confirmText)
+      navigate(href)
+      return
+    }
     setLoading(true)
-    const confirmText = '✓ ' + (pending?.type === 'create_invoice' ? 'Create it' : pending?.type === 'send_whatsapp' ? 'Send it' : pending?.type === 'sync_stock_from_sheet' ? 'Sync it' : pending?.type === 'export_to_sheet' ? 'Export it' : 'Add it')
     const base = [...messages, { role: 'user' as const, text: confirmText }]
     setMessages(base)
     try {
@@ -740,9 +760,9 @@ export default function AIAssistant() {
             <div className="grid grid-cols-2 gap-2.5">
               {[
                 { icon: Wallet, label: 'Chase Payments', q: 'Chase all my pending payments — draft polite WhatsApp reminders for each customer with dues' },
-                { icon: Package, label: 'Restock Alert', q: 'Which items are low on stock and how much should I reorder?' },
-                { icon: TrendingUp, label: 'Boost Sales', q: 'How can I boost my sales this week? Give me 3 specific actions.' },
-                { icon: FileText, label: 'Daily Report', q: 'Draft my daily business report for today' },
+                { icon: Package, label: 'Restock Alert', q: 'Which items are low on stock and how much should I reorder? Then open Auto-reorder if a draft PO would help.' },
+                { icon: TrendingUp, label: 'Boost Sales', q: 'How can I boost my sales this week? Give me 3 specific actions and name the desk I should open.' },
+                { icon: FileText, label: 'Daily Report', q: 'Draft my daily business report for today from live numbers.' },
               ].map((a) => (
                 <button key={a.label} onClick={() => send(a.q)} className="flex items-center gap-3 rounded-card border border-line bg-surface p-3.5 shadow-soft hover:border-accent/40 active:scale-[0.98] transition-all">
                   <span className="w-9 h-9 rounded-control bg-accent-soft text-accent flex items-center justify-center flex-shrink-0"><a.icon className="w-4.5 h-4.5" /></span>
@@ -761,24 +781,28 @@ export default function AIAssistant() {
               <p className="text-sm text-fg-muted mt-1">Pick an action — Meraj prepares it, you confirm, it's done.</p>
             </div>
             <div className="grid grid-cols-2 gap-2.5">
-              {[
-                { icon: Wallet, label: 'Chase Pending Payments', desc: 'Draft WhatsApp reminders', q: 'Chase all my pending payments — draft polite WhatsApp reminders for each customer with dues' },
-                { icon: Package, label: 'Restock Low Inventory', desc: 'Suggest reorder quantities', q: 'List my low stock items and create a reorder plan' },
-                { icon: FileText, label: 'Create Invoice', desc: 'GST bill in seconds', q: 'I want to create an invoice — ask me for the details' },
-                { icon: BarChart3, label: 'Draft Daily Report', desc: 'Full day summary', q: 'Draft my daily business report for today' },
-                { icon: Receipt, label: 'Scan Receipt', desc: 'Photo → bill entry', scan: true },
-                { icon: Sparkles, label: 'Add Products', desc: 'Bulk stock entry', q: 'I want to add products to my stock — ask me for the list' },
-              ].map((a) => (
-                <button
-                  key={a.label}
-                  onClick={() => (a.scan ? cameraRef.current?.click() : send(a.q!))}
-                  className="rounded-card border border-line bg-surface p-4 shadow-soft hover:border-accent/40 hover:shadow-float active:scale-[0.98] transition-all text-left"
-                >
-                  <span className="w-10 h-10 rounded-control bg-accent-soft text-accent flex items-center justify-center mb-2.5"><a.icon className="w-5 h-5" /></span>
-                  <p className="text-sm font-bold text-fg leading-tight">{a.label}</p>
-                  <p className="text-xs text-fg-subtle mt-0.5">{a.desc}</p>
-                </button>
-              ))}
+              <button
+                onClick={() => cameraRef.current?.click()}
+                className="rounded-card border border-line bg-surface p-4 shadow-soft hover:border-accent/40 hover:shadow-float active:scale-[0.98] transition-all text-left"
+              >
+                <span className="w-10 h-10 rounded-control bg-accent-soft text-accent flex items-center justify-center mb-2.5"><Receipt className="w-5 h-5" /></span>
+                <p className="text-sm font-bold text-fg leading-tight">Scan receipt</p>
+                <p className="text-xs text-fg-subtle mt-0.5">Photo → bill entry</p>
+              </button>
+              {MERAJ_DESKS.map((a) => {
+                const Icon = DESK_ICONS[a.id] || Sparkles
+                return (
+                  <button
+                    key={a.id}
+                    onClick={() => { setMode('task'); send(a.prompt) }}
+                    className="rounded-card border border-line bg-surface p-4 shadow-soft hover:border-accent/40 hover:shadow-float active:scale-[0.98] transition-all text-left"
+                  >
+                    <span className="w-10 h-10 rounded-control bg-accent-soft text-accent flex items-center justify-center mb-2.5"><Icon className="w-5 h-5" /></span>
+                    <p className="text-sm font-bold text-fg leading-tight">{a.label}</p>
+                    <p className="text-xs text-fg-subtle mt-0.5">{a.desc}</p>
+                  </button>
+                )
+              })}
             </div>
           </div>
         )}
@@ -804,7 +828,18 @@ export default function AIAssistant() {
                     <span className="text-[10px] font-bold uppercase tracking-wider text-accent">Meraj</span>
                     {m.ts && <span className="ml-auto text-[10px] text-fg-subtle">{new Date(m.ts).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</span>}
                   </div>
-                  <div className="meraj-render text-sm">
+                  <div
+                    className="meraj-render text-sm"
+                    onClick={(e) => {
+                      const a = (e.target as HTMLElement).closest('a')
+                      if (!a) return
+                      const href = a.getAttribute('href') || ''
+                      if (href.startsWith('/app/')) {
+                        e.preventDefault()
+                        navigate(href)
+                      }
+                    }}
+                  >
                     {typing && i === lastIdx
                       ? <TypewriterMessage text={m.text} onDone={() => setTyping(false)} />
                       : <SmartReply
@@ -835,7 +870,7 @@ export default function AIAssistant() {
                   )}
                   {m.pending && (
                     <div className="mt-3 flex gap-2">
-                      <button onClick={() => confirmAction(m.pending)} disabled={loading} className="btn-primary text-sm flex-1 h-9"><Sparkles className="w-4 h-4" /> {m.pending?.type === "create_invoice" ? "Create it" : m.pending?.type === "send_whatsapp" ? "Send it" : m.pending?.type === "sync_stock_from_sheet" ? "Sync it" : m.pending?.type === "export_to_sheet" ? "Export it" : "Add it"}</button>
+                      <button onClick={() => confirmAction(m.pending)} disabled={loading} className="btn-primary text-sm flex-1 h-9"><Sparkles className="w-4 h-4" /> {merajConfirmLabel(m.pending?.type)}</button>
                       <button onClick={() => cancelAction(i)} className="btn-secondary text-sm h-9">Cancel</button>
                     </div>
                   )}

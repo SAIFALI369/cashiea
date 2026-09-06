@@ -53,7 +53,7 @@ function QtyValue({ value, onNumpad }: { value: number; onNumpad: () => void }) 
 // ─── Cart contents (shared by desktop card and mobile sheet) ─────
 
 export function CartContents({
-  variant, cart, sale, selectedCustomer, onPickCustomer, onClearCustomer,
+  variant, cart, sale, selectedCustomer, customerInsight, onPickCustomer, onClearCustomer,
   onChangeQty, onOpenLineOptions, onNumpad,
   onHold, onClearCart, onCheckout, processing, checkoutReady, checkoutHint,
   paymentMethod, setPaymentMethod, splitMode, setSplitMode, tenders, setTenders,
@@ -65,6 +65,7 @@ export function CartContents({
   cart: CartLine[]
   sale: SaleTotals
   selectedCustomer: Customer | null
+  customerInsight?: string | null
   onPickCustomer: () => void
   onClearCustomer: () => void
   onChangeQty: (key: string, delta: number) => void
@@ -131,6 +132,7 @@ export function CartContents({
             <div className="min-w-0 flex-1">
               <p className="text-sm text-fg truncate">{selectedCustomer.name}</p>
               <p className="text-xs text-fg-subtle">{selectedCustomer.total_orders} prior orders · {formatINR(selectedCustomer.total_spent, 0)} spent</p>
+              {customerInsight && <p className="text-[11px] text-accent mt-0.5 leading-snug">{customerInsight}</p>}
             </div>
           ) : (
             <span className="text-sm text-fg-subtle flex-1">Walk-in customer (optional)</span>
