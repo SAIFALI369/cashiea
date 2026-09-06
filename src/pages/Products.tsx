@@ -11,10 +11,12 @@ import { validateHsn, validatePrice } from '../lib/validation'
 import { categoryHints, normalizeCategory } from '../lib/categories'
 import type { Product } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
+import { StatStrip } from '../components/ui/StatStrip'
+import { DataToolbar } from '../components/ui/DataToolbar'
 import EmptyState from '../components/ui/EmptyState'
 import { CategoryCombobox } from '../components/products/CategoryCombobox'
 import { ImportCsvModal } from '../components/products/ImportCsvModal'
-import { Package, Plus, Loader2, Trash2, AlertTriangle, Search, MapPin, ChevronDown, X, FileSpreadsheet } from 'lucide-react'
+import { Package, Plus, Loader2, Trash2, AlertTriangle, Search, MapPin, ChevronDown, X, FileSpreadsheet, Wallet, Layers } from 'lucide-react'
 import toast from 'react-hot-toast'
 import type { ProductUnit } from '../lib/types'
 
@@ -235,6 +237,7 @@ export default function Products() {
   })
   const lowStockCount = products.filter((p) => p.stock_quantity <= p.low_stock_threshold).length
   const inventoryValue = products.reduce((s, p) => s + p.cost * p.stock_quantity, 0)
+  const categoryCount = new Set(products.map((p) => (p.category || 'general').toLowerCase())).size
 
   const err = (field: string) => fieldError(field) ? <p className="text-xs text-negative mt-1" role="alert">{fieldError(field)}</p> : null
 
@@ -259,11 +262,12 @@ export default function Products() {
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-4 mb-4">
-        <div className="card p-4"><p className="text-xl font-bold text-fg">{products.length}</p><p className="text-xs text-fg-subtle">Products</p></div>
-        <div className="card p-4"><p className="text-xl font-bold text-warning">{lowStockCount}</p><p className="text-xs text-fg-subtle">Low stock</p></div>
-        <div className="card p-4"><p className="text-xl font-bold text-fg">₹{inventoryValue.toFixed(0)}</p><p className="text-xs text-fg-subtle">Inventory value</p></div>
-      </div>
+      <StatStrip stats={[
+        { label: 'Products', value: String(products.length), icon: Package, tone: 'default' },
+        { label: 'Low stock', value: String(lowStockCount), icon: AlertTriangle, tone: lowStockCount ? 'warning' : 'positive', hint: lowStockCount ? 'Reorder soon' : 'All healthy' },
+        { label: 'Inventory value', value: formatINR(inventoryValue, 0), icon: Wallet, tone: 'accent', hint: 'At cost price' },
+        { label: 'Categories', value: String(categoryCount), icon: Layers, tone: 'secondary' },
+      ]} />
 
       {/* Stock-integrity policy, stated where the owner looks */}
       <p className="text-[11px] text-fg-subtle mb-6 leading-relaxed">
@@ -405,28 +409,29 @@ export default function Products() {
         <EmptyState icon={Package} title="No products yet" description="Add products one by one, or import your whole catalog from a CSV — the template is inside the Import button." />
       ) : (
         <>
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-fg-subtle" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} className="input-field pl-11" placeholder="Search products..." />
-          </div>
-
-          {/* Stock filters + location affordance */}
-          <div className="flex items-center gap-2 mb-4">
-            <div className="flex gap-2 overflow-x-auto scroll-area flex-1">
-              {([['all', 'All'], ['low', 'Low stock'], ['out', 'Out of stock']] as const).map(([k, label]) => (
-                <button key={k} onClick={() => setStockFilter(k)} className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${stockFilter === k ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}>{label}</button>
-              ))}
-            </div>
-            <button type="button" title="Multi-location support coming soon" className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-surface-2 text-fg-muted border border-line">
-              <MapPin className="w-3.5 h-3.5" /> All locations <ChevronDown className="w-3 h-3" />
-            </button>
-          </div>
+          <DataToolbar
+            search={search}
+            onSearch={setSearch}
+            placeholder="Search products…"
+            trailing={
+              <>
+                <span className="hidden sm:inline text-xs font-semibold text-fg-subtle tabular-nums whitespace-nowrap">{filtered.length} of {products.length}</span>
+                <button type="button" title="Multi-location support coming soon" className="chip hidden md:inline-flex whitespace-nowrap">
+                  <MapPin className="w-3.5 h-3.5" /> All locations <ChevronDown className="w-3 h-3" />
+                </button>
+              </>
+            }
+          >
+            {([['all', 'All'], ['low', 'Low stock'], ['out', 'Out of stock']] as const).map(([k, label]) => (
+              <button key={k} onClick={() => setStockFilter(k)} className={`chip whitespace-nowrap ${stockFilter === k ? 'chip-active' : ''}`}>{label}</button>
+            ))}
+          </DataToolbar>
 
           {popular.length > 0 && (
             <div className="mb-5">
               <div className="flex items-center justify-between mb-2 px-1">
-                <h2 className="text-[11px] font-bold tracking-[0.12em] uppercase text-fg-subtle">Popular products</h2>
-                <button onClick={() => setSearch('')} className="text-xs font-semibold text-accent hover:underline">View all</button>
+                <h2 className="section-title">Popular products</h2>
+                <button onClick={() => setSearch('')} className="text-xs font-semibold text-secondary-strong hover:underline">View all</button>
               </div>
               <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scroll-area">
                 {popular.slice(0, visibleCount).map((p) => (
@@ -450,9 +455,9 @@ export default function Products() {
               const margin = p.price > 0 ? (((p.price - p.cost) / p.price) * 100).toFixed(0) : '—'
   const marginColor = Number(margin) >= 20 ? 'bg-positive/20 text-positive' : Number(margin) >= 10 ? 'bg-warning/20 text-warning' : 'bg-negative/20 text-negative'
               return (
-                <div key={p.id} className="card p-4 flex flex-wrap items-center gap-x-3 gap-y-2.5">
-                  <div className="w-9 h-9 rounded-control bg-surface-2 flex items-center justify-center flex-shrink-0">
-                    <Package className="w-5 h-5 text-accent" />
+                <div key={p.id} className="card card-hover p-4 lg:p-5 flex flex-wrap items-center gap-x-3 gap-y-2.5">
+                  <div className="w-9 h-9 rounded-control bg-secondary-soft text-secondary-strong flex items-center justify-center flex-shrink-0">
+                    <Package className="w-5 h-5" />
                   </div>
                   {/* basis-44: on phones the name block takes its own full-width
                       line (names wrap normally, never one word per line); on
@@ -464,7 +469,7 @@ export default function Products() {
                       {p.sku && <span className="text-xs text-fg-subtle">{p.sku}</span>}
                       {p.units && p.units.length > 1 && <span className="text-xs px-1.5 py-0.5 rounded bg-accent-soft text-accent-strong">{p.units.length} units</span>}
                     </div>
-                    <p className="text-sm text-accent mt-0.5">₹{p.price.toFixed(2)} <span className="text-fg-subtle">· {margin}% margin</span>{p.units?.[0]?.unit ? <span className="text-fg-subtle"> · per {p.units[0].unit}</span> : null}</p>
+                    <p className="text-sm font-bold text-accent-strong mt-0.5">₹{p.price.toFixed(2)} <span className="text-fg-subtle">· {margin}% margin</span>{p.units?.[0]?.unit ? <span className="text-fg-subtle"> · per {p.units[0].unit}</span> : null}</p>
                   {margin !== '—' && <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${marginColor}`}>{margin}%</span>}
                   </div>
                   <div className="flex items-center gap-2 ml-auto flex-shrink-0">

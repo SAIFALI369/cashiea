@@ -6,9 +6,11 @@ import { offlineInsert } from '../lib/mutations'
 import { formatINR } from '../lib/format'
 import type { Customer, Transaction } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
+import { StatStrip } from '../components/ui/StatStrip'
+import { DataToolbar } from '../components/ui/DataToolbar'
 import EmptyState from '../components/ui/EmptyState'
 import { ConfirmDialog } from '../components/ConfirmDialog'
-import { Users, Plus, Loader2, Trash2, Search, Mail, Phone, ShoppingBag, X, Clock, Send, TrendingUp, Award, UserPlus, MessageCircle, ChevronRight, Sparkles } from 'lucide-react'
+import { Users, Plus, Loader2, Trash2, Search, Mail, Phone, ShoppingBag, X, Clock, Send, TrendingUp, Award, UserPlus, MessageCircle, ChevronRight, Sparkles, IndianRupee } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const empty = { name: '', email: '', phone: '', address: '', company: '', notes: '', tags: '', credit_limit: 0 }
@@ -136,54 +138,32 @@ export default function Customers() {
 
       {/* Stats strip */}
       {!loading && customers.length > 0 && (
-        <div className="grid grid-cols-3 gap-2.5 mb-5">
-          <div className="card p-3.5">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-fg-subtle">Total Customers</p>
-            <p className="text-xl font-bold text-fg tabular-nums mt-0.5">{customers.length}</p>
-          </div>
-          <div className="card p-3.5">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-fg-subtle">Lifetime Value</p>
-            <p className="text-xl font-bold text-accent tabular-nums mt-0.5">{formatINR(totalValue, 0)}</p>
-          </div>
-          <div className="card p-3.5">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-fg-subtle">VIP Customers</p>
-            <p className="text-xl font-bold text-fg tabular-nums mt-0.5">{counts.vip}</p>
-          </div>
-        </div>
+        <StatStrip stats={[
+          { label: 'Customers', value: String(customers.length), icon: Users, tone: 'default' },
+          { label: 'Lifetime value', value: formatINR(totalValue, 0), icon: IndianRupee, tone: 'accent' },
+          { label: 'VIP', value: String(counts.vip), icon: Award, tone: 'secondary' },
+          { label: 'Avg per customer', value: formatINR(customers.length ? totalValue / customers.length : 0, 0), icon: TrendingUp, tone: 'default' },
+        ]} />
       )}
 
-      {/* Search */}
-      <div className="flex items-center gap-2 mb-4">
-        <div className="flex-1 flex items-center gap-2 rounded-control border border-line bg-paper px-3 shadow-soft focus-within:border-accent/50 transition-colors">
-          <Search className="w-4 h-4 text-fg-subtle flex-shrink-0" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, phone, or email…"
-            className="flex-1 bg-transparent py-2.5 text-sm text-fg placeholder:text-fg-subtle outline-none min-w-0"
-          />
-          {search && <button onClick={() => setSearch('')} className="text-fg-subtle hover:text-fg"><X className="w-4 h-4" /></button>}
-        </div>
-      </div>
-
-      {/* Segment filter */}
-      <div className="flex gap-2 mb-5 overflow-x-auto scroll-area pb-1">
+      <DataToolbar
+        search={search}
+        onSearch={setSearch}
+        placeholder="Search by name, phone, or email…"
+        trailing={<span className="hidden sm:inline text-xs font-semibold text-fg-subtle tabular-nums whitespace-nowrap">{filtered.length} of {customers.length}</span>}
+      >
         {SEGMENTS.map((s) => (
           <button
             key={s.key}
             onClick={() => setSegment(s.key)}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
-              segment === s.key
-                ? 'bg-accent text-accent-fg shadow-soft'
-                : 'bg-surface-2 text-fg-muted hover:text-fg'
-            }`}
+            className={`chip whitespace-nowrap ${segment === s.key ? 'chip-active' : ''}`}
           >
             <s.icon className="w-3.5 h-3.5" />
             {s.label}
-            {counts[s.key] > 0 && <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${segment === s.key ? 'bg-accent-fg/20' : 'bg-line/50'}`}>{counts[s.key]}</span>}
+            {counts[s.key] > 0 && <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${segment === s.key ? 'bg-secondary/15 text-secondary-strong' : 'bg-line/50 text-fg-subtle'}`}>{counts[s.key]}</span>}
           </button>
         ))}
-      </div>
+      </DataToolbar>
 
       {loading ? (
         <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-fg-subtle" /></div>
@@ -206,14 +186,16 @@ export default function Customers() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((c) => {
             const seg = segmentOf(c)
+            const initials = (c.name || '?').split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase()
             return (
               <button
                 key={c.id}
                 onClick={() => openDetail(c)}
-                className="card p-4 text-left hover:border-accent/40 hover:shadow-float active:scale-[0.98] transition-all"
+                className="card card-hover relative p-4 text-left active:scale-[0.98] transition-all"
               >
                 {/* Header: name + segment badge */}
-                <div className="flex items-start justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2.5 mb-3">
+                  <span className="w-9 h-9 rounded-full bg-secondary-soft text-secondary-strong text-xs font-bold flex items-center justify-center flex-shrink-0">{initials}</span>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold text-fg truncate">{c.name}</p>
                     {c.company && <p className="text-xs text-fg-subtle truncate mt-0.5">{c.company}</p>}

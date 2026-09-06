@@ -97,7 +97,7 @@ export default function AppLayout() {
             <span className="font-bold text-fg">{pageHeaderName}</span>
           </div>
           <Link to="/app/suggestions" aria-label="Open suggestions" className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl">
-            <Lightbulb className="w-5 h-5 text-accent" />
+            <Lightbulb className="w-5 h-5 text-secondary" />
           </Link>
           <QueueBadge />
           <LiveClock />

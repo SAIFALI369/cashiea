@@ -24,6 +24,13 @@
     --accent-strong: 5 150 105;  /* emerald-600 */
     --accent-soft: 209 250 229;  /* emerald-100 tint */
     --accent-fg: 255 255 255;    /* readable text on accent (dark-on-gold works too) */
+    /* SECONDARY — royal sapphire. "KNOW / GO": navigation, selection,
+       filters, links, information. Emerald/gold stays "DO": primary
+       actions, brand, positive money. Never swap the roles. */
+    --secondary: 47 78 148;
+    --secondary-strong: 34 60 122;
+    --secondary-soft: 226 234 248;  /* pale ice tint for selected surfaces */
+    --secondary-fg: 255 255 255;
     --gold: 189 156 99;
     --copper: 167 110 63;
     --olive: 121 128 92;
@@ -52,6 +59,10 @@
     --accent-strong: 214 178 108;
     --accent-soft: 60 49 32;
     --accent-fg: 22 19 16;       /* dark text on gold */
+    --secondary: 118 152 214;     /* soft steel sapphire for espresso */
+    --secondary-strong: 146 180 230;
+    --secondary-soft: 35 42 62;   /* deep blue-tinged selected surface */
+    --secondary-fg: 22 19 16;
     --gold: 214 178 108;
     --copper: 196 138 88;
     --olive: 142 154 110;
@@ -129,7 +140,8 @@
   }
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm
-           bg-surface-2 text-fg border border-line hover:bg-surface-3 hover:border-line-2
+           bg-secondary-soft/60 text-secondary-strong border border-secondary/25
+           hover:border-secondary/50 hover:bg-secondary-soft
            transition-all duration-150 ease-out disabled:opacity-50;
   }
   .btn-ghost {
@@ -170,13 +182,19 @@
            transition-all duration-150 ease-butter
            hover:border-line-2 hover:text-fg active:scale-95;
   }
+  /* Selected chip = sapphire (selection/navigation is the secondary's job). */
   .chip-active {
-    @apply bg-accent-soft text-accent-strong border-accent/40;
+    @apply bg-secondary-soft text-secondary-strong border-secondary/40;
+  }
+
+  /* Inline text link — sapphire, calm underline. */
+  .link {
+    @apply text-secondary-strong underline decoration-secondary/30 underline-offset-2 hover:decoration-secondary transition-colors;
   }
 
   /* Section label — the quiet uppercase eyebrow above grouped content. */
   .section-title {
-    @apply text-[11px] font-bold uppercase tracking-[0.14em] text-fg-subtle;
+    @apply text-[11px] font-bold uppercase tracking-[0.14em] text-secondary;
   }
 
   /* Brand gradient text (hero numbers, login headlines). */
