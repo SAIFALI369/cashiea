@@ -108,9 +108,9 @@ export default function Integrations() {
       <div className="card p-5 mb-6 bg-gradient-to-r from-accent-strong/10 to-transparent border-accent-strong/30">
         <div className="flex items-start gap-3">
           <Sparkles className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-slate-300">
-            <p className="font-semibold text-white mb-1">How it works</p>
-            <p className="text-slate-400">Connect the apps you already use. The AI fetches your business details (products, customers, sales patterns) and builds a living summary on the <strong className="text-white">AI Brain</strong> page. As it works with you, it learns your preferences and predicts tasks — always asking before acting.</p>
+          <div className="text-sm text-fg-muted">
+            <p className="font-semibold text-fg mb-1">How it works</p>
+            <p className="text-fg-subtle">Connect the apps you already use. The AI fetches your business details (products, customers, sales patterns) and builds a living summary on the <strong className="text-fg">AI Brain</strong> page. As it works with you, it learns your preferences and predicts tasks — always asking before acting.</p>
           </div>
         </div>
       </div>
@@ -118,8 +118,8 @@ export default function Integrations() {
       {/* Paste-data quick feed */}
       {showPaste && (
         <div className="card p-4 mb-6 animate-slide-up border-accent-strong/40">
-          <h3 className="font-semibold text-white mb-1">Paste data from {PROVIDERS.find((x) => x.id === showPaste)?.name}</h3>
-          <p className="text-sm text-slate-400 mb-3">Export from the app and paste here. The AI will learn your business from it right now.</p>
+          <h3 className="font-semibold text-fg mb-1">Paste data from {PROVIDERS.find((x) => x.id === showPaste)?.name}</h3>
+          <p className="text-sm text-fg-subtle mb-3">Export from the app and paste here. The AI will learn your business from it right now.</p>
           <textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)} rows={6} className="input-field resize-none font-mono text-sm" placeholder="Paste products, customer list, sales data, or any business info..." />
           <div className="flex justify-end gap-2 mt-3">
             <button onClick={() => { setShowPaste(null); setPasteText('') }} className="btn-secondary text-sm">Cancel</button>
@@ -135,7 +135,7 @@ export default function Integrations() {
       ) : (
         <>
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm text-slate-400">{connectedCount} of 2 live connections connected</p>
+            <p className="text-sm text-fg-subtle">{connectedCount} of 2 live connections connected</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {PROVIDERS.map((p) => {
@@ -149,7 +149,7 @@ export default function Integrations() {
                         <p.icon className={`w-5.5 h-5.5 ${p.color}`} />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-white">{p.name}</h3>
+                        <h3 className="font-semibold text-fg">{p.name}</h3>
                         {status === 'connected' ? (
                           <span className="inline-flex items-center gap-1 text-xs text-positive mt-0.5">
                             <CheckCircle2 className="w-3 h-3" /> Connected
@@ -160,7 +160,7 @@ export default function Integrations() {
                       </div>
                     </div>
                   </div>
-                  <p className="text-xs text-slate-400 mb-4 leading-relaxed">{p.desc}</p>
+                  <p className="text-xs text-fg-subtle mb-4 leading-relaxed">{p.desc}</p>
                   {status === 'connected' && intObj?.last_synced_at && (
                     <p className="text-xs text-slate-600 mb-3">Last synced: {new Date(intObj.last_synced_at).toLocaleDateString()}</p>
                   )}
