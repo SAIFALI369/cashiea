@@ -169,7 +169,7 @@ export default function Team() {
       <div className="card p-4 mb-6 flex items-center gap-4">
         <div className="flex gap-1.5">
           {[0, 1].map((i) => (
-            <span key={i} className={`w-9 h-2 rounded-full ${i < linkedCount ? 'bg-accent' : 'bg-line-2'}`} />
+            <span key={i} className={`w-9 h-2 rounded-full transition-colors ${i < linkedCount ? 'bg-secondary' : 'bg-line-2'}`} />
           ))}
         </div>
         <p className="text-sm text-fg-muted">
@@ -181,7 +181,7 @@ export default function Team() {
       {/* Role cards */}
       <div className="grid sm:grid-cols-2 gap-3 mb-6">
         {ROLES.map((r) => (
-          <div key={r.value} className="card p-4">
+          <div key={r.value} className="card card-hover p-4">
             <div className="flex items-center gap-2 mb-1">
               <r.icon className={`w-5 h-5 ${r.color}`} />
               <h3 className="font-semibold text-fg text-sm">{r.label}</h3>
