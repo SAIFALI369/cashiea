@@ -4,7 +4,8 @@ import { supabase } from '../lib/supabase'
 import { formatINR } from '../lib/format'
 import { FitAmount } from '../components/FitAmount'
 import EmptyState from '../components/ui/EmptyState'
-import { TrendingUp, TrendingDown, Loader2, Landmark, BookOpen, Truck, Wallet, FileSpreadsheet, FileDown } from 'lucide-react'
+import { TrendingUp, TrendingDown, Loader2, Landmark, BookOpen, Truck, Wallet, FileSpreadsheet, LineChart } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { downloadXlsx } from '../lib/xlsx'
 import { round2 } from '../lib/pos'
@@ -224,6 +225,17 @@ export default function ProfitDashboard() {
       <p className="text-[11px] text-fg-subtle mt-4 leading-relaxed max-w-2xl">
         COGS is estimated from each sold product's cost price ({data.cogsCoverage}% of sale lines had cost data). Lines without cost data are excluded from COGS, so gross profit may be optimistic — fill in product costs in Stock for a truer picture. Stock purchases logged under the Inventory category are excluded from Expenses here — their cost is counted once, when the items sell.
       </p>
+
+      <Link to="/app/cash-flow" className="card p-4 mt-5 flex items-center gap-3 hover:border-accent/40 transition-colors">
+        <span className="w-9 h-9 rounded-xl bg-secondary-soft text-secondary-strong flex items-center justify-center flex-shrink-0">
+          <LineChart className="w-4 h-4" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-fg">See the next 30 days</span>
+          <span className="block text-xs text-fg-muted">Cash flow projects unpaid invoices vs supplier dues — this page is history, that one is forward.</span>
+        </span>
+        <span className="text-xs font-semibold text-secondary-strong flex-shrink-0">Open</span>
+      </Link>
     </div>
   )
 }

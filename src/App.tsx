@@ -20,6 +20,11 @@ const DataEntryPage = lazy(() => import('./pages/DataEntry'))
 const ProfitDashboard = lazy(() => import('./pages/ProfitDashboard'))
 const BankImport = lazy(() => import('./pages/BankImport'))
 const GstExport = lazy(() => import('./pages/GstExport'))
+const AutoReorder = lazy(() => import('./pages/AutoReorder'))
+const CashFlow = lazy(() => import('./pages/CashFlow'))
+const Reminders = lazy(() => import('./pages/Reminders'))
+const Duplicates = lazy(() => import('./pages/Duplicates'))
+const Snapshot = lazy(() => import('./pages/Snapshot'))
 const Summaries = lazy(() => import('./pages/Summaries'))
 const EmailAssistant = lazy(() => import('./pages/EmailAssistant'))
 const Campaigns = lazy(() => import('./pages/Campaigns'))
@@ -129,6 +134,11 @@ function App() {
           <Route path="profit-dashboard" element={<ProfitDashboard />} />
           <Route path="bank-import" element={<BankImport />} />
           <Route path="gst-export" element={<GstExport />} />
+          <Route path="auto-reorder" element={<AutoReorder />} />
+          <Route path="cash-flow" element={<CashFlow />} />
+          <Route path="reminders" element={<Reminders />} />
+          <Route path="duplicates" element={<Duplicates />} />
+          <Route path="snapshot" element={<Snapshot />} />
         </Route>
 
         {/* Fallback */}

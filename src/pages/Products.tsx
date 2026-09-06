@@ -16,7 +16,8 @@ import { DataToolbar } from '../components/ui/DataToolbar'
 import EmptyState from '../components/ui/EmptyState'
 import { CategoryCombobox } from '../components/products/CategoryCombobox'
 import { ImportCsvModal } from '../components/products/ImportCsvModal'
-import { Package, Plus, Loader2, Trash2, AlertTriangle, Search, MapPin, ChevronDown, X, FileSpreadsheet, Wallet, Layers } from 'lucide-react'
+import { Package, Plus, Loader2, Trash2, AlertTriangle, Search, MapPin, ChevronDown, X, FileSpreadsheet, Wallet, Layers, RefreshCw } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import type { ProductUnit } from '../lib/types'
 
@@ -268,6 +269,19 @@ export default function Products() {
         { label: 'Inventory value', value: formatINR(inventoryValue, 0), icon: Wallet, tone: 'accent', hint: 'At cost price' },
         { label: 'Categories', value: String(categoryCount), icon: Layers, tone: 'secondary' },
       ]} />
+
+      {lowStockCount > 0 && (
+        <Link to="/app/auto-reorder" className="card p-3 mb-5 flex items-center gap-3 hover:border-accent/40 transition-colors">
+          <span className="w-9 h-9 rounded-xl bg-warning/15 text-warning flex items-center justify-center flex-shrink-0">
+            <RefreshCw className="w-4 h-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-fg">{lowStockCount} item{lowStockCount === 1 ? '' : 's'} need a reorder</span>
+            <span className="block text-xs text-fg-muted">Auto-reorder sizes a draft PO from the last 30 days of sales.</span>
+          </span>
+          <span className="text-xs font-semibold text-secondary-strong flex-shrink-0">Open</span>
+        </Link>
+      )}
 
       {/* Stock-integrity policy, stated where the owner looks */}
       <p className="text-[11px] text-fg-subtle mb-6 leading-relaxed">

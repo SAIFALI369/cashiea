@@ -17,7 +17,7 @@ import {
   Package, Wallet, History, AlertOctagon, UsersRound,
   Settings as SettingsIcon, Plug, Key, CreditCard, Network, Shield, LifeBuoy,
   UserCircle, Bell, ShieldCheck, Lightbulb, X, LogOut, ChevronDown, ChevronRight,
-  TrendingUp, Landmark } from 'lucide-react'
+  TrendingUp, Landmark, RefreshCw, LineChart, CalendarClock, Copy, Share2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 interface Item { to: string; label: string; icon: LucideIcon; end?: boolean; badge?: boolean; ai?: boolean }
@@ -54,6 +54,13 @@ const MORE: Section[] = [
   { label: 'Suppliers & Team', items: [
     { to: '/app/suppliers', label: 'Suppliers', icon: Truck },
     { to: '/app/team', label: 'Staff', icon: UsersRound },
+  ]},
+  { label: 'Automation', items: [
+    { to: '/app/auto-reorder', label: 'Auto-reorder', icon: RefreshCw },
+    { to: '/app/cash-flow', label: 'Cash flow', icon: LineChart },
+    { to: '/app/reminders', label: 'Reminders', icon: CalendarClock },
+    { to: '/app/duplicates', label: 'Data hygiene', icon: Copy },
+    { to: '/app/snapshot', label: 'Snapshot', icon: Share2 },
   ]},
   { label: 'AI Tools', items: [
     { to: '/app/brain', label: 'Tasks', icon: ListChecks },

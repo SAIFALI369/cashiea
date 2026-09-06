@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Search, LayoutDashboard, ShoppingCart, Package, Users, Receipt, BookOpen,
   FileBarChart, Sparkles, Landmark, FileSignature, TrendingUp, Wallet, CornerDownLeft,
+  RefreshCw, LineChart, CalendarClock, Copy, Share2,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -35,6 +36,11 @@ const COMMANDS: Command[] = [
   { label: 'Accounts — expenses', hint: 'Cash flow, income, entries', icon: Wallet, to: '/app/accounts', keywords: 'accounts expenses income cashflow' },
   { label: 'Quotations', hint: 'Price quotes', icon: FileSignature, to: '/app/quotations', keywords: 'quotes quotations estimate' },
   { label: 'Ask Meraj', hint: 'Full AI assistant', icon: Sparkles, to: '/app/assistant', keywords: 'meraj ai assistant ask chat voice' },
+  { label: 'Auto-reorder', hint: 'Velocity-based draft purchase orders', icon: RefreshCw, to: '/app/auto-reorder', keywords: 'reorder stock po purchase inventory auto' },
+  { label: 'Cash flow', hint: '30/60/90-day in vs out projection', icon: LineChart, to: '/app/cash-flow', keywords: 'cash flow forecast projection dues' },
+  { label: 'Reminders', hint: 'GST, bills, festivals, win-backs', icon: CalendarClock, to: '/app/reminders', keywords: 'reminders gst festival overdue winback' },
+  { label: 'Data hygiene', hint: 'Duplicate customers & products', icon: Copy, to: '/app/duplicates', keywords: 'duplicate merge hygiene customers products' },
+  { label: 'Business snapshot', hint: 'Shareable card of today\'s numbers', icon: Share2, to: '/app/snapshot', keywords: 'snapshot share whatsapp story card' },
 ]
 
 export function CommandPalette() {

@@ -48,6 +48,11 @@ const EXPECTED_PAGES = [
   'ConnectApps',
   'Onboarding',
   'Landing',
+  'AutoReorder',
+  'CashFlow',
+  'Reminders',
+  'Duplicates',
+  'Snapshot',
 ]
 
 const EXPECTED_EDGE_FUNCTIONS = [
@@ -113,6 +118,11 @@ describe('App.tsx routes every page', () => {
   it('imports Privacy', () => expect(app).toMatch(/import\(['"]\.\/pages\/Privacy/))
   it('imports Terms', () => expect(app).toMatch(/import\(['"]\.\/pages\/Terms/))
   it('imports Landing', () => expect(app).toMatch(/import\(['"]\.\/pages\/Landing/))
+  it('imports AutoReorder', () => expect(app).toMatch(/import\(['"]\.\/pages\/AutoReorder/))
+  it('imports CashFlow', () => expect(app).toMatch(/import\(['"]\.\/pages\/CashFlow/))
+  it('imports Reminders', () => expect(app).toMatch(/import\(['"]\.\/pages\/Reminders/))
+  it('imports Duplicates', () => expect(app).toMatch(/import\(['"]\.\/pages\/Duplicates/))
+  it('imports Snapshot', () => expect(app).toMatch(/import\(['"]\.\/pages\/Snapshot/))
 
   it('has a route element for campaigns/new', () => expect(app).toMatch(/path="campaigns\/new"/))
   it('has a route element for pos', () => expect(app).toMatch(/path="pos"/))
@@ -133,6 +143,11 @@ describe('App.tsx routes every page', () => {
   it('has a failed-jobs route', () => expect(app).toMatch(/path="failed-jobs"/))
   it('has a brain route', () => expect(app).toMatch(/path="brain"/))
   it('has an integrations route', () => expect(app).toMatch(/path="integrations"/))
+  it('has an auto-reorder route', () => expect(app).toMatch(/path="auto-reorder"/))
+  it('has a cash-flow route', () => expect(app).toMatch(/path="cash-flow"/))
+  it('has a reminders route', () => expect(app).toMatch(/path="reminders"/))
+  it('has a duplicates route', () => expect(app).toMatch(/path="duplicates"/))
+  it('has a snapshot route', () => expect(app).toMatch(/path="snapshot"/))
 })
 
 describe('app pages are linked (sidebar, dashboard, or settings)', () => {
@@ -164,6 +179,11 @@ describe('app pages are linked (sidebar, dashboard, or settings)', () => {
     '/app/support',
     '/app/team',
     '/app/failed-jobs',
+    '/app/auto-reorder',
+    '/app/cash-flow',
+    '/app/reminders',
+    '/app/duplicates',
+    '/app/snapshot',
   ]
   for (const route of routes) {
     it(`links to ${route}`, () => {

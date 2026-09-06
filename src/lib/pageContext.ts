@@ -140,6 +140,26 @@ const PAGE_CONTEXT: Record<string, PageContextInfo> = {
     name: 'Permissions',
     description: 'data and app permissions',
   },
+  '/app/auto-reorder': {
+    name: 'Auto-reorder',
+    description: 'velocity-based stock reorder suggestions and draft purchase orders sized from recent sales',
+  },
+  '/app/cash-flow': {
+    name: 'Cash flow',
+    description: 'the 30/60/90-day cash projection — unpaid invoices by due date versus supplier dues and average expenses',
+  },
+  '/app/reminders': {
+    name: 'Reminders',
+    description: 'smart reminders — GST filing dates, overdue bills, Indian festivals, dormant customers and low stock',
+  },
+  '/app/duplicates': {
+    name: 'Data hygiene',
+    description: 'duplicate customer and product detection — same phone, email, SKU or a near-identical name',
+  },
+  '/app/snapshot': {
+    name: 'Snapshot',
+    description: 'a shareable business snapshot card of sales, bills, profit and top item for today, the week or the month',
+  },
 }
 
 /** Resolve the page context for a pathname, or null when unknown. */
