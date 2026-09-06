@@ -128,6 +128,10 @@ const PAGE_CONTEXT: Record<string, PageContextInfo> = {
     name: 'About Me',
     description: 'your account overview',
   },
+  '/app/manifest': {
+    name: "Meraj's Plan",
+    description: 'your one-tap morning action queue — approvals, collections, reorders',
+  },
   '/app/suggestions': {
     name: 'Suggestions',
     description: 'feature suggestions and feedback',
