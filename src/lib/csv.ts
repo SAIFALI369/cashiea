@@ -23,6 +23,13 @@ export interface CsvParseResult {
 export function parseCsv(text: string): CsvParseResult {
   const errors: string[] = []
   const src = text.replace(/^\uFEFF/, '')
+  // Delimiter sniffing: some Excel locales save ';'- or tab-separated
+  // files. Pick whichever separates the header line best (comma default).
+  const headerLine = src.split(/\r?\n/, 1)[0] || ''
+  const semi = (headerLine.match(/;/g) || []).length
+  const tab = (headerLine.match(/\t/g) || []).length
+  const comma = (headerLine.match(/,/g) || []).length
+  const delim = semi > comma && semi >= tab ? ';' : tab > comma && tab > semi ? '\t' : ','
   const rows: string[][] = []
   let row: string[] = []
   let field = ''
@@ -46,7 +53,7 @@ export function parseCsv(text: string): CsvParseResult {
       field += ch; i++; continue
     }
     if (ch === '"') { inQuotes = true; i++; continue }
-    if (ch === ',') { pushField(); i++; continue }
+    if (ch === delim) { pushField(); i++; continue }
     if (ch === '\r') { i++; continue }
     if (ch === '\n') { pushField(); pushRow(); i++; continue }
     field += ch; i++
@@ -137,6 +144,20 @@ export interface ImportProductRow {
 const GST_RATES = [0, 5, 12, 18, 28]
 
 /**
+ * Indian-shop tolerant amount parsing: accepts "₹1,200", "Rs. 1,200",
+ * "1 200", "1200/-", "18%" and plain numbers. Returns NaN when the string
+ * is not a number at all. (Strict Number() rejected comma-thousands —
+ * which made every row of a normal Excel export "invalid".)
+ */
+export function parseLooseAmount(input: unknown): number {
+  let s = String(input ?? '').trim()
+  if (!s) return NaN
+  s = s.replace(/^[₹]/, '').replace(/^rs\.?/i, '').replace(/[,\s]/g, '').replace(/\/-$/, '').replace(/-$/, '').replace(/%$/, '')
+  if (!/^-?\d*\.?\d+$/.test(s)) return NaN
+  return Number(s)
+}
+
+/**
  * Validate every row BEFORE anything is imported:
  *   • name required, price required and ≥ 0
  *   • stock / low-stock numbers ≥ 0
@@ -179,22 +200,22 @@ export function validateProductRows(
 
     if (!name) errors.push('Name is missing')
 
-    const price = Number(priceStr)
+    const price = parseLooseAmount(priceStr)
     if (priceStr === '') errors.push('Price is missing')
     else if (!Number.isFinite(price) || price < 0) errors.push(`Price "${priceStr}" is not a valid amount`)
 
-    const cost = costStr === '' ? 0 : Number(costStr)
+    const cost = costStr === '' ? 0 : parseLooseAmount(costStr)
     if (costStr !== '' && (!Number.isFinite(cost) || cost < 0)) errors.push(`Cost "${costStr}" is not a valid amount`)
 
-    const stock = stockStr === '' ? 0 : Number(stockStr)
+    const stock = stockStr === '' ? 0 : parseLooseAmount(stockStr)
     if (stockStr !== '' && (!Number.isFinite(stock) || stock < 0)) errors.push(`Stock "${stockStr}" is not a valid quantity`)
 
-    const low = lowStr === '' ? 5 : Number(lowStr)
+    const low = lowStr === '' ? 5 : parseLooseAmount(lowStr)
     if (lowStr !== '' && (!Number.isFinite(low) || low < 0)) errors.push(`Low-stock "${lowStr}" is not a valid quantity`)
 
     let gst = 0
     if (gstStr !== '') {
-      gst = Number(gstStr)
+      gst = parseLooseAmount(gstStr)
       if (!Number.isFinite(gst) || !GST_RATES.includes(gst)) errors.push(`GST "${gstStr}" must be one of 0, 5, 12, 18, 28`)
     }
 
