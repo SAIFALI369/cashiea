@@ -8,8 +8,9 @@ import { quoteTotals } from '../lib/quoteMath'
 import { nextDocNumber } from '../lib/docnum'
 import type { Quotation, Customer } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
+import { StatStrip } from '../components/ui/StatStrip'
 import EmptyState from '../components/ui/EmptyState'
-import { FileSignature, Plus, Loader2, Trash2, X, ArrowRight } from 'lucide-react'
+import { ArrowRight, FileSignature, Loader2, Plus, Trash2, Wallet, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface QuoteItem { description: string; quantity: string; unit_price: string }
@@ -110,6 +111,12 @@ export default function Quotations() {
     if (!error) { setQuotes(quotes.filter((q) => q.id !== id)); toast.success('Deleted') }
   }
 
+  const [statusFilter, setStatusFilter] = useState<'all' | 'sent' | 'accepted' | 'converted'>('all')
+  const visibleQuotes = statusFilter === 'all' ? quotes : quotes.filter((q) => q.status === statusFilter)
+  const openQuotes = quotes.filter((q) => q.status === 'sent' || q.status === 'accepted')
+  const openValue = openQuotes.reduce((s, q) => s + Number(q.total || 0), 0)
+  const convertedCount = quotes.filter((q) => q.status === 'converted').length
+
   const statusColor: Record<string, string> = { sent: 'bg-info/15 text-info', accepted: 'bg-positive/15 text-positive', converted: 'bg-purple-500/15 text-purple-400', rejected: 'bg-negative/15 text-negative', draft: 'bg-surface-3 text-fg-muted', expired: 'bg-surface-3 text-fg-muted' }
 
   return (
@@ -149,14 +156,30 @@ export default function Quotations() {
         </p>
       )}
 
+      {quotes.length > 0 && (
+        <StatStrip stats={[
+          { label: 'Quotes', value: String(quotes.length), icon: FileSignature, tone: 'default' },
+          { label: 'Awaiting reply', value: String(openQuotes.length), icon: Wallet, tone: openQuotes.length ? 'secondary' : 'positive', hint: openQuotes.length ? `₹${openValue.toLocaleString('en-IN', { maximumFractionDigits: 0 })} open` : 'None pending' },
+          { label: 'Converted', value: String(convertedCount), icon: ArrowRight, tone: 'accent' },
+        ]} />
+      )}
+
+      {quotes.length > 0 && (
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-4">
+          {([['all', 'All'], ['sent', 'Sent'], ['accepted', 'Accepted'], ['converted', 'Converted']] as const).map(([k, label]) => (
+            <button key={k} onClick={() => setStatusFilter(k)} className={`chip whitespace-nowrap ${statusFilter === k ? 'chip-active' : ''}`}>{label}</button>
+          ))}
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>
       ) : quotes.length === 0 ? (
         <EmptyState icon={FileSignature} title="No quotations yet" description="Create a price quote for a customer, then convert it to an invoice with one click." />
       ) : (
         <div className="space-y-2">
-          {quotes.map((q) => (
-            <div key={q.id} className="card p-4 flex items-center justify-between gap-3">
+          {visibleQuotes.map((q) => (
+            <div key={q.id} className="card card-hover p-4 flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2"><span className="font-mono text-sm text-fg">{q.quote_number}</span><span className={`text-xs px-2 py-0.5 rounded-full ${statusColor[q.status]}`}>{q.status}</span></div>
                 <p className="text-xs text-fg-subtle mt-0.5">{q.customer_name} · {q.items?.length || 0} items · {new Date(q.created_at).toLocaleDateString()}</p>
