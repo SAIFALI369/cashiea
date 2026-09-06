@@ -25,6 +25,7 @@ const CashFlow = lazy(() => import('./pages/CashFlow'))
 const Reminders = lazy(() => import('./pages/Reminders'))
 const Duplicates = lazy(() => import('./pages/Duplicates'))
 const Snapshot = lazy(() => import('./pages/Snapshot'))
+const Manifest = lazy(() => import('./pages/Manifest'))
 const Goals = lazy(() => import('./pages/Goals'))
 const Pricing = lazy(() => import('./pages/Pricing'))
 const Scorecard = lazy(() => import('./pages/Scorecard'))
@@ -138,6 +139,7 @@ function App() {
           <Route path="profit-dashboard" element={<ProfitDashboard />} />
           <Route path="bank-import" element={<BankImport />} />
           <Route path="gst-export" element={<GstExport />} />
+          <Route path="manifest" element={<Manifest />} />
           <Route path="auto-reorder" element={<AutoReorder />} />
           <Route path="cash-flow" element={<CashFlow />} />
           <Route path="reminders" element={<Reminders />} />
