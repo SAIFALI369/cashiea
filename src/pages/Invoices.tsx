@@ -16,13 +16,14 @@ import {
 import { generateInvoicePdf } from '../lib/invoice-pdf'
 import type { Invoice, InvoiceItem } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
+import { StatStrip } from '../components/ui/StatStrip'
 import { MoreMenu } from '../components/MoreMenu'
 import { FitAmount } from '../components/FitAmount'
 import { UpiQr } from '../components/UpiQr'
 import { RecurringModal } from '../components/invoices/RecurringModal'
 import EmptyState from '../components/ui/EmptyState'
 import { Avatar } from '../components/Avatar'
-import { FileText, Sparkles, Loader2, Trash2, Plus, Smartphone, MessageCircle, Send, QrCode, Check, Clock, Copy, Zap, X, Download, FileDown, Pencil, CheckCircle2, CheckSquare, Square, Repeat, Share2 } from 'lucide-react'
+import { AlertTriangle, Check, CheckCircle2, CheckSquare, Clock, Copy, Download, FileDown, FileText, Loader2, MessageCircle, Pencil, Plus, QrCode, Repeat, Search, Send, Share2, Smartphone, Sparkles, Square, Trash2, Wallet, X, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const statusColor: Record<string, string> = {
@@ -45,6 +46,7 @@ export default function Invoices() {
   const [shareInv, setShareInv] = useState<Invoice | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<'all' | 'unpaid' | 'paid' | 'overdue'>('all')
+  const [search, setSearch] = useState('')
   const [showRecurring, setShowRecurring] = useState(false)
   const [recurringSeed, setRecurringSeed] = useState<Invoice | null>(null)
   const PAGE_SIZE = 30
@@ -267,7 +269,9 @@ export default function Invoices() {
   const unpaidTotal = unpaid.reduce((s, i) => s + (Number(i.total) || 0), 0)
   const overdueCount = invoices.filter((i) => i.status === 'overdue').length
 
+  const q = search.trim().toLowerCase()
   const filteredInvoices = invoices.filter((inv) => {
+    if (q && !(String(inv.invoice_number || '').toLowerCase().includes(q) || String(inv.client_name || '').toLowerCase().includes(q))) return false
     if (statusFilter === 'all') return true
     if (statusFilter === 'paid') return inv.status === 'paid'
     if (statusFilter === 'overdue') return inv.status === 'overdue'
@@ -291,11 +295,11 @@ export default function Invoices() {
 
       {/* Unpaid summary */}
       {invoices.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className="card p-5"><p className="text-xl font-bold text-warning">₹{unpaidTotal.toFixed(0)}</p><p className="text-xs text-fg-muted">Unpaid</p></div>
-          <div className="card p-5"><p className="text-xl font-bold text-fg">{unpaid.length}</p><p className="text-xs text-fg-muted">Unpaid invoices</p></div>
-          <div className="card p-5"><p className="text-xl font-bold text-negative">{overdueCount}</p><p className="text-xs text-fg-muted">Overdue</p></div>
-        </div>
+        <StatStrip stats={[
+          { label: 'Unpaid', value: `₹${unpaidTotal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: Wallet, tone: unpaid.length ? 'warning' : 'positive', hint: unpaid.length ? `${unpaid.length} to collect` : 'All collected' },
+          { label: 'Invoices', value: String(invoices.length), icon: FileText, tone: 'default' },
+          { label: 'Overdue', value: String(overdueCount), icon: AlertTriangle, tone: overdueCount ? 'negative' : 'positive', hint: overdueCount ? 'Chase today' : 'None' },
+        ]} />
       )}
 
       {/* AI invoice form */}
@@ -342,11 +346,16 @@ export default function Invoices() {
         <EmptyState icon={FileText} title="No invoices yet" description="Use Quick Invoice (30 sec on phone), or describe one with AI. Share via WhatsApp and collect via UPI." />
       ) : (
         <>
+          <div className="relative mb-4">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-fg-subtle" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search invoice or client…" className="input-field pl-10" aria-label="Search invoices" />
+          </div>
+
           {/* Filter tabs + selection controls */}
           <div className="flex items-center gap-2 mb-5">
             <div className="flex gap-2 overflow-x-auto scroll-area flex-1">
               {([['all', 'All'], ['unpaid', 'Unpaid'], ['paid', 'Paid'], ['overdue', 'Overdue']] as const).map(([key, label]) => (
-                <button key={key} onClick={() => setStatusFilter(key)} className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${statusFilter === key ? 'bg-accent text-accent-fg' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}>{label}</button>
+                <button key={key} onClick={() => setStatusFilter(key)} className={`chip whitespace-nowrap ${statusFilter === key ? 'chip-active' : ''}`}>{label}</button>
               ))}
             </div>
             <div className="flex gap-2 flex-shrink-0">
