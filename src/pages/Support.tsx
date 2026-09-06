@@ -116,7 +116,7 @@ export default function Support() {
                     key={c.v}
                     type="button"
                     onClick={() => setCategory(c.v)}
-                    className={`py-2 rounded-xl text-sm font-medium border transition-all ${category === c.v ? 'border-accent-strong bg-accent-strong/15 text-white' : 'border-slate-700 text-slate-400 hover:text-white'}`}
+                    className={`py-2 rounded-xl text-sm font-medium border transition-all ${category === c.v ? 'border-secondary/50 bg-secondary-soft/70 text-secondary-strong' : 'border-slate-700 text-slate-400 hover:text-white'}`}
                   >
                     {c.l}
                   </button>
