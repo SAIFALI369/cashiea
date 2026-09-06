@@ -71,8 +71,8 @@ export default function Support() {
           <div className="w-16 h-16 rounded-full bg-positive/15 flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 className="w-8 h-8 text-positive" />
           </div>
-          <h2 className="text-xl font-bold text-white mb-2">Message sent! ✅</h2>
-          <p className="text-slate-400 mb-6">Thanks for reaching out. Our team will reply to <span className="text-white">{email}</span> as soon as possible.</p>
+          <h2 className="text-xl font-bold text-fg mb-2">Message sent! ✅</h2>
+          <p className="text-fg-subtle mb-6">Thanks for reaching out. Our team will reply to <span className="text-fg">{email}</span> as soon as possible.</p>
           <button
             onClick={() => { setSent(false); setSubject(''); setMessage('') }}
             className="btn-primary"
@@ -116,7 +116,7 @@ export default function Support() {
                     key={c.v}
                     type="button"
                     onClick={() => setCategory(c.v)}
-                    className={`py-2 rounded-xl text-sm font-medium border transition-all ${category === c.v ? 'border-secondary/50 bg-secondary-soft/70 text-secondary-strong' : 'border-slate-700 text-slate-400 hover:text-white'}`}
+                    className={`py-2 rounded-xl text-sm font-medium border transition-all ${category === c.v ? 'border-secondary/50 bg-secondary-soft/70 text-secondary-strong' : 'border-line-2 text-fg-subtle hover:text-fg'}`}
                   >
                     {c.l}
                   </button>
@@ -141,7 +141,7 @@ export default function Support() {
                 placeholder="Tell us what’s happening, what you’re trying to do, and what you need. The more detail, the faster we can help."
                 required
               />
-              <p className="text-xs text-slate-500 mt-1">{message.length} / 10,000 characters</p>
+              <p className="text-xs text-fg-subtle mt-1">{message.length} / 10,000 characters</p>
             </div>
 
             {mailtoUrl && (
@@ -156,7 +156,7 @@ export default function Support() {
               {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
               {sending ? 'Sending…' : 'Submit'}
             </button>
-            <p className="text-xs text-slate-500 text-center">Your message goes straight to our support team at {SUPPORT_EMAIL}</p>
+            <p className="text-xs text-fg-subtle text-center">Your message goes straight to our support team at {SUPPORT_EMAIL}</p>
           </form>
         </div>
 
@@ -165,23 +165,23 @@ export default function Support() {
           <div className="card p-5">
             <div className="flex items-center gap-2 mb-3">
               <Mail className="w-5 h-5 text-accent" />
-              <h3 className="font-semibold text-white">Email us</h3>
+              <h3 className="font-semibold text-fg">Email us</h3>
             </div>
             <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent hover:text-accent-strong break-all">{SUPPORT_EMAIL}</a>
-            <p className="text-xs text-slate-500 mt-2">For any question, bug, billing issue, or feature request.</p>
+            <p className="text-xs text-fg-subtle mt-2">For any question, bug, billing issue, or feature request.</p>
           </div>
 
           <div className="card p-5">
             <div className="flex items-center gap-2 mb-3">
               <Clock className="w-5 h-5 text-positive" />
-              <h3 className="font-semibold text-white">Response time</h3>
+              <h3 className="font-semibold text-fg">Response time</h3>
             </div>
-            <p className="text-sm text-slate-400">We typically reply within <span className="text-white font-medium">24 hours</span>, Monday–Friday.</p>
+            <p className="text-sm text-fg-subtle">We typically reply within <span className="text-fg font-medium">24 hours</span>, Monday–Friday.</p>
           </div>
 
           <div className="card p-5">
-            <h3 className="font-semibold text-white mb-2">Quick tips</h3>
-            <ul className="text-sm text-slate-400 space-y-1.5">
+            <h3 className="font-semibold text-fg mb-2">Quick tips</h3>
+            <ul className="text-sm text-fg-subtle space-y-1.5">
               <li>• Include screenshots if it’s a bug</li>
               <li>• Mention the page where it happened</li>
               <li>• Tell us your business type & needs</li>
