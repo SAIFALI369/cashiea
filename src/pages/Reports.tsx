@@ -177,7 +177,7 @@ export default function Reports() {
                 onClick={() => setReportType(t.value)}
                 className={`p-3 rounded-xl border text-left transition-all ${
                   reportType === t.value
-                    ? 'border-accent-strong bg-accent/15'
+                    ? 'border-secondary/50 bg-secondary-soft/70'
                     : 'border-line bg-surface/50 hover:border-line-2'
                 }`}
               >

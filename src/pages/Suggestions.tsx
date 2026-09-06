@@ -112,7 +112,7 @@ export default function Suggestions() {
             key={f}
             onClick={() => setFilter(f)}
             className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
-              filter === f ? 'bg-fg text-paper border-fg' : 'bg-surface text-fg-muted border-line hover:text-fg'
+              filter === f ? 'bg-secondary-soft text-secondary-strong border-secondary/40' : 'bg-surface text-fg-muted border-line hover:text-fg'
             }`}
           >
             {f === 'pending' ? 'Pending' : 'Done'}
