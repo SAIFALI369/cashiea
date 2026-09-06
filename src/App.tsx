@@ -26,6 +26,9 @@ const Reminders = lazy(() => import('./pages/Reminders'))
 const Duplicates = lazy(() => import('./pages/Duplicates'))
 const Snapshot = lazy(() => import('./pages/Snapshot'))
 const Goals = lazy(() => import('./pages/Goals'))
+const Pricing = lazy(() => import('./pages/Pricing'))
+const Scorecard = lazy(() => import('./pages/Scorecard'))
+const Social = lazy(() => import('./pages/Social'))
 const Summaries = lazy(() => import('./pages/Summaries'))
 const EmailAssistant = lazy(() => import('./pages/EmailAssistant'))
 const Campaigns = lazy(() => import('./pages/Campaigns'))
@@ -141,6 +144,9 @@ function App() {
           <Route path="duplicates" element={<Duplicates />} />
           <Route path="snapshot" element={<Snapshot />} />
           <Route path="goals" element={<Goals />} />
+          <Route path="pricing" element={<Pricing />} />
+          <Route path="scorecard" element={<Scorecard />} />
+          <Route path="social" element={<Social />} />
         </Route>
 
         {/* Fallback */}

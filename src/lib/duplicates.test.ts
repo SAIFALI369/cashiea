@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   levenshtein, similarity, normalizeName, normalizePhone,
   findCustomerDuplicates, findProductDuplicates, pickKeeper, missingContactFields,
+  findRepeatInvoices, findStaleProducts,
 } from './duplicates'
 
 describe('levenshtein / similarity', () => {
@@ -103,5 +104,76 @@ describe('pickKeeper / missingContactFields', () => {
     expect(patch).toEqual({ email: 'x@y.com', address: 'Lane 1', notes: 'VIP' })
     expect(patch.phone).toBeUndefined()
     expect(patch.company).toBeUndefined()
+  })
+})
+
+describe('findRepeatInvoices', () => {
+  it('flags the same customer + amount on the same local day', () => {
+    const pairs = findRepeatInvoices([
+      { id: 'a', invoice_number: 'INV-1', client_name: 'Ramesh Kumar', total: 500, created_at: '2026-09-06T12:00:00+05:30' },
+      { id: 'b', invoice_number: 'INV-2', client_name: 'Ramesh Kumar.', total: 500.4, created_at: '2026-09-06T18:00:00+05:30' },
+    ])
+    expect(pairs).toHaveLength(1)
+    expect(pairs[0].reason).toBe('repeat_bill')
+  })
+
+  it('does not flag the same bill on different days', () => {
+    const pairs = findRepeatInvoices([
+      { id: 'a', invoice_number: 'INV-1', client_name: 'Ramesh', total: 500, created_at: '2026-09-05T12:00:00+05:30' },
+      { id: 'b', invoice_number: 'INV-2', client_name: 'Ramesh', total: 500, created_at: '2026-09-06T12:00:00+05:30' },
+    ])
+    expect(pairs).toHaveLength(0)
+  })
+
+  it('skips drafts', () => {
+    const pairs = findRepeatInvoices([
+      { id: 'a', invoice_number: 'D-1', client_name: 'Ramesh', total: 500, created_at: '2026-09-06T12:00:00+05:30', status: 'draft' },
+      { id: 'b', invoice_number: 'D-2', client_name: 'Ramesh', total: 500, created_at: '2026-09-06T13:00:00+05:30', status: 'draft' },
+    ])
+    expect(pairs).toHaveLength(0)
+  })
+})
+
+describe('findStaleProducts', () => {
+  const NOW = new Date('2026-09-06T12:00:00+05:30').getTime()
+
+  it('flags shelf stock with no completed sale in 90 days', () => {
+    const stale = findStaleProducts(
+      [{ id: 'old', name: 'Old paint', sku: 'P-1', stock_quantity: 12, created_at: '2026-01-01T00:00:00+05:30' }],
+      [],
+      NOW,
+    )
+    expect(stale).toHaveLength(1)
+    expect(stale[0].lastSoldAt).toBeNull()
+  })
+
+  it('does not flag a brand-new SKU', () => {
+    const stale = findStaleProducts(
+      [{ id: 'new', name: 'New', stock_quantity: 8, created_at: '2026-09-01T00:00:00+05:30' }],
+      [],
+      NOW,
+    )
+    expect(stale).toHaveLength(0)
+  })
+
+  it('ignores voided sales when judging last sold', () => {
+    const stale = findStaleProducts(
+      [{ id: 'x', name: 'X', stock_quantity: 5, created_at: '2026-01-01T00:00:00+05:30' }],
+      [{ created_at: '2026-09-01T12:00:00+05:30', status: 'void', items: [{ product_id: 'x' }] }],
+      NOW,
+    )
+    expect(stale).toHaveLength(1)
+  })
+
+  it('skips zero-stock and inactive products', () => {
+    const stale = findStaleProducts(
+      [
+        { id: 'z', name: 'Zero', stock_quantity: 0, created_at: '2026-01-01T00:00:00+05:30' },
+        { id: 'i', name: 'Off', stock_quantity: 9, active: false, created_at: '2026-01-01T00:00:00+05:30' },
+      ],
+      [],
+      NOW,
+    )
+    expect(stale).toHaveLength(0)
   })
 })

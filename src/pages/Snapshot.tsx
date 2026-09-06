@@ -89,7 +89,7 @@ export default function Snapshot() {
     <div className="animate-fade-in max-w-lg">
       <PageHeader
         title="Business snapshot"
-        subtitle="A square card ready for WhatsApp status or a partner group. Profit is shown only when enough items have a cost price."
+        subtitle="A square card ready for WhatsApp status or a partner group. Profit is shown only when enough items have a cost price. Captions live under Social drafts — we never auto-post."
         icon={<Sparkles className="w-5 h-5" />}
         visible
         action={

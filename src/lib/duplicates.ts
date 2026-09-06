@@ -64,7 +64,7 @@ export function normalizeSku(input: string | null | undefined): string | null {
   return s || null
 }
 
-export type DuplicateReason = 'phone' | 'email' | 'sku' | 'name'
+export type DuplicateReason = 'phone' | 'email' | 'sku' | 'name' | 'repeat_bill'
 
 export interface DuplicatePair {
   aId: string
@@ -219,6 +219,115 @@ export function findProductDuplicates(products: DupProduct[]): DuplicatePair[] {
   }
 
   return out.sort((a, b) => b.score - a.score)
+}
+
+export interface DupInvoice {
+  id: string
+  invoice_number: string
+  client_name?: string | null
+  total: number
+  created_at: string
+  status?: string | null
+}
+
+function localYmdFromIso(iso: string): string {
+  const d = new Date(iso)
+  if (!Number.isFinite(d.getTime())) return ''
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/**
+ * Same customer + same rupee total + same local calendar day.
+ * Flagged only — we do not void or merge bills.
+ */
+export function findRepeatInvoices(invoices: DupInvoice[]): DuplicatePair[] {
+  const out: DuplicatePair[] = []
+  const seen = new Set<string>()
+  const groups = new Map<string, DupInvoice[]>()
+
+  for (const inv of invoices) {
+    if (inv.status === 'draft') continue
+    const name = normalizeName(inv.client_name || '')
+    const day = localYmdFromIso(inv.created_at)
+    if (name.length < 2 || !day) continue
+    const amount = Math.round(Number(inv.total) || 0)
+    const key = `${name}|${amount}|${day}`
+    const list = groups.get(key) || []
+    list.push(inv)
+    groups.set(key, list)
+  }
+
+  for (const [, list] of groups) {
+    if (list.length < 2) continue
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        const amount = Math.round(Number(list[i].total) || 0)
+        pushPair(out, seen, {
+          aId: list[i].id, bId: list[j].id,
+          aLabel: list[i].invoice_number, bLabel: list[j].invoice_number,
+          reason: 'repeat_bill', score: 1,
+          detail: `Same customer · ₹${amount.toLocaleString('en-IN')} · ${localYmdFromIso(list[i].created_at)}`,
+        })
+      }
+    }
+  }
+  return out
+}
+
+export interface StaleProduct {
+  id: string
+  name: string
+  sku: string | null
+  stock: number
+  lastSoldAt: string | null
+  daysSinceSale: number | null
+}
+
+const STALE_DAYS = 90
+
+/**
+ * Active products still on the shelf with no completed sale in `days` days.
+ * Brand-new SKUs (created inside the window) are not stale.
+ */
+export function findStaleProducts(
+  products: { id: string; name: string; sku?: string | null; stock_quantity?: number | null; active?: boolean | null; created_at?: string | null }[],
+  sales: { created_at: string; status?: string | null; items?: { product_id?: string | null }[] | null }[],
+  now = Date.now(),
+  days = STALE_DAYS,
+): StaleProduct[] {
+  const since = now - days * 86_400_000
+  const last = new Map<string, number>()
+  for (const t of sales) {
+    if (t.status && t.status !== 'completed') continue
+    const at = new Date(t.created_at).getTime()
+    if (!Number.isFinite(at) || at > now) continue
+    for (const it of t.items || []) {
+      if (!it.product_id) continue
+      const prev = last.get(it.product_id) || 0
+      if (at > prev) last.set(it.product_id, at)
+    }
+  }
+
+  const out: StaleProduct[] = []
+  for (const p of products) {
+    if (p.active === false) continue
+    const stock = Number(p.stock_quantity) || 0
+    if (stock <= 0) continue
+    const created = p.created_at ? new Date(p.created_at).getTime() : 0
+    if (created && created >= since) continue
+    const soldAt = last.get(p.id)
+    if (soldAt && soldAt >= since) continue
+    const daysSince = soldAt ? Math.floor((now - soldAt) / 86_400_000) : null
+    out.push({
+      id: p.id,
+      name: p.name,
+      sku: p.sku || null,
+      stock,
+      lastSoldAt: soldAt ? new Date(soldAt).toISOString() : null,
+      daysSinceSale: daysSince,
+    })
+  }
+  return out.sort((a, b) => (b.daysSinceSale ?? 9999) - (a.daysSinceSale ?? 9999) || a.name.localeCompare(b.name))
 }
 
 /** Prefer the card with more orders, then more spent, then the older id. */

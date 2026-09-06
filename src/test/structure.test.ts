@@ -54,6 +54,9 @@ const EXPECTED_PAGES = [
   'Duplicates',
   'Snapshot',
   'Goals',
+  'Pricing',
+  'Scorecard',
+  'Social',
 ]
 
 const EXPECTED_EDGE_FUNCTIONS = [
@@ -125,6 +128,9 @@ describe('App.tsx routes every page', () => {
   it('imports Duplicates', () => expect(app).toMatch(/import\(['"]\.\/pages\/Duplicates/))
   it('imports Snapshot', () => expect(app).toMatch(/import\(['"]\.\/pages\/Snapshot/))
   it('imports Goals', () => expect(app).toMatch(/import\(['"]\.\/pages\/Goals/))
+  it('imports Pricing', () => expect(app).toMatch(/import\(['"]\.\/pages\/Pricing/))
+  it('imports Scorecard', () => expect(app).toMatch(/import\(['"]\.\/pages\/Scorecard/))
+  it('imports Social', () => expect(app).toMatch(/import\(['"]\.\/pages\/Social/))
 
   it('has a route element for campaigns/new', () => expect(app).toMatch(/path="campaigns\/new"/))
   it('has a route element for pos', () => expect(app).toMatch(/path="pos"/))
@@ -151,6 +157,9 @@ describe('App.tsx routes every page', () => {
   it('has a duplicates route', () => expect(app).toMatch(/path="duplicates"/))
   it('has a snapshot route', () => expect(app).toMatch(/path="snapshot"/))
   it('has a goals route', () => expect(app).toMatch(/path="goals"/))
+  it('has a pricing route', () => expect(app).toMatch(/path="pricing"/))
+  it('has a scorecard route', () => expect(app).toMatch(/path="scorecard"/))
+  it('has a social route', () => expect(app).toMatch(/path="social"/))
 })
 
 describe('app pages are linked (sidebar, dashboard, or settings)', () => {
@@ -188,6 +197,9 @@ describe('app pages are linked (sidebar, dashboard, or settings)', () => {
     '/app/duplicates',
     '/app/snapshot',
     '/app/goals',
+    '/app/pricing',
+    '/app/scorecard',
+    '/app/social',
   ]
   for (const route of routes) {
     it(`links to ${route}`, () => {

@@ -287,6 +287,7 @@ export default function Products() {
       <p className="text-[11px] text-fg-subtle mb-6 leading-relaxed">
         Stock is protected — it only grows through a restock (Add Product with an existing name) and only shrinks through recorded sales.
         To remove units (spoilage, breakage), bill them at the counter so the record stays clean; staff changes go to the owner for approval.
+        {' '}<Link to="/app/pricing" className="text-secondary-strong font-semibold hover:underline">Price suggestions</Link> from 30-day sales never write themselves.
       </p>
 
       {showForm && (

@@ -3,10 +3,11 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { formatINR } from '../lib/format'
 import EmptyState from '../components/ui/EmptyState'
-import { Loader2, FileSignature, FileDown, FileSpreadsheet } from 'lucide-react'
+import { Loader2, FileSignature, FileDown, FileSpreadsheet, AlertTriangle, Braces } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { exportToCSV } from '../lib/export'
+import { exportToCSV, exportToJSON } from '../lib/export'
 import { downloadXlsx } from '../lib/xlsx'
+import { auditGstInvoices, gstr1WorkingJson, type GstFlagKind } from '../lib/gstHealth'
 
 /**
  * GstExport — GSTR-1-style working sheet built from your REAL invoice
@@ -90,6 +91,15 @@ export default function GstExport() {
   const b2c = invoices.filter((i) => !i.client_gstin)
   const totalTax = invoices.reduce((s, i) => s + (Number(i.tax_amount) || 0), 0)
   const totalTaxable = invoices.reduce((s, i) => s + (Number(i.subtotal) || 0), 0)
+  const health = useMemo(() => auditGstInvoices(invoices), [invoices])
+
+  const FLAG_LABEL: Record<GstFlagKind, string> = {
+    place_of_supply: 'Place of supply',
+    tax_mismatch: 'Tax mismatch',
+    gstin: 'GSTIN',
+    duplicate_number: 'Duplicate number',
+    hsn: 'HSN missing',
+  }
 
   const flatRows = () => [
     ['Invoice No.', 'Date', 'Customer', 'GSTIN', 'Type', 'Place of supply', 'Taxable value', 'Rate %', 'CGST', 'SGST', 'IGST', 'Total', 'Status'],
@@ -121,6 +131,10 @@ export default function GstExport() {
     ])
     toast.success('Excel downloaded')
   }
+  const exportJson = () => {
+    exportToJSON(`gstr1-sheet-${range.from}-to-${range.to}`, gstr1WorkingJson(invoices, { from: range.from, to: range.to }))
+    toast.success('JSON downloaded — working sheet, not a GSTN file')
+  }
 
   if (loading) {
     return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>
@@ -141,6 +155,7 @@ export default function GstExport() {
         {invoices.length > 0 && (
           <div className="flex gap-2">
             <button onClick={exportExcel} className="btn-secondary text-xs"><FileSpreadsheet className="w-3.5 h-3.5" /> Excel</button>
+            <button onClick={exportJson} className="btn-secondary text-xs"><Braces className="w-3.5 h-3.5" /> JSON</button>
             <button onClick={exportCsv} className="btn-secondary text-xs"><FileDown className="w-3.5 h-3.5" /> CSV</button>
           </div>
         )}
@@ -164,6 +179,25 @@ export default function GstExport() {
               </div>
             ))}
           </div>
+
+          {health.flags.length > 0 && (
+            <div className="card p-4 mb-5">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="w-4 h-4 text-warning" />
+                <h2 className="text-sm font-bold text-fg">{health.flags.length} filing check{health.flags.length === 1 ? '' : 's'}</h2>
+              </div>
+              <p className="text-[11px] text-fg-subtle mb-3">Informational only — this is not a GSTN filing. B2C invoices without a GSTIN are correct and not flagged.</p>
+              <div className="space-y-2 max-h-56 overflow-y-auto scroll-area">
+                {health.flags.map((f, i) => (
+                  <div key={`${f.invoiceId}-${f.kind}-${i}`} className="flex items-start gap-2 text-xs">
+                    <span className="px-1.5 py-0.5 rounded bg-warning/15 text-warning text-[10px] font-bold whitespace-nowrap">{FLAG_LABEL[f.kind]}</span>
+                    <span className="text-fg font-semibold whitespace-nowrap">{f.invoiceNumber}</span>
+                    <span className="text-fg-muted">{f.detail}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Rate-wise summary */}
           <div className="card overflow-hidden mb-5">

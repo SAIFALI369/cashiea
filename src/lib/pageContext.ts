@@ -18,7 +18,7 @@ const PAGE_CONTEXT: Record<string, PageContextInfo> = {
   },
   '/app/gst-export': {
     name: 'GST Export',
-    description: 'the GST export sheet — rate-wise GST summary (CGST/SGST/IGST), B2B vs B2C split and invoice list for GSTR-1 filing preparation',
+    description: 'the GST working sheet — rate-wise summary, B2B vs B2C, JSON/Excel export, and filing-health flags (not a GSTN filing)',
   },
   '/app/bank-import': {
     name: 'Bank Import',
@@ -154,7 +154,7 @@ const PAGE_CONTEXT: Record<string, PageContextInfo> = {
   },
   '/app/duplicates': {
     name: 'Data hygiene',
-    description: 'duplicate customer and product detection — same phone, email, SKU or a near-identical name',
+    description: 'duplicate customer and product detection, same-day repeat bills, and products with no completed sale in 90 days',
   },
   '/app/snapshot': {
     name: 'Snapshot',
@@ -163,6 +163,18 @@ const PAGE_CONTEXT: Record<string, PageContextInfo> = {
   '/app/goals': {
     name: 'Goals',
     description: 'billing streak, weekly grade versus last week, and device-local revenue / billing-day / new-customer targets',
+  },
+  '/app/pricing': {
+    name: 'Price suggestions',
+    description: 'raise or markdown suggestions from the last 30 days of sales — Apply writes the selling price, a cut never goes below cost',
+  },
+  '/app/scorecard': {
+    name: 'Supplier scorecard',
+    description: 'supplier grades from purchase-order volume, outstanding dues and open POs past expected date — no invented on-time percent',
+  },
+  '/app/social': {
+    name: 'Social drafts',
+    description: 'WhatsApp Status captions from today\'s bills and nearby festivals — copy or share, never auto-posted, never brags profit',
   },
 }
 
