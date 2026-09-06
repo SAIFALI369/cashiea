@@ -1,21 +1,19 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { supabase, edgeFunctionUrl } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { formatINR } from '../lib/format'
-import { parseCsv, autoMapHeaders } from '../lib/csv'
-import EmptyState from '../components/ui/EmptyState'
-import { Loader2, Landmark, Upload, CheckCircle2, X, FileSpreadsheet, ShieldCheck } from 'lucide-react'
+import { parseCsv } from '../lib/csv'
+import { mapBankColumns, matchBankTxns, parseAmount, parseBankDate, type MatchKind } from '../lib/bankMatch'
+import { Loader2, Upload, CheckCircle2, X, FileSpreadsheet, ShieldCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 /**
  * BankImport — bring a bank statement in, match it to unpaid invoices.
  *
- * Uses the app's RFC-4180 CSV engine (handles quoted commas, Indian
- * bank statement headers, separate debit/credit columns) instead of a
- * naive split(','). Matching: exact amount (±₹1) against unpaid
- * invoices; confirm before anything is saved. Imported rows go to
- * bank_transactions (owner-only RLS) and matched invoices can be
- * marked paid on your confirmation.
+ * CSV parsing is RFC-4180 (quoted commas, Indian headers, debit/credit
+ * columns). Matching lives in bankMatch.ts: amount is the gate, name in
+ * the narration and due-date proximity break ties, each invoice used
+ * once. Confirm before anything is saved.
  */
 interface ParsedTxn {
   row: number
@@ -29,68 +27,9 @@ interface Match {
   invoiceId: string | null
   invoiceNumber: string | null
   clientName: string | null
-  exact: boolean
-}
-
-const HEADER_ALIASES: Record<string, string[]> = {
-  date: ['date', 'txn date', 'transaction date', 'value date', 'posting date'],
-  description: ['description', 'narration', 'particulars', 'remarks', 'details', 'transaction remarks'],
-  amount: ['amount', 'credit', 'deposit', 'credit amount', 'deposits', 'withdrawal amt', 'credit(+)'],
-  debit: ['debit', 'withdrawal', 'debit amount', 'debits', 'debit(-)', 'withdrawal amount'],
-}
-
-function mapBankColumns(headers: string[]): { date?: string; description?: string; amount?: string; debit?: string } {
-  const clean = headers.map((h) => h.trim().toLowerCase())
-  // Claim a column for a role: exact header match first, then partial —
-  // never reusing a column already claimed by another role (so
-  // "Withdrawal Amount" can't masquerade as the credit/amount column).
-  const find = (aliases: string[], excludeIdx = -1): string | undefined => {
-    for (const a of aliases) {
-      const exact = clean.findIndex((h, i) => i !== excludeIdx && h === a)
-      if (exact !== -1) return headers[exact]
-    }
-    for (const a of aliases) {
-      const partial = clean.findIndex((h, i) => i !== excludeIdx && h.includes(a))
-      if (partial !== -1) return headers[partial]
-    }
-    return undefined
-  }
-  const debit = find(HEADER_ALIASES.debit)
-  const debitIdx = debit ? headers.indexOf(debit) : -1
-  const amount = find(HEADER_ALIASES.amount, debitIdx)
-  return {
-    date: find(HEADER_ALIASES.date),
-    description: find(HEADER_ALIASES.description),
-    amount,
-    debit,
-  }
-}
-
-function parseAmount(raw: string): number {
-  if (!raw) return NaN
-  // Indian formats: "1,23,456.78", "Rs 1,234", "(1,234)" = negative, trailing "Cr"/"Dr"
-  let s = raw.replace(/[₹Rs,\s]/gi, '').replace(/(cr|dr)\.?$/i, '')
-  let negative = false
-  if (/^\(.*\)$/.test(s)) { negative = true; s = s.slice(1, -1) }
-  const n = Number(s)
-  return negative ? -n : n
-}
-
-function parseBankDate(raw: string): string {
-  const s = (raw || '').trim()
-  if (!s) return ''
-  // dd/mm/yyyy and dd-mm-yyyy (Indian default)
-  const dmy = s.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$/)
-  if (dmy) {
-    const d = dmy[1].padStart(2, '0'), m = dmy[2].padStart(2, '0')
-    let y = dmy[3]; if (y.length === 2) y = `20${y}`
-    return `${y}-${m}-${d}`
-  }
-  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/)
-  if (iso) return iso[0]
-  const parsed = new Date(s)
-  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10)
-  return ''
+  kind: MatchKind
+  score: number
+  reason: string
 }
 
 export default function BankImport() {
@@ -150,16 +89,28 @@ export default function BankImport() {
     setFileName(file.name)
     setParseIssues(issues.slice(0, 5))
     setParsed(txns)
-    // Match: exact amount ±₹1 against unpaid invoices (each invoice once)
-    const available = [...unpaid]
-    setMatches(txns.map((t) => {
-      const idx = available.findIndex((inv) => Math.abs(Number(inv.total) - t.amount) <= 1)
-      if (idx !== -1) {
-        const inv = available[idx]
-        available.splice(idx, 1)
-        return { txn: t, invoiceId: inv.id, invoiceNumber: inv.invoice_number, clientName: inv.client_name, exact: true }
+    const auto = matchBankTxns(
+      txns,
+      unpaid.map((inv) => ({
+        id: inv.id,
+        invoice_number: inv.invoice_number,
+        client_name: inv.client_name,
+        total: Number(inv.total) || 0,
+        due_date: inv.due_date || null,
+      })),
+    )
+    setMatches(txns.map((t, i) => {
+      const m = auto[i]
+      const inv = unpaid.find((x) => x.id === m.invoiceId)
+      return {
+        txn: t,
+        invoiceId: m.invoiceId,
+        invoiceNumber: m.invoiceNumber,
+        clientName: inv?.client_name || null,
+        kind: m.kind,
+        score: m.score,
+        reason: m.reason,
       }
-      return { txn: t, invoiceId: null, invoiceNumber: null, clientName: null, exact: false }
     }))
   }
 
@@ -170,7 +121,15 @@ export default function BankImport() {
     setMatches((prev) => prev.map((m, idx) => {
       if (idx !== i) return m
       const inv = unpaid.find((x) => x.id === invoiceId)
-      return { ...m, invoiceId, invoiceNumber: inv?.invoice_number || null, clientName: inv?.client_name || null, exact: false }
+      return {
+        ...m,
+        invoiceId,
+        invoiceNumber: inv?.invoice_number || null,
+        clientName: inv?.client_name || null,
+        kind: invoiceId ? 'likely' : 'none',
+        score: invoiceId ? m.score : 0,
+        reason: invoiceId ? 'Picked by you' : 'No match',
+      }
     }))
   }
 
@@ -237,7 +196,7 @@ export default function BankImport() {
             {unpaid.length === 0 ? (
               <p className="text-xs text-fg-subtle text-center mt-4">No unpaid invoices right now — you can still import the statement for record-keeping.</p>
             ) : (
-              <p className="text-xs text-fg-subtle text-center mt-4">{unpaid.length} unpaid invoice{unpaid.length !== 1 ? 's' : ''} will be matched by amount (±₹1).</p>
+              <p className="text-xs text-fg-subtle text-center mt-4">{unpaid.length} unpaid invoice{unpaid.length !== 1 ? 's' : ''} will be matched by amount, name in the narration, and due date — each invoice once.</p>
             )}
           </>
         )
@@ -309,7 +268,7 @@ export default function BankImport() {
 
           <p className="text-[11px] text-fg-subtle mt-4 flex items-start gap-1.5 max-w-xl">
             <FileSpreadsheet className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-            Nothing is saved until you tap Import. Rows are stored under your account only, and matches are suggestions — correct any row before importing.
+            Nothing is saved until you tap Import. Green = unique amount (or name-confirmed). Amber = suggested — glance before you mark paid. Each invoice is used at most once.
           </p>
         </>
       )}

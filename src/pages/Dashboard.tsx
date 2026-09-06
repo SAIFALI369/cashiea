@@ -292,7 +292,7 @@ export default function Dashboard() {
       {/* GREETING — bare page text, no card */}
       <div>
         <h1 className="text-2xl font-semibold text-fg leading-tight">{aiGreeting || `Welcome back, ${firstName}.`}</h1>
-        <p className="text-sm text-fg-muted mt-1">Here's what's happening in your business today.</p>
+        <p className="text-sm text-fg-muted mt-1">Here's what's happening in your business today. <Link to="/app/goals" className="text-accent font-semibold">Goals &amp; streak</Link></p>
       </div>
 
       {/* TOP PRIORITY — overdue hero */}

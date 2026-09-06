@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Search, LayoutDashboard, ShoppingCart, Package, Users, Receipt, BookOpen,
   FileBarChart, Sparkles, Landmark, FileSignature, TrendingUp, Wallet, CornerDownLeft,
-  RefreshCw, LineChart, CalendarClock, Copy, Share2,
+  RefreshCw, LineChart, CalendarClock, Copy, Share2, Flame,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -41,6 +41,7 @@ const COMMANDS: Command[] = [
   { label: 'Reminders', hint: 'GST, bills, festivals, win-backs', icon: CalendarClock, to: '/app/reminders', keywords: 'reminders gst festival overdue winback' },
   { label: 'Data hygiene', hint: 'Duplicate customers & products', icon: Copy, to: '/app/duplicates', keywords: 'duplicate merge hygiene customers products' },
   { label: 'Business snapshot', hint: 'Shareable card of today\'s numbers', icon: Share2, to: '/app/snapshot', keywords: 'snapshot share whatsapp story card' },
+  { label: 'Goals & streaks', hint: 'Monthly targets and billing streak', icon: Flame, to: '/app/goals', keywords: 'goals streak target week grade' },
 ]
 
 export function CommandPalette() {

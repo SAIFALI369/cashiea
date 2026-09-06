@@ -53,6 +53,7 @@ const EXPECTED_PAGES = [
   'Reminders',
   'Duplicates',
   'Snapshot',
+  'Goals',
 ]
 
 const EXPECTED_EDGE_FUNCTIONS = [
@@ -123,6 +124,7 @@ describe('App.tsx routes every page', () => {
   it('imports Reminders', () => expect(app).toMatch(/import\(['"]\.\/pages\/Reminders/))
   it('imports Duplicates', () => expect(app).toMatch(/import\(['"]\.\/pages\/Duplicates/))
   it('imports Snapshot', () => expect(app).toMatch(/import\(['"]\.\/pages\/Snapshot/))
+  it('imports Goals', () => expect(app).toMatch(/import\(['"]\.\/pages\/Goals/))
 
   it('has a route element for campaigns/new', () => expect(app).toMatch(/path="campaigns\/new"/))
   it('has a route element for pos', () => expect(app).toMatch(/path="pos"/))
@@ -148,6 +150,7 @@ describe('App.tsx routes every page', () => {
   it('has a reminders route', () => expect(app).toMatch(/path="reminders"/))
   it('has a duplicates route', () => expect(app).toMatch(/path="duplicates"/))
   it('has a snapshot route', () => expect(app).toMatch(/path="snapshot"/))
+  it('has a goals route', () => expect(app).toMatch(/path="goals"/))
 })
 
 describe('app pages are linked (sidebar, dashboard, or settings)', () => {
@@ -184,6 +187,7 @@ describe('app pages are linked (sidebar, dashboard, or settings)', () => {
     '/app/reminders',
     '/app/duplicates',
     '/app/snapshot',
+    '/app/goals',
   ]
   for (const route of routes) {
     it(`links to ${route}`, () => {

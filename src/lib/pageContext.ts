@@ -22,7 +22,7 @@ const PAGE_CONTEXT: Record<string, PageContextInfo> = {
   },
   '/app/bank-import': {
     name: 'Bank Import',
-    description: 'the bank statement import — upload a bank CSV, match credits to unpaid invoices, and mark matched invoices paid',
+    description: 'the bank statement import — upload a bank CSV, match credits to unpaid invoices by amount, name in the narration and due date, and mark matched invoices paid',
   },
   '/app/pos': {
     name: 'Point of Sale',
@@ -34,7 +34,7 @@ const PAGE_CONTEXT: Record<string, PageContextInfo> = {
   },
   '/app/customers': {
     name: 'Customers',
-    description: 'your customer list — names, phone, email, total spent, number of orders, and last purchase date',
+    description: 'your customer list — names, phone, email, total spent, number of orders, last purchase date, and a 360 view (LTV tier, cadence, churn, preferred pay, top items)',
   },
   '/app/suppliers': {
     name: 'Suppliers',
@@ -159,6 +159,10 @@ const PAGE_CONTEXT: Record<string, PageContextInfo> = {
   '/app/snapshot': {
     name: 'Snapshot',
     description: 'a shareable business snapshot card of sales, bills, profit and top item for today, the week or the month',
+  },
+  '/app/goals': {
+    name: 'Goals',
+    description: 'billing streak, weekly grade versus last week, and device-local revenue / billing-day / new-customer targets',
   },
 }
 

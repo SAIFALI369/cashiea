@@ -21,6 +21,7 @@ const ROUTE_CAPABILITIES: Array<{ prefix: string; capability: Capability }> = [
   { prefix: '/app/cash-flow', capability: 'reports:view' },
   { prefix: '/app/reminders', capability: 'reports:view' },
   { prefix: '/app/snapshot', capability: 'reports:view' },
+  { prefix: '/app/goals', capability: 'reports:view' },
   { prefix: '/app/auto-reorder', capability: 'inventory:view' },
   { prefix: '/app/duplicates', capability: 'inventory:view' },
   { prefix: '/app/bank-import', capability: 'settings:manage' },

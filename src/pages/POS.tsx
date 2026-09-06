@@ -14,6 +14,7 @@ import {
 } from '../lib/pos'
 import { holdCart, listHeldCarts, deleteHeldCart, type HeldCartSnapshot } from '../lib/heldCarts'
 import type { Product, Customer, PaymentMethod, HeldCart } from '../lib/types'
+import { enrichCustomers, type Customer360 } from '../lib/customer360'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
 import toast from 'react-hot-toast'
@@ -46,6 +47,7 @@ export default function POS() {
   // ── Cart state ──
   const [cart, setCart] = useState<CartLine[]>([])
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+  const [customer360, setCustomer360] = useState<Customer360 | null>(null)
   const [cartDiscountMode, setCartDiscountMode] = useState<'flat' | 'pct'>('flat')
   const [cartDiscountValue, setCartDiscountValue] = useState(0)
   const [discountReason, setDiscountReason] = useState('')
@@ -140,6 +142,22 @@ export default function POS() {
   }
 
   useEffect(() => { if (ownerId) refreshHeld() }, [ownerId])
+
+  const picker360 = useMemo(() => enrichCustomers(customers, []), [customers])
+
+  useEffect(() => {
+    if (!ownerId || !selectedCustomer) { setCustomer360(null); return }
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase.from('transactions')
+        .select('customer_id,created_at,total,status,payment_method,items')
+        .eq('user_id', ownerId).eq('customer_id', selectedCustomer.id)
+        .order('created_at', { ascending: false }).limit(80)
+      if (cancelled) return
+      setCustomer360(enrichCustomers([selectedCustomer], (data as any[]) || []).get(selectedCustomer.id) || null)
+    })()
+    return () => { cancelled = true }
+  }, [ownerId, selectedCustomer])
 
   const categories = useMemo(() => {
     const set = new Set(products.map((p) => p.category || 'general'))
@@ -530,6 +548,7 @@ export default function POS() {
 
   const cartProps = {
     cart, sale, selectedCustomer,
+    customerInsight: customer360?.insight || null,
     onPickCustomer: () => setShowCustomerPicker(true),
     onClearCustomer: () => setSelectedCustomer(null),
     onChangeQty: changeQty,
@@ -756,7 +775,10 @@ export default function POS() {
               .map((c) => (
               <button key={c.id} onClick={() => { setSelectedCustomer(c); setShowCustomerPicker(false) }} className="w-full p-2.5 rounded-lg hover:bg-surface-2 text-left">
                 <p className="text-sm text-fg">{c.name}</p>
-                <p className="text-xs text-fg-subtle">{c.email || c.phone || 'No contact'}</p>
+                <p className="text-xs text-fg-subtle">
+                  {c.email || c.phone || 'No contact'}
+                  {picker360.get(c.id)?.churnRisk === 'high' ? ' · quiet' : picker360.get(c.id)?.tier && picker360.get(c.id)!.tier !== 'new' ? ` · ${picker360.get(c.id)!.tier}` : ''}
+                </p>
               </button>
             ))}
 
