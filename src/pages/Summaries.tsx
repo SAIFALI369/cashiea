@@ -132,7 +132,7 @@ export default function Summaries() {
               className={`p-3 rounded-xl border text-center transition-all ${
                 summaryType === type.value
                   ? 'border-secondary/50 bg-secondary-soft/70 text-secondary-strong'
-                  : 'border-slate-700 bg-slate-900/50 text-slate-400 hover:border-slate-600'
+                  : 'border-line-2 bg-surface-3 text-fg-subtle hover:border-line'
               }`}
             >
               <div className="text-xl mb-1">{type.icon}</div>
@@ -171,9 +171,9 @@ export default function Summaries() {
                     {summaryTypes.find((t) => t.value === summary.summary_type)?.icon} {summary.summary_type}
                   </span>
                   {summary.word_count && (
-                    <span className="text-xs text-slate-500">{summary.word_count} words</span>
+                    <span className="text-xs text-fg-subtle">{summary.word_count} words</span>
                   )}
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-fg-subtle">
                     · {new Date(summary.created_at).toLocaleDateString()}
                   </span>
                 </div>
