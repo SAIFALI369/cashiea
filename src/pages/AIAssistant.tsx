@@ -438,7 +438,10 @@ export default function AIAssistant() {
     const next = [...messages, { role: 'user' as const, text: q, image: img ? img.preview : undefined, ts: Date.now() }]
     setMessages(next)
     setLoading(true)
-    const history = messages.slice(-10).map((m) => ({ role: m.role, text: m.text }))
+    // Last 12 turns, each trimmed — long chats must NEVER break (the old
+    // 1,000-character-per-turn server limit made Meraj's own long replies
+    // kill the chat with "history contains an invalid turn").
+    const history = messages.slice(-12).map((m) => ({ role: m.role, text: m.text.length > 1600 ? m.text.slice(0, 1600) + '…' : m.text }))
     try {
       const res = await askAssistant(q || '(shared an image)', false, scope, sendMode, undefined, undefined, history, img || undefined)
       setPendingImage(null)
