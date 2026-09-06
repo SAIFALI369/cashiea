@@ -60,7 +60,14 @@ describe('buildInvoiceMessage', () => {
 
   it('includes due date when provided', () => {
     const msg = buildInvoiceMessage({ invoiceNumber: 'INV-1', clientName: 'C', amount: 100, payeeName: 'S', dueDate: '2026-07-31' })
-    expect(msg).toContain('Due: 2026-07-31')
+    expect(msg).toContain('2026-07-31')
+  })
+
+  it('reads as a drafted note, not a dump', () => {
+    const msg = buildInvoiceMessage({ invoiceNumber: 'INV-42', clientName: 'Ramesh', amount: 1500, payeeName: 'My Shop' })
+    expect(msg.startsWith('Namaste Ramesh')).toBe(true)
+    expect(msg).toContain('With thanks')
+    expect(msg).not.toMatch(/🧾/)
   })
 })
 

@@ -84,6 +84,44 @@ describe('computeDocTotals — rounded, self-consistent money', () => {
 
   it('handles the empty case without NaN', () => {
     const t = quoteTotals([], 18)
-    expect(t).toEqual({ lines: [], subtotal: 0, taxRate: 18, taxAmount: 0, total: 0 })
+    expect(t.lines).toEqual([])
+    expect(t.subtotal).toBe(0)
+    expect(t.taxRate).toBe(18)
+    expect(t.taxAmount).toBe(0)
+    expect(t.total).toBe(0)
+    expect(t.line).toBe(0)
+    expect(t.discountAmount).toBe(0)
+  })
+
+  it('applies a document discount before tax', () => {
+    const t = computeDocTotals([{ description: 'Bag', quantity: 2, unit_price: 100 }], 18, { discountPct: 10 })
+    expect(t.line).toBe(200)
+    expect(t.discountAmount).toBe(20)
+    expect(t.subtotal).toBe(180)
+    expect(t.taxAmount).toBe(32.4)
+    expect(t.total).toBe(212.4)
+  })
+
+  it('uses per-line GST when any line has a rate', () => {
+    const t = computeDocTotals([
+      { description: 'Rice', quantity: 1, unit_price: 100, gst_rate: 5, hsn_code: '1006' },
+      { description: 'Soap', quantity: 1, unit_price: 100, gst_rate: 18, hsn_code: '3401' },
+    ], 0)
+    expect(t.subtotal).toBe(200)
+    expect(t.taxAmount).toBe(23)
+    expect(t.total).toBe(223)
+    expect(t.hsnSummary).toHaveLength(2)
+    expect(t.hsnSummary.find((r) => r.hsn === '1006')?.cgst).toBe(2.5)
+  })
+
+  it('splits IGST on interstate bills', () => {
+    const t = computeDocTotals(
+      [{ description: 'Fan', quantity: 1, unit_price: 1000, gst_rate: 18 }],
+      0,
+      { isInterstate: true },
+    )
+    expect(t.isInterstate).toBe(true)
+    expect(t.hsnSummary[0].igst).toBe(180)
+    expect(t.hsnSummary[0].cgst).toBe(0)
   })
 })

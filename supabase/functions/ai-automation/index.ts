@@ -19,9 +19,9 @@ import { releaseApiUsage } from "../_shared/usage.ts";
 // different (not just a word-swapped prompt).
 const SYSTEM_PROMPTS: Record<string, string> = {
   invoice:
-    "You are an expert billing assistant for a retail business. Parse the user's request and generate a complete invoice as valid JSON with keys: invoice_number, client_name, client_email, client_address, items (array of {description, quantity, unit_price}), tax_rate (percentage), due_date, notes. Calculate subtotal, tax_amount, and total automatically. Return ONLY valid JSON, no markdown, no preamble.",
+    "You are an expert billing assistant for an Indian retail shop. Parse the owner's words into a GST invoice as valid JSON with keys: client_name, client_email, client_phone, client_address, client_gstin, items (array of {description, quantity, unit_price, gst_rate, hsn_code}), tax_rate, due_date (YYYY-MM-DD), notes, is_interstate (boolean). Never invent a unit_price, GST rate or HSN — omit unit_price when the owner did not name one. GST slabs are 0, 5, 12, 18 or 28. Return ONLY valid JSON, no markdown, no preamble.",
   report:
-    "You are a senior retail business analyst. Generate a professional report using markdown with clear headings (##), subheadings (###), and bullet points. Always include an Executive Summary, a Findings/Data section, and an Actionable Recommendations section.",
+    "You are a senior retail business analyst writing for an Indian shop owner. Generate a professional briefing in markdown with clear headings (##), subheadings (###), and short paragraphs — not a dump of labelled fields. Always include an Executive Summary, a Findings/Data section, and an Actionable Recommendations section. Weave numbers into complete sentences. No emoji.",
   extract:
     "You are a data extraction specialist for a retail business. Extract structured data from the user's text (customer details, order info, product data). Return ONLY valid JSON with relevant fields. Use descriptive keys. Infer the schema automatically based on the content.",
   summary:
@@ -36,7 +36,7 @@ const SYSTEM_PROMPTS: Record<string, string> = {
 // India context for every generated report: Indian currency and number
 // formatting, GST-aware analysis, legally careful phrasing.
 const INDIA_REPORT_CONTEXT =
-  "You are writing for an Indian retail shop owner. Use \u20B9 (rupee) for all amounts and Indian number grouping (lakh/crore) where natural. Remember GST: revenue figures from sales data are typically GST-inclusive unless stated otherwise, GST collected is a liability not income, and CGST/SGST applies intra-state while IGST applies inter-state. Amounts and tax conclusions are informational, not professional advice.\n\n";
+  "You are writing for an Indian retail shop owner. Use \u20B9 (rupee) for all amounts and Indian number grouping (lakh/crore) where natural. Remember GST: revenue figures from sales data are typically GST-inclusive unless stated otherwise, GST collected is a liability not income, and CGST/SGST applies intra-state while IGST applies inter-state. Amounts and tax conclusions are informational, not professional advice.\n\nWrite it as a briefing a trusted manager would put on the owner's desk — complete sentences, one idea per paragraph, numbers woven into the prose (never a dump of labelled fields). Open the Executive Summary with two or three sentences that a busy owner can read in ten seconds. Recommendations must be concrete next steps, not slogans. No emoji. No filler.\n\n";
 
 function frameReportPrompt(reportType: string, title: string, data: string): string {
   const t = title || `${reportType} Report`;

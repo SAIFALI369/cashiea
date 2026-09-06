@@ -6,15 +6,17 @@ import { useCan } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import { validateGstin } from '../lib/validation'
 import { offlineInsert } from '../lib/mutations'
-import { quoteTotals, computeDocTotals } from '../lib/quoteMath'
+import { quoteTotals } from '../lib/quoteMath'
 import { nextDocNumber } from '../lib/docnum'
 import { callAI, parseAIJson } from '../lib/ai'
+import { InvoiceComposer, emptyInvoiceDraft, draftFromParsed, type InvoiceDraft } from '../components/invoices/InvoiceComposer'
+import { gstinState } from '../lib/india-compliance'
 import {
   buildUpiLink, buildInvoiceMessage,
   buildWhatsappLink, buildSmsLink, copyToClipboard, type UPIParams,
 } from '../lib/payments'
 import { generateInvoicePdf } from '../lib/invoice-pdf'
-import type { Invoice, InvoiceItem } from '../lib/types'
+import type { Customer, Invoice, InvoiceItem, Product } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import { StatStrip } from '../components/ui/StatStrip'
 import { MoreMenu } from '../components/MoreMenu'
@@ -23,7 +25,7 @@ import { UpiQr } from '../components/UpiQr'
 import { RecurringModal } from '../components/invoices/RecurringModal'
 import EmptyState from '../components/ui/EmptyState'
 import { Avatar } from '../components/Avatar'
-import { AlertTriangle, Check, CheckCircle2, CheckSquare, Clock, Copy, Download, FileDown, FileText, Loader2, MessageCircle, Pencil, Plus, QrCode, Repeat, Search, Send, Share2, Smartphone, Sparkles, Square, Trash2, Wallet, X, Zap } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, CheckSquare, Copy, FileDown, FileText, Loader2, MessageCircle, Plus, QrCode, Repeat, Search, Share2, Smartphone, Sparkles, Square, Trash2, Wallet, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const statusColor: Record<string, string> = {
@@ -42,7 +44,11 @@ export default function Invoices() {
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [prompt, setPrompt] = useState('')
-  const [showForm, setShowForm] = useState(false)
+  const [showAi, setShowAi] = useState(false)
+  const [composer, setComposer] = useState<InvoiceDraft | null>(null)
+  const [composerSource, setComposerSource] = useState<'ai' | 'manual'>('manual')
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [products, setProducts] = useState<Product[]>([])
   const [shareInv, setShareInv] = useState<Invoice | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<'all' | 'unpaid' | 'paid' | 'overdue'>('all')
@@ -59,12 +65,18 @@ export default function Invoices() {
 
   const loadInvoices = async () => {
     setLoading(true)
-    const { data } = await supabase.from('invoices').select('*').eq('user_id', ownerId).order('created_at', { ascending: false })
-    setInvoices((data as Invoice[]) || [])
+    const [inv, cust, prod] = await Promise.all([
+      supabase.from('invoices').select('*').eq('user_id', ownerId).order('created_at', { ascending: false }),
+      supabase.from('customers').select('id,name,phone,email,address').eq('user_id', ownerId).order('name').limit(400),
+      supabase.from('products').select('id,name,price,hsn_code,gst_rate').eq('user_id', ownerId).order('name').limit(800),
+    ])
+    setInvoices((inv.data as Invoice[]) || [])
+    setCustomers((cust.data as Customer[]) || [])
+    setProducts((prod.data as Product[]) || [])
     setLoading(false)
   }
 
-  // ── Generate invoice via AI ────────────────────────────────────
+  // ── AI fills the composer — the owner still reviews before save ──
   const handleGenerate = async () => {
     if (!isOwner) return toast.error('Only the business owner can create invoices right now')
     if (!prompt.trim()) return toast.error('Describe the invoice first')
@@ -72,87 +84,73 @@ export default function Invoices() {
     try {
       const { result } = await callAI({ task_type: 'invoice', prompt, provider: profile?.ai_provider })
       const parsed = parseAIJson<{
-        invoice_number: string; client_name: string; client_email?: string
+        client_name: string; client_email?: string
         client_phone?: string; client_address?: string; client_gstin?: string
-        items: InvoiceItem[]
+        items?: { description?: string; name?: string; quantity?: number; qty?: number; unit_price?: number; gst_rate?: number; hsn_code?: string }[]
         tax_rate?: number; due_date?: string; notes?: string
       }>(result)
       if (!parsed) throw new Error('Could not parse invoice. Try again.')
-
-      const doc = quoteTotals(parsed.items || [], parsed.tax_rate || 0)
-      if (doc.lines.length === 0) throw new Error('Invoice needs at least one valid item (description, quantity and price)')
-      const items = doc.lines
-      const subtotal = doc.subtotal
-      const taxRate = doc.taxRate
-      const taxAmount = doc.taxAmount
-      const total = doc.total
-      const invoiceNumber = parsed.invoice_number || nextDocNumber('INV')
-
-      // Build UPI payment link if merchant has a UPI ID set
-      let paymentLink: string | null = null
-      if (profile?.upi_id) {
-        paymentLink = buildUpiLink({
-          payeeVpa: profile.upi_id,
-          payeeName: profile?.company_name || profile?.full_name || 'My Shop',
-          amount: total,
-          reference: invoiceNumber,
-          note: `Invoice ${invoiceNumber}`,
-        })
-      }
-
-      const { data, error } = await offlineInsert('invoices', {
-        user_id: ownerId,
-        invoice_number: invoiceNumber,
-        client_name: parsed.client_name || 'Customer',
-        client_email: parsed.client_email || null,
-        client_phone: parsed.client_phone || null,
-        client_address: parsed.client_address || null,
-        client_gstin: (parsed.client_gstin || '').toUpperCase() || null,
-        items, subtotal, tax_rate: taxRate, tax_amount: taxAmount, total,
-        status: 'draft', due_date: parsed.due_date || null,
-        notes: parsed.notes || null, payment_link: paymentLink,
-      })
-
-      if (error) throw error
-      setInvoices([data as Invoice, ...invoices])
-      setPrompt(''); setShowForm(false)
-      toast.success('Invoice generated')
+      const draft = draftFromParsed(parsed)
+      if (quoteTotals(draft.items, 0).lines.length === 0) throw new Error('Invoice needs at least one valid item (description, quantity and price)')
+      setComposer(draft)
+      setComposerSource('ai')
+      setShowAi(false)
+      setPrompt('')
+      toast.success('Review the bill, then save it')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Generation failed')
     } finally { setGenerating(false) }
   }
 
-  // ── Quick invoice (mobile-optimized 30-second flow) ────────────
-  const [showQuick, setShowQuick] = useState(false)
-  const [quick, setQuick] = useState({ name: '', phone: '', gstin: '', item: '', qty: '1', price: '' })
-  const handleQuickCreate = async () => {
-    if (!isOwner) return toast.error('Only the business owner can create invoices right now')
-    if (!quick.name || !quick.item || !quick.price) return toast.error('Fill name, item, and price')
-    if (quick.gstin.trim() && !validateGstin(quick.gstin).valid) return toast.error('Enter a valid 15-character GSTIN')
+  const saveComposer = async (as: 'draft' | 'sent') => {
+    if (!isOwner || !composer) return
+    if (composer.client_gstin.trim() && !validateGstin(composer.client_gstin).valid) {
+      return toast.error('Enter a valid 15-character GSTIN')
+    }
+    const buyerState = gstinState(composer.client_gstin)
+    const sellerState = gstinState(profile?.gstin || '') || profile?.business_state || ''
+    const interstate = composer.is_interstate || !!(buyerState && sellerState && buyerState !== sellerState)
+    const doc = quoteTotals(composer.items, 0, { discountPct: composer.discount_pct, isInterstate: interstate })
+    if (doc.lines.length === 0) return toast.error('Add at least one item with a name, quantity and price')
     setGenerating(true)
-    const qty = Number(quick.qty)
-    const price = Number(quick.price)
-    if (!Number.isFinite(qty) || qty <= 0) { setGenerating(false); return toast.error('Quantity must be a number greater than 0') }
-    if (!Number.isFinite(price) || price < 0) { setGenerating(false); return toast.error('Enter a valid price') }
-    const doc = computeDocTotals([{ description: quick.item.trim(), quantity: qty, unit_price: price }], 0)
-    const total = doc.total
     const invoiceNumber = nextDocNumber('INV')
+    const paymentLink = profile?.upi_id
+      ? buildUpiLink({
+          payeeVpa: profile.upi_id,
+          payeeName: profile?.company_name || profile?.full_name || 'My Shop',
+          amount: doc.total,
+          reference: invoiceNumber,
+          note: `Invoice ${invoiceNumber}`,
+        })
+      : null
     const { data, error } = await offlineInsert('invoices', {
       user_id: ownerId,
       invoice_number: invoiceNumber,
-      client_name: quick.name, client_phone: quick.phone || null,
-      client_gstin: quick.gstin.trim().toUpperCase() || null,
+      client_name: composer.client_name.trim(),
+      client_email: composer.client_email.trim() || null,
+      client_phone: composer.client_phone.trim() || null,
+      client_address: composer.client_address.trim() || null,
+      client_gstin: composer.client_gstin.trim().toUpperCase() || null,
       items: doc.lines,
-      subtotal: total, tax_rate: 0, tax_amount: 0, total,
-      status: 'sent',
+      subtotal: doc.subtotal,
+      discount: doc.discountAmount,
+      tax_rate: doc.taxRate,
+      tax_amount: doc.taxAmount,
+      total: doc.total,
+      is_interstate: interstate,
+      place_of_supply: buyerState || sellerState || null,
+      hsn_summary: doc.hsnSummary,
+      status: as,
+      due_date: composer.due_date || null,
+      notes: composer.notes.trim() || null,
+      payment_link: paymentLink,
     })
     setGenerating(false)
     if (error) return toast.error(error.message)
     setInvoices([data as Invoice, ...invoices])
-    setQuick({ name: '', phone: '', gstin: '', item: '', qty: '1', price: '' })
-    setShowQuick(false)
-    toast.success('Invoice created — share it now')
-    setShareInv(data as Invoice)
+    setComposer(null)
+    toast.success(as === 'sent' ? 'Invoice created — share it now' : 'Draft saved')
+    if (as === 'sent') setShareInv(data as Invoice)
   }
 
   // ── UPI payment link (uses merchant UPI ID) ────────────────────
@@ -264,6 +262,12 @@ export default function Invoices() {
     ] : []),
   ]
 
+  const openComposer = () => {
+    setShowAi(false)
+    setComposerSource('manual')
+    setComposer(emptyInvoiceDraft())
+  }
+
   // Stats
   const unpaid = invoices.filter((i) => i.status !== 'paid' && i.status !== 'draft')
   const unpaidTotal = unpaid.reduce((s, i) => s + (Number(i.total) || 0), 0)
@@ -282,13 +286,13 @@ export default function Invoices() {
     <div className="animate-fade-in">
       <PageHeader
         title="Invoices"
-        subtitle="Create, send via WhatsApp, and collect via UPI"
+        subtitle="Draft a GST bill, send it on WhatsApp, collect on UPI"
         icon={<FileText className="w-5 h-5" />}
         action={isOwner ? (
           <div className="flex gap-2">
             <button onClick={() => { setRecurringSeed(null); setShowRecurring(true) }} className="btn-secondary text-sm"><Repeat className="w-4 h-4" /> Recurring</button>
-            <button onClick={() => setShowQuick(!showQuick)} className="btn-secondary text-sm"><Zap className="w-4 h-4" /> Quick</button>
-            <button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showForm ? 'Close' : 'AI Invoice'}</button>
+            <button onClick={() => { setShowAi((v) => !v); setComposer(null) }} className="btn-secondary text-sm"><Sparkles className="w-4 h-4" /> {showAi ? 'Close' : 'From words'}</button>
+            <button onClick={openComposer} className="btn-primary text-sm"><Plus className="w-4 h-4" /> New invoice</button>
           </div>
         ) : <span className="text-xs text-fg-subtle">Owner-only changes</span>}
       />
@@ -302,48 +306,42 @@ export default function Invoices() {
         ]} />
       )}
 
-      {/* AI invoice form */}
-      {isOwner && showForm && (
+      {isOwner && showAi && !composer && (
         <div className="card p-4 mb-6 animate-slide-up">
-          <label className="label flex items-center gap-2"><Sparkles className="w-4 h-4 text-accent" /> Describe your invoice</label>
+          <label className="label flex items-center gap-2"><Sparkles className="w-4 h-4 text-accent" /> Describe the bill in plain words</label>
           <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={3} className="input-field resize-none"
-            placeholder="e.g. Invoice for Ramesh: 5 bags cement ₹400 each, 10 bricks ₹8 each. Tax 18%. Due 7 days. Phone 9876543210" />
+            placeholder="e.g. Invoice for Ramesh: 5 bags cement at ₹400, 10 bricks at ₹8. GST 18%. Due in 7 days. Phone 9876543210" />
+          <p className="text-[11px] text-fg-subtle mt-2">Meraj drafts the lines. You still review GST, HSN and the total before anything is saved.</p>
           <div className="flex justify-end gap-3 mt-4">
-            <button onClick={() => setShowForm(false)} className="btn-secondary text-sm">Cancel</button>
+            <button onClick={() => setShowAi(false)} className="btn-secondary text-sm">Cancel</button>
             <button onClick={handleGenerate} disabled={generating} className="btn-primary text-sm">
               {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              {generating ? 'Generating...' : 'Generate'}
+              {generating ? 'Drafting…' : 'Draft for review'}
             </button>
           </div>
         </div>
       )}
 
-      {/* Quick invoice (mobile-first) */}
-      {isOwner && showQuick && (
-        <div className="card p-4 mb-6 animate-slide-up">
-          <h3 className="font-semibold text-fg mb-3 flex items-center gap-2"><Zap className="w-4 h-4 text-warning" /> Quick Invoice — 30 seconds</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <input value={quick.name} onChange={(e) => setQuick({ ...quick, name: e.target.value })} className="input-field col-span-2" placeholder="Customer name *" />
-            <input value={quick.phone} onChange={(e) => setQuick({ ...quick, phone: e.target.value })} className="input-field" placeholder="Phone (for WhatsApp)" />
-            <input value={quick.gstin} onChange={(e) => setQuick({ ...quick, gstin: e.target.value })} className="input-field font-mono uppercase" placeholder="Buyer GSTIN (B2B, optional)" inputMode="numeric" aria-label="Buyer GSTIN" />
-            <input value={quick.item} onChange={(e) => setQuick({ ...quick, item: e.target.value })} className="input-field" placeholder="Item / service *" />
-            <input type="number" value={quick.qty} onChange={(e) => setQuick({ ...quick, qty: e.target.value })} className="input-field w-24" placeholder="Qty" />
-            <input type="number" value={quick.price} onChange={(e) => setQuick({ ...quick, price: e.target.value })} className="input-field" placeholder="Price ₹ *" />
-          </div>
-          <div className="flex justify-between items-center mt-3">
-            <span className="text-sm text-fg-muted">Total: <span className="text-fg font-bold text-lg">₹{((Number(quick.qty) || 1) * (Number(quick.price) || 0)).toFixed(0)}</span></span>
-            <button onClick={handleQuickCreate} disabled={generating} className="btn-primary text-sm">
-              {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Create & Share
-            </button>
-          </div>
-        </div>
+      {isOwner && composer && (
+        <InvoiceComposer
+          draft={composer}
+          onChange={setComposer}
+          onSave={saveComposer}
+          onCancel={() => setComposer(null)}
+          saving={generating}
+          customers={customers}
+          products={products}
+          shopGstin={profile?.gstin}
+          shopState={profile?.business_state}
+          source={composerSource}
+        />
       )}
 
       {/* Invoice list */}
       {loading ? (
         <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>
       ) : invoices.length === 0 ? (
-        <EmptyState icon={FileText} title="No invoices yet" description="Use Quick Invoice (30 sec on phone), or describe one with AI. Share via WhatsApp and collect via UPI." />
+        <EmptyState icon={FileText} title="No invoices yet" description="Create a GST bill in the composer — pick a customer, add lines from your catalogue, then share on WhatsApp and collect on UPI." />
       ) : (
         <>
           <div className="relative mb-4">

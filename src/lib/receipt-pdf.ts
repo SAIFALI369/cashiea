@@ -33,7 +33,7 @@ export function buildReceiptPdf(r: ReceiptModel, profile: Profile | null): jsPDF
   const isTaxInvoice = !!r.gstin && r.taxTotal > 0
 
   // Pre-measure so the page is exactly as tall as the receipt.
-  let height = 58 + r.lines.length * LINE * 2 + r.tenders.length * LINE + 30
+  let height = 64 + r.lines.length * LINE * 2 + r.tenders.length * LINE + 34
   if (isTaxInvoice) height += 8
   if (r.discountTotal > 0) height += LINE
   if (r.taxTotal > 0) height += LINE
@@ -68,13 +68,14 @@ export function buildReceiptPdf(r: ReceiptModel, profile: Profile | null): jsPDF
   // ── Header ──
   center(shopName.toUpperCase(), 11, 'bold')
   if (isTaxInvoice) center('TAX INVOICE', 9, 'bold')
+  else center('RECEIPT', 8)
   if (r.address) center(r.address, 7.5)
-  if (r.phone) center(`Phone: ${r.phone}`, 7.5)
-  if (r.gstin) center(`GSTIN: ${r.gstin}`, 7.5)
+  if (r.phone) center(`Phone ${r.phone}`, 7.5)
+  if (r.gstin) center(`GSTIN ${r.gstin}`, 7.5)
   y += 1
   rule()
-  row(`Receipt: ${r.receiptNumber}`, date.toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }))
-  if (r.customerName) row(`Customer: ${r.customerName}`, '')
+  row(r.receiptNumber, date.toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }))
+  if (r.customerName) row(r.customerName, '')
   rule()
 
   // ── Items ──

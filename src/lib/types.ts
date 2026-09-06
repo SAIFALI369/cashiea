@@ -33,6 +33,18 @@ export interface InvoiceItem {
   description: string
   quantity: number
   unit_price: number
+  /** GST % on this line. Absent → the document tax_rate applies. */
+  gst_rate?: number | null
+  hsn_code?: string | null
+}
+
+export interface InvoiceHsnRow {
+  hsn: string
+  rate: number
+  taxable: number
+  cgst: number
+  sgst: number
+  igst: number
 }
 
 export interface Invoice {
@@ -62,6 +74,11 @@ export interface Invoice {
   recurring_id: string | null
   /** The billing period this invoice covers (dedup key with recurring_id). */
   recurring_period: string | null
+  /** Flat rupee discount already subtracted from subtotal. */
+  discount?: number | null
+  is_interstate?: boolean | null
+  place_of_supply?: string | null
+  hsn_summary?: InvoiceHsnRow[] | null
   created_at: string
   updated_at: string
 }

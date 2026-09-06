@@ -108,30 +108,33 @@ export async function gatherBusinessData(ownerId: string, days = 30): Promise<Bu
     return { ...empty, hasData: false, summaryText: 'No business data recorded yet in this period.' }
   }
 
-  // ── Summary text for the AI prompt ──
+  // ── Summary text for the AI prompt — drafted sentences, not a field dump ──
+  const period = `the last ${days} days (${from.toISOString().slice(0, 10)} to ${to.toISOString().slice(0, 10)})`
   const lines: string[] = [
-    `Business data from Cashiea for the last ${days} days (${from.toISOString().slice(0, 10)} to ${to.toISOString().slice(0, 10)}):`,
+    `This is a briefing pack for ${period}. Use it to write a complete, readable report — not a restatement of these lines.`,
     '',
-    `SALES: ${completed.length} completed sales, revenue ${rs(revenue)}, average sale ${rs(avgSale)}.`,
-    `Taxes collected: ${rs(taxTotal)}. Discounts given: ${rs(discountTotal)}.`,
-    `Payment mix: ${Array.from(byMethod.entries()).map(([m, v]) => `${m} ${rs(v)}`).join(', ') || 'no sales'}.`,
+    completed.length
+      ? `The counter rang ${completed.length} completed sale${completed.length === 1 ? '' : 's'} for ${rs(revenue)} in all, averaging ${rs(avgSale)} a bill. GST collected on those sales was ${rs(taxTotal)}; discounts given were ${rs(discountTotal)}. Customers paid ${Array.from(byMethod.entries()).map(([m, v]) => `${m} ${rs(v)}`).join(', ') || 'by mixed methods'}.`
+      : `No completed sales were recorded in ${period}.`,
   ]
   if (topProducts.length) {
-    lines.push(`TOP PRODUCTS: ${topProducts.map((p) => `${p.name} (${p.units} units, ${rs(p.revenue)})`).join('; ')}.`)
+    lines.push(`The shelves that earned the most: ${topProducts.map((p) => `${p.name} (${p.units} units, ${rs(p.revenue)})`).join('; ')}.`)
   }
   if (expenses.length) {
-    lines.push(`EXPENSES: total ${rs(expTotal)}${incomeTotal ? `, other income ${rs(incomeTotal)}` : ''}.`)
-    if (topExpenses.length) lines.push(`Top expense categories: ${topExpenses.map(([c, v]) => `${c} ${rs(v)}`).join(', ')}.`)
-    lines.push(`Net (sales + other income − expenses): ${rs(round2(revenue + incomeTotal - expTotal))}.`)
+    lines.push(`Outgoings came to ${rs(expTotal)}${incomeTotal ? `, with ${rs(incomeTotal)} of other income` : ''}${topExpenses.length ? ` — led by ${topExpenses.map(([c, v]) => `${c} ${rs(v)}`).join(', ')}` : ''}. After expenses the shop is ${rs(round2(revenue + incomeTotal - expTotal))} to the good on this window.`)
   }
   if (invoices.length) {
-    lines.push(`RECEIVABLES: ${unpaid.length} unpaid invoices worth ${rs(unpaidTotal)}${overdue.length ? `, ${overdue.length} overdue` : ''}.`)
+    lines.push(unpaid.length
+      ? `${unpaid.length} invoice${unpaid.length === 1 ? '' : 's'} still sit unpaid, ${rs(unpaidTotal)} in all${overdue.length ? `, ${overdue.length} of them past due` : ''}.`
+      : 'Every issued invoice in this window has been collected.')
   }
   if (products.length) {
-    lines.push(`STOCK: ${products.length} products, inventory value ${rs(stockValue)}, ${lowStock.length} low or out of stock${lowStock.length ? ` (${lowStock.slice(0, 5).map((p) => p.name).join(', ')})` : ''}.`)
+    lines.push(lowStock.length
+      ? `The catalogue holds ${products.length} products worth ${rs(stockValue)} at cost. ${lowStock.length} need restocking (${lowStock.slice(0, 5).map((p) => p.name).join(', ')}).`
+      : `The catalogue holds ${products.length} products worth ${rs(stockValue)} at cost, and none are below their alert.`)
   }
   if (customers.length) {
-    lines.push(`CUSTOMERS: ${customers.length} total, ${newCustomers} new in this period.`)
+    lines.push(`The book has ${customers.length} customer${customers.length === 1 ? '' : 's'}, ${newCustomers} of them new in this period.`)
   }
 
   // ── Excel tables ──
