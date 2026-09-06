@@ -23,6 +23,28 @@ export default function Manifest() {
   const navigate = useNavigate()
   const [items, setItems] = useState<ManifestItem[] | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [prefs, setPrefs] = useState<Record<string, boolean>>({ briefing: true, recap: true, autoRemind: true, autoPo: true })
+
+  // Standing orders — Meraj's automation policies (business_memory.preferences.autopilot)
+  useEffect(() => {
+    if (!ownerId) return
+    supabase.from('business_memory').select('preferences').eq('user_id', ownerId).maybeSingle()
+      .then(({ data }) => {
+        const p = (data?.preferences as any)?.autopilot
+        if (p) setPrefs({ briefing: p.briefing !== false, recap: p.recap !== false, autoRemind: p.autoRemind?.enabled !== false, autoPo: p.autoPo !== false })
+      })
+  }, [ownerId])
+
+  const toggleAuto = async (key: 'briefing' | 'recap' | 'autoRemind' | 'autoPo') => {
+    const next = { ...prefs, [key]: !prefs[key] }
+    setPrefs(next)
+    const autopilot = { briefing: next.briefing, recap: next.recap, autoPo: next.autoPo, autoRemind: { enabled: next.autoRemind, daysAfterDue: 3 } }
+    const { data: row } = await supabase.from('business_memory').select('preferences').eq('user_id', ownerId).maybeSingle()
+    const merged = { ...((row?.preferences as any) || {}), autopilot }
+    if (row) await supabase.from('business_memory').update({ preferences: merged, last_updated_at: new Date().toISOString() }).eq('user_id', ownerId)
+    else await supabase.from('business_memory').insert({ user_id: ownerId, preferences: merged })
+    toast.success('Meraj noted it')
+  }
 
   const load = useCallback(async () => {
     if (!ownerId) return
@@ -159,6 +181,30 @@ export default function Manifest() {
           </p>
         </>
       )}
+
+      {/* Standing orders — hire the manager */}
+      <div className="card p-4 mt-6">
+        <p className="section-title mb-3">Meraj's standing orders</p>
+        <div className="space-y-2.5">
+          {([
+            ['briefing', 'Morning WhatsApp briefing', '08:00 — yesterday’s numbers + today’s plan, on your WhatsApp'],
+            ['autoRemind', 'Auto-send payment reminders', '3 days after the due date, polite tone, max 5 a day'],
+            ['autoPo', 'Auto-draft reorder POs', 'When stock hits your alert level, the draft PO is ready to send'],
+            ['recap', 'Evening recap', '21:00 — what Meraj did today and what’s coming tomorrow'],
+          ] as const).map(([k, t, d]) => (
+            <button key={k} onClick={() => toggleAuto(k)} className="w-full flex items-center justify-between gap-3 text-left py-1.5" role="switch" aria-checked={prefs[k]} aria-label={t}>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-fg">{t}</span>
+                <span className="block text-xs text-fg-subtle">{d}</span>
+              </span>
+              <span className={`w-11 h-6 rounded-full flex items-center px-0.5 transition-colors flex-shrink-0 ${prefs[k] ? 'bg-accent-strong' : 'bg-line-2'}`}>
+                <span className={`w-5 h-5 rounded-full bg-surface shadow transition-transform ${prefs[k] ? 'translate-x-5' : ''}`} />
+              </span>
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-fg-subtle mt-3">Briefing &amp; recap go to your WhatsApp number (set it in Settings if empty). Reminders go to customers from your business number.</p>
+      </div>
     </div>
   )
 }
