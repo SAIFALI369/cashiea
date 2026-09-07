@@ -4,7 +4,7 @@ import { useSearchParams, Link, useNavigate } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { motion, AnimatePresence } from 'framer-motion'
-import { askAssistant } from '../lib/ai'
+import { askAssistant, askAssistantStream } from '../lib/ai'
 import { MerajGlyph } from '../components/MerajDevice'
 import { useAuth } from '../context/AuthContext'
 import MerajDevice, { interactionFromAvatarState } from '../components/MerajDevice'
@@ -351,7 +351,7 @@ export default function AIAssistant() {
   //    with interim results where available), automatic fallback to the
   //    proven MediaRecorder + Groq Whisper pipeline when the browser's
   //    SpeechRecognition is missing or silently fails. Final words auto-send.
-  const { speak, stopSpeaking, speaking, startListening, stopListening, transcribing } = useSpeech()
+  const { speak, stopSpeaking, speaking, startListening, stopListening, cancelListening, transcribing, unlockTts, startLiveListening, stopLiveListening } = useSpeech()
   const [liveTranscript, setLiveTranscript] = useState('')
   const [voiceAutoSent, setVoiceAutoSent] = useState(false)
   const whisperModeRef = useRef<boolean>(localStorage.getItem('cashiea_stt_mode') === 'whisper')
@@ -364,9 +364,12 @@ export default function AIAssistant() {
     void send(clean)
   }
 
+  const whisperTextRef = useRef('')
   const startListen = () => {
     setVoiceAutoSent(false)
     setLiveTranscript('')
+    whisperTextRef.current = ''
+    unlockTts() // iOS/Android: unlock speech synthesis inside the tap gesture
     // Mode A — live transcription (Chrome/Android/iOS 14.5+): words appear
     // as you speak, exactly like Google Assistant.
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
@@ -428,12 +431,16 @@ export default function AIAssistant() {
         return
       } catch { /* fall through to Whisper */ }
     }
-    // Mode B — universal: MediaRecorder → Groq Whisper (works on EVERY
-    // browser: iOS Safari, Firefox, PWA). Tap again to stop & transcribe.
+    // Mode B — universal LIVE: windowed recording → Groq Whisper per ~3s
+    // window → text appears word-by-word on EVERY browser (iOS, Firefox, PWA).
     setListening(true)
     setLiveTranscript('')
-    startListening(
-      (text) => { setListening(false); finishVoiceMessage(text) },
+    startLiveListening(
+      (text, isFinal) => {
+        whisperTextRef.current = (whisperTextRef.current ? whisperTextRef.current + ' ' : '') + text
+        setLiveTranscript(whisperTextRef.current)
+        if (isFinal) { setListening(false); finishVoiceMessage(whisperTextRef.current) }
+      },
       (msg) => { setListening(false); setLiveTranscript(''); if (msg) toast.error(msg) },
     )
   }
@@ -441,9 +448,9 @@ export default function AIAssistant() {
   const stopListen = () => {
     setListening(false)
     try { recRef.current?.stop() } catch { /* ignore */ }
-    stopListening()
-    // If live transcription captured words but never finalized, send them.
-    setLiveTranscript((t) => { if (t.trim()) { setTimeout(() => finishVoiceMessage(t), 0) } return '' })
+    stopLiveListening()   // live windows: stop → the current window's final
+                          // text arrives via onPartial(isFinal=true) → auto-send
+    stopListening()       // single-shot path (if active)
   }
   useEffect(() => () => { try { recRef.current?.stop() } catch { /* ignore */ } }, [])
   const [listening, setListening] = useState(false)
@@ -564,14 +571,29 @@ export default function AIAssistant() {
     const history = messages.slice(-12).map((m) => ({ role: m.role, text: m.text.length > 1600 ? m.text.slice(0, 1600) + '…' : m.text }))
     try {
       const page = getPageContext('/app/assistant')
+      if (sendMode === 'ask' && !img) {
+        // STREAMING — words appear live as Meraj thinks (ChatGPT style)
+        setMessages([...next, { role: 'meraj' as const, text: '', ts: Date.now() }])
+        const res = await askAssistantStream(q, (partial) => {
+          setMessages((prev) => {
+            const copy = [...prev]
+            const last = copy[copy.length - 1]
+            if (last && last.role === 'meraj') copy[copy.length - 1] = { ...last, text: partial }
+            return copy
+          })
+        }, false, scope, 'ask')
+        const done = [...next, { role: 'meraj' as const, text: res.reply || '…', ts: Date.now() }]
+        setMessages(done)
+        if (res.reply) speak(res.reply)
+        upsertConvo(done, q)
+      } else {
       const res = await askAssistant(q || '(shared an image)', false, scope, sendMode, undefined, page ? { name: page.name, description: page.description } : undefined, history, img || undefined)
       setPendingImage(null)
         const done = [...next, { role: 'meraj' as const, text: res.reply, pending: res.pending, media: res.media, images: res.images, ts: Date.now() }]
       setMessages(done)
-      // VOICE: Meraj SPEAKS the reply while it types on screen — the
-      // talking-assistant experience. (speak() strips markdown + ₹.)
       if (res.reply) { setTyping(true); speak(res.reply) }
       upsertConvo(done, q || 'Shared photo')
+      }
     } catch (e) {
       setMessages([...next, { role: 'meraj' as const, text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.'), ts: Date.now() }])
     } finally {
