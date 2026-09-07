@@ -81,9 +81,11 @@ export function useSpeech() {
   const unlockTts = useCallback(() => {
     if (ttsSupported) {
       try {
-        const u = new SpeechSynthesisUtterance(' ')
-        u.volume = 0
-        window.speechSynthesis.cancel()
+        // iOS/Android TTS unlock: a tiny near-silent utterance INSIDE the
+        // user gesture primes the engine. No cancel() — it resets the unlock.
+        const u = new SpeechSynthesisUtterance('.')
+        u.volume = 0.01
+        u.rate = 4
         window.speechSynthesis.speak(u)
       } catch { /* ignore */ }
     }
@@ -313,7 +315,7 @@ export function useSpeech() {
           const res = await fetch(sttUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
-            body: JSON.stringify({ audio: base64, mimeType: 'audio/webm', language: localStorage.getItem('cashiea_voice_lang') || 'auto' }),
+            body: JSON.stringify({ audio: base64, mimeType: 'audio/webm', language: 'en' }),
           })
           const data = await res.json().catch(() => ({}))
           return res.ok ? (data.text || '').trim() : ''
@@ -328,6 +330,31 @@ export function useSpeech() {
           liveRecorderRef.current = rec
           const chunks: Blob[] = []
           rec.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data) }
+
+          // ENERGY GATE: measure actual mic loudness. Whisper hallucinates
+          // words from pure silence ("thank you", random text) — a silent
+          // window must NEVER be sent for transcription.
+          let audioCtx: AudioContext | null = null
+          let analyser: AnalyserNode | null = null
+          let spoke = false
+          try {
+            audioCtx = new AudioContext()
+            const src = audioCtx.createMediaStreamSource(stream)
+            analyser = audioCtx.createAnalyser()
+            analyser.fftSize = 512
+            src.connect(analyser)
+            const buf = new Uint8Array(analyser.frequencyBinCount)
+            const energyTimer = window.setInterval(() => {
+              if (!analyser) return
+              analyser.getByteTimeDomainData(buf)
+              let sum = 0
+              for (let i = 0; i < buf.length; i++) { const d = (buf[i] - 128) / 128; sum += d * d }
+              const rms = Math.sqrt(sum / buf.length)
+              if (rms > 0.015) spoke = true   // above silence threshold
+            }, 100)
+            window.setTimeout(() => window.clearInterval(energyTimer), windowMs + 500)
+          } catch { /* energy check optional */ }
+
           const stopped = new Promise<Blob>((resolve) => { rec.onstop = () => resolve(new Blob(chunks, { type: mime || 'audio/webm' })) })
           rec.start(250)
           // Sleep the window, but wake within 150ms of a stop request
@@ -338,7 +365,10 @@ export function useSpeech() {
           })
           if (rec.state === 'recording') rec.stop()
           const blob = await stopped
+          try { await audioCtx?.close() } catch { /* ignore */ }
           stream.getTracks().forEach((t) => t.stop())
+          // SILENT window → no speech → return empty (no hallucination)
+          if (!spoke) return ''
           return await transcribe(blob)
         } catch { return '' }
       }

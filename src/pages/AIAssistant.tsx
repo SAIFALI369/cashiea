@@ -366,7 +366,7 @@ export default function AIAssistant() {
       try {
         if (recRef.current) { try { recRef.current.stop() } catch { /* ignore */ } }
         const rec = new SR()
-        rec.lang = localStorage.getItem('cashiea_voice_lang') || 'en-IN'
+        rec.lang = 'en-IN'   // English (India) — hears English only
         rec.interimResults = true
         rec.continuous = false
         rec.maxAlternatives = 1
@@ -550,20 +550,36 @@ export default function AIAssistant() {
     try {
       const page = getPageContext('/app/assistant')
       if (sendMode === 'ask' && !img) {
-        // STREAMING — words appear live as Meraj thinks (ChatGPT style)
-        setMessages([...next, { role: 'meraj' as const, text: '', ts: Date.now() }])
+        // STREAMING — ONE card, created when the FIRST word arrives, then
+        // updated in place. No empty "..." card, no second card, ever.
+        let added = false
         const res = await askAssistantStream(q, (partial) => {
           setMessages((prev) => {
-            const copy = [...prev]
-            const last = copy[copy.length - 1]
-            if (last && last.role === 'meraj') copy[copy.length - 1] = { ...last, text: partial }
-            return copy
+            const last = prev[prev.length - 1]
+            if (!added) {
+              added = true
+              return [...prev, { role: 'meraj' as const, text: partial, ts: Date.now() }]
+            }
+            if (last && last.role === 'meraj') {
+              const copy = prev.slice()
+              copy[copy.length - 1] = { ...last, text: partial }
+              return copy
+            }
+            return prev
           })
         }, false, scope, 'ask')
-        const done = [...next, { role: 'meraj' as const, text: res.reply || '…', ts: Date.now() }]
-        setMessages(done)
+        const finalText = res.reply || '…'
+        setMessages((prev) => {
+          const last = prev[prev.length - 1]
+          if (last && last.role === 'meraj') {
+            const copy = prev.slice()
+            copy[copy.length - 1] = { ...last, text: finalText }
+            return copy
+          }
+          return [...prev, { role: 'meraj' as const, text: finalText, ts: Date.now() }]
+        })
         if (res.reply) speak(res.reply)
-        upsertConvo(done, q)
+        upsertConvo([...next, { role: 'meraj' as const, text: finalText, ts: Date.now() }], q)
       } else {
       const res = await askAssistant(q || '(shared an image)', false, scope, sendMode, undefined, page ? { name: page.name, description: page.description } : undefined, history, img || undefined)
       setPendingImage(null)
@@ -573,7 +589,18 @@ export default function AIAssistant() {
       upsertConvo(done, q || 'Shared photo')
       }
     } catch (e) {
-      setMessages([...next, { role: 'meraj' as const, text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.'), ts: Date.now() }])
+      const errText = '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.')
+      setMessages((prev) => {
+        const last = prev[prev.length - 1]
+        // If a streaming card already exists, turn IT into the error —
+        // never stack a second card.
+        if (last && last.role === 'meraj') {
+          const copy = prev.slice()
+          copy[copy.length - 1] = { ...last, text: errText }
+          return copy
+        }
+        return [...prev, { role: 'meraj' as const, text: errText, ts: Date.now() }]
+      })
     } finally {
       setLoading(false)
     }
