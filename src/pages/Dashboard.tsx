@@ -315,20 +315,13 @@ export default function Dashboard() {
       {/* 1 · MONEY HERO — quiet luxury: one number owns the screen */}
       <section className="card relative overflow-hidden p-6 sm:p-8">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgb(var(--accent) / 0.5), transparent)' }} aria-hidden="true" />
-        <div className="flex flex-col lg:flex-row lg:items-end gap-6">
-          <div className="min-w-0 flex-1">
-            <p className="section-title">Today's revenue</p>
-            <div className="flex items-baseline gap-3 mt-2 flex-wrap">
-              <FitAmount value={stats[0]?.value || '₹0'} base="text-6xl" minTier="text-3xl" className="font-extrabold text-fg tracking-tight" />
-              {stats[0]?.delta && (
-                <span className={`text-xs font-bold px-2 py-1 rounded-full ${stats[0].deltaTone === 'bad' ? 'bg-negative/10 text-negative' : stats[0].deltaTone === 'good' ? 'bg-positive/10 text-positive' : 'bg-surface-2 text-fg-muted'}`}>{stats[0].delta}</span>
-              )}
-            </div>
-            <p className="text-xs text-fg-subtle mt-2">{stats[0]?.footer || 'First sale of the day is waiting'}</p>
-          </div>
-          <div className="hidden lg:block w-72 flex-shrink-0">
-            <Sparkline values={daily} height={64} />
-            <p className="text-[10px] text-fg-subtle mt-1.5 text-right">Last 7 days</p>
+        <div className="flex flex-col items-center text-center gap-4">
+          <p className="section-title">Today's revenue</p>
+          <FitAmount value={stats[0]?.value || '₹0'} base="text-6xl sm:text-7xl" minTier="text-4xl" className="font-extrabold text-fg tracking-tight" />
+          <p className="text-xs text-fg-subtle">{stats[0]?.footer || 'First sale of the day is waiting'}</p>
+          <div className="hidden lg:block w-full max-w-md">
+            <Sparkline values={daily} height={56} />
+            <p className="text-[10px] text-fg-subtle mt-1.5">Last 7 days</p>
           </div>
         </div>
         {topPriority && (

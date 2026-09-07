@@ -20,6 +20,8 @@ export interface BusinessSignals {
   overdueInvoiceCount: number
   /** Count of products at/below their low-stock threshold. */
   lowStockCount: number
+  /** Today's recorded expenses (type='expense'). */
+  todayExpenses?: number
 }
 
 /**
@@ -66,12 +68,10 @@ export function averageDailyRevenue(
  *               a reassuring companion, not an alarm.
  */
 export function computeBusinessMood(s: BusinessSignals): BusinessMood {
-  const significantDrop =
-    s.recentAvgDailyRevenue !== null && s.todayRevenue < s.recentAvgDailyRevenue * 0.5
-  // Only a demonstrable revenue loss changes his face; problems become
-  // advice, not emotional guilt.
-  if (significantDrop) return 'sad'
-  return 'happy'
+  // Meraj is a positive companion. The ONLY thing that makes him sad —
+  // and only briefly — is a genuine loss day (expenses exceeded revenue).
+  const inLoss = (s.todayExpenses ?? 0) > s.todayRevenue && (s.todayExpenses ?? 0) > 0
+  return inLoss ? 'sad' : 'happy'
 }
 
 /**
@@ -89,19 +89,22 @@ export function useBusinessMood(): BusinessMood | null {
       return
     }
     let cancelled = false
+    let sadTimer: number | null = null
     const load = async () => {
       try {
         const now = new Date()
         const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
         const windowStart = new Date(now.getTime() - 14 * 86400000).toISOString()
 
-        const [todayRes, recentRes, overdueRes, stockRes] = await Promise.all([
+        const todayDate = new Date().toISOString().split('T')[0]
+        const [todayRes, recentRes, overdueRes, stockRes, expRes] = await Promise.all([
           supabase.from('transactions').select('created_at, total').eq('user_id', ownerId)
             .eq('status', 'completed').gte('created_at', startToday),
           supabase.from('transactions').select('created_at, total').eq('user_id', ownerId)
             .eq('status', 'completed').gte('created_at', windowStart).lt('created_at', startToday),
           supabase.from('invoices').select('id').eq('user_id', ownerId).eq('status', 'overdue'),
           supabase.from('products').select('stock_quantity, low_stock_threshold').eq('user_id', ownerId),
+          supabase.from('expenses').select('amount').eq('user_id', ownerId).eq('type', 'expense').eq('date', todayDate),
         ])
         if (cancelled) return
 
@@ -109,12 +112,21 @@ export function useBusinessMood(): BusinessMood | null {
         const recent = (recentRes.data ?? []) as { created_at?: string | null; total?: number | string | null }[]
         const products = (stockRes.data ?? []) as { stock_quantity?: number | null; low_stock_threshold?: number | null }[]
 
-        setMood(computeBusinessMood({
+        const mood = computeBusinessMood({
           todayRevenue: today.reduce((s, t) => s + Number(t.total || 0), 0),
           recentAvgDailyRevenue: averageDailyRevenue(recent),
           overdueInvoiceCount: (overdueRes.data ?? []).length,
           lowStockCount: products.filter(isLowStock).length,
-        }))
+          todayExpenses: ((expRes.data ?? []) as { amount?: number | string | null }[]).reduce((s, e) => s + Number(e.amount || 0), 0),
+        })
+        if (mood === 'sad') {
+          // A loss day earns exactly 20 seconds of empathy — then Meraj
+          // returns to his positive self. Nothing dwells.
+          setMood('sad')
+          sadTimer = window.setTimeout(() => { if (!cancelled) setMood('happy') }, 20_000)
+          return
+        }
+        setMood(mood)
       } catch {
         if (!cancelled) setMood(null)
       }
@@ -122,6 +134,7 @@ export function useBusinessMood(): BusinessMood | null {
     load()
     return () => {
       cancelled = true
+      if (sadTimer) window.clearTimeout(sadTimer)
     }
   }, [profile, ownerId])
 
