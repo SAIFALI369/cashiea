@@ -138,6 +138,58 @@ function aiCacheSet(key: string, val: { reply: string; pending?: any }) {
   } catch { /* quota — ignore */ }
 }
 
+export async function askAssistantStream(
+  message: string,
+  onChunk: (fullTextSoFar: string) => void,
+  briefing = false,
+  scope?: string | null,
+  mode: 'ask' | 'task' = 'ask',
+): Promise<{ reply: string; pending?: any; executed?: any; media?: any[]; images?: any[] }> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('You must be signed in.')
+  const res = await fetch(AI_FUNCTION_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ message, briefing, scope, mode }),
+  })
+  const ct = res.headers.get('content-type') || ''
+  if (!ct.includes('text/event-stream')) {
+    // Non-streaming fallback (task mode, cascade fallback, errors)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`)
+    if (data.reply) onChunk(data.reply)
+    return data
+  }
+  // SSE: tokens arrive live — ChatGPT style
+  const reader = res.body!.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let full = ''
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() || ''
+    for (const line of lines) {
+      const t = line.trim()
+      if (!t.startsWith('data: ')) continue
+      try {
+        const j = JSON.parse(t.slice(6))
+        if (typeof j.text === 'string' && j.text.length > full.length) {
+          full = j.text
+          onChunk(full)
+        }
+      } catch { /* partial line */ }
+    }
+  }
+  return { reply: full }
+}
+
 export async function askAssistant(
   message = '',
   briefing = false,
