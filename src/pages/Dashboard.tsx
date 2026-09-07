@@ -43,6 +43,23 @@ const startOfWeek = (d = new Date()) => {
   return r
 }
 
+function Sparkline({ values, height = 48, quiet = false }: { values: number[]; height?: number; quiet?: boolean }) {
+  const pts = values.length ? values : [0, 0, 0, 0, 0, 0, 0]
+  const max = Math.max(1, ...pts)
+  const w = 100, h = height
+  const step = pts.length > 1 ? w / (pts.length - 1) : w
+  const y = (v: number) => h - 4 - (v / max) * (h - 8)
+  const line = pts.map((v, i) => `${(i * step).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
+  const area = `${line} ${w},${h} 0,${h}`
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height }} preserveAspectRatio="none" aria-hidden="true">
+      <polygon points={area} fill="rgb(var(--accent) / 0.12)" />
+      <polyline points={line} fill="none" stroke="rgb(var(--accent))" strokeWidth={quiet ? 1.5 : 2} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+      {pts.map((v, i) => i === pts.length - 1 ? <circle key={i} cx={i * step} cy={y(v)} r={quiet ? 1.5 : 2.5} fill="rgb(var(--accent))" /> : null)}
+    </svg>
+  )
+}
+
 export default function Dashboard() {
   const { profile, ownerId } = useAuth()
   const navigate = useNavigate()
@@ -295,34 +312,31 @@ export default function Dashboard() {
         <p className="text-sm text-fg-muted mt-1">Here's what's happening in your business today. <Link to="/app/goals" className="text-accent font-semibold">Goals &amp; streak</Link></p>
       </div>
 
-      {/* TOP PRIORITY — overdue hero */}
-      {topPriority && (
-        <section className="card p-5 sm:p-6 border-negative/30">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <div className="flex items-start gap-3 min-w-0 flex-1">
-              <span className="w-9 h-9 rounded-control bg-negative/10 text-negative flex items-center justify-center flex-shrink-0"><AlertTriangle className="w-5 h-5" /></span>
-              <div className="min-w-0">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-negative">Top priority</p>
-                <p className="text-base font-bold text-fg leading-tight mt-0.5">{formatINR(topPriority.total, 0)} is overdue</p>
-                <p className="text-xs text-fg-muted mt-0.5">
-                  {overdueCount > 1 ? `${overdueCount} invoices` : `${topPriority.invoice_number} · ${topPriority.client_name || 'Customer'}`}
-                  {topPriority.due_date ? ` · ${Math.max(0, Math.floor((Date.now() - new Date(topPriority.due_date).getTime()) / DAY))} days overdue` : ''}
-                </p>
-                {topPriority.client_name && overdueCount > 1 && <p className="text-xs text-fg-muted">Largest: {topPriority.client_name}</p>}
-                <div className="flex items-center gap-2 mt-3">
-                  <button onClick={() => navigate('/app/invoices')} className="inline-flex items-center gap-1.5 bg-fg text-paper text-xs font-semibold rounded-control px-3 h-8 hover:opacity-90 transition-opacity">Collect payment</button>
-                  <Link to="/app/invoices" className="inline-flex items-center gap-1.5 border border-line text-fg text-xs font-semibold rounded-control px-3 h-8 hover:bg-surface-2 transition-colors">View invoice</Link>
-                </div>
-              </div>
+      {/* 1 · MONEY HERO — quiet luxury: one number owns the screen */}
+      <section className="card relative overflow-hidden p-6 sm:p-8">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgb(var(--accent) / 0.5), transparent)' }} aria-hidden="true" />
+        <div className="flex flex-col lg:flex-row lg:items-end gap-6">
+          <div className="min-w-0 flex-1">
+            <p className="section-title">Today's revenue</p>
+            <div className="flex items-baseline gap-3 mt-2 flex-wrap">
+              <FitAmount value={stats[0]?.value || '₹0'} base="text-6xl" minTier="text-3xl" className="font-extrabold text-fg tracking-tight" />
+              {stats[0]?.delta && (
+                <span className={`text-xs font-bold px-2 py-1 rounded-full ${stats[0].deltaTone === 'bad' ? 'bg-negative/10 text-negative' : stats[0].deltaTone === 'good' ? 'bg-positive/10 text-positive' : 'bg-surface-2 text-fg-muted'}`}>{stats[0].delta}</span>
+              )}
             </div>
-            <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:gap-1 sm:text-right sm:border-l sm:border-line sm:pl-4">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Overdue amount</p>
-              <p className="text-2xl font-bold text-negative tabular-nums">{formatINR(overdueSum, 0)}</p>
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-negative/10 text-negative">{overdueCount} invoice{overdueCount > 1 ? 's' : ''}</span>
-            </div>
+            <p className="text-xs text-fg-subtle mt-2">{stats[0]?.footer || 'First sale of the day is waiting'}</p>
           </div>
-        </section>
-      )}
+          <div className="hidden lg:block w-72 flex-shrink-0">
+            <Sparkline values={daily} height={64} />
+            <p className="text-[10px] text-fg-subtle mt-1.5 text-right">Last 7 days</p>
+          </div>
+        </div>
+        {topPriority && (
+          <button onClick={() => navigate('/app/invoices')} className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-negative hover:opacity-80 transition-opacity">
+            <AlertTriangle className="w-4 h-4" /> {formatINR(overdueSum, 0)} overdue — collect now
+          </button>
+        )}
+      </section>
 
       {/* MERAJ SECTION — large rectangular reserved space for Meraj.
           He's always present here, playing/reacting, with a 💭 thought bubble
@@ -330,54 +344,41 @@ export default function Dashboard() {
           pulse strip showing profit/stocks/sales/problems/growth. */}
       <MerajSection />
 
-      {/* STATS grid — 3 per row (3/3) on tablet+ to feel purpose-built for desktop.
-          Kept at 2 per row only on the smallest phones where 3 would crowd. */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-        {stats.map((m) => {
-          const good = m.count === 0 && !!m.positive
-          return (
-            <Link key={m.label} to={m.to} className={`card p-4 flex flex-col cursor-pointer transition-colors group ${m.tone && m.count > 0 ? 'border-warning/40 bg-warning/5' : 'hover:border-accent/40'}`}>
-              <div className="flex items-center gap-1.5">
-                <m.icon className="w-[18px] h-[18px] text-fg-subtle" strokeWidth={1.75} />
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle truncate">{m.label}</span>
-                <ArrowRight className="w-3.5 h-3.5 text-fg-subtle ml-auto opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-              </div>
-              {good ? (
-                <div className="flex items-center gap-1.5 mt-2">
-                  <span className="w-5 h-5 rounded-full bg-positive/10 text-positive flex items-center justify-center flex-shrink-0"><Check className="w-3 h-3" strokeWidth={2.5} /></span>
-                  <p className="text-base font-bold text-positive leading-tight">{m.positive!.label}</p>
-                </div>
-              ) : (
-                <div className="mt-1.5 leading-tight"><FitAmount value={m.value} base="text-2xl" minTier="text-sm" className={`font-bold ${m.count === 0 ? 'text-fg-subtle' : 'text-fg'}`} /></div>
-              )}
-              {m.delta && !good && <p className={`text-[11px] font-medium mt-0.5 ${deltaCls[m.deltaTone || 'neutral']}`}>{m.delta}</p>}
-              {m.action && m.count > 0 ? (
-                <button
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/app/assistant?q=${encodeURIComponent(m.action!.query)}`) }}
-                  className="mt-2.5 mb-0.5 inline-flex items-center justify-center gap-1.5 bg-fg text-paper text-xs font-semibold rounded-control h-8 w-full hover:opacity-90 transition-opacity"
-                >
-                  <BellRing className="w-3.5 h-3.5" /> {m.action.label}
-                </button>
-              ) : (
-                <p className={`text-[11px] mt-auto pt-2 ${footerCls[m.footerTone]}`}>{m.footer}</p>
-              )}
-            </Link>
-          )
-        })}
+      {/* 2 · KPI BENTO — four quiet tiles (Stripe rhythm: label small, number heroic) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+        <Link to="/app/reports" className="card card-hover p-4 sm:p-5">
+          <p className="section-title">Sales today</p>
+          <p className="text-2xl font-bold text-fg tabular-nums mt-1.5">{stats[0]?.value || '₹0'}</p>
+          <div className="mt-2.5"><Sparkline values={daily} height={28} quiet /></div>
+        </Link>
+        <Link to="/app/invoices" className={'card card-hover p-4 sm:p-5 ' + (stats[1]?.count ? 'border-warning/30' : '')}>
+          <p className="section-title">To collect</p>
+          <p className={'text-2xl font-bold tabular-nums mt-1.5 ' + (stats[1]?.count ? 'text-warning' : 'text-fg')}>{stats[1]?.count ? stats[1].value : '—'}</p>
+          <p className="text-[11px] text-fg-subtle mt-1">{stats[1]?.count ? stats[1].count + ' invoice' + (stats[1].count > 1 ? 's' : '') + ' waiting' : 'All collected'}</p>
+        </Link>
+        <Link to="/app/profit-dashboard" className="card card-hover p-4 sm:p-5">
+          <p className="section-title">Week profit</p>
+          <p className={'text-2xl font-bold tabular-nums mt-1.5 ' + (weekProfit > 0 ? 'text-positive' : weekProfit < 0 ? 'text-negative' : 'text-fg')}>{formatINR(weekProfit, 0)}</p>
+          <p className="text-[11px] text-fg-subtle mt-1">{weekIncome > 0 ? 'incl. ' + formatINR(weekIncome, 0) + ' income' : 'sales − expenses'}</p>
+        </Link>
+        <Link to="/app/products" className={'card card-hover p-4 sm:p-5 ' + (stats[2]?.count ? 'border-warning/30' : '')}>
+          <p className="section-title">Low stock</p>
+          <p className={'text-2xl font-bold tabular-nums mt-1.5 ' + (stats[2]?.count ? 'text-warning' : 'text-positive')}>{stats[2]?.count || 'All stocked'}</p>
+          <p className="text-[11px] text-fg-subtle mt-1">{stats[2]?.count ? 'Reorder soon' : 'Levels healthy'}</p>
+        </Link>
       </div>
 
-      {/* BUSINESS AT A GLANCE */}
-      <section onClick={() => navigate('/app/reports')} className="card p-4 sm:p-5 cursor-pointer hover:border-accent/40 transition-colors">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold text-fg">Business at a glance</h2>
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-fg-muted border border-line rounded-control px-2 py-1">This week <ChevronDown className="w-3 h-3" /></span>
+      {/* 4 · PULSE + PRIORITIES — bento */}
+      <div className="grid lg:grid-cols-3 gap-3 lg:gap-4">
+        <section onClick={() => navigate('/app/reports')} className="lg:col-span-2 card p-4 sm:p-5 cursor-pointer hover:border-accent/40 transition-colors">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <h2 className="text-sm font-bold text-fg">This week</h2>
+            <div className="flex gap-4">
+              <span className="text-[11px]"><span className="text-fg-subtle">Sales </span><span className="font-bold text-fg tabular-nums">{formatINR(weekSales, 0)}</span></span>
+              <span className="text-[11px]"><span className="text-fg-subtle">Expenses </span><span className="font-bold text-fg-muted tabular-nums">{formatINR(weekExpenses, 0)}</span></span>
+              <span className="text-[11px]"><span className="text-fg-subtle">Profit </span><span className={'font-bold tabular-nums ' + (weekProfit > 0 ? 'text-positive' : weekProfit < 0 ? 'text-negative' : 'text-fg-muted')}>{formatINR(weekProfit, 0)}</span></span>
+            </div>
           </div>
-          <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-5">
-            <div><p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Sales</p><p className="text-xl font-bold text-accent tabular-nums">{formatINR(weekSales, 0)}</p></div>
-            <div><p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Expenses</p><p className="text-xl font-bold text-fg-muted tabular-nums">{formatINR(weekExpenses, 0)}</p></div>
-            <div><p className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Profit</p><p className={`text-xl font-bold tabular-nums ${weekProfit > 0 ? 'text-positive' : weekProfit < 0 ? 'text-negative' : 'text-fg-muted'}`}>{formatINR(weekProfit, 0)}</p>{weekIncome > 0 && <p className="text-[10px] text-positive mt-0.5">incl. {formatINR(weekIncome, 0)} other income</p>}</div>
-          </div>
-
           {/* Legend */}
           <div className="flex items-center gap-4 mb-2">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-fg-muted"><span className="w-2.5 h-2.5 rounded-[3px] bg-accent" /> Sales</span>
@@ -420,6 +421,32 @@ export default function Dashboard() {
             })}
           </div>
         </section>
+
+        <section className="card p-4 sm:p-5">
+          <h2 className="text-sm font-bold text-fg mb-3">Today's priorities</h2>
+          <div className="space-y-2">
+            {topPriority ? (
+              <button onClick={() => navigate('/app/invoices')} className="w-full flex items-center gap-3 p-3 rounded-xl bg-negative/5 border border-negative/20 hover:border-negative/40 transition-colors text-left">
+                <AlertTriangle className="w-4 h-4 text-negative flex-shrink-0" />
+                <span className="min-w-0"><span className="block text-sm font-bold text-fg truncate">Collect {formatINR(overdueSum, 0)}</span><span className="block text-[11px] text-fg-subtle">{overdueCount} overdue invoice{overdueCount > 1 ? 's' : ''}</span></span>
+              </button>
+            ) : null}
+            <button onClick={() => navigate('/app/auto-reorder')} className="w-full flex items-center gap-3 p-3 rounded-xl bg-surface-2/60 hover:bg-surface-2 transition-colors text-left">
+              <Package className="w-4 h-4 text-secondary-strong flex-shrink-0" />
+              <span className="min-w-0"><span className="block text-sm font-bold text-fg truncate">{stats[2]?.count ? 'Reorder ' + stats[2].count + ' item' + (stats[2].count > 1 ? 's' : '') : 'Stock is healthy'}</span><span className="block text-[11px] text-fg-subtle">Meraj sizes the draft PO</span></span>
+            </button>
+            <button onClick={() => navigate('/app/manifest')} className="w-full flex items-center gap-3 p-3 rounded-xl bg-surface-2/60 hover:bg-surface-2 transition-colors text-left">
+              <Sparkles className="w-4 h-4 text-secondary-strong flex-shrink-0" />
+              <span className="min-w-0"><span className="block text-sm font-bold text-fg truncate">Meraj's full plan</span><span className="block text-[11px] text-fg-subtle">Approvals · collections · reorders</span></span>
+            </button>
+          </div>
+          <div className="border-t border-line mt-4 pt-3 grid grid-cols-2 gap-y-2">
+            {[['/app/cash-flow', 'Cash flow'], ['/app/reminders', 'Reminders'], ['/app/pricing', 'Pricing'], ['/app/goals', 'Goals & streak']].map(([to, label]) => (
+              <Link key={to} to={to} className="text-[11px] font-semibold text-secondary-strong hover:underline">{label}</Link>
+            ))}
+          </div>
+        </section>
+      </div>
     </div>
   )
 }
