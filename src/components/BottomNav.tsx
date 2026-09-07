@@ -127,7 +127,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
   const location = useLocation()
   const navigate = useNavigate()
   const pageContext = (() => { const c = getPageContext(location.pathname); return c ? { name: c.name, description: c.description } : undefined })()
-  const { speak, stopSpeaking, speaking, startListening, cancelListening, listening, transcribing, unlockTts } = useSpeech()
+  const { speak, stopSpeaking, speaking, startListening, cancelListening, startLiveListening, listening, transcribing, unlockTts } = useSpeech()
   const [voiceActive, setVoiceActive] = useState(false)
   const [voiceLoading, setVoiceLoading] = useState(false)
   const [voiceReply, setVoiceReply] = useState('')
@@ -139,34 +139,34 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
 
   const startVoice = async () => {
     unlockTts() // iOS/Android: unlock TTS inside the tap gesture so replies SPEAK
-    if (!navigator.onLine) {
-      const m = "Voice needs an internet connection. Please connect, or type your question in Meraj."
-      setVoiceActive(true); setVoiceReply(m); speak(m); setTimeout(() => setVoiceActive(false), 5500)
-      return
-    }
     setVoiceActive(true); setVoiceReply(''); setVoiceLoading(false)
-    const ok = await startListening(
-      async (text) => {
-        if (!navigator.onLine) {
-          const m = "No internet connection right now. I'll answer as soon as you're back online."
-          setVoiceReply(m); speak(m); return
+    let heard = ''
+    const ok = await startLiveListening(
+      (text, isFinal) => {
+        if (text) {
+          heard += (heard ? ' ' : '') + text
+          setVoiceReply(heard) // live words in the companion bubble
         }
-        setVoiceLoading(true)
-        try {
-          const res = await askAssistant(text, false, undefined, 'ask', undefined, pageContext)
-          setVoiceReply(res.reply)
-          if (res.reply) speak(res.reply, () => setTimeout(() => { setVoiceActive(false); setVoiceReply('') }, 4000))
-          else setTimeout(() => setVoiceActive(false), 1500)
-        } catch (e) {
-          const m = e instanceof Error ? e.message : 'Something went wrong.'
-          setVoiceReply('⚠️ ' + m); speak("Sorry, that didn't work. " + m)
-          setTimeout(() => setVoiceActive(false), 3500)
-        } finally { setVoiceLoading(false) }
+        if (isFinal) {
+          // 2s of silence after speech (or manual stop) → send to Meraj now
+          if (!heard.trim()) { setVoiceActive(false); return }
+          setVoiceLoading(true)
+          askAssistant(heard, false, undefined, 'ask', undefined, pageContext)
+            .then((res) => {
+              setVoiceReply(res.reply)
+              if (res.reply) speak(res.reply, () => setTimeout(() => { setVoiceActive(false); setVoiceReply('') }, 4000))
+              else setTimeout(() => setVoiceActive(false), 1500)
+            })
+            .catch((e) => {
+              const m = e instanceof Error ? e.message : 'Something went wrong.'
+              setVoiceReply('⚠️ ' + m)
+              setTimeout(() => setVoiceActive(false), 3500)
+            })
+            .finally(() => setVoiceLoading(false))
+        }
       },
-      (errMsg) => {
-        if (errMsg) { setVoiceReply(errMsg); speak(errMsg) }
-        setTimeout(() => setVoiceActive(false), 3500)
-      }
+      (msg) => { setVoiceActive(false); if (msg) toast.error(msg) },
+      { windowMs: 2000, stopOnSilence: true },
     )
     if (!ok) {
       const m = "Voice isn't supported on this browser. Open Meraj to type your question."

@@ -291,8 +291,14 @@ export function useSpeech() {
   const liveRecorderRef = useRef<MediaRecorder | null>(null)
 
   const startLiveListening = useCallback(
-    async (onPartial: (text: string, isFinal: boolean) => void, onError?: (msg: string) => void): Promise<boolean> => {
+    async (
+      onPartial: (text: string, isFinal: boolean) => void,
+      onError?: (msg: string) => void,
+      opts?: { windowMs?: number; stopOnSilence?: boolean },
+    ): Promise<boolean> => {
       if (!sttSupported) { onError?.('Voice input is not supported on this browser.'); return false }
+      const windowMs = opts?.windowMs ?? 3000
+      const stopOnSilence = opts?.stopOnSilence ?? false
       liveActiveRef.current = true
       setListening(true)
 
@@ -324,10 +330,10 @@ export function useSpeech() {
           rec.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data) }
           const stopped = new Promise<Blob>((resolve) => { rec.onstop = () => resolve(new Blob(chunks, { type: mime || 'audio/webm' })) })
           rec.start(250)
-          // Sleep ~3s, but wake within 150ms of a stop request
+          // Sleep the window, but wake within 150ms of a stop request
           await new Promise<void>((r) => {
             const t0 = Date.now()
-            const tick = () => { if (!liveActiveRef.current || Date.now() - t0 >= 3000) r(); else setTimeout(tick, 150) }
+            const tick = () => { if (!liveActiveRef.current || Date.now() - t0 >= windowMs) r(); else setTimeout(tick, 150) }
             tick()
           })
           if (rec.state === 'recording') rec.stop()
@@ -337,13 +343,28 @@ export function useSpeech() {
         } catch { return '' }
       }
 
+      let heardAnything = false
+      let silentWindows = 0
       while (liveActiveRef.current) {
         const text = await runWindow()
         if (!liveActiveRef.current) {
           if (text) onPartial(text, true)
           break
         }
-        if (text) onPartial(text, false)
+        if (text) {
+          heardAnything = true
+          silentWindows = 0
+          onPartial(text, false)
+        } else {
+          // Silence detection: one empty window (~2s) after speech = done talking
+          if (stopOnSilence && heardAnything) {
+            onPartial('', true)
+            break
+          }
+          silentWindows++
+          // Pure silence for ~10s with no speech at all → give up cleanly
+          if (silentWindows >= 5) { onPartial('', true); break }
+        }
       }
       setListening(false)
       return true
