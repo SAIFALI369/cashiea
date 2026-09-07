@@ -158,7 +158,7 @@ async function buildContext(supabase: any, userId: string, message = "", briefin
     topProducts: topProducts.map((p) => ({ name: p.name, qty: p.qty, revenue: +p.rev.toFixed(2) })),
     lowStock: lowStockItems.map((p: any) => ({ name: p.name, stock: p.stock_quantity, reorderAt: p.low_stock_threshold })),
     dormantCustomers: (dormant.data || []).slice(0, 6).map((c: any) => ({ name: c.name, orders: c.total_orders, lastPurchase: c.last_purchase_at })),
-    productCatalog: (products.data || []).slice(0, 24).map((p: any) => ({ name: p.name, category: p.category, price: p.price, stock: p.stock_quantity, cost: p.cost, gst_rate: p.gst_rate, hsn_code: p.hsn_code })),
+    productCatalog: (products.data || []).slice(0, 12).map((p: any) => ({ name: p.name, category: p.category, price: p.price, stock: p.stock_quantity, cost: p.cost, gst_rate: p.gst_rate, hsn_code: p.hsn_code })),
     customers: (customers.data || []).slice(0, 6).map((c: any) => ({ name: c.name, phone: c.phone, spent: +Number(c.total_spent).toFixed(2), orders: c.total_orders, last: c.last_purchase_at })),
     suppliersOwed: (suppliers.data || []).filter((s: any) => s.outstanding > 0).map((s: any) => ({ name: s.name, outstanding: s.outstanding })),
     recentEmails,
@@ -333,6 +333,9 @@ const ALL_TOOLS = [{ function_declarations: [
   ...CREATE_INVOICE_TOOL[0].function_declarations,
   { name: "add_product", description: "Add a new product or inventory item to the shop catalog.", parameters: { type: "OBJECT", properties: { name: { type: "STRING", description: "Product name" }, price: { type: "NUMBER", description: "Selling price in rupees" }, sku: { type: "STRING" }, category: { type: "STRING" }, stock_quantity: { type: "NUMBER", description: "Units in stock" }, low_stock_threshold: { type: "NUMBER", description: "Reorder threshold" }, cost: { type: "NUMBER", description: "Cost price in rupees" } }, required: ["name", "price"] } },
   { name: "add_products", description: "Add MULTIPLE products to the shop catalog in ONE go (bulk). Use when the owner shares a list of products to add — a pasted list, a stock sheet, or items read from a photo — typically 2-50 items. Prefer this over calling add_product repeatedly.", parameters: { type: "OBJECT", properties: { products: { type: "ARRAY", description: "The products to add", items: { type: "OBJECT", properties: { name: { type: "STRING", description: "Product name" }, price: { type: "NUMBER", description: "Selling price in rupees" }, sku: { type: "STRING" }, category: { type: "STRING" }, stock_quantity: { type: "NUMBER", description: "Units in stock" }, low_stock_threshold: { type: "NUMBER", description: "Reorder threshold" }, cost: { type: "NUMBER", description: "Cost price in rupees" } }, required: ["name", "price"] } } }, required: ["products"] } },
+  { name: "record_expense", description: "Record a business expense (rent, salaries, transport, purchase, etc). Use when the owner says they spent money or paid for something.", parameters: { type: "OBJECT", properties: { description: { type: "STRING", description: "What was it for, e.g. Shop rent" }, amount: { type: "NUMBER", description: "Amount in rupees" }, category: { type: "STRING", description: "One of: Rent, Salaries, Inventory, Utilities, Marketing, Transport, Maintenance, Other" }, payment_method: { type: "STRING", description: "cash, bank, upi, or card (default cash)" } }, required: ["description", "amount"] } },
+  { name: "mark_invoice_paid", description: "Mark an invoice as paid (money received). Use when the owner says a customer paid, cleared a bill, or settled an invoice.", parameters: { type: "OBJECT", properties: { invoice_number: { type: "STRING", description: "The invoice number, e.g. INV-260906-1234" } }, required: ["invoice_number"] } },
+  { name: "create_quotation", description: "Create a price quotation for a customer. Use when the owner asks for a quote or estimate.", parameters: { type: "OBJECT", properties: { customer_name: { type: "STRING" }, items: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, qty: { type: "NUMBER" }, unit_price: { type: "NUMBER" } }, required: ["name", "qty", "unit_price"] } }, tax_rate: { type: "NUMBER", description: "GST % (default 0)" } }, required: ["customer_name", "items"] } },
   { name: "add_customer", description: "Add a new customer to the customer list.", parameters: { type: "OBJECT", properties: { name: { type: "STRING", description: "Customer name" }, phone: { type: "STRING" }, email: { type: "STRING" }, company: { type: "STRING" } }, required: ["name"] } },
   { name: "send_whatsapp", description: "Send a WhatsApp message to a phone number — a staff member, customer, or anyone the owner names. Use when the owner asks to send, message, or WhatsApp someone.", parameters: { type: "OBJECT", properties: { to: { type: "STRING", description: "Recipient phone number with country code, e.g. 919876543210" }, message: { type: "STRING", description: "The message text to send" } }, required: ["to", "message"] } },
   { name: "generate_image", description: "Generate an image using AI. Use when the owner asks to create, generate, make, or design an image, picture, photo, banner, poster, advertisement, or social media visual (Instagram, Facebook, etc.). Describe what the image should show clearly and visually.", parameters: { type: "OBJECT", properties: { prompt: { type: "STRING", description: "A clear, detailed description of what the image should show — style, colors, subject, setting" }, size: { type: "STRING", description: "Image shape: square (default, 1024x1024), banner (wide 1024x512), or portrait (512x1024)" } }, required: ["prompt"] } },
@@ -491,6 +494,9 @@ const OWNER_ONLY_CONFIRMATIONS = new Set([
   "export_to_sheet",
   "draft_purchase_order",
   "apply_price_changes",
+  "record_expense",
+  "mark_invoice_paid",
+  "create_quotation",
 ]);
 const ALLOWED_CONFIRMATIONS = new Set([
   ...OWNER_ONLY_CONFIRMATIONS,
@@ -900,6 +906,38 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
         await serviceSupabase.from("activity_logs").insert({ user_id: ownerId, action_type: "summary", description: `Meraj added customer: ${i.name}`, time_saved_minutes: 5, money_saved: 2, provider: "meraj-task" });
         return json({ reply: `Done \u2014 **${i.name}** added to your customers. Find them in your Customers page.`, executed: { type: "customer" } });
       }
+      if (confirm && confirm.type === "record_expense" && confirm.input) {
+        const i = confirm.input;
+        const today = new Date().toISOString().split("T")[0];
+        const { error: re } = await serviceSupabase.from("expenses").insert({ user_id: ownerId, type: "expense", category: i.category, description: i.description, amount: i.amount, payment_method: i.payment_method, date: today });
+        if (re) return json({ reply: `I couldn't record the expense: ${re.message}.` });
+        usageConsumed = true;
+        await serviceSupabase.from("activity_logs").insert({ user_id: ownerId, action_type: "summary", description: `Meraj recorded expense: ${i.description}`, time_saved_minutes: 3, money_saved: 1, provider: "meraj-task" });
+        return json({ reply: `Done \u2014 **${i.description}** recorded in Accounts. Your profit numbers just got more accurate.`, executed: { type: "expense" } });
+      }
+      if (confirm && confirm.type === "mark_invoice_paid" && confirm.input) {
+        const { data: inv } = await serviceSupabase.from("invoices").select("id, invoice_number, client_name, total").eq("user_id", ownerId).eq("invoice_number", confirm.input.invoice_number).maybeSingle();
+        if (!inv) return json({ reply: `I couldn't find invoice **${confirm.input.invoice_number}**. Check the number in your Invoices page.` });
+        const { error: pe } = await serviceSupabase.from("invoices").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", inv.id).eq("user_id", ownerId);
+        if (pe) return json({ reply: `I couldn't update the invoice: ${pe.message}.` });
+        usageConsumed = true;
+        await serviceSupabase.from("activity_logs").insert({ user_id: ownerId, action_type: "invoice", description: `Meraj marked ${inv.invoice_number} paid`, time_saved_minutes: 3, money_saved: 1, provider: "meraj-task" });
+        return json({ reply: `Done \u2014 **${inv.invoice_number}** marked paid. Collected from **${inv.client_name}**.`, executed: { type: "invoice_paid" } });
+      }
+      if (confirm && confirm.type === "create_quotation" && confirm.input) {
+        const i = confirm.input;
+        const items = (Array.isArray(i.items) ? i.items : []).map((it: any) => ({ description: String(it.name).slice(0, 200), quantity: Number(it.qty) || 1, unit_price: Number(it.unit_price) || 0 }));
+        if (!items.length) return json({ reply: "The quotation had no valid items." });
+        const sub = items.reduce((s2: number, it: any) => s2 + it.quantity * it.unit_price, 0);
+        const tax = Math.round(sub * (Number(i.tax_rate) || 0)) / 100;
+        const now2 = new Date();
+        const qn = `QT-${String(now2.getFullYear()).slice(2)}${String(now2.getMonth() + 1).padStart(2, "0")}${String(now2.getDate()).padStart(2, "0")}-${String(Math.floor(Math.random() * 10000) % 10000).padStart(4, "0")}`;
+        const { error: qe } = await serviceSupabase.from("quotations").insert({ user_id: ownerId, quote_number: qn, customer_name: i.customer_name, items, subtotal: sub, tax_rate: Number(i.tax_rate) || 0, tax_amount: tax, total: sub + tax, status: "sent" });
+        if (qe) return json({ reply: `I couldn't create the quotation: ${qe.message}.` });
+        usageConsumed = true;
+        await serviceSupabase.from("activity_logs").insert({ user_id: ownerId, action_type: "summary", description: `Meraj created quotation ${qn} for ${i.customer_name}`, time_saved_minutes: 8, money_saved: 4, provider: "meraj-task" });
+        return json({ reply: `Done \u2014 quotation **${qn}** created for **${i.customer_name}**. Find it in your Quotations page \u2014 one tap converts it to an invoice.`, executed: { type: "quotation" } });
+      }
       // ── EXECUTE a confirmed sheet → stock sync ──
       if (confirm && confirm.type === "sync_stock_from_sheet" && confirm.input) {
         try {
@@ -1107,6 +1145,24 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
           if (args.email) r += `\n**Email:** ${args.email}`;
           r += `\n\nTap **Add it** to save.`;
           return json({ reply: r, pending: { type: "add_customer", input: args, preview: args } });
+        }
+        if (tn === "record_expense") {
+          const amount = Number(args.amount);
+          if (!Number.isFinite(amount) || amount <= 0) return json({ reply: "How much did you spend? Tell me the amount." });
+          if (!String(args.description || "").trim()) return json({ reply: "What was the expense for?" });
+          return json({ reply: `Recording this expense:\n\n**${String(args.description).trim()}** — ₹${amount.toLocaleString("en-IN")}\n**Category:** ${args.category || "Other"}\n\nTap **Save it** to record.`, pending: { type: "record_expense", input: { description: String(args.description).trim().slice(0, 200), amount: Math.round(amount * 100) / 100, category: String(args.category || "Other").slice(0, 40), payment_method: String(args.payment_method || "cash") }, preview: args } });
+        }
+        if (tn === "mark_invoice_paid") {
+          const num = String(args.invoice_number || "").trim();
+          if (!num) return json({ reply: "Which invoice number was paid?" });
+          return json({ reply: `Marking **${num}** as paid — money received?\n\nTap **Confirm** to record the payment.`, pending: { type: "mark_invoice_paid", input: { invoice_number: num }, preview: args } });
+        }
+        if (tn === "create_quotation") {
+          const items = Array.isArray(args.items) ? args.items : [];
+          if (!String(args.customer_name || "").trim() || items.length === 0) return json({ reply: "I need a customer name and at least one item with a price." });
+          const sub = items.reduce((s2: number, it: any) => s2 + (Number(it.qty) || 0) * (Number(it.unit_price) || 0), 0);
+          const lines = items.map((it: any) => `- ${it.qty} x ${it.name} @ ${it.unit_price}`).join("\n");
+          return json({ reply: `Quotation for **${args.customer_name}**:\n\n${lines}\n**Subtotal:** ₹${Math.round(sub).toLocaleString("en-IN")}${Number(args.tax_rate) > 0 ? ` + ${args.tax_rate}% GST` : ""}\n\nTap **Create it** to save.`, pending: { type: "create_quotation", input: { customer_name: String(args.customer_name).trim(), items, tax_rate: Number(args.tax_rate) || 0 }, preview: args } });
         }
         if (tn === "send_whatsapp") {
           const phone = validatePhone(args.to);
