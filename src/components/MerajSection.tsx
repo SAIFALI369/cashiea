@@ -214,9 +214,16 @@ export default function MerajSection() {
           </span>
         </div>
 
-        {/* Middle: Meraj + thought bubble (rectangular, bigger than before) */}
-        <div className="flex items-start gap-4 sm:gap-5 min-h-[120px] sm:min-h-[140px]">
-          <div className="flex-shrink-0 flex flex-col items-center pt-2">
+        {/* Middle: Meraj + thought cloud. Resting → Meraj slides to the
+            CENTER of the section; a thought arriving slides him smoothly
+            back to the left corner with the bubble — no teleporting. */}
+        <motion.div
+          layout
+          transition={{ type: 'spring', stiffness: 200, damping: 26 }}
+          className="flex items-center min-h-[120px] sm:min-h-[150px] w-full"
+          style={{ justifyContent: bubbleVisible ? 'flex-start' : 'center' }}
+        >
+          <motion.div layout transition={{ type: 'spring', stiffness: 200, damping: 26 }} className="flex-shrink-0 flex flex-col items-center pt-2">
             <MerajDevice
               interactionState={interaction}
               businessMood={businessMood}
@@ -235,10 +242,10 @@ export default function MerajSection() {
                 />
               ))}
             </div>
-          </div>
+          </motion.div>
 
           {/* Thought bubble — a real cloud: shows 20s, rests 60s, returns with a new thought */}
-          <div className="relative flex-1 min-w-0 min-h-[96px] flex flex-col justify-center">
+          <motion.div layout transition={{ type: 'spring', stiffness: 200, damping: 26 }} className="relative flex-1 min-w-0 min-h-[96px] flex flex-col justify-center">
             <AnimatePresence mode="wait">
               {bubbleVisible ? (
                 <motion.div
@@ -263,27 +270,14 @@ export default function MerajSection() {
                       {awake ? `💡 ${thought || 'Sab theek hai, bhai.'}` : '😴 So raha hoon… subah milte hain.'}
                     </p>
                     <p className="text-[10px] text-fg-subtle mt-1.5">
-                      {awake ? '✨ Tap for another idea · I will be back in a minute' : '🌅 I rest between 2–5 AM so I am sharp at 5'}
+                      {awake ? '✨ Tap for another idea' : '🌅 I rest between 2–5 AM so I am sharp at 5'}
                     </p>
                   </div>
                 </motion.div>
-              ) : (
-                /* Resting: a quiet 💭 marks where the next thought will bloom */
-                <motion.div
-                  key="resting"
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  animate={{ opacity: 1, scale: 1, y: [0, -5, 0] }}
-                  exit={{ opacity: 0, scale: 0.5 }}
-                  transition={{ opacity: { duration: 0.4 }, scale: { duration: 0.4 }, y: { duration: 2.6, repeat: Infinity, ease: 'easeInOut' } }}
-                  className="flex items-center"
-                >
-                  <span className="text-3xl select-none" aria-hidden="true">💭</span>
-                  <span className="text-[10px] text-fg-subtle ml-2">Meraj is thinking of your next idea…</span>
-                </motion.div>
-              )}
+              ) : null}
             </AnimatePresence>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Ask is part of Meraj now: one character, one conversation surface. */}
         <form onSubmit={(e) => { e.preventDefault(); const q = ask.trim(); if (q) navigate(`/app/assistant?q=${encodeURIComponent(q)}`) }} className="flex items-center gap-2 rounded-xl border border-line bg-surface/80 px-2 focus-within:border-accent/50 transition-colors" onClick={(e) => e.stopPropagation()}>
