@@ -74,6 +74,32 @@ export default function MerajSection() {
     return () => { if (idleTimer.current) window.clearTimeout(idleTimer.current) }
   }, [thought])
 
+  // ── Thought cycle: the bubble SHOWS 20s, RESTS 60s, then returns with a
+  //    NEW thought — an endless gentle loop. Tapping the bubble restarts the
+  //    20s window with the next idea immediately.
+  const [bubbleVisible, setBubbleVisible] = useState(true)
+  const [cycleCount, setCycleCount] = useState(0)
+  const cycleRef = useRef({ phase: 'show' as 'show' | 'hide', t: Date.now() })
+  const refreshRef = useRef(refreshNow)
+  refreshRef.current = refreshNow
+  useEffect(() => {
+    const tick = window.setInterval(() => {
+      const c = cycleRef.current
+      const elapsed = Date.now() - c.t
+      if (c.phase === 'show' && elapsed >= 20_000) {
+        cycleRef.current = { phase: 'hide', t: Date.now() }
+        setBubbleVisible(false)
+      } else if (c.phase === 'hide' && elapsed >= 60_000) {
+        cycleRef.current = { phase: 'show', t: Date.now() }
+        setBubbleVisible(true)
+        setCycleCount((n) => n + 1)
+        refreshRef.current()
+      }
+    }, 1_000)
+    return () => window.clearInterval(tick)
+  }, [])
+  const restartCycle = () => { cycleRef.current = { phase: 'show', t: Date.now() } }
+
   // Fetch tiny live snapshot (just enough to render the creative strip).
   useEffect(() => {
     if (!ownerId) return
@@ -211,26 +237,50 @@ export default function MerajSection() {
             </div>
           </div>
 
-          {/* Thought bubble */}
-          <div className="relative flex-1 min-w-0">
+          {/* Thought bubble — a real cloud: shows 20s, rests 60s, returns with a new thought */}
+          <div className="relative flex-1 min-w-0 min-h-[96px] flex flex-col justify-center">
             <AnimatePresence mode="wait">
-              <motion.div
-                key={thought || 'sleep'}
-                initial={{ opacity: 0, y: 6, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -4, scale: 0.98 }}
-                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                onClick={(e) => { e.stopPropagation(); refreshNow() }}
-                className="relative rounded-[1.4rem] rounded-tl-sm bg-surface/90 border border-accent/15 px-4 py-3 shadow-soft cursor-pointer hover:border-accent/30 transition-colors"
-              >
-                <span className="absolute -left-2 top-4 text-accent/40 text-2xl leading-none select-none">💭</span>
-                <p className="text-sm sm:text-base font-semibold text-fg leading-snug pl-3">
-                  {awake ? `💡 ${thought || 'Sab theek hai, bhai.'}` : '😴 So raha hoon… subah milte hain.'}
-                </p>
-                <p className="text-[10px] text-fg-subtle mt-1 pl-3">
-                  {awake ? '✨ Tap for another idea · Tap Meraj to chat' : '🌅 I rest between 2–5 AM so I am sharp at 5'}
-                </p>
-              </motion.div>
+              {bubbleVisible ? (
+                <motion.div
+                  key={`bubble-${cycleCount}-${thought || 'sleep'}`}
+                  initial={{ opacity: 0, x: -22, scale: 0.82 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: 12, scale: 0.88, filter: 'blur(3px)' }}
+                  transition={{ type: 'spring', stiffness: 240, damping: 20 }}
+                  className="relative"
+                >
+                  {/* Trailing thought dots — the cloud's tail toward Meraj */}
+                  <span className="absolute -left-3.5 bottom-1.5 w-3.5 h-3.5 rounded-full bg-surface border border-accent/25 shadow-soft" aria-hidden="true" />
+                  <span className="absolute -left-7 bottom-6 w-2.5 h-2.5 rounded-full bg-surface border border-accent/20 shadow-soft" aria-hidden="true" />
+                  <span className="absolute -left-9.5 bottom-11 w-1.5 h-1.5 rounded-full bg-surface border border-accent/20" aria-hidden="true" />
+                  <div
+                    onClick={(e) => { e.stopPropagation(); refreshNow(); restartCycle() }}
+                    className="meraj-bubble-float rounded-[1.9rem] bg-surface/95 border border-accent/20 px-5 py-4 shadow-soft cursor-pointer hover:border-accent/45 transition-colors"
+                    role="button"
+                    aria-label="Meraj's thought — tap for another"
+                  >
+                    <p className="text-sm sm:text-base font-semibold text-fg leading-snug">
+                      {awake ? `💡 ${thought || 'Sab theek hai, bhai.'}` : '😴 So raha hoon… subah milte hain.'}
+                    </p>
+                    <p className="text-[10px] text-fg-subtle mt-1.5">
+                      {awake ? '✨ Tap for another idea · I will be back in a minute' : '🌅 I rest between 2–5 AM so I am sharp at 5'}
+                    </p>
+                  </div>
+                </motion.div>
+              ) : (
+                /* Resting: a quiet 💭 marks where the next thought will bloom */
+                <motion.div
+                  key="resting"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1, y: [0, -5, 0] }}
+                  exit={{ opacity: 0, scale: 0.5 }}
+                  transition={{ opacity: { duration: 0.4 }, scale: { duration: 0.4 }, y: { duration: 2.6, repeat: Infinity, ease: 'easeInOut' } }}
+                  className="flex items-center"
+                >
+                  <span className="text-3xl select-none" aria-hidden="true">💭</span>
+                  <span className="text-[10px] text-fg-subtle ml-2">Meraj is thinking of your next idea…</span>
+                </motion.div>
+              )}
             </AnimatePresence>
           </div>
         </div>
