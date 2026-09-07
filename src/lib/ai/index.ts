@@ -147,7 +147,7 @@ export async function askAssistantStream(
 ): Promise<{ reply: string; pending?: any; executed?: any; media?: any[]; images?: any[] }> {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('You must be signed in.')
-  const res = await fetch(AI_FUNCTION_URL, {
+  const res = await fetch(edgeFunctionUrl('ai-assistant'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
