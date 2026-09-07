@@ -127,7 +127,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
   const location = useLocation()
   const navigate = useNavigate()
   const pageContext = (() => { const c = getPageContext(location.pathname); return c ? { name: c.name, description: c.description } : undefined })()
-  const { speak, stopSpeaking, speaking, startListening, stopListening, listening, transcribing } = useSpeech()
+  const { speak, stopSpeaking, speaking, startListening, cancelListening, listening, transcribing } = useSpeech()
   const [voiceActive, setVoiceActive] = useState(false)
   const [voiceLoading, setVoiceLoading] = useState(false)
   const [voiceReply, setVoiceReply] = useState('')
@@ -173,7 +173,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
     }
   }
 
-  const cancelVoice = () => { stopListening(); stopSpeaking(); setVoiceActive(false); setVoiceReply(''); setVoiceLoading(false) }
+  const cancelVoice = () => { cancelListening(); stopSpeaking(); setVoiceActive(false); setVoiceReply(''); setVoiceLoading(false) }
 
   // ── Camera / Scanner (mobile + desktop) ──
   const cameraRef = useRef<HTMLInputElement>(null)
