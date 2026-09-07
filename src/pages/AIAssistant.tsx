@@ -13,6 +13,7 @@ import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Spa
 import { getPageContext } from '../lib/pageContext'
 import { MERAJ_DESKS, merajConfirmLabel } from '../lib/merajDesks'
 import { supabase } from '../lib/supabase'
+import { useSpeech } from '../lib/useSpeech'
 import type { ActivityLog } from '../lib/types'
 import { formatINR } from '../lib/format'
 import toast from 'react-hot-toast'
@@ -346,6 +347,105 @@ export default function AIAssistant() {
   const [showCam, setShowCam] = useState(false)
   const [pendingImage, setPendingImage] = useState<{ data: string; mimeType: string; preview: string } | null>(null)
   const recRef = useRef<any>(null)
+  // ── VOICE: Google-assistant style. Live text as you speak (Web Speech API
+  //    with interim results where available), automatic fallback to the
+  //    proven MediaRecorder + Groq Whisper pipeline when the browser's
+  //    SpeechRecognition is missing or silently fails. Final words auto-send.
+  const { speak, stopSpeaking, speaking, startListening, stopListening } = useSpeech()
+  const [liveTranscript, setLiveTranscript] = useState('')
+  const [voiceAutoSent, setVoiceAutoSent] = useState(false)
+  const whisperModeRef = useRef<boolean>(localStorage.getItem('cashiea_stt_mode') === 'whisper')
+
+  const finishVoiceMessage = (text: string) => {
+    const clean = text.trim()
+    setLiveTranscript('')
+    if (!clean) return
+    // Auto-send the spoken message — Meraj replies, typed + spoken live.
+    void send(clean)
+  }
+
+  const startListen = () => {
+    setVoiceAutoSent(false)
+    setLiveTranscript('')
+    // Mode A — live transcription (Chrome/Android/iOS 14.5+): words appear
+    // as you speak, exactly like Google Assistant.
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (SR && !whisperModeRef.current) {
+      try {
+        if (recRef.current) { try { recRef.current.stop() } catch { /* ignore */ } }
+        const rec = new SR()
+        rec.lang = localStorage.getItem('cashiea_voice_lang') || 'en-IN'
+        rec.interimResults = true          // ← LIVE words while speaking
+        rec.continuous = false
+        rec.maxAlternatives = 1
+        let gotAnyResult = false
+        rec.onstart = () => setListening(true)
+        rec.onresult = (e: any) => {
+          gotAnyResult = true
+          let interim = ''
+          let final = ''
+          for (let i = e.resultIndex; i < e.results.length; i++) {
+            const r = e.results[i]
+            if (r.isFinal) final += r[0].transcript
+            else interim += r[0].transcript
+          }
+          if (interim) setLiveTranscript(interim)          // live words on screen
+          if (final) { setListening(false); finishVoiceMessage(final) }
+        }
+        rec.onerror = (e: any) => {
+          setListening(false)
+          const er = String(e?.error || '')
+          if (er === 'not-allowed' || er === 'service-not-allowed') {
+            toast.error('Microphone access is blocked — allow it in your browser settings.')
+          } else if (er === 'no-speech') {
+            toast.error("I couldn't hear that clearly — try again.")
+          } else if (er === 'network') {
+            // SpeechRecognition needs Google servers; switch to Whisper
+            whisperModeRef.current = true
+            localStorage.setItem('cashiea_stt_mode', 'whisper')
+            startListen()
+          } else if (er && er !== 'aborted' && er !== 'no-speech') {
+            // Silent failures (empty results on some browsers/PWAs) → Whisper
+            whisperModeRef.current = true
+            localStorage.setItem('cashiea_stt_mode', 'whisper')
+            toast('Switched to backup voice engine', { icon: '🎙️' })
+            startListen()
+          }
+        }
+        rec.onend = () => {
+          setListening(false)
+          // ended without a final result → some browsers do this silently;
+          // if we never got ANY result, fall back to Whisper permanently
+          if (!gotAnyResult && !voiceAutoSent) {
+            whisperModeRef.current = true
+            localStorage.setItem('cashiea_stt_mode', 'whisper')
+            startListen()
+          }
+        }
+        recRef.current = rec
+        rec.start()
+        setListening(true)
+        return
+      } catch { /* fall through to Whisper */ }
+    }
+    // Mode B — universal: MediaRecorder → Groq Whisper (works on EVERY
+    // browser: iOS Safari, Firefox, PWA). Tap again to stop & transcribe.
+    setListening(true)
+    setLiveTranscript('')
+    startListening(
+      (text) => { setListening(false); finishVoiceMessage(text) },
+      (msg) => { setListening(false); setLiveTranscript(''); if (msg) toast.error(msg) },
+    )
+  }
+
+  const stopListen = () => {
+    setListening(false)
+    try { recRef.current?.stop() } catch { /* ignore */ }
+    stopListening()
+    // If live transcription captured words but never finalized, send them.
+    setLiveTranscript((t) => { if (t.trim()) { setTimeout(() => finishVoiceMessage(t), 0) } return '' })
+  }
+  useEffect(() => () => { try { recRef.current?.stop() } catch { /* ignore */ } }, [])
   const [listening, setListening] = useState(false)
 
   const { user, profile, ownerId } = useAuth()
@@ -468,7 +568,9 @@ export default function AIAssistant() {
       setPendingImage(null)
         const done = [...next, { role: 'meraj' as const, text: res.reply, pending: res.pending, media: res.media, images: res.images, ts: Date.now() }]
       setMessages(done)
-      if (res.reply) setTyping(true)
+      // VOICE: Meraj SPEAKS the reply while it types on screen — the
+      // talking-assistant experience. (speak() strips markdown + ₹.)
+      if (res.reply) { setTyping(true); speak(res.reply) }
       upsertConvo(done, q || 'Shared photo')
     } catch (e) {
       setMessages([...next, { role: 'meraj' as const, text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.'), ts: Date.now() }])
@@ -553,19 +655,6 @@ export default function AIAssistant() {
     setShowHistory(false)
     inputRef.current?.focus()
   }
-
-  const startListen = () => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SR) { toast.error('Voice input not supported on this browser.'); return }
-    if (recRef.current) { try { recRef.current.stop() } catch { /* ignore */ } }
-    const rec = new SR(); rec.lang = localStorage.getItem('cashiea_voice_lang') || 'hi-IN'; rec.interimResults = false; rec.maxAlternatives = 1
-    rec.onstart = () => setListening(true); rec.onend = () => setListening(false)
-    rec.onerror = (e: any) => { setListening(false); const er = String(e?.error || ''); if (er === 'not-allowed' || er === 'service-not-allowed') toast.error('Microphone access is blocked — allow it in your browser settings.'); else if (er === 'no-speech') toast.error("I couldn't hear that clearly — try again."); else if (er && er !== 'aborted') toast.error('Microphone error — please try again.') }
-    rec.onresult = (e: any) => { const t = e.results[0][0].transcript; setInput((p) => (p ? p + ' ' : '') + t) }
-    recRef.current = rec; rec.start()
-  }
-  const stopListen = () => { recRef.current?.stop(); setListening(false) }
-  useEffect(() => () => recRef.current?.stop(), [])
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -937,7 +1026,7 @@ export default function AIAssistant() {
               <button onClick={() => setPendingImage(null)} className="text-fg-subtle hover:text-negative" aria-label="Remove attachment"><X className="w-4 h-4" /></button>
             </div>
           )}
-          <div className="meraj-composer">
+          <div className="meraj-composer relative">
             <div className="relative flex-shrink-0">
               <button onClick={() => setShowCam((s) => !s)} className={`meraj-composer-btn ${showCam ? '!bg-accent-soft !text-accent rotate-45' : ''}`} aria-label="Add attachment">
                 <Plus className="w-[18px] h-[18px]" strokeWidth={2} />
@@ -953,7 +1042,8 @@ export default function AIAssistant() {
               </AnimatePresence>
             </div>
 
-            <button onClick={listening ? stopListen : startListen} className={`meraj-composer-btn ${listening ? '!text-negative !bg-negative/10' : ''}`} aria-label="Voice input" title="Voice input">
+            <button onClick={listening ? stopListen : startListen} className={`meraj-composer-btn relative ${listening ? '!text-negative !bg-negative/10' : ''}`} aria-label={listening ? 'Stop voice input' : 'Voice input'} title="Voice input">
+              {listening && <span className="absolute inset-0 rounded-full animate-ping bg-negative/20" aria-hidden="true" />}
               {listening ? <Square className="w-4 h-4" /> : <Mic className="w-[18px] h-[18px]" strokeWidth={1.75} />}
             </button>
 
@@ -975,10 +1065,23 @@ export default function AIAssistant() {
                   if (!loading) send()
                 }
               }}
-              placeholder={mode === 'task' ? 'Tell Meraj what to do…' : 'Ask Meraj anything…'}
+              placeholder={listening ? 'Listening… speak now' : liveTranscript || (mode === 'task' ? 'Tell Meraj what to do…' : 'Ask Meraj anything…')}
               className="flex-1 px-1.5 py-2 text-sm outline-none min-w-0"
               disabled={loading}
             />
+            {listening && (
+              <div className="absolute inset-x-14 bottom-1.5 top-1.5 pointer-events-none flex items-center">
+                <span className="text-sm font-semibold text-negative truncate w-full">
+                  {liveTranscript || 'Listening… speak now'}
+                  {liveTranscript && <span className="animate-pulse">▊</span>}
+                </span>
+              </div>
+            )}
+            {speaking && (
+              <button onClick={() => { stopSpeaking(); setTyping(false) }} className="meraj-composer-btn !text-accent-strong !bg-accent-soft/60" aria-label="Stop Meraj speaking" title="Stop speaking">
+                <Square className="w-4 h-4" />
+              </button>
+            )}
             <button onClick={() => send()} disabled={loading || (!input.trim() && !pendingImage)} className="meraj-composer-btn meraj-composer-send" aria-label="Send">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
