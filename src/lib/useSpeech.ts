@@ -118,16 +118,30 @@ export function useSpeech() {
   const chunksRef = useRef<Blob[]>([])
   const cancelledRef = useRef(false)
 
-  const cleanupStream = useCallback(() => {
+  /** Stop the mic tracks and drop the recorder ref — does NOT touch chunks. */
+  const stopStream = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop())
       streamRef.current = null
     }
     mediaRecorderRef.current = null
-    chunksRef.current = []
   }, [])
 
+  const cleanupStream = useCallback(() => {
+    stopStream()
+    chunksRef.current = []
+  }, [stopStream])
+
+  /**
+   * stopListening — stop the recording; the onstop handler ASSEMBLES THE
+   * AUDIO FIRST and transcribes it. This is "I'm done talking", not cancel.
+   */
   const stopListening = useCallback(() => {
+    try { mediaRecorderRef.current?.stop() } catch { /* ignore */ }
+  }, [])
+
+  /** cancelListening — true cancel: discard audio, transcribe nothing. */
+  const cancelListening = useCallback(() => {
     cancelledRef.current = true
     try { mediaRecorderRef.current?.stop() } catch { /* ignore */ }
     cleanupStream()
@@ -178,15 +192,17 @@ export function useSpeech() {
         }
 
         recorder.onstop = async () => {
-          cleanupStream()
+          // 3) ASSEMBLE THE AUDIO BLOB FIRST — the old code ran cleanupStream()
+          //    before this line, which zeroed the chunks and produced an
+          //    empty blob every single time ("couldn't hear, speak louder").
+          const audioBlob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' })
+          chunksRef.current = []
+          stopStream()
           setListening(false)
           // IMMEDIATELY show "Transcribing…" — the user stopped talking and
           // deserves feedback within 200ms, not 2-4s later when Whisper returns
           setTranscribing(true)
           if (cancelledRef.current) { setTranscribing(false); return }
-
-          // 3) Assemble the audio blob
-          const audioBlob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' })
           if (audioBlob.size < 100) {
             onError?.("I couldn't hear that clearly — try speaking a bit louder.")
             return
@@ -270,6 +286,7 @@ export function useSpeech() {
     speaking,
     startListening,
     stopListening,
+    cancelListening,
     listening,
     transcribing,
     sttSupported,
