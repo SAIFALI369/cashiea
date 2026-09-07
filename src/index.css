@@ -373,6 +373,9 @@ h1, h2, h3 {
   will-change: transform;
 }
 .meraj-glow { animation: meraj-glow 4.5s ease-in-out infinite; }
+/* Meraj's thought bubble — a gentle hover while it floats. */
+@keyframes meraj-bubble-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.meraj-bubble-float { animation: meraj-bubble-float 4.5s ease-in-out infinite; }
 /* Soft ground shadow so the device reads as floating, not glued. */
 .meraj-body {
   /* Premium deep-green shell: calmer and more trustworthy than the bright
