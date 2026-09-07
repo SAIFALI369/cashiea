@@ -224,5 +224,27 @@ export async function callGeminiWithImage(
       continue;
     }
   }
+  // FALLBACK: the primary vision model sometimes refuses an image
+  // ("memory isn't available", quota, model limits). One clean retry with
+  // the universally-available gemini-2.0-flash keeps vision alive.
+  try {
+    const res2 = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-goog-api-key": GEMINI_KEYS[0] },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ parts: [
+          { text: prompt },
+          { inline_data: { mime_type: image.mimeType, data: image.data } },
+        ] } ],
+        generationConfig: { temperature: 0.4, maxOutputTokens: opts.maxTokens ?? 1500 },
+      }),
+    });
+    if (res2.ok) {
+      const d2 = await res2.json();
+      const c2 = d2?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (c2) return { ok: true, status: 200, value: c2 as string };
+    }
+  } catch { /* fall through */ }
   return lastResult || { ok: false, status: 429, value: "All keys rate-limited." };
 }
