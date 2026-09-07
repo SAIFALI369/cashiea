@@ -351,7 +351,7 @@ export default function AIAssistant() {
   //    with interim results where available), automatic fallback to the
   //    proven MediaRecorder + Groq Whisper pipeline when the browser's
   //    SpeechRecognition is missing or silently fails. Final words auto-send.
-  const { speak, stopSpeaking, speaking, startListening, stopListening } = useSpeech()
+  const { speak, stopSpeaking, speaking, startListening, stopListening, transcribing } = useSpeech()
   const [liveTranscript, setLiveTranscript] = useState('')
   const [voiceAutoSent, setVoiceAutoSent] = useState(false)
   const whisperModeRef = useRef<boolean>(localStorage.getItem('cashiea_stt_mode') === 'whisper')
@@ -1065,14 +1065,14 @@ export default function AIAssistant() {
                   if (!loading) send()
                 }
               }}
-              placeholder={listening ? 'Listening… speak now' : liveTranscript || (mode === 'task' ? 'Tell Meraj what to do…' : 'Ask Meraj anything…')}
+              placeholder={transcribing ? 'Transcribing…' : listening ? 'Listening… speak now' : liveTranscript || (mode === 'task' ? 'Tell Meraj what to do…' : 'Ask Meraj anything…')}
               className="flex-1 px-1.5 py-2 text-sm outline-none min-w-0"
               disabled={loading}
             />
             {listening && (
               <div className="absolute inset-x-14 bottom-1.5 top-1.5 pointer-events-none flex items-center">
                 <span className="text-sm font-semibold text-negative truncate w-full">
-                  {liveTranscript || 'Listening… speak now'}
+                  {transcribing ? 'Transcribing your words…' : liveTranscript || 'Listening… speak now'}
                   {liveTranscript && <span className="animate-pulse">▊</span>}
                 </span>
               </div>
