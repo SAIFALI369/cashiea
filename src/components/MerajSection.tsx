@@ -137,7 +137,7 @@ export default function MerajSection() {
             icon: sig.tone === 'bad' || (sig.tone === 'neutral' && todaySales === 0) ? TrendingDown : TrendingUp,
             value: formatINR(todaySales, 0),
             tone: sig.tone,
-            hint: sig.delta !== null ? `${sig.delta >= 0 ? '+' : ''}${sig.delta}% vs yesterday` : todaySales > 0 ? 'First sales today' : 'No sales yet',
+            hint: todaySales > 0 ? 'Today so far' : 'No sales yet',
           },
           {
             label: 'Low stock', icon: Package,
