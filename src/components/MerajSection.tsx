@@ -89,7 +89,7 @@ export default function MerajSection() {
       if (c.phase === 'show' && elapsed >= 20_000) {
         cycleRef.current = { phase: 'hide', t: Date.now() }
         setBubbleVisible(false)
-      } else if (c.phase === 'hide' && elapsed >= 60_000) {
+      } else if (c.phase === 'hide' && elapsed >= 40_000) {
         cycleRef.current = { phase: 'show', t: Date.now() }
         setBubbleVisible(true)
         setCycleCount((n) => n + 1)

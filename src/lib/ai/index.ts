@@ -31,7 +31,7 @@ export interface AICallResult {
  * deterministic bugs, retrying wastes tokens and time).
  * 45-second timeout so a hung request never freezes the UI.
  */
-const AI_TIMEOUT_MS = 45_000
+const AI_TIMEOUT_MS = 90_000
 
 async function fetchWithRetry(
   input: string,

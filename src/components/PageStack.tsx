@@ -69,7 +69,7 @@ const pageVariants: Variants = {
       case 'push':
         return { x: '100%', opacity: 1, zIndex: 2, boxShadow: '-10px 0 32px -8px rgb(var(--shadow) / 0.22)' }
       case 'pop':
-        return { x: '-24%', scale: 0.94, opacity: 0.5, zIndex: 1 }
+        return { x: '-24%', scale: 0.94, opacity: 0, zIndex: 1 }
       case 'lateral':
         return { x: 34 * c.sign + '%', opacity: 0, zIndex: 2 }
       default:
@@ -88,7 +88,7 @@ const pageVariants: Variants = {
   exit: (c: FlowCtx) => {
     switch (c.kind) {
       case 'push':
-        return { x: '-24%', scale: 0.94, opacity: 0.45, zIndex: 1, transition: SPRING }
+        return { x: '-24%', scale: 0.94, opacity: 0, zIndex: 1, transition: { duration: 0.16, ease: 'easeOut' } }
       case 'pop':
         return { x: '100%', opacity: 1, zIndex: 2, boxShadow: '-10px 0 32px -8px rgb(var(--shadow) / 0.22)', transition: SPRING }
       case 'lateral':

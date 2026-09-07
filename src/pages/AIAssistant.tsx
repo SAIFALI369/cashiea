@@ -407,7 +407,17 @@ export default function AIAssistant() {
     try { activeIdRef.current = localStorage.getItem(ACTIVE_KEY) } catch { /* ignore */ }
   }, [CURRENT_KEY, ACTIVE_KEY])
   // Persist the current conversation continuously.
-  useEffect(() => { try { localStorage.setItem(CURRENT_KEY, JSON.stringify(messages)) } catch { /* ignore */ } }, [messages])
+  useEffect(() => {
+    try {
+      // PRIVACY + STORAGE: image previews are stripped from stored history
+      // 10 minutes after their message was sent. The server never stores
+      // images (base64 passes straight to the vision model) — this keeps
+      // the phone clean too.
+      const TEN_MIN = 600_000
+      const cleaned = messages.map((m) => (m.image && m.ts && Date.now() - m.ts > TEN_MIN ? { ...m, image: undefined } : m))
+      localStorage.setItem(CURRENT_KEY, JSON.stringify(cleaned))
+    } catch { /* ignore */ }
+  }, [messages])
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }) }, [messages, loading, typing])
 
   const persist = (next: Convo[]) => { setConvos(next); try { localStorage.setItem(STORE, JSON.stringify(next.slice(0, 8))) } catch { /* ignore */ } }
