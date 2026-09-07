@@ -127,7 +127,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
   const location = useLocation()
   const navigate = useNavigate()
   const pageContext = (() => { const c = getPageContext(location.pathname); return c ? { name: c.name, description: c.description } : undefined })()
-  const { speak, stopSpeaking, speaking, startListening, cancelListening, listening, transcribing } = useSpeech()
+  const { speak, stopSpeaking, speaking, startListening, cancelListening, listening, transcribing, unlockTts } = useSpeech()
   const [voiceActive, setVoiceActive] = useState(false)
   const [voiceLoading, setVoiceLoading] = useState(false)
   const [voiceReply, setVoiceReply] = useState('')
@@ -138,6 +138,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
   const statusText = listening ? 'Listening…' : transcribing ? 'Transcribing…' : voiceLoading ? 'Thinking…' : speaking ? 'Speaking…' : ''
 
   const startVoice = async () => {
+    unlockTts() // iOS/Android: unlock TTS inside the tap gesture so replies SPEAK
     if (!navigator.onLine) {
       const m = "Voice needs an internet connection. Please connect, or type your question in Meraj."
       setVoiceActive(true); setVoiceReply(m); speak(m); setTimeout(() => setVoiceActive(false), 5500)
@@ -154,7 +155,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
         try {
           const res = await askAssistant(text, false, undefined, 'ask', undefined, pageContext)
           setVoiceReply(res.reply)
-          if (res.reply) speak(res.reply, () => setTimeout(() => { setVoiceActive(false); setVoiceReply('') }, 2500))
+          if (res.reply) speak(res.reply, () => setTimeout(() => { setVoiceActive(false); setVoiceReply('') }, 4000))
           else setTimeout(() => setVoiceActive(false), 1500)
         } catch (e) {
           const m = e instanceof Error ? e.message : 'Something went wrong.'

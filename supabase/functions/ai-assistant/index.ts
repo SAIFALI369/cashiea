@@ -1318,18 +1318,10 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
       ? "\n\nIMAGE ANALYSIS: The owner shared a photo with this message — analyze the IMAGE itself, never fetch or describe stock/web pictures. It may be a handwritten sales list, a printed bill/receipt, a product catalog, a stock sheet, a quotation, or something else. Read it carefully and tell the owner EXACTLY what you see: list each item, quantity and price you can read, plus any total. If it contains a product/stock list, extract EVERY item with its price and quantity — the whole list can be added as products in one go. Then propose what you can do next — e.g. \"I can create a bill/invoice for these items (₹X total), add them all as products, or turn this into a quotation.\" ALWAYS end with one short question asking which action to take. If part of the image is unreadable, say so plainly — never invent items or prices.\n"
       : "";
 
-    let result: string;
-    if (image && image.data) {
-      const imgRes = await callGeminiWithImage(SYSTEM + scopeFocus + pageFocus + IMAGE_FOCUS, userPrompt, image, { maxTokens: 4000, feature: "image-analysis" });
-      if (!imgRes.ok) throw new Error(imgRes.value);
-      usageConsumed = true;
-      result = imgRes.value;
-    } else {
-      result = await callAIWithFallback(provider, SYSTEM + scopeFocus + pageFocus, userPrompt, 3000, "assistant");
-      usageConsumed = true;
-    }
-
-    // ── Persist memory (single upsert): append this turn to the transcript,
+    // ── persistTurn: shared post-reply persistence (transcript, memory,
+    //    condensation, activity log) — used by BOTH the streaming and
+    //    non-streaming reply paths. ──
+    const persistTurn = async (replyText: string): Promise<void> => {
     //    and (if memory-worthy) extract durable facts to remember. ──
     const basePrefs: Record<string, any> = (mem.memory.preferences && typeof mem.memory.preferences === "object") ? { ...mem.memory.preferences } : {};
     if (!Array.isArray(basePrefs.chat)) basePrefs.chat = [];
@@ -1339,7 +1331,7 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
     if (!briefing) {
       basePrefs.chat.push({ role: "owner", text: String(message).slice(0, 500), ts: Date.now() });
     }
-    basePrefs.chat.push({ role: "meraj", text: String(result).slice(0, 500), ts: Date.now() });
+    basePrefs.chat.push({ role: "meraj", text: String(replyText).slice(0, 500), ts: Date.now() });
     if (basePrefs.chat.length > 20) basePrefs.chat = basePrefs.chat.slice(-20);
 
     let newFacts: any[] = Array.isArray(mem.memory.key_facts) ? [...mem.memory.key_facts] : [];
@@ -1398,6 +1390,82 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
       description: briefing ? "AI briefing generated" : `AI: ${String(message).slice(0, 60)}`,
       time_saved_minutes: 10, money_saved: 5, provider: profile?.ai_provider,
     });
+
+    };
+
+    // ── STREAMING PATH — ChatGPT-style token streaming for ask mode.
+    //    Groq pipes tokens as SSE; the client renders them live. If Groq
+    //    streaming fails before the first byte, we fall through to the
+    //    regular cascade (full JSON reply) — the client handles both. ──
+    const GROQ_STREAM_KEY = Deno.env.get("GROQ_API_KEY");
+    if (GROQ_STREAM_KEY && !image?.data && !briefing && mode !== "task" && !confirm) {
+      try {
+        const groqStream = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${GROQ_STREAM_KEY}` },
+          body: JSON.stringify({
+            model: "groq/compound",
+            messages: [
+              { role: "system", content: SYSTEM + scopeFocus + pageFocus },
+              { role: "user", content: userPrompt },
+            ],
+            temperature: 0.5, max_tokens: 3000, stream: true,
+          }),
+        });
+        if (groqStream.ok && groqStream.body) {
+          usageConsumed = true;
+          const encoder = new TextEncoder();
+          const sse = new ReadableStream({
+            async start(controller) {
+              const reader = groqStream.body!.getReader();
+              const decoder = new TextDecoder();
+              let buffer = "";
+              let full = "";
+              try {
+                while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) break;
+                  buffer += decoder.decode(value, { stream: true });
+                  const lines = buffer.split("\n");
+                  buffer = lines.pop() || "";
+                  for (const line of lines) {
+                    const t = line.trim();
+                    if (!t.startsWith("data: ") || t === "data: [DONE]") continue;
+                    try {
+                      const j = JSON.parse(t.slice(6));
+                      const delta = j.choices?.[0]?.delta?.content || "";
+                      if (delta) {
+                        full += delta;
+                        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: full })}\n\n`));
+                      }
+                    } catch { /* partial line — skip */ }
+                  }
+                }
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: full, done: true })}\n\n`));
+                if (full) { try { await persistTurn(full); } catch { /* best-effort */ } }
+              } catch {
+                if (full) { try { await persistTurn(full); } catch { /* best-effort */ } }
+              }
+              controller.close();
+            },
+          });
+          return new Response(sse, { headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache" } });
+        }
+      } catch { /* fall through to the non-streaming cascade */ }
+    }
+
+    let result: string;
+    if (image && image.data) {
+      const imgRes = await callGeminiWithImage(SYSTEM + scopeFocus + pageFocus + IMAGE_FOCUS, userPrompt, image, { maxTokens: 4000, feature: "image-analysis" });
+      if (!imgRes.ok) throw new Error(imgRes.value);
+      usageConsumed = true;
+      result = imgRes.value;
+    } else {
+      result = await callAIWithFallback(provider, SYSTEM + scopeFocus + pageFocus, userPrompt, 3000, "assistant");
+      usageConsumed = true;
+    }
+
+    await persistTurn(result);
 
     return json({ reply: result });
   } catch (e) {

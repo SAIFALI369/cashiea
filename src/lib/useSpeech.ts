@@ -75,6 +75,20 @@ export function useSpeech() {
     }
   }, [ttsSupported])
 
+  // ── TTS unlock: iOS/Android require the FIRST speechSynthesis call to be
+  //    inside a user gesture. Speaking a zero-volume utterance on mic-tap
+  //    unlocks the engine so later async replies can actually talk. ──
+  const unlockTts = useCallback(() => {
+    if (ttsSupported) {
+      try {
+        const u = new SpeechSynthesisUtterance(' ')
+        u.volume = 0
+        window.speechSynthesis.cancel()
+        window.speechSynthesis.speak(u)
+      } catch { /* ignore */ }
+    }
+  }, [ttsSupported])
+
   // ── TTS: speak text aloud ──
   const speak = useCallback(
     (text: string, onDone?: () => void) => {
@@ -270,6 +284,78 @@ export function useSpeech() {
     [sttSupported, cleanupStream],
   )
 
+  // ── LIVE LISTENING — pseudo-streaming STT: the mic records in ~3s windows,
+  //    each window is transcribed by Groq Whisper and appended live. Works on
+  //    EVERY browser (no SpeechRecognition needed) with ~3s text granularity. ──
+  const liveActiveRef = useRef(false)
+  const liveRecorderRef = useRef<MediaRecorder | null>(null)
+
+  const startLiveListening = useCallback(
+    async (onPartial: (text: string, isFinal: boolean) => void, onError?: (msg: string) => void): Promise<boolean> => {
+      if (!sttSupported) { onError?.('Voice input is not supported on this browser.'); return false }
+      liveActiveRef.current = true
+      setListening(true)
+
+      const transcribe = async (blob: Blob): Promise<string> => {
+        if (blob.size < 200) return ''
+        try {
+          const reader = new FileReader()
+          const base64 = await new Promise<string>((res, rej) => { reader.onload = () => res((reader.result as string).split(',')[1]); reader.onerror = rej; reader.readAsDataURL(blob) })
+          const { data: { session } } = await supabase.auth.getSession()
+          if (!session) return ''
+          const sttUrl = AI_FUNCTION_URL.replace('ai-automation', 'voice-stt')
+          const res = await fetch(sttUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
+            body: JSON.stringify({ audio: base64, mimeType: 'audio/webm', language: localStorage.getItem('cashiea_voice_lang') || 'auto' }),
+          })
+          const data = await res.json().catch(() => ({}))
+          return res.ok ? (data.text || '').trim() : ''
+        } catch { return '' }
+      }
+
+      const runWindow = async (): Promise<string> => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
+          const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find((m) => MediaRecorder.isTypeSupported?.(m)) || ''
+          const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
+          liveRecorderRef.current = rec
+          const chunks: Blob[] = []
+          rec.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data) }
+          const stopped = new Promise<Blob>((resolve) => { rec.onstop = () => resolve(new Blob(chunks, { type: mime || 'audio/webm' })) })
+          rec.start(250)
+          // Sleep ~3s, but wake within 150ms of a stop request
+          await new Promise<void>((r) => {
+            const t0 = Date.now()
+            const tick = () => { if (!liveActiveRef.current || Date.now() - t0 >= 3000) r(); else setTimeout(tick, 150) }
+            tick()
+          })
+          if (rec.state === 'recording') rec.stop()
+          const blob = await stopped
+          stream.getTracks().forEach((t) => t.stop())
+          return await transcribe(blob)
+        } catch { return '' }
+      }
+
+      while (liveActiveRef.current) {
+        const text = await runWindow()
+        if (!liveActiveRef.current) {
+          if (text) onPartial(text, true)
+          break
+        }
+        if (text) onPartial(text, false)
+      }
+      setListening(false)
+      return true
+    },
+    [sttSupported],
+  )
+
+  const stopLiveListening = useCallback(() => {
+    liveActiveRef.current = false
+    try { liveRecorderRef.current?.stop() } catch { /* ignore */ }
+  }, [])
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -284,9 +370,12 @@ export function useSpeech() {
     speak,
     stopSpeaking,
     speaking,
+    unlockTts,
     startListening,
     stopListening,
     cancelListening,
+    startLiveListening,
+    stopLiveListening,
     listening,
     transcribing,
     sttSupported,
