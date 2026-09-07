@@ -164,8 +164,7 @@ export default function Dashboard() {
       setStats([
         {
           label: 'Sales today', value: formatINR(salesToday, 0), count: salesToday, icon: TrendingUp,
-          delta: sig.delta !== null ? `${sig.delta >= 0 ? '+' : ''}${sig.delta}% vs yesterday` : salesToday > 0 ? 'First sales today' : 'No sales yet',
-          deltaTone: sig.tone,
+
           footer: `Yesterday ${formatINR(salesYesterday, 0)}`, footerTone: 'muted',
           to: '/app/reports',
         },
