@@ -7,122 +7,136 @@ import {
   type ReactNode,
 } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  motion,
-  AnimatePresence,
-  useMotionValue,
-  useTransform,
-  animate,
-  type Variants,
-} from 'framer-motion'
+import { motion, type Target, type Transition } from 'framer-motion'
 import clsx from 'clsx'
+import { ChevronLeft } from 'lucide-react'
 import {
+  PRIMARY_PAGES,
   PRIMARY_PATHS,
-  getSnapshot,
+  canSwipeBack,
+  fallbackBackTarget,
   lateralNeighbor,
   navDirection,
-  saveSnapshot,
   type NavDirection,
   type PrimaryPage,
 } from '../lib/butterNav'
-import { shouldIgnore, EDGE_SWIPE_ZONE } from '../lib/useSwipeNavigation'
+import {
+  EDGE_SWIPE_ZONE,
+  classifyDrag,
+  commitSwipe,
+  rubberBand,
+  shouldIgnore,
+} from '../lib/gestures'
 
 // ════════════════════════════════════════════════════════════════
-// PageStack — butter route transitions.
+// PageStack — butter route transitions + phone gestures.
 //
-// Why this exists (audit finding): the layout used
-// `AnimatePresence mode="wait"`, so the old page fully exited BEFORE
-// the new page entered — a blank beat between pages, and the two
-// pages were never visible together. PageStack fixes both:
+// ── THE ONE INVARIANT ──────────────────────────────────────────
+// Exactly ONE page is ever in the DOM.
 //
-//   • PARALLEL TRANSITIONS — `mode="popLayout"` keeps the outgoing
-//     page mounted while the incoming one slides in, so both pages
-//     are on screen, moving together (native navigation feel).
-//     Direction-aware: push (deeper) slides the new page over, pop
-//     slides it away to reveal the page beneath, lateral (primary
-//     tabs) slides both the same way, everything else crossfades.
+// An earlier revision rendered the outgoing and incoming page at the
+// same time (`AnimatePresence mode="popLayout"`) and froze the outgoing
+// page's `innerHTML` into a peek layer. That produced the two bugs this
+// file replaces:
 //
-//   • INTERACTIVE DRAG — on touch, dragging a primary tab sideways
-//     reveals the REAL neighbour page under your finger, 1:1, using
-//     a frozen snapshot taken when you last left that page (no
-//     double data-fetch). Release past the threshold (or fling) and
-//     the swipe commits seamlessly into the live page; release early
-//     and it springs back. The left edge stays reserved for the
-//     sidebar drawer gesture.
+//   1. DOUBLED / SCRAMBLED WORDS — both pages painted over each other
+//      while cross-fading, so every heading existed twice on screen.
+//      Rapid taps (two nav items in quick succession) left up to THREE
+//      page nodes permanently mounted: AnimatePresence never fired the
+//      exit completion that unmounts them.
+//   2. The frozen `innerHTML` copy lost its React bindings and kept
+//      mid-flight inline transforms, so charts, inputs and sticky bars
+//      painted scrambled inside the peek layer.
 //
-// Reduced motion: everything collapses to a plain crossfade and the
-// interactive drag is disabled.
+// Both are now impossible *by construction*: the route element is keyed
+// by pathname with no presence wrapper, so React replaces the subtree
+// instead of stacking it. There is nothing left to leak and nothing
+// left to duplicate.
+//
+// ── WHAT REPLACES IT ───────────────────────────────────────────
+//   • DIRECTION-AWARE ENTRANCE — push slides over, pop settles forward
+//     from underneath, lateral slides in from the correct side,
+//     everything else crossfades. Depth without a second page.
+//   • LATERAL DRAG (primary tabs) — the page moves 1:1 under the
+//     finger and reveals a branded preview of the neighbour tab.
+//   • EDGE SWIPE-BACK (deeper pages) — the iOS gesture: drag in from
+//     the left edge and the page follows your thumb, the shell dims,
+//     release to go back. Primary tabs keep the edge for the drawer.
+//   • RUBBER BAND — dragging past the end of the tab ring resists and
+//     springs back instead of doing nothing.
+//
+// Drag transforms are written straight to the DOM (no motion values):
+// the hand-over to the live route happens in the same task as the
+// `navigate()` call, so there is no frame in which the new page is
+// painted with a stale transform.
+//
+// Reduced motion: entrance collapses to a short crossfade and every
+// gesture is disabled.
 // ════════════════════════════════════════════════════════════════
 
-const SPRING = { type: 'spring', stiffness: 380, damping: 40, mass: 0.9 } as const
-const EASE_SWIPE = [0.16, 1, 0.3, 1] as const
+/** SwiftUI-style deceleration — fast out of the finger, long settle. */
+const EASE_IOS = [0.32, 0.72, 0, 1] as const
+/** The app's signature "butter" curve, for anything springing home. */
+const EASE_BUTTER = [0.22, 1, 0.36, 1] as const
+
+const TRANSITION_SPRING_BACK = 'transform 340ms cubic-bezier(0.22, 1, 0.36, 1)'
+const TRANSITION_COMMIT = 'transform 220ms cubic-bezier(0.16, 1, 0.3, 1)'
+const TRANSITION_COMMIT_BACK = 'transform 200ms cubic-bezier(0.32, 0.72, 0, 1)'
 
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' &&
   !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-interface FlowCtx extends NavDirection {}
+interface EnterSpec {
+  initial: Target | false
+  animate: Target
+  transition: Transition
+}
 
-const pageVariants: Variants = {
-  enter: (c: FlowCtx) => {
-    switch (c.kind) {
-      case 'push':
-        return { x: '100%', opacity: 1, zIndex: 2, boxShadow: '-10px 0 32px -8px rgb(var(--shadow) / 0.22)' }
-      case 'pop':
-        return { x: '-24%', scale: 0.94, opacity: 0, zIndex: 1 }
-      case 'lateral':
-        return { x: 34 * c.sign + '%', opacity: 0, zIndex: 2 }
-      default:
-        return { opacity: 0, y: 8, zIndex: 2 }
+/** Entrance for a navigation of this kind. Never animates two pages. */
+function enterFor(flow: NavDirection, reduced: boolean): EnterSpec {
+  const sign = flow.sign === -1 ? -1 : 1
+  if (reduced || flow.kind === 'instant') {
+    return {
+      initial: flow.kind === 'instant' ? false : { opacity: 0 },
+      animate: { opacity: 1, x: 0, y: 0, scale: 1 },
+      transition: { duration: flow.kind === 'instant' ? 0 : 0.12, ease: 'linear' },
     }
-  },
-  center: {
-    x: 0,
-    y: 0,
-    scale: 1,
-    opacity: 1,
-    zIndex: 1,
-    boxShadow: '0 0 0 0 rgb(var(--shadow) / 0)',
-    transition: SPRING,
-  },
-  exit: (c: FlowCtx) => {
-    switch (c.kind) {
-      case 'push':
-        return { x: '-24%', scale: 0.94, opacity: 0, zIndex: 1, transition: { duration: 0.16, ease: 'easeOut' } }
-      case 'pop':
-        return { x: '100%', opacity: 1, zIndex: 2, boxShadow: '-10px 0 32px -8px rgb(var(--shadow) / 0.22)', transition: SPRING }
-      case 'lateral':
-        return { x: -28 * c.sign + '%', opacity: 0, zIndex: 1, transition: { duration: 0.26, ease: EASE_SWIPE } }
-      case 'instant':
-        // A committed drag already played the transition under the finger.
-        // The exit still needs a real value change and at least one frame:
-        // framer-motion only unmounts an exiting child once its exit
-        // animation COMPLETES, and a zero-delta, zero-duration exit
-        // (opacity: 1, duration: 0 — what this used to be) never fires
-        // completion. The outgoing clone then stayed mounted under the
-        // live page forever — the "ghost text" bug (two instances of the
-        // page in DevTools until a refresh). Fading to 0 over 50 ms is
-        // invisible in practice (the drag already moved the page away)
-        // and guarantees the node is removed.
-        return { opacity: 0, zIndex: 0, transition: { duration: 0.05, ease: 'linear' } }
-      default:
-        return { opacity: 0, zIndex: 1, transition: { duration: 0.18 } }
-    }
-  },
+  }
+  switch (flow.kind) {
+    case 'push':
+      // Deeper page slides over the shell, like a native push.
+      return {
+        initial: { x: '100%', opacity: 1 },
+        animate: { x: 0, opacity: 1 },
+        transition: { duration: 0.34, ease: EASE_IOS },
+      }
+    case 'pop':
+      // Coming back up: the layer beneath settles forward.
+      return {
+        initial: { scale: 0.965, opacity: 0.35 },
+        animate: { scale: 1, opacity: 1 },
+        transition: { duration: 0.3, ease: EASE_IOS },
+      }
+    case 'lateral':
+      // Sibling tab: slides in from the side you came from.
+      return {
+        initial: { x: `${22 * sign}%`, opacity: 0.4 },
+        animate: { x: 0, opacity: 1 },
+        transition: { duration: 0.3, ease: EASE_IOS },
+      }
+    default:
+      return {
+        initial: { opacity: 0, y: 6 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration: 0.24, ease: EASE_BUTTER },
+      }
+  }
 }
 
-const fadeOnlyVariants: Variants = {
-  enter: { opacity: 0 },
-  center: { opacity: 1, x: 0, y: 0, scale: 1, transition: { duration: 0.16 } },
-  exit: { opacity: 0, transition: { duration: 0.16 } },
-}
+type GestureMode = 'idle' | 'pending' | 'lateral' | 'rubber' | 'back'
 
-/** Which neighbour page a drag is currently revealing, and on which side. */
-interface DragTarget {
-  page: PrimaryPage
-  /** +1 neighbour sits to the right (next tab), −1 to the left (prev). */
-  side: 1 | -1
-}
+const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v))
 
 export default function PageStack({
   pathname,
@@ -137,305 +151,523 @@ export default function PageStack({
   const navigate = useNavigate()
   const reduced = prefersReducedMotion()
 
-  // ── Direction of the current navigation ──
+  // ── Direction of THIS navigation, derived during render ──────────
+  // Deriving it in an effect (what this file used to do) meant the page
+  // mounted with the *previous* navigation's direction for one frame —
+  // the push slide never played and the two pages just cross-faded on
+  // top of each other. Setting state during render makes React re-run
+  // this component before it commits, so the very first painted frame
+  // already has the right entrance.
   const prevPathRef = useRef(pathname)
-  const [flow, setFlow] = useState<FlowCtx>({ kind: 'fade', sign: 0 })
-  // After a committed drag the new page is already on screen at rest —
-  // mount it without replaying an entrance animation.
-  const [skipEntrance, setSkipEntrance] = useState(false)
+  const pathRef = useRef(pathname)
   const committingRef = useRef(false)
+  pathRef.current = pathname
+  const [flow, setFlow] = useState<NavDirection>({ kind: 'fade', sign: 0 })
+  if (prevPathRef.current !== pathname) {
+    const from = prevPathRef.current
+    prevPathRef.current = pathname
+    setFlow(
+      committingRef.current
+        ? { kind: 'instant', sign: 0 }
+        : reduced
+          ? { kind: 'fade', sign: 0 }
+          : navDirection(from, pathname)
+    )
+  }
 
-  // ── Drag state ──
-  const x = useMotionValue(0)
-  const [dragTarget, setDragTarget] = useState<DragTarget | null>(null)
+  // ── Gesture state (mutable; never re-renders on pointermove) ─────
+  const gesture = useRef({
+    mode: 'idle' as GestureMode,
+    origin: 'body' as 'body' | 'edge',
+    pointerId: -1,
+    startX: 0,
+    startY: 0,
+    lastT: 0,
+    lastX: 0,
+    x: 0,
+    velocity: 0,
+    side: 0 as 1 | -1 | 0,
+    page: null as PrimaryPage | null,
+    suppressClick: false,
+  }).current
+
+  const liveRef = useRef<HTMLDivElement>(null)
+  const peekRef = useRef<HTMLDivElement>(null)
+  const scrimRef = useRef<HTMLDivElement>(null)
+  const chipRef = useRef<HTMLDivElement>(null)
+  const busyRef = useRef(false)
+  const timersRef = useRef<number[]>([])
+
+  const [peek, setPeek] = useState<PrimaryPage | null>(null)
+  const [peekSide, setPeekSide] = useState<1 | -1>(1)
+  const [backing, setBacking] = useState(false)
   const [viewportW, setViewportW] = useState(() =>
     typeof window === 'undefined' ? 390 : window.innerWidth
   )
+
   useEffect(() => {
     const onResize = () => setViewportW(window.innerWidth)
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
-  const dragRef = useRef({
-    active: false,
-    horizontal: false,
-    dead: false,
-    pointerId: -1,
-    startX: 0,
-    startY: 0,
-    lastT: 0,
-    lastX: 0,
-    velocity: 0,
-    suppressClick: false,
-  })
+  const clearTimers = useCallback(() => {
+    timersRef.current.forEach((t) => window.clearTimeout(t))
+    timersRef.current = []
+  }, [])
 
-  // Peek layer rides along 1:1 with the finger.
-  const peekX = useTransform(x, (v) => v + (dragTarget ? dragTarget.side * viewportW : 0))
-
-  useLayoutEffect(() => {
-    const from = prevPathRef.current
-    if (from !== pathname) {
-      // A committed drag already animated the hand-over under the
-      // finger — swap pages instantly instead of replaying a slide.
-      const committed = committingRef.current
-      setFlow(
-        committed
-          ? { kind: 'instant', sign: 0 }
-          : reduced
-            ? { kind: 'fade', sign: 0 }
-            : navDirection(from, pathname)
-      )
-      prevPathRef.current = pathname
-      window.scrollTo(0, 0)
-      if (committed) {
-        // Same frame, before paint: the new live page is already in
-        // the tree — snap the layer home and drop the peek so the
-        // swap is invisible (peek showed this very page's snapshot).
-        x.jump(0)
-        setDragTarget(null)
-        requestAnimationFrame(() => setSkipEntrance(false))
-      }
-      committingRef.current = false
-
-      // Freeze the page we are leaving — one tick later. React has
-      // already detached the original subtree by the time this effect
-      // runs, but AnimatePresence mounts the exiting clone (tagged
-      // with data-butter-page) on the very next frame, well before
-      // its exit animation finishes. Capture from the live clone.
-      const captureFrom = from
-      requestAnimationFrame(() => {
-        const leaving = document.querySelector<HTMLElement>(
-          `[data-butter-page="${captureFrom}"]`
-        )
-        if (leaving) saveSnapshot(captureFrom, leaving.innerHTML)
-      })
-    }
-  }, [pathname, reduced, x])
-
-  const endDrag = useCallback(
-    (commit: boolean) => {
-      const d = dragRef.current
-      const target = dragTarget
-      d.active = false
-      d.horizontal = false
-      d.dead = false
-      if (!commit || !target) {
-        animate(x, 0, { type: 'spring', stiffness: 420, damping: 38 })
-        setDragTarget(null)
-        return
-      }
-      // Commit: slide fully to the neighbour, then hand over to the
-      // live route — which mounts instantly, already in place.
-      committingRef.current = true
-      setSkipEntrance(true)
-      const dir = target.side // +1: current page exits left
-      const exitX = -dir * viewportW
-      animate(x, exitX, { duration: 0.22, ease: EASE_SWIPE }).then(() => {
-        navigate(target.page.path)
-      })
-      // If no ghost click shows up, re-arm the swallow for next time.
-      window.setTimeout(() => {
-        dragRef.current.suppressClick = false
-      }, 350)
+  const later = useCallback(
+    (fn: () => void, ms: number) => {
+      const id = window.setTimeout(fn, ms)
+      timersRef.current.push(id)
+      return id
     },
-    [dragTarget, navigate, viewportW, x]
+    []
   )
 
+  useEffect(() => clearTimers, [clearTimers])
+
+  // ── Route change: everything back to rest, instantly ─────────────
+  useLayoutEffect(() => {
+    const live = liveRef.current
+    if (live) {
+      // The outgoing page was hidden for the hand-over; the incoming
+      // one must be visible before the browser paints this frame.
+      live.style.transition = 'none'
+      live.style.transform = 'none'
+      live.style.visibility = ''
+    }
+    if (scrimRef.current) scrimRef.current.style.opacity = '0'
+    if (chipRef.current) chipRef.current.style.opacity = '0'
+
+    gesture.mode = 'idle'
+    gesture.pointerId = -1
+    gesture.x = 0
+    gesture.velocity = 0
+    gesture.page = null
+    gesture.suppressClick = false
+    busyRef.current = false
+    committingRef.current = false
+    setPeek(null)
+    setBacking(false)
+
+    // Reset scroll WITHOUT the smooth-scroll animation: a page sliding
+    // in while the viewport glides up reads as a stutter.
+    const html = document.documentElement
+    const previous = html.style.scrollBehavior
+    html.style.scrollBehavior = 'auto'
+    window.scrollTo(0, 0)
+    html.style.scrollBehavior = previous
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
+
+  // ── DOM helpers ──────────────────────────────────────────────────
+  const place = (el: HTMLElement | null, x: number, transition?: string) => {
+    if (!el) return
+    el.style.transition = transition ?? 'none'
+    el.style.transform = x === 0 ? 'none' : `translate3d(${x}px, 0, 0)`
+  }
+
+  const finishTransition = (el: HTMLElement | null, onEnd: () => void, ms: number) => {
+    if (!el) {
+      onEnd()
+      return
+    }
+    let done = false
+    const run = () => {
+      if (done) return
+      done = true
+      el.removeEventListener('transitionend', run)
+      onEnd()
+    }
+    el.addEventListener('transitionend', run)
+    later(run, ms + 60) // safety net: a throttled tab must not wedge the shell
+  }
+
+  /** Put the live layer back on screen after a committed hand-over. */
+  const restoreLive = useCallback(() => {
+    const live = liveRef.current
+    if (live) {
+      live.style.visibility = ''
+      live.style.transform = 'none'
+      live.style.transition = 'none'
+    }
+    busyRef.current = false
+    gesture.suppressClick = false
+  }, [gesture])
+
+  // ── Gesture lifecycle ────────────────────────────────────────────
+  const resetDrag = useCallback(
+    (springHome: boolean) => {
+      const g = gesture
+      const side = g.side
+      const target = g.page
+      g.mode = 'idle'
+      g.pointerId = -1
+
+      if (!springHome) {
+        place(liveRef.current, 0)
+        if (scrimRef.current) scrimRef.current.style.opacity = '0'
+        if (chipRef.current) chipRef.current.style.opacity = '0'
+        setPeek(null)
+        setBacking(false)
+        busyRef.current = false
+        return
+      }
+
+      busyRef.current = true
+      place(liveRef.current, 0, TRANSITION_SPRING_BACK)
+      if (side && target) place(peekRef.current, side * viewportW, TRANSITION_SPRING_BACK)
+      if (scrimRef.current) {
+        scrimRef.current.style.transition = 'opacity 340ms cubic-bezier(0.22, 1, 0.36, 1)'
+        scrimRef.current.style.opacity = '0'
+      }
+      if (chipRef.current) {
+        chipRef.current.style.transition = 'opacity 240ms ease-out'
+        chipRef.current.style.opacity = '0'
+      }
+      finishTransition(liveRef.current, () => {
+        place(liveRef.current, 0)
+        if (scrimRef.current) scrimRef.current.style.transition = 'none'
+        if (chipRef.current) chipRef.current.style.transition = 'none'
+        setPeek(null)
+        setBacking(false)
+        busyRef.current = false
+      }, 340)
+    },
+    [gesture, later, viewportW]
+  )
+
+  /** Lateral commit: the page finishes sliding out, then the live route
+   *  takes over in the same task — the new page mounts at rest. */
+  const commitLateral = useCallback(
+    (target: PrimaryPage) => {
+      const g = gesture
+      // End the gesture NOW: `lostpointercapture` always follows
+      // `pointerup`, and a cancel handler that still sees an active
+      // gesture would spring the page back mid-commit.
+      g.mode = 'idle'
+      busyRef.current = true
+      g.suppressClick = true
+      const exitX = -(g.side as number) * viewportW
+      place(liveRef.current, exitX, TRANSITION_COMMIT)
+      place(peekRef.current, 0, TRANSITION_COMMIT)
+      finishTransition(liveRef.current, () => {
+        const live = liveRef.current
+        committingRef.current = true
+        if (live) {
+          live.style.transition = 'none'
+          live.style.transform = 'none'
+          // Hide the outgoing page for the hand-over; the layout effect
+          // above restores it before the incoming page paints.
+          live.style.visibility = 'hidden'
+        }
+        const routeAtCommit = pathname
+        navigate(target.path)
+        // Route changed → the layout effect already restored the layer.
+        // It did not change (same pathname, e.g. only a query differs) →
+        // restore on the next frame instead of leaving the shell hidden.
+        // Checked on the SECOND frame, by which point React has
+        // certainly committed: if the route changed, the layout effect
+        // already restored the layer; if it did not, restore now rather
+        // than leave the shell hidden. (One frame is not enough — React
+        // may schedule the navigation after the next rAF.)
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            if (pathRef.current === routeAtCommit) restoreLive()
+          })
+        )
+        later(restoreLive, 320) // last-resort safety net
+      }, 220)
+    },
+    [gesture, later, navigate, pathname, restoreLive, viewportW]
+  )
+
+  /** Edge swipe-back commit. */
+  const commitBack = useCallback(() => {
+    const g = gesture
+    g.mode = 'idle' // see commitLateral — pointer capture is about to drop
+    busyRef.current = true
+    g.suppressClick = true
+    place(liveRef.current, viewportW, TRANSITION_COMMIT_BACK)
+    finishTransition(liveRef.current, () => {
+      const live = liveRef.current
+      committingRef.current = true
+      if (live) {
+        live.style.transition = 'none'
+        live.style.transform = 'none'
+        live.style.visibility = 'hidden'
+      }
+      const hasHistory =
+        typeof window !== 'undefined' &&
+        !!window.history.state &&
+        typeof window.history.state.idx === 'number' &&
+        window.history.state.idx > 0
+      const routeAtCommit = pathname
+      if (hasHistory) navigate(-1)
+      else navigate(fallbackBackTarget(pathname), { replace: true })
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          if (pathRef.current === routeAtCommit) restoreLive()
+        })
+      )
+      later(restoreLive, 320)
+    }, 200)
+  }, [gesture, later, navigate, pathname, restoreLive, viewportW])
+
+  // ── Pointer handlers ─────────────────────────────────────────────
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
-      if (reduced) return
-      if (e.pointerType === 'mouse') return // desktop keeps classic navigation
-      if (!PRIMARY_PATHS.includes(pathname)) return
-      // The left edge belongs to the sidebar drawer gesture.
-      if (e.clientX <= EDGE_SWIPE_ZONE) return
+      if (reduced || busyRef.current) return
+      if (e.pointerType === 'mouse') return // desktop keeps classical navigation
       if (shouldIgnore(e.target)) return
-      const d = dragRef.current
-      d.active = true
-      d.horizontal = false
-      d.dead = false
-      d.pointerId = e.pointerId
-      d.startX = e.clientX
-      d.startY = e.clientY
-      d.lastT = performance.now()
-      d.lastX = 0
-      d.velocity = 0
-      d.suppressClick = false
+
+      const fromEdge = e.clientX <= EDGE_SWIPE_ZONE
+      // The left edge means "open the drawer" on primary tabs (handled by
+      // useEdgeDrawer) and "go back" on deeper pages (handled here).
+      if (fromEdge && !canSwipeBack(pathname)) return
+      // Off the edge, only the primary tab ring is draggable.
+      if (!fromEdge && !PRIMARY_PATHS.includes(pathname)) return
+
+      const g = gesture
+      g.mode = 'pending'
+      g.origin = fromEdge ? 'edge' : 'body'
+      g.pointerId = e.pointerId
+      g.startX = e.clientX
+      g.startY = e.clientY
+      g.lastT = performance.now()
+      g.lastX = 0
+      g.x = 0
+      g.velocity = 0
+      g.side = 0
+      g.page = null
+      g.suppressClick = false
     },
-    [pathname, reduced]
+    [gesture, pathname, reduced]
   )
 
   const onPointerMove = useCallback(
     (e: React.PointerEvent) => {
-      const d = dragRef.current
-      if (!d.active || e.pointerId !== d.pointerId) return
-      const dx = e.clientX - d.startX
-      const dy = e.clientY - d.startY
-      if (!d.horizontal) {
-        if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) {
-          // Vertical intent — hand the gesture back to native scroll.
-          d.active = false
-          return
+      const g = gesture
+      if (g.mode === 'idle' || e.pointerId !== g.pointerId) return
+
+      const dx = e.clientX - g.startX
+      const dy = e.clientY - g.startY
+
+      if (g.mode === 'pending') {
+        const neighbor = lateralNeighbor(pathname, dx)
+        const intent = classifyDrag({
+          originX: g.startX,
+          dx,
+          dy,
+          isPrimary: PRIMARY_PATHS.includes(pathname),
+          canBack: canSwipeBack(pathname),
+          hasNeighbor: !!neighbor,
+        })
+        if (intent === 'none') return // not decided yet, or not ours
+        g.mode = intent
+        if (intent === 'back') {
+          setBacking(true)
+        } else if (intent === 'lateral' && neighbor) {
+          g.side = dx < 0 ? 1 : -1
+          g.page = neighbor
+          setPeekSide(g.side)
+          setPeek(neighbor)
         }
-        if (Math.abs(dx) > 14) {
-          const neighbor = lateralNeighbor(pathname, dx)
-          if (!neighbor) {
-            d.active = false // at the end of the ring
-            return
-          }
-          d.horizontal = true
-          setDragTarget({ page: neighbor, side: dx < 0 ? 1 : -1 })
+        // Own the pointer only once the gesture is unambiguously ours,
+        // so a plain tap still reaches the button underneath.
+        try {
+          ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+        } catch {
+          /* older browsers: tracking continues without capture */
         }
+      }
+
+      const now = performance.now()
+      const dt = now - g.lastT
+      let x = 0
+      if (g.mode === 'lateral') {
+        x = clamp(dx, -viewportW, viewportW)
+        place(liveRef.current, x)
+        place(peekRef.current, x + (g.side as number) * viewportW)
+      } else if (g.mode === 'rubber') {
+        x = rubberBand(dx)
+        place(liveRef.current, x)
+      } else if (g.mode === 'back') {
+        x = clamp(dx, 0, viewportW)
+        place(liveRef.current, x)
+        const progress = x / viewportW
+        if (scrimRef.current) scrimRef.current.style.opacity = String(0.55 * progress)
+        if (chipRef.current) {
+          chipRef.current.style.opacity = String(Math.min(1, progress * 2.2))
+          chipRef.current.style.transform = `translate3d(${x * 0.55}px, -50%, 0)`
+        }
+      } else {
         return
       }
-      // 1:1 lockstep, clamped to one viewport width.
-      const clamped = Math.max(-viewportW, Math.min(viewportW, dx))
-      const now = performance.now()
-      const dt = now - d.lastT
+
       if (dt > 0) {
-        d.velocity = ((clamped - d.lastX) / dt) * 1000
-        d.lastT = now
-        d.lastX = clamped
+        g.velocity = ((x - g.lastX) / dt) * 1000
+        g.lastT = now
+        g.lastX = x
       }
-      if (Math.abs(clamped) > 8) d.suppressClick = true
-      x.set(clamped)
+      g.x = x
+      if (Math.abs(x) > 8) g.suppressClick = true
     },
-    [pathname, viewportW, x]
+    [gesture, pathname, viewportW]
   )
 
   const onPointerUp = useCallback(
     (e: React.PointerEvent) => {
-      const d = dragRef.current
-      if (!d.active || e.pointerId !== d.pointerId) return
-      if (!d.horizontal) {
-        d.active = false
+      const g = gesture
+      if (busyRef.current) return
+      if (g.mode === 'idle' || e.pointerId !== g.pointerId) return
+
+      if (g.mode === 'lateral' && g.page) {
+        const commit = commitSwipe({
+          travelled: g.x,
+          velocity: g.velocity,
+          width: viewportW,
+          // A drag to the left (side = +1) commits by travelling left.
+          direction: g.side === 1 ? -1 : 1,
+        })
+        if (commit) commitLateral(g.page)
+        else resetDrag(true)
         return
       }
-      const travelled = x.get()
-      const side = dragTarget?.side ?? 0
-      const flinging = Math.abs(d.velocity) > 480 && Math.sign(d.velocity) === -side
-      const farEnough = Math.abs(travelled) > viewportW * 0.28
-      endDrag(farEnough || flinging)
+      if (g.mode === 'back') {
+        const commit = commitSwipe({
+          travelled: g.x,
+          velocity: g.velocity,
+          width: viewportW,
+          direction: 1,
+        })
+        if (commit) commitBack()
+        else resetDrag(true)
+        return
+      }
+      // 'pending' never moved the page, so there is nothing to spring
+      // home — clearing instantly keeps rapid taps responsive.
+      resetDrag(g.mode === 'rubber')
     },
-    [dragTarget, endDrag, viewportW, x]
+    [commitBack, commitLateral, gesture, resetDrag, viewportW]
   )
 
   const onPointerCancel = useCallback(() => {
-    if (dragRef.current.horizontal) endDrag(false)
-    else dragRef.current.active = false
-  }, [endDrag])
+    if (busyRef.current) return
+    if (gesture.mode !== 'idle') resetDrag(gesture.mode !== 'pending')
+  }, [gesture, resetDrag])
 
-  // Swallow the ghost click that follows a horizontal drag (a link
-  // under the finger must not fire when the gesture was a swipe).
+  // Swallow the ghost click that follows a drag: a link under the
+  // finger must not fire when the gesture was a swipe.
   useEffect(() => {
-    if (!dragTarget) return
+    if (!peek && !backing) return
     const swallow = (e: MouseEvent) => {
-      if (dragRef.current.suppressClick) {
+      if (gesture.suppressClick) {
         e.stopPropagation()
         e.preventDefault()
-        dragRef.current.suppressClick = false
+        gesture.suppressClick = false
       }
     }
     document.addEventListener('click', swallow, { capture: true })
     return () => document.removeEventListener('click', swallow, { capture: true })
-  }, [dragTarget])
+  }, [backing, gesture, peek])
 
-  const snapshotHtml = dragTarget ? getSnapshot(dragTarget.page.path) : null
-  const variants = reduced ? fadeOnlyVariants : pageVariants
+  const enter = enterFor(flow, reduced)
 
   return (
     <div
       className={clsx('relative min-w-0 w-full', fullBleed && 'flex-1 flex flex-col min-h-0')}
-      // `clip` (not `hidden`): hides the sliding pages that overshoot
-      // horizontally WITHOUT creating a scroll container — in-page
-      // sticky bars (POS cart, search headers) keep working.
-      style={{ overflowX: 'clip' }}
+      // `clip` (not `hidden`): hides the sliding page when it overshoots
+      // WITHOUT creating a scroll container — in-page sticky bars (POS
+      // cart, search headers) keep working.
+      style={{ overflowX: 'clip', overscrollBehaviorX: 'none' }}
     >
-      {/* ── Peek layer: the real neighbour page (or a branded preview)
-             revealed under the finger during a lateral drag ── */}
-      <AnimatePresence>
-        {dragTarget && (
-          <motion.div
-            key={dragTarget.page.path}
-            className="absolute inset-0 z-0 overflow-hidden bg-paper pointer-events-none"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.12 }}
-            style={{ x: peekX }}
-            aria-hidden="true"
-          >
-            {snapshotHtml ? (
-              <div
-                className="w-full h-full overflow-hidden select-none"
-                dangerouslySetInnerHTML={{ __html: snapshotHtml }}
-              />
-            ) : (
-              <PeekPreview page={dragTarget.page} />
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* ── Shell revealed behind an edge swipe-back ── */}
+      <div
+        ref={scrimRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-0 bg-paper-deep opacity-0"
+      />
 
-      {/* ── Live page (draggable over the peek layer) ── */}
-      <motion.div
+      {/* ── Lateral peek: a branded preview of the neighbour tab.
+             Deliberately NOT a copy of the live page — see the header
+             note. Nothing on screen is ever rendered twice. ── */}
+      {peek && (
+        <div
+          ref={peekRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-0 overflow-hidden bg-paper"
+        >
+          <PeekPreview page={peek} />
+        </div>
+      )}
+
+      {/* ── Edge swipe-back affordance ── */}
+      {backing && (
+        <div
+          ref={chipRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute left-2 top-1/2 z-20 flex items-center gap-1 rounded-full border border-line bg-surface/90 py-2 pl-1.5 pr-3 opacity-0 shadow-float backdrop-blur"
+        >
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary-soft text-secondary-strong">
+            <ChevronLeft className="h-4 w-4" strokeWidth={2.4} />
+          </span>
+          <span className="text-xs font-semibold text-fg">Back</span>
+        </div>
+      )}
+
+      {/* ── The live page. Exactly one, always. ── */}
+      <div
+        ref={liveRef}
         className={clsx('relative z-10 min-w-0 w-full', fullBleed && 'flex-1 flex flex-col min-h-0')}
-        style={{ x }}
-        onPointerDown={(e) => {
-          // Keep vertical page scrolling native while allowing horizontal swipes.
-          if (e.pointerType !== 'mouse') e.currentTarget.setPointerCapture(e.pointerId)
-          onPointerDown(e)
-        }}
+        onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
         onLostPointerCapture={onPointerCancel}
       >
-        <AnimatePresence mode="popLayout" initial={false} custom={flow}>
-          <motion.div
-            key={pathname}
-            custom={flow}
-            variants={variants}
-            initial={skipEntrance ? false : 'enter'}
-            animate="center"
-            exit="exit"
-            data-butter-page={pathname}
-            // `relative` matters: z-index from the variants only applies
-            // to positioned elements, and it decides whether the
-            // incoming page covers the outgoing one (push) or slides
-            // out from under it (pop).
-            className={clsx('relative min-w-0 w-full', fullBleed && 'flex-1 flex flex-col min-h-0')}
-          >
-            <div className={fullBleed ? 'flex-1 flex flex-col min-h-0' : undefined}>
-              {children}
-            </div>
-          </motion.div>
-        </AnimatePresence>
-      </motion.div>
+        <motion.div
+          key={pathname}
+          initial={enter.initial}
+          animate={enter.animate}
+          transition={enter.transition}
+          data-butter-page={pathname}
+          className={clsx('relative min-w-0 w-full', fullBleed && 'flex-1 flex flex-col min-h-0')}
+        >
+          <div className={fullBleed ? 'flex-1 flex flex-col min-h-0' : undefined}>{children}</div>
+        </motion.div>
+      </div>
     </div>
   )
 }
 
-// ── Branded preview for a neighbour page we have not visited yet ──
+// ── Branded preview of a neighbour tab ──────────────────────────────
 function PeekPreview({ page }: { page: PrimaryPage }) {
   const Icon = page.icon
   const index = PRIMARY_PATHS.indexOf(page.path)
   return (
-    <div className="w-full h-full bg-paper flex flex-col items-center justify-center gap-4 select-none">
+    <div className="flex h-full w-full select-none flex-col items-center justify-center gap-5 bg-paper px-8">
       <div className="relative">
-        <div className="absolute -inset-5 rounded-full bg-accent/10 blur-2xl" />
-        <div className="relative w-20 h-20 rounded-3xl bg-surface border border-line shadow-float flex items-center justify-center">
-          <Icon className="w-9 h-9 text-accent" strokeWidth={1.6} />
+        <div className="absolute -inset-6 rounded-full bg-accent/10 blur-2xl" />
+        <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl border border-line bg-surface shadow-float">
+          <Icon className="h-9 w-9 text-accent" strokeWidth={1.6} />
         </div>
       </div>
       <div className="text-center">
         <p className="text-base font-bold text-fg">{page.label}</p>
-        <p className="text-xs text-fg-subtle mt-1">Release to open</p>
+        <p className="mt-1 text-xs text-fg-subtle">Release to open</p>
+      </div>
+      {/* Quiet content skeleton so the preview never looks empty. */}
+      <div className="w-full max-w-[240px] space-y-2.5" aria-hidden="true">
+        <div className="h-2 w-3/4 rounded-full bg-line/70" />
+        <div className="h-2 w-full rounded-full bg-line/50" />
+        <div className="h-2 w-2/3 rounded-full bg-line/40" />
       </div>
       <div className="flex gap-1.5" aria-hidden="true">
-        {PRIMARY_PATHS.map((p, i) => (
+        {PRIMARY_PAGES.map((p, i) => (
           <span
-            key={p}
+            key={p.path}
             className={clsx(
               'h-1.5 rounded-full transition-all',
               i === index ? 'w-5 bg-accent' : 'w-1.5 bg-line-2'

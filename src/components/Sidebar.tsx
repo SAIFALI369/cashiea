@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import clsx from 'clsx'
@@ -19,6 +19,7 @@ import {
   UserCircle, Bell, ShieldCheck, Lightbulb, X, LogOut, ChevronDown, ChevronRight,
   TrendingUp, Landmark, RefreshCw, LineChart, CalendarClock, Copy, Share2, Flame, Tag, ClipboardCheck, Megaphone } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { drawerShouldDismiss } from '../lib/gestures'
 
 interface Item { to: string; label: string; icon: LucideIcon; end?: boolean; badge?: boolean; ai?: boolean }
 interface Section { label: string; items: Item[] }
@@ -121,6 +122,78 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
 
   const handleSignOut = async () => { await signOut(); navigate('/') }
 
+  // ── Drag the drawer closed ──────────────────────────────────────
+  // The drawer follows the thumb 1:1 and dismisses on a decisive
+  // leftward drag (thresholds shared with every other gesture in
+  // src/lib/gestures). Releasing early lets the existing CSS
+  // transition glide it back, so there is no second animation system.
+  const asideRef = useRef<HTMLElement | null>(null)
+  const backdropRef = useRef<HTMLDivElement | null>(null)
+  const dragRef = useRef({ active: false, id: -1, startX: 0, x: 0, lastT: 0, lastX: 0, velocity: 0 })
+
+  const clearDragStyles = useCallback(() => {
+    const aside = asideRef.current
+    const backdrop = backdropRef.current
+    if (aside) { aside.style.transition = ''; aside.style.transform = '' }
+    if (backdrop) backdrop.style.opacity = ''
+  }, [])
+
+  const onDrawerPointerDown = useCallback((e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse') return
+    if (!isOpen) return
+    // On desktop the sidebar is part of the layout, not a drawer.
+    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) return
+    const d = dragRef.current
+    d.active = true
+    d.id = e.pointerId
+    d.startX = e.clientX
+    d.x = 0
+    d.lastX = 0
+    d.lastT = performance.now()
+    d.velocity = 0
+  }, [isOpen])
+
+  const onDrawerPointerMove = useCallback((e: React.PointerEvent) => {
+    const d = dragRef.current
+    if (!d.active || e.pointerId !== d.id) return
+    const dx = Math.min(0, e.clientX - d.startX) // only ever leftward
+    const aside = asideRef.current
+    const backdrop = backdropRef.current
+    if (aside) {
+      aside.style.transition = 'none'
+      aside.style.transform = `translate3d(${dx}px, 0, 0)`
+    }
+    if (backdrop) {
+      const width = aside?.offsetWidth || 288
+      backdrop.style.transition = 'none'
+      backdrop.style.opacity = String(Math.max(0, 1 + dx / width))
+    }
+    const now = performance.now()
+    const dt = now - d.lastT
+    if (dt > 0) {
+      d.velocity = ((dx - d.lastX) / dt) * 1000
+      d.lastT = now
+      d.lastX = dx
+    }
+    d.x = dx
+  }, [])
+
+  const onDrawerPointerUp = useCallback(() => {
+    const d = dragRef.current
+    if (!d.active) return
+    d.active = false
+    // Restore the class-driven transition FIRST: clearing the inline
+    // transform then glides the drawer home (or out) on the same curve.
+    clearDragStyles()
+    if (drawerShouldDismiss(d.x, d.velocity)) onClose()
+  }, [clearDragStyles, onClose])
+
+  const onDrawerPointerCancel = useCallback(() => {
+    if (!dragRef.current.active) return
+    dragRef.current.active = false
+    clearDragStyles()
+  }, [clearDragStyles])
+
   const renderItem = (item: Item) => {
     const capability = requiredCapability(item.to)
     if (profile && capability && !can(profile.role, capability)) return null
@@ -162,12 +235,19 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
     <>
       {/* Backdrop fades in/out; the drawer itself slides (translate-x). */}
       <div
+        ref={backdropRef}
         onClick={onClose}
         aria-hidden="true"
         className={`fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
       />
-      <aside className={clsx(
-        'fixed lg:sticky top-0 left-0 z-50 h-screen bg-paper border-r border-line flex flex-col transition-all duration-300',
+      <aside
+        ref={asideRef}
+        onPointerDown={onDrawerPointerDown}
+        onPointerMove={onDrawerPointerMove}
+        onPointerUp={onDrawerPointerUp}
+        onPointerCancel={onDrawerPointerCancel}
+        className={clsx(
+        'fixed lg:sticky top-0 left-0 z-50 h-screen bg-paper border-r border-line flex flex-col transition-all duration-300 ease-butter',
         collapsed ? 'w-[68px]' : 'w-72',
         isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       )}>

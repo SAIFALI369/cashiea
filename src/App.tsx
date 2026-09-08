@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
+import { MotionConfig } from 'framer-motion'
 import { useAuth } from './context/AuthContext'
 import { supabaseConfigured, supabaseConfigIssue } from './lib/supabase'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -79,6 +80,15 @@ function App() {
   }
 
   return (
+    // One place decides how the whole app moves:
+    //   • reducedMotion="user" — the OS "reduce motion" setting turns
+    //     every transform/layout animation into a fade, app-wide, so no
+    //     component can forget it.
+    //   • a single default transition — one signature curve everywhere.
+    <MotionConfig
+      reducedMotion="user"
+      transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+    >
     <ErrorBoundary>
     <Suspense fallback={<FullPageFallback />}>
       <Routes>
@@ -156,6 +166,7 @@ function App() {
       </Routes>
     </Suspense>
     </ErrorBoundary>
+    </MotionConfig>
   )
 }
 

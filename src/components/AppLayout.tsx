@@ -16,6 +16,7 @@ import { useAuth } from '../context/AuthContext'
 import { getPageContext } from '../lib/pageContext'
 import { useKeyboardShortcuts } from '../lib/useKeyboardShortcuts'
 import { useEdgeDrawer } from '../lib/useSwipeNavigation'
+import { canSwipeBack } from '../lib/butterNav'
 import { Menu, Settings, ChevronLeft, Lightbulb } from 'lucide-react'
 import { useIsDesktop } from '../lib/useIsDesktop'
 
@@ -27,10 +28,15 @@ export default function AppLayout() {
   const isDesktop = useIsDesktop()
   useDailyIntelligence(ownerId, profile?.role === 'owner' && !profile.business_owner_id)
   useKeyboardShortcuts()
-  // Lateral swipe between primary tabs now lives in PageStack
-  // (interactive, with the neighbour page revealed under the finger).
-  // Swipe in from the left edge → sidebar drawer slides in.
-  useEdgeDrawer({ isOpen: sidebarOpen, onOpen: () => setSidebarOpen(true), onClose: () => setSidebarOpen(false) })
+  // Lateral swipe between primary tabs and edge swipe-back live in
+  // PageStack (interactive, following the finger 1:1). The drawer only
+  // owns the left edge where there is nothing to go back to.
+  useEdgeDrawer({
+    isOpen: sidebarOpen,
+    onOpen: () => setSidebarOpen(true),
+    onClose: () => setSidebarOpen(false),
+    enabled: !canSwipeBack(location.pathname),
+  })
 
   // The Meraj assistant page is full-bleed and scrolls internally; other pages
   // keep the padded, max-width shell + native body scroll. On desktop this
