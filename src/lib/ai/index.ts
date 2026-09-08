@@ -220,8 +220,41 @@ export async function askAssistant(
     },
     body: JSON.stringify({ message, briefing, scope, mode, confirm, pageContext, history, image }),
   })
+
+  // ── SSE: the edge streams ask-mode replies as text/event-stream. Parse
+  //    the stream to the end and extract the final text. Without this,
+  //    res.json() on an SSE body returns garbage → reply: undefined →
+  //    SmartReply crashed (.split on undefined) and the voice companion
+  //    silently closed. This was THE root cause of both bugs. ──
+  const ct = res.headers.get('content-type') || ''
+  if (ct.includes('text/event-stream') && res.body) {
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let sseBuffer = ''
+    let sseFull = ''
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      sseBuffer += decoder.decode(value, { stream: true })
+      const lines = sseBuffer.split('\n')
+      sseBuffer = lines.pop() || ''
+      for (const line of lines) {
+        const t = line.trim()
+        if (!t.startsWith('data: ')) continue
+        try {
+          const j = JSON.parse(t.slice(6))
+          if (typeof j.text === 'string' && j.text.length > sseFull.length) sseFull = j.text
+        } catch { /* partial line across chunks */ }
+      }
+    }
+    if (!sseFull) throw new Error('The AI returned an empty reply — please try again.')
+    if (cacheKey) aiCacheSet(cacheKey, { reply: sseFull, pending: undefined })
+    return { reply: sseFull }
+  }
+
   const data = await res.json().catch(() => ({ error: 'Invalid response from server' }))
   if (!res.ok) throw new Error(data?.error || `Request failed (HTTP ${res.status})`)
+  if (!data.reply) throw new Error('The AI returned an empty reply — please try again.')
 
   // Store in cache for next time
   if (cacheKey && data.reply) aiCacheSet(cacheKey, { reply: data.reply, pending: data.pending })
