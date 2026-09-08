@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { supabase, AI_FUNCTION_URL } from './supabase'
+import { supabase, AI_FUNCTION_URL, edgeFunctionUrl } from './supabase'
 
 /**
  * useSpeech — Meraj's voice system.
@@ -91,23 +91,51 @@ export function useSpeech() {
     }
   }, [ttsSupported])
 
-  // ── TTS: speak text aloud ──
-  const speak = useCallback(
-    (text: string, onDone?: () => void) => {
-      if (!ttsSupported || !text.trim()) {
-        onDone?.()
-        return
-      }
-      // Strip markdown so it doesn't read asterisks/hashtags aloud
-      const clean = text
-        .replace(/[#*`>_|]/g, ' ')
-        .replace(/\[(.+?)\]\(.+?\)/g, '$1') // links → just the text
-        .replace(/₹/g, ' rupees ')
-        .replace(/\u20b9/g, ' rupees ')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 600) // don't read entire essays aloud
+  // ── ELEVENLABS: premium AI voice (falls back to browser TTS) ──
+  const elevenDeadUntilRef = useRef(0)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
+  const speakEleven = useCallback(
+    async (clean: string, onDone?: () => void): Promise<boolean> => {
+      if (Date.now() < elevenDeadUntilRef.current) return false
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) return false
+        const res = await fetch(edgeFunctionUrl('meraj-tts'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ text: clean }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (data?.fallback) {
+          elevenDeadUntilRef.current = Date.now() + 10 * 60 * 1000
+          return false
+        }
+        if (!res.ok || !data?.audio) return false
+
+        if (audioRef.current) { try { audioRef.current.pause() } catch { /* ignore */ } }
+        const audio = new Audio(`data:audio/mp3;base64,${data.audio}`)
+        audioRef.current = audio
+        audio.onended = () => { setSpeaking(false); onDone?.() }
+        audio.onerror = () => { setSpeaking(false); onDone?.() }
+        setSpeaking(true)
+        await audio.play()
+        return true
+      } catch {
+        return false
+      }
+    },
+    [],
+  )
+
+  // ── BROWSER TTS: the reliable fallback ──
+  const browserSpeak = useCallback(
+    (clean: string, onDone?: () => void) => {
+      if (!ttsSupported) { onDone?.(); return }
       window.speechSynthesis.cancel()
       const utter = (): void => {
         const u = new SpeechSynthesisUtterance(clean)
@@ -118,23 +146,9 @@ export function useSpeech() {
         u.pitch = 1.0
         u.onstart = () => setSpeaking(true)
         u.onend = () => { setSpeaking(false); onDone?.() }
-        u.onerror = () => {
-          // Some engines fail their very first utterance — one retry fixes it
-          try {
-            const r = new SpeechSynthesisUtterance(clean)
-            if (voice) r.voice = voice
-            r.lang = u.lang; r.rate = u.rate; r.pitch = u.pitch
-            r.onstart = () => setSpeaking(true)
-            r.onend = () => { setSpeaking(false); onDone?.() }
-            r.onerror = () => { setSpeaking(false); onDone?.() }
-            window.speechSynthesis.speak(r)
-          } catch { setSpeaking(false); onDone?.() }
-        }
+        u.onerror = () => { setSpeaking(false); onDone?.() }
         window.speechSynthesis.speak(u)
       }
-      // Voices load async on Chrome — wait up to 500ms for at least one,
-      // then speak. Without a loaded voice, speak() silently does nothing
-      // on several Android browsers (the "Meraj doesn't talk" bug).
       const voices = window.speechSynthesis.getVoices()
       if (voices.length) {
         cachedVoice = null; pickBestVoice()
@@ -150,6 +164,31 @@ export function useSpeech() {
       }
     },
     [ttsSupported],
+  )
+
+  // ── TTS: speak — ElevenLabs first, browser fallback always works ──
+  const speak = useCallback(
+    (text: string, onDone?: () => void) => {
+      if (!text.trim()) {
+        onDone?.()
+        return
+      }
+      // Strip markdown so it doesn't read asterisks/hashtags aloud
+      const clean = text
+        .replace(/[#*`>_|]/g, ' ')
+        .replace(/\[(.+?)\]\(.+?\)/g, '$1')
+        .replace(/₹/g, ' rupees ')
+        .replace(/\u20b9/g, ' rupees ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 600)
+
+      // ElevenLabs premium voice first — instant fallback to browser
+      speakEleven(clean, onDone).then((ok) => {
+        if (!ok) browserSpeak(clean, onDone)
+      })
+    },
+    [speakEleven, browserSpeak],
   )
 
   const stopSpeaking = useCallback(() => {
