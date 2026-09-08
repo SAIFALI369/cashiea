@@ -235,7 +235,8 @@ function GeneratedImage({ img, onRegenerate }: { img: { url: string; prompt: str
    • List items with stock context → traffic-light rows (green/yellow/red)
    • Everything else → normal sanitized markdown                                  */
 function SmartReply({ text, onEditDraft, onSendDraft }: { text: string; onEditDraft?: (t: string) => void; onSendDraft?: (t: string) => void }) {
-  const blocks: string[] = text.split(/\n\n+/).filter((b) => b.trim())
+  const safeText = typeof text === 'string' ? text : String(text ?? '')
+  const blocks: string[] = safeText.split(/\n\n+/).filter((b) => b.trim())
   return (
     <>
       {blocks.map((block, i) => {

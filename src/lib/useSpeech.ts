@@ -379,7 +379,7 @@ export function useSpeech() {
               let sum = 0
               for (let i = 0; i < buf.length; i++) { const d = (buf[i] - 128) / 128; sum += d * d }
               const rms = Math.sqrt(sum / buf.length)
-              if (rms > 0.035) spoke = true   // real speech is 0.05+; shop background noise < 0.02
+              if (rms > 0.025) spoke = true   // speech is 0.04+; ambient noise ~0.01-0.015
             }, 100)
             window.setTimeout(() => window.clearInterval(energyTimer), windowMs + 500)
           } catch { /* energy check optional */ }
