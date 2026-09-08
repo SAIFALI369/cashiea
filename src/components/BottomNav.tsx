@@ -148,19 +148,24 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
           setVoiceReply(heard) // live words in the companion bubble
         }
         if (isFinal) {
-          // 2s of silence after speech (or manual stop) → send to Meraj now
-          if (!heard.trim()) { setVoiceActive(false); return }
+          if (!heard.trim()) {
+            setVoiceReply("I didn't catch that — tap me and try again.")
+            speak("I didn't catch that. Try again.")
+            setTimeout(() => { setVoiceActive(false); setVoiceReply('') }, 3500)
+            return
+          }
           setVoiceLoading(true)
           askAssistant(heard, false, undefined, 'ask', undefined, pageContext)
             .then((res) => {
-              setVoiceReply(res.reply)
-              if (res.reply) speak(res.reply, () => setTimeout(() => { setVoiceActive(false); setVoiceReply('') }, 4000))
-              else setTimeout(() => setVoiceActive(false), 1500)
+              const reply = (res && typeof res.reply === 'string' && res.reply.trim()) ? res.reply : "I couldn't think of a reply — try asking again."
+              setVoiceReply(reply)
+              speak(reply, () => setTimeout(() => { setVoiceActive(false); setVoiceReply('') }, 4000))
             })
             .catch((e) => {
               const m = e instanceof Error ? e.message : 'Something went wrong.'
               setVoiceReply('⚠️ ' + m)
-              setTimeout(() => setVoiceActive(false), 3500)
+              speak('Sorry, that did not work.')
+              setTimeout(() => setVoiceActive(false), 5000)
             })
             .finally(() => setVoiceLoading(false))
         }
