@@ -109,16 +109,45 @@ export function useSpeech() {
         .slice(0, 600) // don't read entire essays aloud
 
       window.speechSynthesis.cancel()
-      const u = new SpeechSynthesisUtterance(clean)
-      const voice = pickBestVoice()
-      if (voice) u.voice = voice
-      u.lang = voice?.lang || 'en-IN'
-      u.rate = 1.05 // slightly faster = more natural
-      u.pitch = 1.0
-      u.onstart = () => setSpeaking(true)
-      u.onend = () => { setSpeaking(false); onDone?.() }
-      u.onerror = () => { setSpeaking(false); onDone?.() }
-      window.speechSynthesis.speak(u)
+      const utter = (): void => {
+        const u = new SpeechSynthesisUtterance(clean)
+        const voice = pickBestVoice()
+        if (voice) u.voice = voice
+        u.lang = voice?.lang || 'en-IN'
+        u.rate = 1.05
+        u.pitch = 1.0
+        u.onstart = () => setSpeaking(true)
+        u.onend = () => { setSpeaking(false); onDone?.() }
+        u.onerror = () => {
+          // Some engines fail their very first utterance — one retry fixes it
+          try {
+            const r = new SpeechSynthesisUtterance(clean)
+            if (voice) r.voice = voice
+            r.lang = u.lang; r.rate = u.rate; r.pitch = u.pitch
+            r.onstart = () => setSpeaking(true)
+            r.onend = () => { setSpeaking(false); onDone?.() }
+            r.onerror = () => { setSpeaking(false); onDone?.() }
+            window.speechSynthesis.speak(r)
+          } catch { setSpeaking(false); onDone?.() }
+        }
+        window.speechSynthesis.speak(u)
+      }
+      // Voices load async on Chrome — wait up to 500ms for at least one,
+      // then speak. Without a loaded voice, speak() silently does nothing
+      // on several Android browsers (the "Meraj doesn't talk" bug).
+      const voices = window.speechSynthesis.getVoices()
+      if (voices.length) {
+        cachedVoice = null; pickBestVoice()
+        utter()
+      } else {
+        let tries = 0
+        const wait = (): void => {
+          if (window.speechSynthesis.getVoices().length || tries >= 5) {
+            cachedVoice = null; pickBestVoice(); utter()
+          } else { tries++; setTimeout(wait, 100) }
+        }
+        wait()
+      }
     },
     [ttsSupported],
   )
@@ -350,7 +379,7 @@ export function useSpeech() {
               let sum = 0
               for (let i = 0; i < buf.length; i++) { const d = (buf[i] - 128) / 128; sum += d * d }
               const rms = Math.sqrt(sum / buf.length)
-              if (rms > 0.015) spoke = true   // above silence threshold
+              if (rms > 0.035) spoke = true   // real speech is 0.05+; shop background noise < 0.02
             }, 100)
             window.setTimeout(() => window.clearInterval(energyTimer), windowMs + 500)
           } catch { /* energy check optional */ }
@@ -369,7 +398,11 @@ export function useSpeech() {
           stream.getTracks().forEach((t) => t.stop())
           // SILENT window → no speech → return empty (no hallucination)
           if (!spoke) return ''
-          return await transcribe(blob)
+          const text = await transcribe(blob)
+          // Whisper hallucination filter — it invents these from silence
+          const HALLUCINATION = /^(?:thank you[.!\s]*|thanks for watching[.!\s]*|you[.?\s]*|okay[.?\s]*|hmm[.?\s]*|\s*)$/i
+          if (!text || HALLUCINATION.test(text.trim()) || text.trim().length < 2) return ''
+          return text
         } catch { return '' }
       }
 

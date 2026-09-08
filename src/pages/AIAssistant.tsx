@@ -549,58 +549,24 @@ export default function AIAssistant() {
     const history = messages.slice(-12).map((m) => ({ role: m.role, text: m.text.length > 1600 ? m.text.slice(0, 1600) + '…' : m.text }))
     try {
       const page = getPageContext('/app/assistant')
-      if (sendMode === 'ask' && !img) {
-        // STREAMING — ONE card, created when the FIRST word arrives, then
-        // updated in place. No empty "..." card, no second card, ever.
-        let added = false
-        const res = await askAssistantStream(q, (partial) => {
-          setMessages((prev) => {
-            const last = prev[prev.length - 1]
-            if (!added) {
-              added = true
-              return [...prev, { role: 'meraj' as const, text: partial, ts: Date.now() }]
-            }
-            if (last && last.role === 'meraj') {
-              const copy = prev.slice()
-              copy[copy.length - 1] = { ...last, text: partial }
-              return copy
-            }
-            return prev
-          })
-        }, false, scope, 'ask')
-        const finalText = res.reply || '…'
-        setMessages((prev) => {
-          const last = prev[prev.length - 1]
-          if (last && last.role === 'meraj') {
-            const copy = prev.slice()
-            copy[copy.length - 1] = { ...last, text: finalText }
-            return copy
-          }
-          return [...prev, { role: 'meraj' as const, text: finalText, ts: Date.now() }]
-        })
-        if (res.reply) speak(res.reply)
-        upsertConvo([...next, { role: 'meraj' as const, text: finalText, ts: Date.now() }], q)
-      } else {
-      const res = await askAssistant(q || '(shared an image)', false, scope, sendMode, undefined, page ? { name: page.name, description: page.description } : undefined, history, img || undefined)
-      setPendingImage(null)
+      {
+        // BULLETPROOF: accumulate the reply (streaming server-side for speed)
+        // then render once via the typewriter — fast, and structurally
+        // incapable of empty cards, double cards, or stuck "...".
+        const streamRes = (sendMode === 'ask' && !img)
+          ? await askAssistantStream(q, () => {}, false, scope, 'ask').catch(() => null)
+          : null
+        const res = (streamRes && streamRes.reply)
+          ? streamRes
+          : await askAssistant(q || '(shared an image)', false, scope, sendMode, undefined, page ? { name: page.name, description: page.description } : undefined, history, img || undefined)
+        setPendingImage(null)
         const done = [...next, { role: 'meraj' as const, text: res.reply, pending: res.pending, media: res.media, images: res.images, ts: Date.now() }]
-      setMessages(done)
-      if (res.reply) { setTyping(true); speak(res.reply) }
-      upsertConvo(done, q || 'Shared photo')
+        setMessages(done)
+        if (res.reply) { setTyping(true); speak(res.reply) }
+        upsertConvo(done, q || 'Shared photo')
       }
     } catch (e) {
-      const errText = '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.')
-      setMessages((prev) => {
-        const last = prev[prev.length - 1]
-        // If a streaming card already exists, turn IT into the error —
-        // never stack a second card.
-        if (last && last.role === 'meraj') {
-          const copy = prev.slice()
-          copy[copy.length - 1] = { ...last, text: errText }
-          return copy
-        }
-        return [...prev, { role: 'meraj' as const, text: errText, ts: Date.now() }]
-      })
+      setMessages([...next, { role: 'meraj' as const, text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.'), ts: Date.now() }])
     } finally {
       setLoading(false)
     }
