@@ -306,13 +306,13 @@ export default function Dashboard() {
   return (
     <div className="animate-fade-in space-y-6 lg:space-y-8">
       {/* GREETING — bare page text, no card */}
-      <div>
+      <div className="animate-rise-in">
         <h1 className="text-2xl font-semibold text-fg leading-tight">{aiGreeting || `Welcome back, ${firstName}.`}</h1>
         <p className="text-sm text-fg-muted mt-1">Here's what's happening in your business today. <Link to="/app/goals" className="text-accent font-semibold">Goals &amp; streak</Link></p>
       </div>
 
       {/* 1 · MONEY HERO — quiet luxury: one number owns the screen */}
-      <section className="card relative overflow-hidden p-6 sm:p-8">
+      <section className="card relative overflow-hidden p-6 sm:p-8 animate-rise-in" style={{ animationDelay: '60ms' }}>
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgb(var(--accent) / 0.5), transparent)' }} aria-hidden="true" />
         <div className="flex flex-col items-center text-center gap-4">
           <p className="section-title">Today's revenue</p>
@@ -337,7 +337,7 @@ export default function Dashboard() {
       <MerajSection />
 
       {/* 2 · KPI BENTO — four quiet tiles (Stripe rhythm: label small, number heroic) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 animate-rise-in" style={{ animationDelay: '120ms' }}>
         <Link to="/app/reports" className="card card-hover p-4 sm:p-5">
           <p className="section-title">Sales today</p>
           <p className="text-2xl font-bold text-fg tabular-nums mt-1.5">{stats[0]?.value || '₹0'}</p>
@@ -361,7 +361,7 @@ export default function Dashboard() {
       </div>
 
       {/* 4 · PULSE + PRIORITIES — bento */}
-      <div className="grid lg:grid-cols-3 gap-3 lg:gap-4">
+      <div className="grid lg:grid-cols-3 gap-3 lg:gap-4 animate-rise-in" style={{ animationDelay: '180ms' }}>
         <section onClick={() => navigate('/app/reports')} className="lg:col-span-2 card p-4 sm:p-5 cursor-pointer hover:border-accent/40 transition-colors">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <h2 className="text-sm font-bold text-fg">This week</h2>

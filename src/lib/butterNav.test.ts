@@ -4,8 +4,8 @@ import {
   navDirection,
   lateralNeighbor,
   pageDepth,
-  saveSnapshot,
-  getSnapshot,
+  canSwipeBack,
+  fallbackBackTarget,
 } from './butterNav'
 
 describe('butterNav — page flow model', () => {
@@ -52,29 +52,19 @@ describe('butterNav — page flow model', () => {
   })
 })
 
-describe('butterNav — snapshot store', () => {
-  it('stores and returns page snapshots', () => {
-    saveSnapshot('/app/pos', '<div>POS</div>')
-    expect(getSnapshot('/app/pos')).toBe('<div>POS</div>')
-    expect(getSnapshot('/app')).toBeNull()
+describe('butterNav — left-edge gesture ownership', () => {
+  it('reserves the edge for the drawer on primary tabs', () => {
+    PRIMARY_PATHS.forEach((p) => expect(canSwipeBack(p)).toBe(false))
   })
 
-  it('never stores empty or oversized html', () => {
-    saveSnapshot('/app', '')
-    saveSnapshot('/app/khata', 'x'.repeat(500_000))
-    expect(getSnapshot('/app')).toBeNull()
-    expect(getSnapshot('/app/khata')).toBeNull()
+  it('reserves the edge for swipe-back on deeper pages', () => {
+    expect(canSwipeBack('/app/reports')).toBe(true)
+    expect(canSwipeBack('/app/campaigns/new')).toBe(true)
+    expect(canSwipeBack('/app/settings')).toBe(true)
   })
 
-  it('evicts the oldest entry beyond the LRU cap', () => {
-    const paths = ['/a', '/b', '/c', '/d', '/e', '/f', '/g']
-    paths.forEach((p, i) => {
-      saveSnapshot(p, `<div>${i}</div>`)
-      // nudge timestamps so eviction order is deterministic
-      const s = (getSnapshot(p) !== null ? undefined : null)
-      void s
-    })
-    expect(getSnapshot('/a')).toBeNull() // oldest evicted
-    expect(getSnapshot('/g')).not.toBeNull()
+  it('falls back to a sensible parent when there is no history', () => {
+    expect(fallbackBackTarget('/app/reports')).toBe('/app')
+    expect(fallbackBackTarget('/app/campaigns/new')).toBe('/app/campaigns')
   })
 })

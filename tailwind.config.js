@@ -156,6 +156,8 @@ export default {
         'butter': 'cubic-bezier(0.22, 1, 0.36, 1)',
         'butter-in-out': 'cubic-bezier(0.65, 0, 0.35, 1)',
         'swipe': 'cubic-bezier(0.16, 1, 0.3, 1)',
+        // Native navigation deceleration (push / pop / sheet).
+        'ios': 'cubic-bezier(0.32, 0.72, 0, 1)',
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',
@@ -165,6 +167,13 @@ export default {
         'shimmer': 'shimmer 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite',
         // Slow ambient drift for decorative gradients.
         'drift': 'drift 14s ease-in-out infinite alternate',
+        // Page/section entrance: fade + a short rise that ends on
+        // `transform: none`, so it never leaves a containing block
+        // behind for fixed-position children (modals, toasts, nav).
+        'rise-in': 'riseIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both',
+        'rise-in-sm': 'riseInSm 0.26s cubic-bezier(0.22, 1, 0.36, 1) both',
+        // Sheet gliding up from the bottom edge (mobile dialogs).
+        'sheet-in': 'sheetIn 0.34s cubic-bezier(0.32, 0.72, 0, 1) both',
       },
       keyframes: {
         fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
@@ -172,6 +181,9 @@ export default {
         scaleIn: { '0%': { opacity: '0', transform: 'scale(0.97)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
         shimmer: { '0%': { transform: 'translateX(-100%)' }, '100%': { transform: 'translateX(100%)' } },
         drift: { '0%': { transform: 'translate3d(0, 0, 0) scale(1)' }, '100%': { transform: 'translate3d(4%, -3%, 0) scale(1.06)' } },
+        riseIn: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'none' } },
+        riseInSm: { '0%': { opacity: '0', transform: 'translateY(5px)' }, '100%': { opacity: '1', transform: 'none' } },
+        sheetIn: { '0%': { opacity: '0', transform: 'translateY(18px) scale(0.985)' }, '100%': { opacity: '1', transform: 'none' } },
       },
     },
   },

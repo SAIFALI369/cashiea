@@ -31,7 +31,7 @@ export default function PageHeader({
 }) {
   if (visible) {
     return (
-      <header className="mb-6 animate-fade-in">
+      <header className="mb-6 animate-rise-in">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
             {eyebrow && <p className="section-title mb-2">{eyebrow}</p>}

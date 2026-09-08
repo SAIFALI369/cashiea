@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import { LayoutDashboard, ShoppingCart, Users, Sparkles } from 'lucide-react'
 
 // ════════════════════════════════════════════════════════════════
-// BUTTER NAV — the page-flow model behind the swipe system.
+// BUTTER NAV — the page-flow model behind the gesture system.
 //
 // Two ideas, both borrowed from the best native apps:
 //
@@ -11,16 +11,24 @@ import { LayoutDashboard, ShoppingCart, Users, Sparkles } from 'lucide-react'
 //                · Customers · Meraj) — sibling pages slide in the
 //                same direction, tab-style.
 //      push    : going deeper into a section (e.g. Campaigns → New
-//                campaign) — the new page slides over the old one.
-//      pop     : going back up — the old page slides away and
-//                reveals the page beneath.
+//                campaign) — the new page slides in over the shell.
+//      pop     : going back up — the page settles forward from
+//                underneath, like a stack being popped.
 //      fade    : unrelated cross-section jump — calm crossfade.
+//      instant : a gesture already played the hand-over under the
+//                finger, so the page mounts at rest (no replay).
 //
-// 2. SNAPSHOTS — when you leave a page we freeze a lightweight DOM
-//    snapshot of it. When you drag horizontally on a primary tab the
-//    REAL neighbour page (last seen) is revealed under your finger,
-//    1:1 lockstep — exactly like a native ViewPager — without
-//    double-fetching any data.
+// 2. GESTURES — the model also answers "what may the left screen edge
+//    do here?" Primary tabs reserve it for the sidebar drawer; deeper
+//    pages reserve it for the iOS-style swipe-back.
+//
+// NOTE ON SNAPSHOTS: an earlier revision froze a page's `innerHTML` on
+// leave and re-injected it into the drag peek layer. That copy lost its
+// React bindings and kept mid-flight inline transforms, so charts,
+// inputs and sticky bars painted scrambled — and the page's words
+// existed twice in the DOM at once. The peek layer is now a branded
+// preview built from this module's page metadata, so nothing is ever
+// duplicated. See PageStack.tsx.
 // ════════════════════════════════════════════════════════════════
 
 export interface PrimaryPage {
@@ -78,41 +86,17 @@ export function lateralNeighbor(path: string, dx: number): PrimaryPage | null {
   const i = PRIMARY_PATHS.indexOf(path)
   if (i === -1 || dx === 0) return null
   const next = dx < 0 ? i + 1 : i - 1
-  if (next < 0 || next >= PRIMARY_PATHS.length) return null
+  if (next < 0 || next >= PRIMARY_PAGES.length) return null
   return PRIMARY_PAGES[next]
 }
 
-// ── Snapshot store ───────────────────────────────────────────────
-// A tiny LRU of frozen page HTML. Snapshots are inert (never bound to
-// handlers) and only ever rendered inside the pointer-events-none
-// peek layer while a drag is in flight.
-
-interface Snapshot {
-  html: string
-  at: number
+/** True when the page sits deeper than the primary tabs, i.e. when the
+ *  left screen edge should mean "swipe back" instead of "open drawer". */
+export function canSwipeBack(path: string): boolean {
+  return pageDepth(path) > 0
 }
 
-const snapshots = new Map<string, Snapshot>()
-const MAX_SNAPSHOTS = 6
-const MAX_HTML_BYTES = 400_000
-
-export function saveSnapshot(path: string, html: string): void {
-  if (!path || !html || html.length > MAX_HTML_BYTES) return
-  snapshots.delete(path)
-  snapshots.set(path, { html, at: Date.now() })
-  if (snapshots.size > MAX_SNAPSHOTS) {
-    let oldestKey: string | null = null
-    let oldestAt = Infinity
-    for (const [k, v] of snapshots) {
-      if (v.at < oldestAt) {
-        oldestAt = v.at
-        oldestKey = k
-      }
-    }
-    if (oldestKey) snapshots.delete(oldestKey)
-  }
-}
-
-export function getSnapshot(path: string): string | null {
-  return snapshots.get(path)?.html ?? null
+/** Where "back" goes when there is no history to pop (deep link). */
+export function fallbackBackTarget(path: string): string {
+  return pageDepth(path) === 2 ? '/app/campaigns' : '/app'
 }
