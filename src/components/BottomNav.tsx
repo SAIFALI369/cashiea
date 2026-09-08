@@ -126,6 +126,9 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
   const isDesktop = useIsDesktop()
   const location = useLocation()
   const navigate = useNavigate()
+  // On the Dashboard, MerajSection IS the voice surface — the floating
+  // companion would be redundant. Everywhere else it's the quick-access voice.
+  const onDashboard = location.pathname === '/app' || location.pathname === '/app/onboarding'
   const pageContext = (() => { const c = getPageContext(location.pathname); return c ? { name: c.name, description: c.description } : undefined })()
   const { speak, stopSpeaking, speaking, startListening, cancelListening, startLiveListening, listening, transcribing, unlockTts } = useSpeech()
   const [voiceActive, setVoiceActive] = useState(false)
@@ -209,7 +212,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onCameraFile} />
 
       {/* ── Voice companion — positioned differently on mobile vs desktop ── */}
-      {voiceActive && (
+      {voiceActive && !onDashboard && (
         <div
           className={clsx(
             'fixed z-40 flex flex-col items-end gap-2',

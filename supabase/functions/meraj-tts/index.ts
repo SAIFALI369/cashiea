@@ -13,7 +13,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/retry.ts";
 
 const VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"; // warm, clear male voice
-const MODEL = "eleven_multilingual_v2";
+const MODEL = "eleven_flash_v2_5"; // 0.5 credits/char (half price), 112ms
 
 // Cache quota-exhaustion per Deno isolate so we stop hammering a dead key
 let quotaDead = false;
@@ -38,6 +38,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => null);
     const text = typeof body?.text === "string" ? body.text.trim() : "";
     if (!text) return json({ error: "text is required" }, 400);
+    const spokenText = text.length > 250 ? text.slice(0, 250).trim() + "..." : text;
     if (text.length > 3000) return json({ error: "text too long (max 3000 chars)" }, 400);
 
     const apiKey = Deno.env.get("ELEVENLABS_API_KEY");
@@ -60,7 +61,7 @@ Deno.serve(async (req) => {
           "Accept": "audio/mpeg",
         },
         body: JSON.stringify({
-          text,
+          text: spokenText,
           model_id: MODEL,
           voice_settings: {
             stability: 0.55,

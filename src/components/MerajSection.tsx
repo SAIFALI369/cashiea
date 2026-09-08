@@ -6,6 +6,9 @@ import { supabase } from '../lib/supabase'
 import MerajDevice, { MerajInteractionState } from './MerajDevice'
 import { useBusinessMood } from '../lib/businessMood'
 import { useMerajThought } from '../lib/useMerajThought'
+import { askAssistant } from '../lib/ai'
+import { useSpeech } from '../lib/useSpeech'
+import { renderMd } from '../lib/markdown'
 import { salesSignal } from '../lib/salesSignal'
 import { formatINR } from '../lib/format'
 import {
@@ -62,6 +65,9 @@ export default function MerajSection() {
   // Pulses are small, live business signals shown alongside Meraj.
   const [pulses, setPulses] = useState<Pulse[]>([])
   const [ask, setAsk] = useState('')
+  const [reply, setReply] = useState('')
+  const [replyLoading, setReplyLoading] = useState(false)
+  const { speak, unlockTts } = useSpeech()
   const [interaction, setInteraction] = useState<MerajInteractionState>('idle')
   const idleTimer = useRef<number | null>(null)
 
@@ -99,6 +105,29 @@ export default function MerajSection() {
     return () => window.clearInterval(tick)
   }, [])
   const restartCycle = () => { cycleRef.current = { phase: 'show', t: Date.now() } }
+
+  // ── IN-PLACE VOICE REPLY: type a question, Meraj answers right here
+  //    (text bubble + ElevenLabs voice) — no page navigation needed.
+  const askInPlace = async (q: string) => {
+    if (replyLoading) return
+    setAsk('')
+    setReply('')
+    setReplyLoading(true)
+    unlockTts() // prime the TTS engine inside this gesture
+    try {
+      const res = await askAssistant(q, false, undefined, 'ask')
+      if (res.reply) {
+        setReply(res.reply)
+        speak(res.reply) // ElevenLabs premium voice (or browser fallback)
+      } else {
+        setReply('I could not think of a reply. Try asking in the Meraj chat.')
+      }
+    } catch {
+      setReply('Something went wrong. Open the Meraj chat to try again.')
+    } finally {
+      setReplyLoading(false)
+    }
+  }
 
   // Fetch tiny live snapshot (just enough to render the creative strip).
   useEffect(() => {
@@ -280,11 +309,32 @@ export default function MerajSection() {
         </motion.div>
 
         {/* Ask is part of Meraj now: one character, one conversation surface. */}
-        <form onSubmit={(e) => { e.preventDefault(); const q = ask.trim(); if (q) navigate(`/app/assistant?q=${encodeURIComponent(q)}`) }} className="flex items-center gap-2 rounded-xl border border-line bg-surface/80 px-2 focus-within:border-accent/50 transition-colors" onClick={(e) => e.stopPropagation()}>
+        <form onSubmit={(e) => { e.preventDefault(); const q = ask.trim(); if (q) { askInPlace(q) } }} className="flex items-center gap-2 rounded-xl border border-line bg-surface/80 px-2 focus-within:border-accent/50 transition-colors" onClick={(e) => e.stopPropagation()}>
           <input value={ask} onChange={(e) => setAsk(e.target.value)} placeholder="💭 Ask Meraj anything…" className="flex-1 bg-transparent py-2.5 px-2 text-sm text-fg placeholder:text-fg-subtle outline-none min-w-0" />
           <button type="button" onClick={() => navigate('/app/assistant')} aria-label="Voice" className="w-8 h-8 rounded-lg text-fg-muted hover:text-fg hover:bg-surface-2 flex items-center justify-center"><Mic className="w-4 h-4" /></button>
           <button type="submit" aria-label="Send" className="w-8 h-8 rounded-lg bg-fg text-paper flex items-center justify-center hover:opacity-90"><Send className="w-4 h-4" /></button>
         </form>
+
+        {/* Meraj's in-place reply — text bubble + voice */}
+        {(replyLoading || reply) && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-3 rounded-2xl bg-accent-soft/40 border border-accent/20 px-4 py-3"
+          >
+            {replyLoading ? (
+              <p className="text-sm text-fg-muted flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                Meraj is thinking...
+              </p>
+            ) : (
+              <div
+                className="text-sm text-fg leading-relaxed prose-content"
+                dangerouslySetInnerHTML={{ __html: renderMd(reply) }}
+              />
+            )}
+          </motion.div>
+        )}
 
         {/* Bottom: business-at-a-glance pulse chips (creative read) */}
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3 pt-1">
