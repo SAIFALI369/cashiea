@@ -89,9 +89,15 @@ Deno.serve(async (req) => {
       return json({ fallback: true, reason: "empty-audio" });
     }
 
-    const base64 = btoa(
-      String.fromCharCode(...new Uint8Array(audioBuffer)),
-    );
+    // Convert to base64 in chunks (large audio overflows the call stack
+    // with the spread operator — 8KB chunks are safe for any size)
+    const bytes = new Uint8Array(audioBuffer);
+    let binary = "";
+    const CHUNK = 8192;
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+    }
+    const base64 = btoa(binary);
 
     const elapsed = Date.now() - startTime;
     console.log(`[meraj-tts] generated ${audioBuffer.byteLength} bytes in ${elapsed}ms`);
