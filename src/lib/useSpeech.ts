@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { supabase, AI_FUNCTION_URL } from './supabase'
+import { supabase, AI_FUNCTION_URL, edgeFunctionUrl } from './supabase'
 
 /**
  * useSpeech — Meraj's voice system.
@@ -75,36 +75,120 @@ export function useSpeech() {
     }
   }, [ttsSupported])
 
-  // ── TTS: speak text aloud ──
+  // ── TTS unlock: iOS/Android require the FIRST speechSynthesis call to be
+  //    inside a user gesture. Speaking a zero-volume utterance on mic-tap
+  //    unlocks the engine so later async replies can actually talk. ──
+  const unlockTts = useCallback(() => {
+    if (ttsSupported) {
+      try {
+        // iOS/Android TTS unlock: a tiny near-silent utterance INSIDE the
+        // user gesture primes the engine. No cancel() — it resets the unlock.
+        const u = new SpeechSynthesisUtterance('.')
+        u.volume = 0.01
+        u.rate = 4
+        window.speechSynthesis.speak(u)
+      } catch { /* ignore */ }
+    }
+  }, [ttsSupported])
+
+  // ── ELEVENLABS: premium AI voice (falls back to browser TTS) ──
+  const elevenDeadUntilRef = useRef(0)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  const speakEleven = useCallback(
+    async (clean: string, onDone?: () => void): Promise<boolean> => {
+      if (Date.now() < elevenDeadUntilRef.current) return false
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) return false
+        const res = await fetch(edgeFunctionUrl('meraj-tts'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ text: clean }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (data?.fallback) {
+          elevenDeadUntilRef.current = Date.now() + 10 * 60 * 1000
+          return false
+        }
+        if (!res.ok || !data?.audio) return false
+
+        if (audioRef.current) { try { audioRef.current.pause() } catch { /* ignore */ } }
+        const audio = new Audio(`data:audio/mp3;base64,${data.audio}`)
+        audioRef.current = audio
+        audio.onended = () => { setSpeaking(false); onDone?.() }
+        audio.onerror = () => { setSpeaking(false); onDone?.() }
+        setSpeaking(true)
+        await audio.play()
+        return true
+      } catch {
+        return false
+      }
+    },
+    [],
+  )
+
+  // ── BROWSER TTS: the reliable fallback ──
+  const browserSpeak = useCallback(
+    (clean: string, onDone?: () => void) => {
+      if (!ttsSupported) { onDone?.(); return }
+      window.speechSynthesis.cancel()
+      const utter = (): void => {
+        const u = new SpeechSynthesisUtterance(clean)
+        const voice = pickBestVoice()
+        if (voice) u.voice = voice
+        u.lang = voice?.lang || 'en-IN'
+        u.rate = 1.05
+        u.pitch = 1.0
+        u.onstart = () => setSpeaking(true)
+        u.onend = () => { setSpeaking(false); onDone?.() }
+        u.onerror = () => { setSpeaking(false); onDone?.() }
+        window.speechSynthesis.speak(u)
+      }
+      const voices = window.speechSynthesis.getVoices()
+      if (voices.length) {
+        cachedVoice = null; pickBestVoice()
+        utter()
+      } else {
+        let tries = 0
+        const wait = (): void => {
+          if (window.speechSynthesis.getVoices().length || tries >= 5) {
+            cachedVoice = null; pickBestVoice(); utter()
+          } else { tries++; setTimeout(wait, 100) }
+        }
+        wait()
+      }
+    },
+    [ttsSupported],
+  )
+
+  // ── TTS: speak — ElevenLabs first, browser fallback always works ──
   const speak = useCallback(
     (text: string, onDone?: () => void) => {
-      if (!ttsSupported || !text.trim()) {
+      if (!text.trim()) {
         onDone?.()
         return
       }
       // Strip markdown so it doesn't read asterisks/hashtags aloud
       const clean = text
         .replace(/[#*`>_|]/g, ' ')
-        .replace(/\[(.+?)\]\(.+?\)/g, '$1') // links → just the text
+        .replace(/\[(.+?)\]\(.+?\)/g, '$1')
         .replace(/₹/g, ' rupees ')
         .replace(/\u20b9/g, ' rupees ')
         .replace(/\s+/g, ' ')
         .trim()
-        .slice(0, 600) // don't read entire essays aloud
+        .slice(0, 600)
 
-      window.speechSynthesis.cancel()
-      const u = new SpeechSynthesisUtterance(clean)
-      const voice = pickBestVoice()
-      if (voice) u.voice = voice
-      u.lang = voice?.lang || 'en-IN'
-      u.rate = 1.05 // slightly faster = more natural
-      u.pitch = 1.0
-      u.onstart = () => setSpeaking(true)
-      u.onend = () => { setSpeaking(false); onDone?.() }
-      u.onerror = () => { setSpeaking(false); onDone?.() }
-      window.speechSynthesis.speak(u)
+      // ElevenLabs premium voice first — instant fallback to browser
+      speakEleven(clean, onDone).then((ok) => {
+        if (!ok) browserSpeak(clean, onDone)
+      })
     },
-    [ttsSupported],
+    [speakEleven, browserSpeak],
   )
 
   const stopSpeaking = useCallback(() => {
@@ -270,6 +354,131 @@ export function useSpeech() {
     [sttSupported, cleanupStream],
   )
 
+  // ── LIVE LISTENING — pseudo-streaming STT: the mic records in ~3s windows,
+  //    each window is transcribed by Groq Whisper and appended live. Works on
+  //    EVERY browser (no SpeechRecognition needed) with ~3s text granularity. ──
+  const liveActiveRef = useRef(false)
+  const liveRecorderRef = useRef<MediaRecorder | null>(null)
+
+  const startLiveListening = useCallback(
+    async (
+      onPartial: (text: string, isFinal: boolean) => void,
+      onError?: (msg: string) => void,
+      opts?: { windowMs?: number; stopOnSilence?: boolean },
+    ): Promise<boolean> => {
+      if (!sttSupported) { onError?.('Voice input is not supported on this browser.'); return false }
+      const windowMs = opts?.windowMs ?? 3000
+      const stopOnSilence = opts?.stopOnSilence ?? false
+      liveActiveRef.current = true
+      setListening(true)
+
+      const transcribe = async (blob: Blob): Promise<string> => {
+        if (blob.size < 200) return ''
+        try {
+          const reader = new FileReader()
+          const base64 = await new Promise<string>((res, rej) => { reader.onload = () => res((reader.result as string).split(',')[1]); reader.onerror = rej; reader.readAsDataURL(blob) })
+          const { data: { session } } = await supabase.auth.getSession()
+          if (!session) return ''
+          const sttUrl = AI_FUNCTION_URL.replace('ai-automation', 'voice-stt')
+          const res = await fetch(sttUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
+            body: JSON.stringify({ audio: base64, mimeType: 'audio/webm', language: 'en' }),
+          })
+          const data = await res.json().catch(() => ({}))
+          return res.ok ? (data.text || '').trim() : ''
+        } catch { return '' }
+      }
+
+      const runWindow = async (): Promise<string> => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
+          const mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find((m) => MediaRecorder.isTypeSupported?.(m)) || ''
+          const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
+          liveRecorderRef.current = rec
+          const chunks: Blob[] = []
+          rec.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data) }
+
+          // ENERGY GATE: measure actual mic loudness. Whisper hallucinates
+          // words from pure silence ("thank you", random text) — a silent
+          // window must NEVER be sent for transcription.
+          let audioCtx: AudioContext | null = null
+          let analyser: AnalyserNode | null = null
+          let spoke = false
+          try {
+            audioCtx = new AudioContext()
+            const src = audioCtx.createMediaStreamSource(stream)
+            analyser = audioCtx.createAnalyser()
+            analyser.fftSize = 512
+            src.connect(analyser)
+            const buf = new Uint8Array(analyser.frequencyBinCount)
+            const energyTimer = window.setInterval(() => {
+              if (!analyser) return
+              analyser.getByteTimeDomainData(buf)
+              let sum = 0
+              for (let i = 0; i < buf.length; i++) { const d = (buf[i] - 128) / 128; sum += d * d }
+              const rms = Math.sqrt(sum / buf.length)
+              if (rms > 0.025) spoke = true   // speech is 0.04+; ambient noise ~0.01-0.015
+            }, 100)
+            window.setTimeout(() => window.clearInterval(energyTimer), windowMs + 500)
+          } catch { /* energy check optional */ }
+
+          const stopped = new Promise<Blob>((resolve) => { rec.onstop = () => resolve(new Blob(chunks, { type: mime || 'audio/webm' })) })
+          rec.start(250)
+          // Sleep the window, but wake within 150ms of a stop request
+          await new Promise<void>((r) => {
+            const t0 = Date.now()
+            const tick = () => { if (!liveActiveRef.current || Date.now() - t0 >= windowMs) r(); else setTimeout(tick, 150) }
+            tick()
+          })
+          if (rec.state === 'recording') rec.stop()
+          const blob = await stopped
+          try { await audioCtx?.close() } catch { /* ignore */ }
+          stream.getTracks().forEach((t) => t.stop())
+          // SILENT window → no speech → return empty (no hallucination)
+          if (!spoke) return ''
+          const text = await transcribe(blob)
+          // Whisper hallucination filter — it invents these from silence
+          const HALLUCINATION = /^(?:thank you[.!\s]*|thanks for watching[.!\s]*|you[.?\s]*|okay[.?\s]*|hmm[.?\s]*|\s*)$/i
+          if (!text || HALLUCINATION.test(text.trim()) || text.trim().length < 2) return ''
+          return text
+        } catch { return '' }
+      }
+
+      let heardAnything = false
+      let silentWindows = 0
+      while (liveActiveRef.current) {
+        const text = await runWindow()
+        if (!liveActiveRef.current) {
+          if (text) onPartial(text, true)
+          break
+        }
+        if (text) {
+          heardAnything = true
+          silentWindows = 0
+          onPartial(text, false)
+        } else {
+          // Silence detection: one empty window (~2s) after speech = done talking
+          if (stopOnSilence && heardAnything) {
+            onPartial('', true)
+            break
+          }
+          silentWindows++
+          // Pure silence for ~10s with no speech at all → give up cleanly
+          if (silentWindows >= 5) { onPartial('', true); break }
+        }
+      }
+      setListening(false)
+      return true
+    },
+    [sttSupported],
+  )
+
+  const stopLiveListening = useCallback(() => {
+    liveActiveRef.current = false
+    try { liveRecorderRef.current?.stop() } catch { /* ignore */ }
+  }, [])
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -284,9 +493,12 @@ export function useSpeech() {
     speak,
     stopSpeaking,
     speaking,
+    unlockTts,
     startListening,
     stopListening,
     cancelListening,
+    startLiveListening,
+    stopLiveListening,
     listening,
     transcribing,
     sttSupported,

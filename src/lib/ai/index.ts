@@ -138,6 +138,58 @@ function aiCacheSet(key: string, val: { reply: string; pending?: any }) {
   } catch { /* quota — ignore */ }
 }
 
+export async function askAssistantStream(
+  message: string,
+  onChunk: (fullTextSoFar: string) => void,
+  briefing = false,
+  scope?: string | null,
+  mode: 'ask' | 'task' = 'ask',
+): Promise<{ reply: string; pending?: any; executed?: any; media?: any[]; images?: any[] }> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('You must be signed in.')
+  const res = await fetch(edgeFunctionUrl('ai-assistant'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.access_token}`,
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ message, briefing, scope, mode }),
+  })
+  const ct = res.headers.get('content-type') || ''
+  if (!ct.includes('text/event-stream')) {
+    // Non-streaming fallback (task mode, cascade fallback, errors)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data?.error || `Request failed (${res.status})`)
+    if (data.reply) onChunk(data.reply)
+    return data
+  }
+  // SSE: tokens arrive live — ChatGPT style
+  const reader = res.body!.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let full = ''
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() || ''
+    for (const line of lines) {
+      const t = line.trim()
+      if (!t.startsWith('data: ')) continue
+      try {
+        const j = JSON.parse(t.slice(6))
+        if (typeof j.text === 'string' && j.text.length > full.length) {
+          full = j.text
+          onChunk(full)
+        }
+      } catch { /* partial line */ }
+    }
+  }
+  return { reply: full }
+}
+
 export async function askAssistant(
   message = '',
   briefing = false,
@@ -168,8 +220,41 @@ export async function askAssistant(
     },
     body: JSON.stringify({ message, briefing, scope, mode, confirm, pageContext, history, image }),
   })
+
+  // ── SSE: the edge streams ask-mode replies as text/event-stream. Parse
+  //    the stream to the end and extract the final text. Without this,
+  //    res.json() on an SSE body returns garbage → reply: undefined →
+  //    SmartReply crashed (.split on undefined) and the voice companion
+  //    silently closed. This was THE root cause of both bugs. ──
+  const ct = res.headers.get('content-type') || ''
+  if (ct.includes('text/event-stream') && res.body) {
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let sseBuffer = ''
+    let sseFull = ''
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      sseBuffer += decoder.decode(value, { stream: true })
+      const lines = sseBuffer.split('\n')
+      sseBuffer = lines.pop() || ''
+      for (const line of lines) {
+        const t = line.trim()
+        if (!t.startsWith('data: ')) continue
+        try {
+          const j = JSON.parse(t.slice(6))
+          if (typeof j.text === 'string' && j.text.length > sseFull.length) sseFull = j.text
+        } catch { /* partial line across chunks */ }
+      }
+    }
+    if (!sseFull) throw new Error('The AI returned an empty reply — please try again.')
+    if (cacheKey) aiCacheSet(cacheKey, { reply: sseFull, pending: undefined })
+    return { reply: sseFull }
+  }
+
   const data = await res.json().catch(() => ({ error: 'Invalid response from server' }))
   if (!res.ok) throw new Error(data?.error || `Request failed (HTTP ${res.status})`)
+  if (!data.reply) throw new Error('The AI returned an empty reply — please try again.')
 
   // Store in cache for next time
   if (cacheKey && data.reply) aiCacheSet(cacheKey, { reply: data.reply, pending: data.pending })

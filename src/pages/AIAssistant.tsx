@@ -4,7 +4,7 @@ import { useSearchParams, Link, useNavigate } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { motion, AnimatePresence } from 'framer-motion'
-import { askAssistant } from '../lib/ai'
+import { askAssistant, askAssistantStream } from '../lib/ai'
 import { MerajGlyph } from '../components/MerajDevice'
 import { useAuth } from '../context/AuthContext'
 import MerajDevice, { interactionFromAvatarState } from '../components/MerajDevice'
@@ -235,7 +235,8 @@ function GeneratedImage({ img, onRegenerate }: { img: { url: string; prompt: str
    • List items with stock context → traffic-light rows (green/yellow/red)
    • Everything else → normal sanitized markdown                                  */
 function SmartReply({ text, onEditDraft, onSendDraft }: { text: string; onEditDraft?: (t: string) => void; onSendDraft?: (t: string) => void }) {
-  const blocks: string[] = text.split(/\n\n+/).filter((b) => b.trim())
+  const safeText = typeof text === 'string' ? text : String(text ?? '')
+  const blocks: string[] = safeText.split(/\n\n+/).filter((b) => b.trim())
   return (
     <>
       {blocks.map((block, i) => {
@@ -351,31 +352,23 @@ export default function AIAssistant() {
   //    with interim results where available), automatic fallback to the
   //    proven MediaRecorder + Groq Whisper pipeline when the browser's
   //    SpeechRecognition is missing or silently fails. Final words auto-send.
-  const { speak, stopSpeaking, speaking, startListening, stopListening, transcribing } = useSpeech()
-  const [liveTranscript, setLiveTranscript] = useState('')
-  const [voiceAutoSent, setVoiceAutoSent] = useState(false)
+  const { speak, stopSpeaking, speaking, startListening, stopListening, cancelListening, transcribing, unlockTts, startLiveListening, stopLiveListening } = useSpeech()
   const whisperModeRef = useRef<boolean>(localStorage.getItem('cashiea_stt_mode') === 'whisper')
 
-  const finishVoiceMessage = (text: string) => {
-    const clean = text.trim()
-    setLiveTranscript('')
-    if (!clean) return
-    // Auto-send the spoken message — Meraj replies, typed + spoken live.
-    void send(clean)
-  }
-
+  // ── VOICE = DICTATION: spoken words type LIVE into the input box.
+  //     No auto-send — the words wait for the send button, exactly like typing.
+  const voiceBaseRef = useRef('')   // words captured so far (for interim display)
   const startListen = () => {
-    setVoiceAutoSent(false)
-    setLiveTranscript('')
-    // Mode A — live transcription (Chrome/Android/iOS 14.5+): words appear
-    // as you speak, exactly like Google Assistant.
+    voiceBaseRef.current = ''
+    unlockTts() // iOS/Android: unlock speech synthesis inside the tap gesture
+    // Mode A — Web Speech API: instant live words (Chrome/Android/iOS 14.5+)
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (SR && !whisperModeRef.current) {
       try {
         if (recRef.current) { try { recRef.current.stop() } catch { /* ignore */ } }
         const rec = new SR()
-        rec.lang = localStorage.getItem('cashiea_voice_lang') || 'en-IN'
-        rec.interimResults = true          // ← LIVE words while speaking
+        rec.lang = 'en-IN'   // English (India) — hears English only
+        rec.interimResults = true
         rec.continuous = false
         rec.maxAlternatives = 1
         let gotAnyResult = false
@@ -389,34 +382,25 @@ export default function AIAssistant() {
             if (r.isFinal) final += r[0].transcript
             else interim += r[0].transcript
           }
-          if (interim) setLiveTranscript(interim)          // live words on screen
-          if (final) { setListening(false); finishVoiceMessage(final) }
+          // LIVE words appear in the input box as you speak
+          if (final) voiceBaseRef.current += final
+          setInput((voiceBaseRef.current + interim).trim())
         }
         rec.onerror = (e: any) => {
           setListening(false)
           const er = String(e?.error || '')
           if (er === 'not-allowed' || er === 'service-not-allowed') {
             toast.error('Microphone access is blocked — allow it in your browser settings.')
-          } else if (er === 'no-speech') {
-            toast.error("I couldn't hear that clearly — try again.")
-          } else if (er === 'network') {
-            // SpeechRecognition needs Google servers; switch to Whisper
+          } else if (er === 'network' || (er && er !== 'aborted' && er !== 'no-speech')) {
             whisperModeRef.current = true
             localStorage.setItem('cashiea_stt_mode', 'whisper')
-            startListen()
-          } else if (er && er !== 'aborted' && er !== 'no-speech') {
-            // Silent failures (empty results on some browsers/PWAs) → Whisper
-            whisperModeRef.current = true
-            localStorage.setItem('cashiea_stt_mode', 'whisper')
-            toast('Switched to backup voice engine', { icon: '🎙️' })
             startListen()
           }
         }
         rec.onend = () => {
           setListening(false)
-          // ended without a final result → some browsers do this silently;
-          // if we never got ANY result, fall back to Whisper permanently
-          if (!gotAnyResult && !voiceAutoSent) {
+          // words stay in the input — user sends when ready (NO auto-send)
+          if (!gotAnyResult) {
             whisperModeRef.current = true
             localStorage.setItem('cashiea_stt_mode', 'whisper')
             startListen()
@@ -428,22 +412,24 @@ export default function AIAssistant() {
         return
       } catch { /* fall through to Whisper */ }
     }
-    // Mode B — universal: MediaRecorder → Groq Whisper (works on EVERY
-    // browser: iOS Safari, Firefox, PWA). Tap again to stop & transcribe.
+    // Mode B — windowed Whisper: words appear every ~2.5s on EVERY browser
     setListening(true)
-    setLiveTranscript('')
-    startListening(
-      (text) => { setListening(false); finishVoiceMessage(text) },
-      (msg) => { setListening(false); setLiveTranscript(''); if (msg) toast.error(msg) },
+    startLiveListening(
+      (text) => {
+        voiceBaseRef.current = (voiceBaseRef.current ? voiceBaseRef.current + ' ' : '') + text
+        setInput(voiceBaseRef.current)  // words type into the input box
+      },
+      (msg) => { setListening(false); if (msg) toast.error(msg) },
+      { windowMs: 2500 },
     )
   }
 
   const stopListen = () => {
     setListening(false)
     try { recRef.current?.stop() } catch { /* ignore */ }
+    stopLiveListening()
     stopListening()
-    // If live transcription captured words but never finalized, send them.
-    setLiveTranscript((t) => { if (t.trim()) { setTimeout(() => finishVoiceMessage(t), 0) } return '' })
+    // words stay in input — the user taps send when ready
   }
   useEffect(() => () => { try { recRef.current?.stop() } catch { /* ignore */ } }, [])
   const [listening, setListening] = useState(false)
@@ -564,14 +550,22 @@ export default function AIAssistant() {
     const history = messages.slice(-12).map((m) => ({ role: m.role, text: m.text.length > 1600 ? m.text.slice(0, 1600) + '…' : m.text }))
     try {
       const page = getPageContext('/app/assistant')
-      const res = await askAssistant(q || '(shared an image)', false, scope, sendMode, undefined, page ? { name: page.name, description: page.description } : undefined, history, img || undefined)
-      setPendingImage(null)
+      {
+        // BULLETPROOF: accumulate the reply (streaming server-side for speed)
+        // then render once via the typewriter — fast, and structurally
+        // incapable of empty cards, double cards, or stuck "...".
+        const streamRes = (sendMode === 'ask' && !img)
+          ? await askAssistantStream(q, () => {}, false, scope, 'ask').catch(() => null)
+          : null
+        const res = (streamRes && streamRes.reply)
+          ? streamRes
+          : await askAssistant(q || '(shared an image)', false, scope, sendMode, undefined, page ? { name: page.name, description: page.description } : undefined, history, img || undefined)
+        setPendingImage(null)
         const done = [...next, { role: 'meraj' as const, text: res.reply, pending: res.pending, media: res.media, images: res.images, ts: Date.now() }]
-      setMessages(done)
-      // VOICE: Meraj SPEAKS the reply while it types on screen — the
-      // talking-assistant experience. (speak() strips markdown + ₹.)
-      if (res.reply) { setTyping(true); speak(res.reply) }
-      upsertConvo(done, q || 'Shared photo')
+        setMessages(done)
+        if (res.reply) { setTyping(true); speak(res.reply) }
+        upsertConvo(done, q || 'Shared photo')
+      }
     } catch (e) {
       setMessages([...next, { role: 'meraj' as const, text: '⚠️ ' + (e instanceof Error ? e.message : 'Something went wrong.'), ts: Date.now() }])
     } finally {
@@ -1065,18 +1059,11 @@ export default function AIAssistant() {
                   if (!loading) send()
                 }
               }}
-              placeholder={transcribing ? 'Transcribing…' : listening ? 'Listening… speak now' : liveTranscript || (mode === 'task' ? 'Tell Meraj what to do…' : 'Ask Meraj anything…')}
+              placeholder={mode === 'task' ? 'Tell Meraj what to do…' : 'Ask Meraj anything…'}
               className="flex-1 px-1.5 py-2 text-sm outline-none min-w-0"
               disabled={loading}
             />
-            {listening && (
-              <div className="absolute inset-x-14 bottom-1.5 top-1.5 pointer-events-none flex items-center">
-                <span className="text-sm font-semibold text-negative truncate w-full">
-                  {transcribing ? 'Transcribing your words…' : liveTranscript || 'Listening… speak now'}
-                  {liveTranscript && <span className="animate-pulse">▊</span>}
-                </span>
-              </div>
-            )}
+
             {speaking && (
               <button onClick={() => { stopSpeaking(); setTyping(false) }} className="meraj-composer-btn !text-accent-strong !bg-accent-soft/60" aria-label="Stop Meraj speaking" title="Stop speaking">
                 <Square className="w-4 h-4" />
