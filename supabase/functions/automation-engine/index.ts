@@ -143,7 +143,7 @@ async function selfOrder(userId: string, rule: Rule, p: { name: string; wa: stri
   const poNumber = `PO-${Date.now().toString().slice(-6)}`;
   const { data: po, error: poErr } = await svc.from("purchase_orders").insert({
     user_id: userId, supplier_id: null, po_number: poNumber, items,
-    subtotal: total, tax_amount: 0, total, status: "sent",
+    subtotal: total, tax_amount: 0, total, status: "ordered",
     expected_date: new Date(Date.now() + (lead + 1) * DAY).toISOString().slice(0, 10),
     notes: `Auto-ordered by Cashiea (${items.length} items, velocity-sized). Undo available for 24h.`,
   }).select("id").single();
