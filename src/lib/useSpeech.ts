@@ -118,7 +118,10 @@ export function useSpeech() {
         if (!res.ok || !data?.audio) return false
 
         if (audioRef.current) { try { audioRef.current.pause() } catch { /* ignore */ } }
-        const audio = new Audio(`data:audio/mp3;base64,${data.audio}`)
+        // The edge function cascades engines: ElevenLabs returns mp3,
+        // Groq Orpheus fallback returns wav — honour whichever came back.
+        const mime = data.format === 'wav' ? 'audio/wav' : 'audio/mp3'
+        const audio = new Audio(`data:${mime};base64,${data.audio}`)
         audioRef.current = audio
         audio.onended = () => { setSpeaking(false); onDone?.() }
         audio.onerror = () => { setSpeaking(false); onDone?.() }

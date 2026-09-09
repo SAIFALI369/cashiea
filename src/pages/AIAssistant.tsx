@@ -352,7 +352,7 @@ export default function AIAssistant() {
   //    with interim results where available), automatic fallback to the
   //    proven MediaRecorder + Groq Whisper pipeline when the browser's
   //    SpeechRecognition is missing or silently fails. Final words auto-send.
-  const { speak, stopSpeaking, speaking, startListening, stopListening, cancelListening, transcribing, unlockTts, startLiveListening, stopLiveListening } = useSpeech()
+  const { stopSpeaking, speaking, startListening, stopListening, cancelListening, transcribing, unlockTts, startLiveListening, stopLiveListening } = useSpeech()
   const whisperModeRef = useRef<boolean>(localStorage.getItem('cashiea_stt_mode') === 'whisper')
 
   // ── VOICE = DICTATION: spoken words type LIVE into the input box.
