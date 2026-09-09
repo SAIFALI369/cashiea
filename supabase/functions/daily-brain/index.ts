@@ -71,6 +71,31 @@ async function deliverBriefing(to: string, subject: string, markdown: string): P
   return res.ok;
 }
 
+// ── TOKEN GUARDS ─────────────────────────────────────────────────
+// AI tokens are only worth spending when a human will read the output.
+
+/** Shop not trading (no sales or bills in 14 days)? Predictions nobody
+ *  will ever read are pure token waste — skip without spending anything. */
+async function isActiveBusiness(userId: string): Promise<boolean> {
+  const since = new Date(Date.now() - 14 * 86400000).toISOString();
+  const [tx, inv] = await Promise.all([
+    supabase.from("transactions").select("id", { count: "exact", head: true })
+      .eq("user_id", userId).eq("status", "completed").gte("created_at", since),
+    supabase.from("invoices").select("id", { count: "exact", head: true })
+      .eq("user_id", userId).gte("created_at", since),
+  ]);
+  return (tx.count || 0) > 0 || (inv.count || 0) > 0;
+}
+
+/** Predictions already generated in the last 20h (earlier run, retry, or the
+ *  client's evening intelligence)? Never regenerate what already exists. */
+async function hasFreshPredictions(userId: string): Promise<boolean> {
+  const { count } = await supabase.from("ai_predictions").select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", new Date(Date.now() - 20 * 3600000).toISOString());
+  return (count || 0) > 0;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -114,6 +139,8 @@ Deno.serve(async (req) => {
     let processed = 0;
     let predictionsTotal = 0;
     let emailsSent = 0;
+    let skippedInactive = 0;
+    let skippedFresh = 0;
 
     for (const user of users) {
       let predictionReserved = false;
@@ -121,6 +148,9 @@ Deno.serve(async (req) => {
       let briefingReserved = false;
       let briefingConsumed = false;
       try {
+        // ── TOKEN GUARDS: only spend where it creates value ──
+        if (!(await isActiveBusiness(user.id))) { skippedInactive++; continue; }
+        if (await hasFreshPredictions(user.id)) { skippedFresh++; continue; }
         const { data: reserved, error: reserveError } = await supabase.rpc("reserve_api_usage", { p_user_id: user.id, p_amount: 1 });
         if (reserveError || !reserved) {
           console.error(`daily-brain usage reservation failed for ${user.id}`);
@@ -191,7 +221,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json({ processed, predictionsCreated: predictionsTotal, emailsSent });
+    return json({ processed, predictionsCreated: predictionsTotal, emailsSent, skippedInactive, skippedFresh });
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500);
   }

@@ -716,6 +716,12 @@ Deno.serve(async (req) => {
 Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000 still unpaid?", "How do I lift tomorrow's sales?", "Which 2 items to reorder first?", "Who are my top customers this month?"]`;
       let pills: string[] = [];
       try {
+        // ── TOKEN GUARD: an empty shop (every live number at zero) gets the
+        //    deterministic pills below — no AI tokens burned on filler. ──
+        const sig = dashboardState || {};
+        if (!(Number(sig.salesToday) > 0 || Number(sig.salesYesterday) > 0 || Number(sig.pendingSum) > 0 || Number(sig.lowStock) > 0)) {
+          throw new Error("empty-shop-deterministic");
+        }
         const out = await callAIWithFallback("groq", sys, "Return the JSON array now.", 300, "dashboard-suggestions");
         usageConsumed = true;
         const m = String(out).match(/\[[\s\S]*\]/);
