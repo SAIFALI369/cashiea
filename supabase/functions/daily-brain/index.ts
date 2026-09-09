@@ -113,11 +113,14 @@ async function isServiceToken(bearer: string): Promise<boolean> {
     if (payload.role !== "service_role") return false;
     if (!payload.exp || payload.exp * 1000 < Date.now()) return false;
     const jwks = JSON.parse(Deno.env.get("SUPABASE_JWKS") || "{}");
-    const jwk = (jwks.keys || []).find((k: any) => k.kid === header.kid);
+    const jwk = (jwks.keys || []).find((k: any) => header.kid ? k.kid === header.kid : true);
     if (!jwk) return false;
-    const key = await crypto.subtle.importKey("jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
+    // Legacy projects sign with HS256 (oct key); newer ones with RS256.
+    const isHmac = header.alg === "HS256" || jwk.kty === "oct";
+    const alg = isHmac ? { name: "HMAC", hash: "SHA-256" } : { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" };
+    const key = await crypto.subtle.importKey("jwk", jwk, alg as Algorithm, false, ["verify"]);
     const sig = Uint8Array.from(b64(parts[2]), (c) => c.charCodeAt(0));
-    return await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, sig, new TextEncoder().encode(`${parts[0]}.${parts[1]}`));
+    return await crypto.subtle.verify(isHmac ? "HMAC" : "RSASSA-PKCS1-v1_5", key, sig, new TextEncoder().encode(`${parts[0]}.${parts[1]}`));
   } catch {
     return false;
   }
