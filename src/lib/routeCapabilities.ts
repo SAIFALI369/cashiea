@@ -23,6 +23,7 @@ const ROUTE_CAPABILITIES: Array<{ prefix: string; capability: Capability }> = [
   { prefix: '/app/snapshot', capability: 'reports:view' },
   { prefix: '/app/goals', capability: 'reports:view' },
   { prefix: '/app/social', capability: 'reports:view' },
+  { prefix: '/app/command-center', capability: 'settings:manage' },
   { prefix: '/app/auto-reorder', capability: 'inventory:view' },
   { prefix: '/app/duplicates', capability: 'inventory:view' },
   { prefix: '/app/pricing', capability: 'inventory:view' },

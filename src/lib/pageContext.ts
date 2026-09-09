@@ -144,6 +144,10 @@ const PAGE_CONTEXT: Record<string, PageContextInfo> = {
     name: 'Permissions',
     description: 'data and app permissions',
   },
+  '/app/command-center': {
+    name: 'Command Center',
+    description: 'autonomous actions with receipts, guardrails and undo',
+  },
   '/app/auto-reorder': {
     name: 'Auto-reorder',
     description: 'velocity-based stock reorder suggestions and draft purchase orders sized from recent sales',

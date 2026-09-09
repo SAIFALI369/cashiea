@@ -31,6 +31,7 @@ const Goals = lazy(() => import('./pages/Goals'))
 const Pricing = lazy(() => import('./pages/Pricing'))
 const Scorecard = lazy(() => import('./pages/Scorecard'))
 const Social = lazy(() => import('./pages/Social'))
+const CommandCenter = lazy(() => import('./pages/CommandCenter'))
 const Summaries = lazy(() => import('./pages/Summaries'))
 const EmailAssistant = lazy(() => import('./pages/EmailAssistant'))
 const Campaigns = lazy(() => import('./pages/Campaigns'))
@@ -150,6 +151,7 @@ function App() {
           <Route path="bank-import" element={<BankImport />} />
           <Route path="gst-export" element={<GstExport />} />
           <Route path="manifest" element={<Manifest />} />
+          <Route path="command-center" element={<CommandCenter />} />
           <Route path="auto-reorder" element={<AutoReorder />} />
           <Route path="cash-flow" element={<CashFlow />} />
           <Route path="reminders" element={<Reminders />} />

@@ -9,6 +9,7 @@ import { OfflineBanner } from './OfflineBanner'
 import { useDailyIntelligence } from '../lib/useDailyIntelligence'
 import { SyncManager } from './SyncManager'
 import { QueueBadge } from './QueueBadge'
+import AutomationCards from './AutomationCards'
 import PageStack from './PageStack'
 import Skeleton from './ui/Skeleton'
 import { Avatar } from './Avatar'
@@ -78,6 +79,7 @@ export default function AppLayout() {
 
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         <OfflineBanner />
+        <AutomationCards />
 
         {/* ── Desktop header (≥lg) — menu button on primary pages where
             the sidebar is default-hidden ── */}
