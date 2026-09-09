@@ -135,9 +135,14 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get("authorization") || "";
   const bearer = authHeader.replace(/^Bearer\s+/i, "");
   if (!bearer || !(await isServiceToken(bearer))) {
-    return new Response(JSON.stringify({ error: "Unauthorized — service-role only" }), {
-      status: 401, headers: { "Content-Type": "application/json" },
-    });
+    // Fall back to the exact key pg_cron sends, verified against the vault
+    // via a SECURITY DEFINER RPC (is_cron_key) that never exposes it.
+    const { data: isCron } = bearer ? await supabase.rpc("is_cron_key", { k: bearer }) : { data: null };
+    if (!isCron) {
+      return new Response(JSON.stringify({ error: "Unauthorized — service-role only" }), {
+        status: 401, headers: { "Content-Type": "application/json" },
+      });
+    }
   }
 
   try {
