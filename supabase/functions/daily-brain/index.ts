@@ -96,6 +96,33 @@ async function hasFreshPredictions(userId: string): Promise<boolean> {
   return (count || 0) > 0;
 }
 
+/**
+ * Verify a service-role caller: either the exact env key, or any valid
+ * service_role JWT (signature checked against the project JWKS). The old
+ * exact-string compare silently 401'd every cron after key rotation —
+ * pg_cron sends the vault key, which stays valid for PostgREST.
+ */
+async function isServiceToken(bearer: string): Promise<boolean> {
+  if (bearer && bearer === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) return true;
+  try {
+    const parts = bearer.split(".");
+    if (parts.length !== 3) return false;
+    const b64 = (s: string) => atob(s.replace(/-/g, "+").replace(/_/g, "/"));
+    const header = JSON.parse(b64(parts[0]));
+    const payload = JSON.parse(b64(parts[1]));
+    if (payload.role !== "service_role") return false;
+    if (!payload.exp || payload.exp * 1000 < Date.now()) return false;
+    const jwks = JSON.parse(Deno.env.get("SUPABASE_JWKS") || "{}");
+    const jwk = (jwks.keys || []).find((k: any) => k.kid === header.kid);
+    if (!jwk) return false;
+    const key = await crypto.subtle.importKey("jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
+    const sig = Uint8Array.from(b64(parts[2]), (c) => c.charCodeAt(0));
+    return await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, sig, new TextEncoder().encode(`${parts[0]}.${parts[1]}`));
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -104,8 +131,7 @@ Deno.serve(async (req) => {
   // would otherwise be accepted because this function has verify_jwt=false.
   const authHeader = req.headers.get("authorization") || "";
   const bearer = authHeader.replace(/^Bearer\s+/i, "");
-  const expectedKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!expectedKey || bearer !== expectedKey) {
+  if (!bearer || !(await isServiceToken(bearer))) {
     return new Response(JSON.stringify({ error: "Unauthorized — service-role only" }), {
       status: 401, headers: { "Content-Type": "application/json" },
     });
