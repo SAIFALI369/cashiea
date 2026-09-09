@@ -162,6 +162,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
             .then((res) => {
               const reply = (res && typeof res.reply === 'string' && res.reply.trim()) ? res.reply : "I couldn't think of a reply — try asking again."
               setVoiceReply(reply)
+              try { window.dispatchEvent(new CustomEvent('meraj:voice-reply', { detail: { text: reply } })) } catch { /* older browsers */ }
               speak(reply, () => setTimeout(() => { setVoiceActive(false); setVoiceReply('') }, 4000))
             })
             .catch((e) => {

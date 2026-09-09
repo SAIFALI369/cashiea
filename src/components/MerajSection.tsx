@@ -67,6 +67,12 @@ export default function MerajSection() {
   const [ask, setAsk] = useState('')
   const [reply, setReply] = useState('')
   const [replyLoading, setReplyLoading] = useState(false)
+  // ── VOICE REPLY BUBBLE: when Meraj speaks via bottom NAV, words appear
+  //    in the thought bubble one by one (animated), show 3s, rest 2min,
+  //    then the normal thought cycle resumes. ──
+  const [voiceReplyText, setVoiceReplyText] = useState('')
+  const [voiceReplyWords, setVoiceReplyWords] = useState(0)
+  const voiceReplyTimeoutRef = useRef<number | null>(null)
   const { speak, unlockTts } = useSpeech()
   const [interaction, setInteraction] = useState<MerajInteractionState>('idle')
   const idleTimer = useRef<number | null>(null)
@@ -105,6 +111,45 @@ export default function MerajSection() {
     return () => window.clearInterval(tick)
   }, [])
   const restartCycle = () => { cycleRef.current = { phase: 'show', t: Date.now() } }
+
+  // ── VOICE REPLY EVENT: bottom NAV's Meraj speaks → words flow into the
+  //    thought bubble with word-by-word animation, then the cycle rests. ──
+  useEffect(() => {
+    const onVoiceReply = (e: Event) => {
+      const text = (e as CustomEvent).detail?.text as string
+      if (!text || !text.trim()) return
+      if (voiceReplyTimeoutRef.current) window.clearTimeout(voiceReplyTimeoutRef.current)
+      cycleRef.current = { phase: 'hide', t: Date.now() }
+      setBubbleVisible(false)
+      setVoiceReplyText(text)
+      setVoiceReplyWords(0)
+      const words = text.trim().split(/\s+/)
+      let w = 0
+      const typeWord = () => {
+        w++
+        setVoiceReplyWords(w)
+        if (w < words.length) {
+          voiceReplyTimeoutRef.current = window.setTimeout(typeWord, 60)
+        } else {
+          voiceReplyTimeoutRef.current = window.setTimeout(() => {
+            setVoiceReplyText('')
+            setVoiceReplyWords(0)
+            voiceReplyTimeoutRef.current = window.setTimeout(() => {
+              cycleRef.current = { phase: 'show', t: Date.now() }
+              setBubbleVisible(true)
+              refreshNow()
+            }, 120_000)
+          }, 3_000)
+        }
+      }
+      voiceReplyTimeoutRef.current = window.setTimeout(typeWord, 200)
+    }
+    window.addEventListener('meraj:voice-reply', onVoiceReply)
+    return () => {
+      window.removeEventListener('meraj:voice-reply', onVoiceReply)
+      if (voiceReplyTimeoutRef.current) window.clearTimeout(voiceReplyTimeoutRef.current)
+    }
+  }, [refreshNow])
 
   // ── IN-PLACE VOICE REPLY: type a question, Meraj answers right here
   //    (text bubble + ElevenLabs voice) — no page navigation needed.
@@ -274,6 +319,23 @@ export default function MerajSection() {
           </motion.div>
 
           {/* Thought bubble — a real cloud: shows 20s, rests 60s, returns with a new thought */}
+          {/* VOICE REPLY — Meraj's spoken words flow here word-by-word */}
+          {voiceReplyText && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="absolute inset-0 z-10 flex items-center"
+            >
+              <div className="w-full rounded-[1.9rem] bg-accent-soft/50 border border-accent/30 px-5 py-4 shadow-soft">
+                <p className="text-sm sm:text-base font-semibold text-fg leading-snug">
+                  {voiceReplyText.trim().split(/\s+/).slice(0, voiceReplyWords).join(' ')}
+                  {voiceReplyWords < voiceReplyText.trim().split(/\s+/).length && (
+                    <span className="animate-pulse text-accent-strong">▊</span>
+                  )}
+                </p>
+              </div>
+            </motion.div>
+          )}
           <motion.div layout transition={{ type: 'spring', stiffness: 200, damping: 26 }} className="relative flex-1 min-w-0 min-h-[96px] flex flex-col justify-center">
             <AnimatePresence mode="wait">
               {bubbleVisible ? (

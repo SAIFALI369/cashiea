@@ -563,7 +563,7 @@ export default function AIAssistant() {
         setPendingImage(null)
         const done = [...next, { role: 'meraj' as const, text: res.reply, pending: res.pending, media: res.media, images: res.images, ts: Date.now() }]
         setMessages(done)
-        if (res.reply) { setTyping(true); speak(res.reply) }
+        if (res.reply) setTyping(true)
         upsertConvo(done, q || 'Shared photo')
       }
     } catch (e) {
