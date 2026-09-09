@@ -646,12 +646,18 @@ export default function Landing() {
               <div className="flex items-center gap-2"><Logo size={22} /><span className="font-semibold text-sm">Cashiea</span></div>
               <p className="mt-3 text-xs text-fg-muted leading-relaxed">POS, CRM, GST billing, khata, WhatsApp automation and AI — built for small Indian shops.</p>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 text-xs">
               <div className="space-y-2">
                 <p className="font-bold text-fg">Product</p>
                 <a href="#meraj" className="block text-fg-muted hover:text-fg transition-colors">Meraj AI</a>
                 <a href="#features" className="block text-fg-muted hover:text-fg transition-colors">Features</a>
                 <a href="#pricing" className="block text-fg-muted hover:text-fg transition-colors">Pricing</a>
+              </div>
+              <div className="space-y-2">
+                <p className="font-bold text-fg">Company</p>
+                <Link to="/about" className="block text-fg-muted hover:text-fg transition-colors">About</Link>
+                <Link to="/contact" className="block text-fg-muted hover:text-fg transition-colors">Contact</Link>
+                <Link to="/blog" className="block text-fg-muted hover:text-fg transition-colors">Blog</Link>
               </div>
               <div className="space-y-2">
                 <p className="font-bold text-fg">Get started</p>
@@ -660,7 +666,9 @@ export default function Landing() {
                 <a href="#faq" className="block text-fg-muted hover:text-fg transition-colors">FAQ</a>
               </div>
               <div className="space-y-2">
-                <p className="font-bold text-fg">Legal</p>
+                <p className="font-bold text-fg">Trust</p>
+                <Link to="/help" className="block text-fg-muted hover:text-fg transition-colors">Help center</Link>
+                <Link to="/security" className="block text-fg-muted hover:text-fg transition-colors">Security</Link>
                 <Link to="/privacy" className="block text-fg-muted hover:text-fg transition-colors">Privacy</Link>
                 <Link to="/terms" className="block text-fg-muted hover:text-fg transition-colors">Terms</Link>
               </div>
