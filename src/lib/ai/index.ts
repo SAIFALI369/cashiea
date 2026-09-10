@@ -5,6 +5,7 @@
 // ════════════════════════════════════════════════════════════════
 
 import { supabase, AI_FUNCTION_URL, edgeFunctionUrl } from '../supabase'
+import { requestId } from '../logger'
 import type { GoogleProvider } from '../app-catalog'
 
 export type TaskType = 'invoice' | 'report' | 'extract' | 'summary' | 'email' | 'sentiment'
@@ -47,9 +48,12 @@ async function fetchWithRetry(
       const res = await fetch(input, {
         ...init,
         signal: controller.signal,
-        // Reuse the HTTP connection — saves ~100-200ms per call on repeat
-        // requests to the same edge function.
-        headers: { Connection: 'keep-alive', ...(init.headers as Record<string, string>) },
+        headers: {
+          // Correlation: server-side logs for this AI call carry the same id
+          // as the client logs/error report for the current page view.
+          'X-Request-Id': requestId(),
+          ...(init.headers as Record<string, string>),
+        },
       })
       clearTimeout(timeoutId)
       // Retry ONLY on transient failures: 429 (rate limit), 503, 504.
@@ -65,7 +69,11 @@ async function fetchWithRetry(
       clearTimeout(timeoutId)
       const msg = err instanceof Error ? err.message : String(err)
       if (msg.includes('abort') || controller.signal.aborted) {
-        throw new Error('Request took too long — please try again.')
+        // `Error cause` typing needs the ES2022 lib; we target ES2020, so
+        // attach it explicitly (still shows up in the stack on modern engines).
+        const timeout = new Error('Request took too long — please try again.')
+        ;(timeout as Error & { cause?: unknown }).cause = err
+        throw timeout
       }
       lastError = err instanceof Error ? err : new Error(String(err))
       if (attempt === retries) throw lastError

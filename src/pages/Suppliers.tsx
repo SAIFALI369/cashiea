@@ -13,7 +13,7 @@ import toast from 'react-hot-toast'
 interface POFormItem { name: string; quantity: string; unit_price: string }
 
 export default function Suppliers() {
-  const { profile, ownerId } = useAuth()
+  const { ownerId } = useAuth()
   const { isOwner } = useCan()
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [pos, setPos] = useState<PurchaseOrder[]>([])

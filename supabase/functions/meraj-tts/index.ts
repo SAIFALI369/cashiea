@@ -15,6 +15,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, json } from "../_shared/retry.ts";
+import { checkRateLimit } from "../_shared/rate-limit.ts";
 
 const ELEVEN_VOICE = "JBFqnCBsd6RMkjVDRZzb"; // warm, clear male voice
 const ELEVEN_MODEL = "eleven_flash_v2_5"; // 0.5 credits/char, ~112ms
@@ -129,6 +130,18 @@ Deno.serve(async (req) => {
     );
     const { data: { user } } = await anonClient.auth.getUser();
     if (!user) return json({ error: "Unauthorized" }, 401);
+
+    // Per-user burst limit (see _shared/rate-limit.ts): TTS hits paid
+    // provider layers, so one stuck client must not burn the budget.
+    const limiter = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const rate = await checkRateLimit(limiter, { userId: user.id, scope: "meraj-tts", limit: 10, windowSeconds: 60 });
+    if (!rate.allowed) {
+      return json(
+        { error: `Too many voice requests right now — please wait ${rate.retryAfterSeconds}s and try again.` },
+        429,
+        { ...corsHeaders, "Retry-After": String(rate.retryAfterSeconds) },
+      );
+    }
 
     const body = await req.json().catch(() => null);
     const text = typeof body?.text === "string" ? body.text.trim() : "";

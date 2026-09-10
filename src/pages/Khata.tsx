@@ -7,7 +7,7 @@ import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { FitAmount } from '../components/FitAmount'
-import { BookOpen, Plus, Loader2, Trash2, Search, Phone, X, Send, TrendingUp, TrendingDown, UserPlus, ChevronRight, AlertCircle, CheckCircle2, MessageCircle } from 'lucide-react'
+import { BookOpen, Plus, Loader2, Trash2, Search, X, TrendingUp, AlertCircle, CheckCircle2, MessageCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 /**

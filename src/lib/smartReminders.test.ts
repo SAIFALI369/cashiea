@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { daysUntil, gstDueDates, buildSmartReminders, ymd } from './smartReminders'
+import { daysUntil, gstDueDates, buildSmartReminders } from './smartReminders'
 
 describe('daysUntil', () => {
   const today = new Date(2026, 8, 6) // 6 Sep 2026

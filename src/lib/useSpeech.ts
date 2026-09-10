@@ -13,23 +13,6 @@ import { supabase, AI_FUNCTION_URL, edgeFunctionUrl } from './supabase'
  * (ElevenLabs, Cartesia, etc.) by replacing the `speak()` body.
  */
 
-/** Map a speech error code to an honest, actionable message. */
-function micErrorMessage(code: string): string {
-  switch (code) {
-    case 'not-allowed':
-    case 'service-not-allowed':
-      return 'Microphone access is blocked — allow it in your browser settings and try again.'
-    case 'no-speech':
-      return "I couldn't hear that clearly — try speaking a bit louder."
-    case 'network':
-      return 'Speech recognition needs an internet connection.'
-    case 'aborted':
-      return '' // user cancelled — no message needed
-    default:
-      return `Voice error (${code}) — please try again.`
-  }
-}
-
 // ── TTS voice preference: Indian English > Hindi > English > any ──
 let cachedVoice: SpeechSynthesisVoice | null = null
 function pickBestVoice(): SpeechSynthesisVoice | null {

@@ -16,6 +16,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
+import { checkRateLimit } from "../_shared/rate-limit.ts";
 import { callAIWithFallback } from "../_shared/ai-call.ts";
 import { resolveBusiness } from "../_shared/business.ts";
 import { releaseApiUsage } from "../_shared/usage.ts";
@@ -81,6 +82,17 @@ Deno.serve(async (req) => {
     if (!business) return json({ error: "Your account is not linked to exactly one active business" }, 403);
     const { ownerId, isOwner } = business;
     usageOwner = ownerId;
+
+    // Per-user burst limit on top of the daily quota (see _shared/rate-limit.ts).
+    const rate = await checkRateLimit(service, { userId: ownerId, scope: "business-brain", limit: 5, windowSeconds: 60 });
+    if (!rate.allowed) {
+      return json(
+        { error: `Too many brain requests right now — please wait ${rate.retryAfterSeconds}s and try again.` },
+        429,
+        { ...corsHeaders, "Retry-After": String(rate.retryAfterSeconds) },
+      );
+    }
+
     const { data: profile, error: profileError } = await service
       .from("profiles")
       .select("ai_provider, company_name, full_name")

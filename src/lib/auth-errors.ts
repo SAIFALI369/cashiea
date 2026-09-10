@@ -131,7 +131,7 @@ function messageForOpaqueError(err: unknown, fallback: string): string {
 
 export function friendlyAuthError(err: unknown, fallback = "Something went wrong. Please try again."): string {
   // Always surface the full object for debugging in the browser console.
-  // eslint-disable-next-line no-console
+   
   console.error('[cashiea:auth] full error →', err)
 
   const msg = findText(err)

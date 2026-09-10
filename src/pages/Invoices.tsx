@@ -16,7 +16,7 @@ import {
   buildWhatsappLink, buildSmsLink, copyToClipboard, type UPIParams,
 } from '../lib/payments'
 import { generateInvoicePdf } from '../lib/invoice-pdf'
-import type { Customer, Invoice, InvoiceItem, Product } from '../lib/types'
+import type { Customer, Invoice, Product } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import { StatStrip } from '../components/ui/StatStrip'
 import { MoreMenu } from '../components/MoreMenu'

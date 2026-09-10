@@ -73,7 +73,7 @@ export default function BankImport() {
     csv.rows.forEach((row, i) => {
       const dateRaw = at(row, cols.date)
       const desc = at(row, cols.description) || 'Bank transaction'
-      let amount = parseAmount(at(row, cols.amount))
+      const amount = parseAmount(at(row, cols.amount))
       const debit = parseAmount(at(row, cols.debit))
       // Separate debit column (or negative amounts) → money out; skip those for matching
       if (!Number.isFinite(amount) || amount === 0) {

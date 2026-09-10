@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Sparkles, ArrowLeft, Clock, TrendingUp, Users, Quote, Check, ShoppingCart } from 'lucide-react'
+import { ArrowLeft, Clock, TrendingUp, Users, Quote, Check, ShoppingCart } from 'lucide-react'
 
 const results = [
   { icon: Clock, value: '3×', label: 'faster checkout', color: 'text-positive' },

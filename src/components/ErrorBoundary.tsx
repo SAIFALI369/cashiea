@@ -1,5 +1,7 @@
 import { Component, type ReactNode } from 'react'
 import { AlertTriangle, RefreshCw, Home, MessageSquare } from 'lucide-react'
+import { captureError } from '../lib/errorTracking'
+import { log } from '../lib/logger'
 
 /**
  * ErrorBoundary — catches any unhandled exception in the React tree and
@@ -28,8 +30,13 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Log to console for debugging (could also send to a monitoring service)
-    console.error('[ErrorBoundary]', error, errorInfo.componentStack)
+    // Structured report (deduped, rate-limited, flushed to client_errors)
+    // + console line with the correlation request id for local debugging.
+    captureError(error, 'boundary', { componentStack: errorInfo.componentStack })
+    log.error('ErrorBoundary caught a render crash', {
+      message: error.message,
+      componentStack: errorInfo.componentStack,
+    })
   }
 
   handleReload = () => {

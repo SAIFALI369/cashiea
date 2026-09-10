@@ -44,7 +44,7 @@ Live at **[cashiea.vercel.app](https://cashiea.vercel.app)**
 - **Backend:** Supabase (Postgres + RLS + pg_cron + 24 edge functions), ap-south-1 (Mumbai)
 - **AI:** Groq (primary) + Google Gemini (fallback) with a multi-pass patient cascade; function-calling tools for Meraj's actions
 - **Integrations:** WhatsApp Cloud API, Google Sheets/Drive/Gmail, UPI deep links + QR, Pollination.ai (image gen), GNews
-- **Testing:** Vitest (270+ tests — sale math, GST split, CSV engine, XLSX writer, compliance knowledge)
+- **Testing:** Vitest (597 tests — sale math, GST split, CSV engine, XLSX writer, compliance knowledge, error-tracking pipeline); CI gates on lint + type-check + coverage thresholds + build + bundle size
 
 ## Project layout
 
@@ -70,11 +70,44 @@ npm run dev
 
 Tests: `npm test` · Build: `npm run build`
 
-## Deployment
+## Production operations
 
-- **Frontend:** Vercel (auto on push to `main`; set the two `VITE_` env vars)
-- **Edge functions:** GitHub Actions deploys `supabase/functions/**` on push
-- **Database:** versioned SQL migrations in `supabase/`
+See `docs/PRODUCTION_AUDIT.md` for the full audit, prioritized gap list and
+remaining sprints. Current state:
+
+- **Security headers** — CSP (`script-src 'self'` — no inline scripts; the
+  no-flash theme bootstrap lives in `public/theme-init.js`), HSTS (preload),
+  `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`,
+  `Permissions-Policy` — all set in `vercel.json`.
+- **Error tracking** — `src/lib/errorTracking.ts` captures uncaught errors,
+  unhandled rejections, boundary crashes and auth failures; reports are
+  deduped, rate-limited (40/session, 6/min), truncated and batched into the
+  `client_errors` table (DDL: `supabase/schema-v33-client-errors.sql` —
+  insert-only for the user's own id, service-role-only reads). `src/lib/logger.ts`
+  gives every log line a request id that rotates per page view and is sent as
+  `X-Request-Id` on AI calls, so a production error correlates with its logs.
+- **Rate limiting** — per-user sliding-window burst limits (Postgres-backed,
+  `schema-v34-rate-limits.sql`) on the expensive AI functions: `ai-assistant`
+  10/60 s, `quick-tasks` 5/60 s, `business-brain` 5/60 s, `meraj-tts` 10/60 s,
+  on top of the existing daily AI quota. Limiters fail open on their own
+  errors; 429 responses carry `Retry-After`.
+- **CI gates** — `npm audit` (high+ fails) → ESLint (0 errors) → `tsc` →
+  vitest with coverage thresholds (regression floors in `vitest.config.ts`) →
+  build → per-chunk bundle-size report (fail > 700 kB).
+- **Staging & rollback** — every PR gets a Vercel preview deploy (staging);
+  production is the `main` branch. Rollback = redeploy the previous Vercel
+  deployment (one click in the dashboard, or `vercel deploy --prebuilt <hash>`
+  from the CLI).
+- **Backups / DR** — the source of truth is the Supabase Postgres in
+  ap-south-1. Runbook: keep point-in-time recovery enabled (Pro plan), export
+  a weekly `pg_dump` of the `public` schema to object storage with 30-day
+  retention, and do a quarterly restore test into a scratch project.
+  `supabase/_combined-schema.sql` is the idempotent full-schema baseline for
+  rebuilding a new project; run `schema-v33-*.sql` and `schema-v34-*.sql`
+  afterwards.
+- **Secrets** — env-only, per environment: two `VITE_` vars for the frontend
+  (Vercel project envs), function secrets via `supabase secrets set` in the
+  deploy workflow, service-role key never leaves Supabase.
 
 > If login shows "We couldn't reach the sign-in service", check that Vercel's
 > `VITE_SUPABASE_URL` is `https://prwvaetatdidsugczluv.supabase.co`, not the old

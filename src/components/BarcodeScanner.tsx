@@ -9,7 +9,7 @@ import { useBarcodeScanner } from '../lib/useBarcodeScanner'
  * Falls back to a manual input if BarcodeDetector isn't supported.
  */
 export function BarcodeScanner({ onDetect, onClose }: { onDetect: (code: string) => void; onClose: () => void }) {
-  const { scanning, supported, error, startScan, stopScan, videoRef } = useBarcodeScanner()
+  const { scanning, supported, error, startScan, stopScan } = useBarcodeScanner()
   const [manualCode, setManualCode] = useState('')
   const videoElRef = useRef<HTMLVideoElement | null>(null)
   const hasDetected = useRef(false)

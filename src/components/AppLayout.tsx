@@ -4,7 +4,6 @@ import Sidebar from './Sidebar'
 import BottomNav from './BottomNav'
 import DesktopHeader from './DesktopHeader'
 import { CommandPalette } from './CommandPalette'
-import { LiveClock } from './LiveClock'
 import { OfflineBanner } from './OfflineBanner'
 import { useDailyIntelligence } from '../lib/useDailyIntelligence'
 import { SyncManager } from './SyncManager'
@@ -146,7 +145,7 @@ export default function AppLayout() {
       </div>
 
       {/* Bottom nav — shapes itself for mobile vs desktop internally. */}
-      {showDesktopShell && <BottomNav onMore={() => setSidebarOpen(true)} />}
+      {showDesktopShell && <BottomNav />}
 
       <CommandPalette />
       <SyncManager />
