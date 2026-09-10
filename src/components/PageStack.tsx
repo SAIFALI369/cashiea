@@ -199,7 +199,6 @@ export default function PageStack({
   const timersRef = useRef<number[]>([])
 
   const [peek, setPeek] = useState<PrimaryPage | null>(null)
-  const [peekSide, setPeekSide] = useState<1 | -1>(1)
   const [backing, setBacking] = useState(false)
   const [viewportW, setViewportW] = useState(() =>
     typeof window === 'undefined' ? 390 : window.innerWidth
@@ -471,7 +470,6 @@ export default function PageStack({
         } else if (intent === 'lateral' && neighbor) {
           g.side = dx < 0 ? 1 : -1
           g.page = neighbor
-          setPeekSide(g.side)
           setPeek(neighbor)
         }
         // Own the pointer only once the gesture is unambiguously ours,
@@ -485,7 +483,10 @@ export default function PageStack({
 
       const now = performance.now()
       const dt = now - g.lastT
-      let x = 0
+      // All branches that reach below assign x (the last branch returns),
+      // so no initial value is needed — declared as `number` for definite
+      // assignment.
+      let x: number
       if (g.mode === 'lateral') {
         x = clamp(dx, -viewportW, viewportW)
         place(liveRef.current, x)

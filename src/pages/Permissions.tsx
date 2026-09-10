@@ -1,4 +1,3 @@
-import { useAuth } from '../context/AuthContext'
 import { useCan } from '../lib/permissions'
 import {
   usePermissionConfig, resolveMode, MONEY_CAPABILITIES, TUNABLE_ROLES,

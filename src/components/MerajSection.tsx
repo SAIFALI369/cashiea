@@ -13,7 +13,7 @@ import { salesSignal } from '../lib/salesSignal'
 import { formatINR } from '../lib/format'
 import {
   TrendingUp, TrendingDown, Package, Wallet, AlertTriangle, Sparkles, Send, Mic,
-  Users, Receipt, ArrowUpRight, Zap, Heart, Coffee, Moon, Sun,
+  Users, ArrowUpRight, Zap, Heart, Coffee, Moon, Sun,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -58,7 +58,7 @@ function toneBg(tone: Pulse['tone']) {
 
 export default function MerajSection() {
   const navigate = useNavigate()
-  const { ownerId, profile } = useAuth()
+  const { ownerId } = useAuth()
   const businessMood = useBusinessMood() ?? 'neutral'
   const { text: thought, awake, refreshNow } = useMerajThought(ownerId)
 
@@ -183,7 +183,6 @@ export default function MerajSection() {
         const now = new Date()
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
         const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).toISOString()
-        const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString()
 
         const [salesT, salesY, inv, prod, txWeek, custRes] = await Promise.all([
           supabase.from('transactions').select('total').eq('user_id', ownerId).eq('status', 'completed').gte('created_at', today),

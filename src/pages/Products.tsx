@@ -16,7 +16,7 @@ import { DataToolbar } from '../components/ui/DataToolbar'
 import EmptyState from '../components/ui/EmptyState'
 import { CategoryCombobox } from '../components/products/CategoryCombobox'
 import { ImportCsvModal } from '../components/products/ImportCsvModal'
-import { Package, Plus, Loader2, Trash2, AlertTriangle, Search, MapPin, ChevronDown, X, FileSpreadsheet, Wallet, Layers, RefreshCw } from 'lucide-react'
+import { Package, Plus, Loader2, Trash2, AlertTriangle, MapPin, ChevronDown, X, FileSpreadsheet, Wallet, Layers, RefreshCw } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import type { ProductUnit } from '../lib/types'
@@ -26,7 +26,7 @@ interface ExtraUnitRow { unit: string; price: string; factor: string }
 const empty = { name: '', description: '', sku: '', category: 'general', price: '', cost: '', stock_quantity: '', low_stock_threshold: '5', hsn_code: '', gst_rate: '0', unitBase: '', extraUnits: [] as ExtraUnitRow[] }
 
 export default function Products() {
-  const { profile, ownerId } = useAuth()
+  const { ownerId } = useAuth()
   const { isOwner } = useCan()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)

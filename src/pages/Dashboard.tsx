@@ -3,15 +3,11 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import MerajSection from '../components/MerajSection'
-import { useBusinessMood } from '../lib/businessMood'
 import { FitAmount } from '../components/FitAmount'
-import { motion } from '../components/motion'
 import { formatINR } from '../lib/format'
-import { dashboardSuggestions } from '../lib/ai'
-import { salesSignal } from '../lib/salesSignal'
 import {
   TrendingUp, Wallet, Package, MessageCircle, FileSignature, Users,
-  ArrowRight, AlertTriangle, ChevronDown, BellRing, Check, X, Sparkles,
+  AlertTriangle, Sparkles,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -35,14 +31,6 @@ interface Stat {
 interface Insight { severity: 'critical' | 'warning' | 'healthy'; title: string; subtitle: string }
 interface OverdueInv { id: string; invoice_number: string; client_name: string; total: number; due_date: string | null }
 
-const DAY = 86400000
-const startOfWeek = (d = new Date()) => {
-  const r = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-  const wd = (r.getDay() + 6) % 7 // Mon=0 … Sun=6
-  r.setDate(r.getDate() - wd)
-  return r
-}
-
 function Sparkline({ values, height = 48, quiet = false }: { values: number[]; height?: number; quiet?: boolean }) {
   const pts = values.length ? values : [0, 0, 0, 0, 0, 0, 0]
   const max = Math.max(1, ...pts)
@@ -63,36 +51,21 @@ function Sparkline({ values, height = 48, quiet = false }: { values: number[]; h
 export default function Dashboard() {
   const { profile, ownerId } = useAuth()
   const navigate = useNavigate()
-  // Real signal-driven mood (sales trend vs 14-day average, overdue, low stock).
-  const merajMood = useBusinessMood() ?? 'neutral'
-  const [loading, setLoading] = useState(true)
+  // The data effect below still sets loading/insights (MerajSection renders
+  // the insight surface today); the values themselves are not read here.
+  const [, setLoading] = useState(true)
   const [stats, setStats] = useState<Stat[]>([])
   const [topPriority, setTopPriority] = useState<OverdueInv | null>(null)
   const [overdueCount, setOverdueCount] = useState(0)
   const [overdueSum, setOverdueSum] = useState(0)
-  const [insights, setInsights] = useState<Insight[]>([])
+  const [, setInsights] = useState<Insight[]>([])
   const [daily, setDaily] = useState<number[]>([0, 0, 0, 0, 0, 0, 0])
   const [dailyExp, setDailyExp] = useState<number[]>([0, 0, 0, 0, 0, 0, 0])
   const [weekSales, setWeekSales] = useState(0)
   const [weekExpenses, setWeekExpenses] = useState(0)
   const [weekIncome, setWeekIncome] = useState(0)
-  const [ask, setAsk] = useState('')
   const [aiGreeting, setAiGreeting] = useState('')
   const [activeDay, setActiveDay] = useState<number | null>(null)
-  const [aiSuggestions, setAiSuggestions] = useState<string[]>([])
-  // Quick bar (suggestion pills) — swipe it away or tap X; it stays away
-  // until brought back. One preference per device.
-  const [showQuickBar, setShowQuickBar] = useState(() => {
-    try { return localStorage.getItem('cashiea_quickbar_hidden') !== '1' } catch { return true }
-  })
-  const hideQuickBar = () => {
-    setShowQuickBar(false)
-    try { localStorage.setItem('cashiea_quickbar_hidden', '1') } catch { /* ignore */ }
-  }
-  const restoreQuickBar = () => {
-    setShowQuickBar(true)
-    try { localStorage.removeItem('cashiea_quickbar_hidden') } catch { /* ignore */ }
-  }
 
   // Static rotating greeting — zero AI credits, zero network, instant load.
   // AI credits are saved for actual business questions.
@@ -160,7 +133,6 @@ export default function Dashboard() {
 
       // stats (enriched, dense)
       // Zero sales is NOT a loss — an empty morning stays neutral.
-      const sig = salesSignal(salesToday, salesYesterday)
       setStats([
         {
           label: 'Sales today', value: formatINR(salesToday, 0), count: salesToday, icon: TrendingUp,
@@ -222,80 +194,16 @@ export default function Dashboard() {
       else ins.push({ severity: 'healthy', title: 'Stock healthy hai', subtitle: 'Sab items available hain' })
       setInsights(ins.slice(0, 3))
 
-      // ── AI suggestion pills (search bar) ─────────────────────────
-      // INSTANT: smart fallback pills built from the LIVE numbers render
-      // on the first paint (the owner never waits). The actual AI call
-      // fires 8 SECONDS later — if the owner has already moved to POS or
-      // Products by then, the call is skipped entirely (zero tokens
-      // wasted on a page nobody is looking at). Cache: 12 hours.
-      const suggKey = `cashiea_suggestions_${ownerId}`
-      const suggState = {
-        date: new Date().toISOString().split('T')[0],
-        day: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][new Date().getDay()],
-        salesToday, salesYesterday, pendingCount, pendingSum,
-        overdueCount: overdue.length, overdueSum,
-        lowStock, unreadMessages: messages, pendingOrders: orders,
-        weekSales: buckets.reduce((s: number, v: number) => s + v, 0), weekExpenses: expensesWeek,
-        topOverdueClient: topPriority?.client_name || null,
-      }
-      // 1) INSTANT: live-number pills (replaces the old static fallbacks —
-      //    these are genuinely smart, built from today's actual data)
-      const smartInstant = [
-        salesToday === 0 ? 'How do I get the first sale of the day?' : `Why ${salesToday < salesYesterday ? 'are sales down' : 'is business strong'} today?`,
-        topPriority ? `How to collect ${formatINR(topAmount, 0)} from ${topPriority.client_name}?` : 'Which customers may delay payments?',
-        lowStock > 0 ? `What to reorder (${lowStock} low-stock items)?` : 'Which products to promote this week?',
-        'What should I do differently tomorrow?',
-      ]
-      setAiSuggestions(smartInstant)
-
-      // 2) DELAYED: AI-generated pills (8s — only if the owner is still
-      //    on the Dashboard), cached 12 hours
-      try {
-        const cached = JSON.parse(localStorage.getItem(suggKey) || 'null')
-        if (cached?.ts && Date.now() - cached.ts < 12 * 60 * 60 * 1000 && Array.isArray(cached.pills) && cached.pills.length >= 3) {
-          setAiSuggestions(cached.pills)
-        } else {
-          setTimeout(() => {
-            // Still on the Dashboard? Then the AI call is worth it.
-            if (document.visibilityState === 'visible' && window.location.pathname === '/app') {
-              dashboardSuggestions(suggState)
-                .then((p) => {
-                  if (p.length) {
-                    setAiSuggestions(p)
-                    try { localStorage.setItem(suggKey, JSON.stringify({ pills: p, ts: Date.now() })) } catch { /* ignore */ }
-                  }
-                })
-                .catch(() => { /* instant pills remain */ })
-            }
-          }, 8000)
-        }
-      } catch { /* ignore */ }
+      // NOTE: the old "AI suggestion pills" block lived here and fired a
+      // dashboardSuggestions() AI call 8s after each dashboard load, feeding
+      // a state the redesigned page no longer renders — it was dead cost,
+      // removed in the production hardening pass (docs/PRODUCTION_AUDIT.md).
 
       setLoading(false)
     })()
   }, [profile])
 
   const firstName = (profile?.full_name || 'there').split(' ')[0]
-
-  const goAsk = (q?: string) => {
-    const text = (q ?? ask).trim()
-    navigate(text ? `/app/assistant?q=${encodeURIComponent(text)}` : '/app/assistant')
-  }
-
-  const topAmount = topPriority ? Number(topPriority.total) : overdueSum
-  // Safety net if aiSuggestions is somehow empty (AI failed + instant pills
-  // were cleared) — still contextual, built from the live numbers.
-  const fallbackSuggestions = [
-    'How were sales today?',
-    topPriority ? `How do I collect ${formatINR(topAmount, 0)} overdue?` : 'Which customers may delay payments?',
-    'What should I reorder this week?',
-    'How do I grow sales this week?',
-  ]
-  const suggestions = aiSuggestions.length ? aiSuggestions : fallbackSuggestions
-
-  const sevDot = { critical: 'bg-negative', warning: 'bg-warning', healthy: 'bg-positive' } as const
-  const footerCls = { warning: 'text-warning', negative: 'text-negative', positive: 'text-positive', muted: 'text-fg-subtle' } as const
-  const deltaCls = { good: 'text-positive', bad: 'text-negative', neutral: 'text-fg-subtle' } as const
 
   const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
   const maxDay = Math.max(1, ...daily, ...dailyExp)

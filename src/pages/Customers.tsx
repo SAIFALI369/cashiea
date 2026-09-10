@@ -11,7 +11,7 @@ import { StatStrip } from '../components/ui/StatStrip'
 import { DataToolbar } from '../components/ui/DataToolbar'
 import EmptyState from '../components/ui/EmptyState'
 import { ConfirmDialog } from '../components/ConfirmDialog'
-import { Users, Plus, Loader2, Trash2, Search, Mail, Phone, ShoppingBag, X, Clock, Send, TrendingUp, Award, UserPlus, MessageCircle, ChevronRight, Sparkles, IndianRupee } from 'lucide-react'
+import { Users, Plus, Loader2, Trash2, Search, Mail, Phone, X, Clock, TrendingUp, Award, UserPlus, ChevronRight, Sparkles, IndianRupee } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const empty = { name: '', email: '', phone: '', address: '', company: '', notes: '', tags: '', credit_limit: 0 }

@@ -5,7 +5,7 @@ import {
 import { formatINR } from '../../lib/format'
 import { useHoldRepeat } from '../../lib/useHoldRepeat'
 import type { SaleTotals, TenderLine } from '../../lib/pos'
-import { effectiveRate, tenderStatus } from '../../lib/pos'
+import { effectiveRate } from '../../lib/pos'
 import type { CartLine } from '../../lib/pos'
 import type { Customer, PaymentMethod } from '../../lib/types'
 import { QueueBadge } from '../QueueBadge'
@@ -97,7 +97,6 @@ export function CartContents({
   hasProductGst: boolean
 }) {
   const itemCount = cart.reduce((s, l) => s + l.quantity, 0)
-  const tender = tenderStatus(sale.total, tenders)
   const anyInclusive = cart.some((l) => l.price_includes_tax && effectiveRate(l, defaultTaxRate) > 0)
   const sheet = variant === 'sheet'
 

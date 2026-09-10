@@ -1,7 +1,8 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { lazy, Suspense } from 'react'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { lazy, Suspense, useEffect } from 'react'
 import { MotionConfig } from 'framer-motion'
 import { useAuth } from './context/AuthContext'
+import { rotateRequestId } from './lib/logger'
 import { supabaseConfigured, supabaseConfigIssue } from './lib/supabase'
 import ProtectedRoute from './components/ProtectedRoute'
 import AppLayout from './components/AppLayout'
@@ -87,6 +88,13 @@ function FullPageFallback() {
 
 function App() {
   const { user } = useAuth()
+  const location = useLocation()
+
+  // New correlation scope per page view: all logs, outgoing AI calls and
+  // error reports on this route share one request id (src/lib/logger.ts).
+  useEffect(() => {
+    rotateRequestId()
+  }, [location.pathname])
 
   if (!supabaseConfigured || supabaseConfigIssue) {
     return <SetupScreen issue={supabaseConfigIssue} />

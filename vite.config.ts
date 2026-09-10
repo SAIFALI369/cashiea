@@ -61,8 +61,6 @@ export default defineConfig({
           'pdf': ['jspdf'],
           // Supabase client — large, used app-wide so kept separate
           'supabase': ['@supabase/supabase-js'],
-          // AI SDK — only used by the standalone test script, keep out of main
-          'ai-sdk': ['ai', '@ai-sdk/openai-compatible'],
           // Icons — tree-shaken but grouped
           'icons': ['lucide-react'],
           // Router

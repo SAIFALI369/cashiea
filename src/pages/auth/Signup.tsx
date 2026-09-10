@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, ArrowRight, Check, Store, Phone, User, MapPin, Zap, TrendingUp, Shield } from 'lucide-react'
-import toast from 'react-hot-toast'
 import { friendlyAuthError } from '../../lib/auth-errors'
 import { useInputFocus, FOCUS_SCROLL_CLASS } from '../../lib/useInputFocus'
 
@@ -55,8 +54,6 @@ function getStrength(pwd: string): { label: string; tone: string; pct: number } 
   ]
   return levels[score] || levels[0]
 }
-
-const CATEGORIES = ['Grocery / Kirana', 'Electronics', 'Pharmacy', 'Clothing / Fashion', 'Hardware / Building', 'Restaurant / Food', 'Other']
 
 export default function Signup() {
   const { signUp } = useAuth()
