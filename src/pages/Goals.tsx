@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { formatINR } from '../lib/format'
 import {
-  GOAL_TEMPLATES, addDays, collectFacts, loadGoals, saveGoals, newGoal, progressOf, startOfWeekMon, weekGrade, ymdLocal,
+  GOAL_TEMPLATES, collectFacts, loadGoals, saveGoals, newGoal, progressOf, weekGrade, ymdLocal,
   type Goal, type GoalKind, type GoalPeriod, type GoalProgress,
 } from '../lib/businessGoals'
 import PageHeader from '../components/ui/PageHeader'

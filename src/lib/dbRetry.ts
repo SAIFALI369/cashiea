@@ -65,7 +65,7 @@ export async function withRetry<T extends { data: any; error: any }>(
   } catch (err) {
     // Import toast dynamically to avoid circular dependency
     const { toast } = await import('react-hot-toast')
-    const t = toast.error(errorMessage, {
+    toast.error(errorMessage, {
       duration: 6000,
       id: 'db-retry-error',
     })

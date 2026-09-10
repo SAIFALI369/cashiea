@@ -16,7 +16,7 @@ interface RecipientInput {
 const tones = ['professional', 'friendly', 'persuasive', 'formal', 'casual']
 
 export default function CampaignBuilder() {
-  const { profile, ownerId } = useAuth()
+  const { ownerId } = useAuth()
   const navigate = useNavigate()
   const { id } = useParams()
 

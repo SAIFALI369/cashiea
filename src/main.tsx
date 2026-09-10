@@ -5,7 +5,16 @@ import { Toaster } from 'react-hot-toast'
 import App from './App'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
+import { initErrorTracking } from './lib/errorTracking'
+import { rotateRequestId } from './lib/logger'
 import './index.css'
+
+// Production observability: install the global error hooks BEFORE anything
+// can throw (uncaught errors, unhandled rejections, resource-load failures)
+// and start a fresh correlation scope for this page view. See
+// src/lib/errorTracking.ts + src/lib/logger.ts and docs/PRODUCTION_AUDIT.md.
+rotateRequestId()
+initErrorTracking()
 
 // vite-plugin-pwa registers the versioned service worker in production builds.
 // It caches only the immutable app shell; authenticated mutations remain in the

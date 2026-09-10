@@ -8,6 +8,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry, corsHeaders, json } from "../_shared/retry.ts";
+import { checkRateLimit } from "../_shared/rate-limit.ts";
 import { callGeminiToolCall, callGeminiWithImage } from "../_shared/ai-default.ts";
 import { callAIWithFallback } from "../_shared/ai-call.ts";
 import { INDIA_KNOWLEDGE } from "../_shared/india-knowledge.ts";
@@ -618,6 +619,17 @@ Deno.serve(async (req) => {
     if (!business) return json({ error: "Your account is not linked to exactly one active business" }, 403);
     const { ownerId, role: actorRole, isOwner } = business;
     usageOwner = ownerId;
+
+    // Per-user burst limit on top of the daily quota (see _shared/rate-limit.ts).
+    const rate = await checkRateLimit(serviceSupabase, { userId: ownerId, scope: "ai-assistant", limit: 10, windowSeconds: 60 });
+    if (!rate.allowed) {
+      return json(
+        { error: `Too many AI requests right now — please wait ${rate.retryAfterSeconds}s and try again.` },
+        429,
+        { ...corsHeaders, "Retry-After": String(rate.retryAfterSeconds) },
+      );
+    }
+
     const { data: profile, error: profileError } = await serviceSupabase
       .from("profiles")
       .select("ai_provider, api_usage_count, api_usage_limit, trial_ends_at, full_name, company_name, shop_category, business_address, phone, gstin, upi_id, business_state")

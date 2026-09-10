@@ -136,7 +136,7 @@ function daysBetween(a: string, b: string): number | null {
 export function scorePair(txn: BankTxnIn, inv: UnpaidInvoiceIn): PairScore {
   const amountDiff = Math.abs(txn.amount - inv.total)
   const closeEnough = Math.max(50, inv.total * 0.02)
-  let amountScore = 0
+  let amountScore: number
   if (amountDiff <= 1) amountScore = 70
   else if (amountDiff <= closeEnough) amountScore = 20
   else {

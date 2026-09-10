@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useRef, useState, ReactNode } fro
 import { Session, User } from '@supabase/supabase-js'
 import { supabase, supabaseConfigured, supabaseConfigIssue } from '../lib/supabase'
 import { isTransientAuthError } from '../lib/auth-errors'
+import { captureError } from '../lib/errorTracking'
+import { log } from '../lib/logger'
 import type { Profile } from '../lib/types'
 
 const supabaseReady = supabaseConfigured && !supabaseConfigIssue
@@ -171,7 +173,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }))
 
     if (error) {
-      console.error('[cashiea:auth] signUp error →', error)
+      // Reported to the client_errors sink (kind 'auth') — a signup failure
+      // in production is otherwise invisible.
+      captureError(error, 'auth', { op: 'signUp' })
+      log.error('signUp failed', { message: (error as Error).message })
       throw error
     }
     if (data.user) {
@@ -184,7 +189,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabaseReady) throw new Error('Cashiea is not configured. Add the Supabase environment variables.')
     const { error } = await withTransientRetry(() => supabase.auth.signInWithPassword({ email, password }))
     if (error) {
-      console.error('[cashiea:auth] signIn error →', error)
+      captureError(error, 'auth', { op: 'signIn' })
+      log.error('signIn failed', { message: (error as Error).message })
       throw error
     }
   }

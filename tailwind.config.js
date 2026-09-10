@@ -76,7 +76,9 @@ export default {
         rose: { DEFAULT: 'rgb(var(--negative))', 400: 'rgb(var(--negative))', 500: 'rgb(var(--negative))' },
         orange: { DEFAULT: 'rgb(var(--warning))', 400: 'rgb(var(--warning))', 500: 'rgb(var(--warning))', 600: 'rgb(var(--warning))' },
         yellow: { DEFAULT: 'rgb(var(--warning))', 400: 'rgb(var(--warning))', 500: 'rgb(var(--warning))' },
-        amber: { DEFAULT: 'rgb(var(--warning))', 400: 'rgb(var(--warning))', 500: 'rgb(var(--warning))', 600: 'rgb(var(--warning))' },
+        // NOTE: the amber shade scale (with <alpha-value>) is defined once
+        // below, alongside green/red. A second `amber` key here used to
+        // silently shadow it — keep exactly one amber entry.
         lime: { DEFAULT: 'rgb(var(--positive))', 400: 'rgb(var(--positive))', 500: 'rgb(var(--positive))' },
         teal: { DEFAULT: 'rgb(var(--positive))', 400: 'rgb(var(--positive))', 500: 'rgb(var(--positive))' },
         emerald: { DEFAULT: 'rgb(var(--positive))', 300: 'rgb(var(--positive))', 400: 'rgb(var(--positive))', 500: 'rgb(var(--positive))', 600: 'rgb(var(--positive))', 700: 'rgb(var(--positive))', 800: 'rgb(var(--positive))', 900: 'rgb(var(--positive))' },

@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { askAssistant, askAssistantStream } from '../lib/ai'
 import { MerajGlyph } from '../components/MerajDevice'
 import { useAuth } from '../context/AuthContext'
-import MerajDevice, { interactionFromAvatarState } from '../components/MerajDevice'
+import MerajDevice from '../components/MerajDevice'
 import { useBusinessMood } from '../lib/businessMood'
 import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft, Plus, MessageCircle, Zap, Wallet, Package, TrendingUp, Receipt, FileText, MessageSquareText, BarChart3, Download, Pencil, RefreshCw, Tag, Bell, Copy, Target, Truck, Share2, FileSpreadsheet, Landmark, Users, type LucideIcon } from 'lucide-react'
 import { getPageContext } from '../lib/pageContext'
@@ -352,7 +352,7 @@ export default function AIAssistant() {
   //    with interim results where available), automatic fallback to the
   //    proven MediaRecorder + Groq Whisper pipeline when the browser's
   //    SpeechRecognition is missing or silently fails. Final words auto-send.
-  const { stopSpeaking, speaking, startListening, stopListening, cancelListening, transcribing, unlockTts, startLiveListening, stopLiveListening } = useSpeech()
+  const { stopSpeaking, speaking, stopListening, unlockTts, startLiveListening, stopLiveListening } = useSpeech()
   const whisperModeRef = useRef<boolean>(localStorage.getItem('cashiea_stt_mode') === 'whisper')
 
   // ── VOICE = DICTATION: spoken words type LIVE into the input box.
@@ -434,7 +434,7 @@ export default function AIAssistant() {
   useEffect(() => () => { try { recRef.current?.stop() } catch { /* ignore */ } }, [])
   const [listening, setListening] = useState(false)
 
-  const { user, profile, ownerId } = useAuth()
+  const { user, ownerId } = useAuth()
   const STORE = STORE_BASE + (user?.id ? '_' + user.id : '')
   const CURRENT_KEY = CURRENT_BASE + (user?.id ? '_' + user.id : '')
   const ACTIVE_KEY = ACTIVE_BASE + (user?.id ? '_' + user.id : '')
@@ -528,7 +528,6 @@ export default function AIAssistant() {
 
   const replying = loading || typing
   const userTyping = !replying && (focused || input.trim().length > 0)
-  const avatarState = listening ? 'listening' : (replying || userTyping) ? 'thinking' : 'speaking'
   const businessMood = useBusinessMood() ?? 'neutral'
   const merajInteraction = listening ? 'listening' : (replying || userTyping) ? 'thinking' : 'idle'
 
@@ -938,7 +937,7 @@ export default function AIAssistant() {
                       : <SmartReply
                           text={m.text}
                           onEditDraft={(t) => { setInput(t); inputRef.current?.focus() }}
-                          onSendDraft={(t) => { setMode('task'); send(`Send this WhatsApp message: "${t.replace(/\"/g, "'")}"`) }}
+                          onSendDraft={(t) => { setMode('task'); send(`Send this WhatsApp message: "${t.replace(/"/g, "'")}"`) }}
                         />}
                   </div>
                   {m.images && m.images.length > 0 && (

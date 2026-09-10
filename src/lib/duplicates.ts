@@ -41,6 +41,10 @@ export function similarity(a: string, b: string): number {
 export function normalizeName(input: string | null | undefined): string {
   return String(input || '')
     .toLowerCase()
+    // \u0900-\u097F is the Devanagari block: Indian names are matched in
+    // Hindi as well as English. The block includes combining vowels, which
+    // is exactly what we want to keep.
+    // eslint-disable-next-line no-misleading-character-class
     .replace(/[^a-z0-9\u0900-\u097f\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()

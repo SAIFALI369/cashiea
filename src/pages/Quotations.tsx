@@ -16,7 +16,7 @@ import toast from 'react-hot-toast'
 interface QuoteItem { description: string; quantity: string; unit_price: string }
 
 export default function Quotations() {
-  const { profile, ownerId } = useAuth()
+  const { ownerId } = useAuth()
   const { isOwner } = useCan()
   const navigate = useNavigate()
   const [quotes, setQuotes] = useState<Quotation[]>([])

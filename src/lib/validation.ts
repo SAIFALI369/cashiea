@@ -19,7 +19,7 @@ export function validateEmail(email: string): ValidationResult {
 /** Phone: Indian 10-digit (accepts +91 prefix, spaces, dashes) */
 export function validatePhone(phone: string): ValidationResult {
   if (!phone) return { valid: true }
-  const cleaned = phone.replace(/[\s\-\(\)\+]/g, '')
+  const cleaned = phone.replace(/[\s-()+]/g, '')
   // Indian mobile: 10 digits starting 6-9, optionally prefixed with 91
   const re = /^(91)?[6-9]\d{9}$/
   if (!re.test(cleaned)) {

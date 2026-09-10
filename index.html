@@ -8,25 +8,24 @@
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f2e9" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#161310" />
     <title>Cashiea — Your Retail Business, Automated</title>
-    <script>
-      // No-flash theme bootstrap — must run before React paints.
-      (function () {
-        try {
-          var k = 'cashiea-theme';
-          var s = localStorage.getItem(k);
-          var t = (s === 'light' || s === 'dark')
-            ? s
-            : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-          if (t === 'dark') document.documentElement.classList.add('dark');
-          document.documentElement.style.colorScheme = t;
-        } catch (e) {
-          document.documentElement.classList.add('dark');
-        }
-      })();
-    </script>
+    <!-- No-flash theme bootstrap. External file (not inline) so production
+         can enforce a strict `script-src 'self'` CSP — see vercel.json and
+         public/theme-init.js. -->
+    <script src="/theme-init.js"></script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: system-ui, sans-serif; padding: 24px; text-align: center; color: #1f2937; background: #f7f2e9;">
+        <div>
+          <h1 style="font-size: 20px; margin-bottom: 8px;">Cashiea needs JavaScript</h1>
+          <p style="max-width: 46ch; line-height: 1.5; color: #4b5563;">
+            Cashiea is a web app — enable JavaScript in your browser and reload.
+            Your data is safe: nothing is stored or synced until the app can run.
+          </p>
+        </div>
+      </noscript>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

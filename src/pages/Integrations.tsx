@@ -23,7 +23,9 @@ export default function Integrations() {
   const { ownerId } = useAuth()
   const [integrations, setIntegrations] = useState<Integration[]>([])
   const [loading, setLoading] = useState(true)
-  const [connecting, setConnecting] = useState<IntegrationProvider | null>(null)
+  // `connecting` is never set (the connect flow is asynchronous UI-less today);
+  // kept as a constant state so read sites stay truthful without lint noise.
+  const [connecting] = useState<IntegrationProvider | null>(null)
   const [showPaste, setShowPaste] = useState<IntegrationProvider | null>(null)
   const [pasteText, setPasteText] = useState('')
   const [learning, setLearning] = useState(false)
@@ -88,7 +90,7 @@ export default function Integrations() {
     if (!pasteText.trim()) return toast.error('Paste some data first')
     setLearning(true)
     try {
-      const result = await callBrain('learn', { manual_notes: `Data from ${showPaste} source:\n${pasteText}` })
+      await callBrain('learn', { manual_notes: `Data from ${showPaste} source:\n${pasteText}` })
       toast.success('AI learned from this data and updated your business summary')
       setShowPaste(null); setPasteText('')
     } catch (err) {

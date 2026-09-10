@@ -5,8 +5,8 @@ import MerajDevice, { MerajGlyph } from '../components/MerajDevice'
 import {
   ArrowRight, ArrowDown, ChevronDown, Check, Menu, X, Sparkles, Receipt, Package, Users,
   Wallet, MessageCircle, FileBarChart, ScanBarcode, WifiOff, Calculator, Mic, Repeat,
-  FileSpreadsheet, BookOpen, Landmark, ShieldCheck, Lock, Zap, Timer, TrendingUp,
-  BadgeCheck, Phone, MapPin, LayoutDashboard, Send, Bell, Clock,
+  FileSpreadsheet, BookOpen, Landmark, ShieldCheck, Lock, Zap, Timer,
+  BadgeCheck, Send, Bell, Clock,
 } from 'lucide-react'
 
 // ── Reveal (scroll-triggered, once) ──

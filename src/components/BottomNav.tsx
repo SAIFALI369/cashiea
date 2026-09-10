@@ -122,7 +122,7 @@ const DesktopSlot = ({ item }: { item: Item }) => (
   </NavLink>
 )
 
-export default function BottomNav({ onMore }: { onMore: () => void }) {
+export default function BottomNav() {
   const isDesktop = useIsDesktop()
   const location = useLocation()
   const navigate = useNavigate()
@@ -130,7 +130,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
   // companion would be redundant. Everywhere else it's the quick-access voice.
   const onDashboard = location.pathname === '/app' || location.pathname === '/app/onboarding'
   const pageContext = (() => { const c = getPageContext(location.pathname); return c ? { name: c.name, description: c.description } : undefined })()
-  const { speak, stopSpeaking, speaking, startListening, cancelListening, startLiveListening, listening, transcribing, unlockTts } = useSpeech()
+  const { speak, stopSpeaking, speaking, cancelListening, startLiveListening, listening, transcribing, unlockTts } = useSpeech()
   const [voiceActive, setVoiceActive] = useState(false)
   const [voiceLoading, setVoiceLoading] = useState(false)
   const [voiceReply, setVoiceReply] = useState('')
@@ -287,7 +287,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
         aria-label="Primary"
       >
         <div className="max-w-[1400px] w-full mx-auto grid grid-cols-7 items-stretch">
-          {DESKTOP_ITEMS.map((entry, i) => {
+          {DESKTOP_ITEMS.map((entry) => {
             if ('special' in entry && entry.special === 'meraj') {
               return (
                 <div key="meraj" className="flex justify-center items-center col-span-1">

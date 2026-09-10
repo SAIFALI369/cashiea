@@ -6,7 +6,6 @@ import { SyncIndicator } from './SyncIndicator'
 import { Avatar } from './Avatar'
 import { CashieaLogo } from './CashieaLogo'
 import { Settings, Search, Menu, Lightbulb } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 
 /**
  * DesktopHeader — sticky top bar shown ONLY on the desktop shell (≥lg).
@@ -17,7 +16,6 @@ import { useNavigate } from 'react-router-dom'
  */
 export default function DesktopHeader({ onMenu, showMenuButton }: { onMenu?: () => void; showMenuButton?: boolean }) {
   const { profile } = useAuth()
-  const navigate = useNavigate()
 
   return (
     <header className="hidden lg:flex sticky top-0 z-30 bg-surface/85 backdrop-blur border-b border-line px-6 xl:px-10 h-16 items-center gap-4 shrink-0">
