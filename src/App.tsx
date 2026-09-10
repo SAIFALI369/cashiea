@@ -6,6 +6,7 @@ import { supabaseConfigured, supabaseConfigIssue } from './lib/supabase'
 import ProtectedRoute from './components/ProtectedRoute'
 import AppLayout from './components/AppLayout'
 import ErrorBoundary from './components/ErrorBoundary'
+import PageMetaSync from './components/PageMetaSync'
 import NotFound from './pages/NotFound'
 import SetupScreen from './components/SetupScreen'
 
@@ -64,6 +65,17 @@ const SuggestionsPage = lazy(() => import('./pages/Suggestions'))
 const NotificationsPage = lazy(() => import('./pages/Notifications'))
 const PermissionsPage = lazy(() => import('./pages/Permissions'))
 
+// ── Public marketing / content pages (route-completeness layer) ──
+const SitePricing = lazy(() => import('./pages/site/Pricing'))
+const SiteFeatures = lazy(() => import('./pages/site/Features'))
+const SiteAbout = lazy(() => import('./pages/site/About'))
+const SiteContact = lazy(() => import('./pages/site/Contact'))
+const Security = lazy(() => import('./pages/site/Security'))
+const Help = lazy(() => import('./pages/site/Help'))
+const HelpArticlePage = lazy(() => import('./pages/site/HelpArticlePage'))
+const Blog = lazy(() => import('./pages/site/Blog'))
+const BlogPostPage = lazy(() => import('./pages/site/BlogPostPage'))
+
 /** Full-page fallback for the initial/public route load. */
 function FullPageFallback() {
   return (
@@ -92,6 +104,7 @@ function App() {
     >
     <ErrorBoundary>
     <Suspense fallback={<FullPageFallback />}>
+      <PageMetaSync />
       <Routes>
         {/* Public */}
         <Route path="/" element={user ? <Navigate to="/app" replace /> : <Landing />} />
@@ -100,6 +113,15 @@ function App() {
         <Route path="/case-study" element={<CaseStudy />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
+        <Route path="/pricing" element={<SitePricing />} />
+        <Route path="/features" element={<SiteFeatures />} />
+        <Route path="/about" element={<SiteAbout />} />
+        <Route path="/contact" element={<SiteContact />} />
+        <Route path="/security" element={<Security />} />
+        <Route path="/help" element={<Help />} />
+        <Route path="/help/:slug" element={<HelpArticlePage />} />
+        <Route path="/blog" element={<Blog />} />
+        <Route path="/blog/:slug" element={<BlogPostPage />} />
 
         {/* Onboarding is protected too; it must never show a perpetual spinner
             or call profile/business writes for an anonymous visitor. */}

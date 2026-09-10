@@ -5,7 +5,12 @@ import { Toaster } from 'react-hot-toast'
 import App from './App'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
+import { initErrorMonitoring } from './lib/analytics'
 import './index.css'
+
+// Isolated observability bootstrap — a complete no-op unless
+// VITE_PLAUSIBLE_DOMAIN is configured. See lib/analytics.ts.
+initErrorMonitoring()
 
 // vite-plugin-pwa registers the versioned service worker in production builds.
 // It caches only the immutable app shell; authenticated mutations remain in the
@@ -39,18 +44,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                 className: 'cashiea-toast cashiea-toast-success',
                 iconTheme: { primary: 'rgba(16, 185, 129, 0.18)', secondary: '#ffffff' },
               },
-              error: {
-                className: 'cashiea-toast cashiea-toast-error',
-                iconTheme: { primary: 'rgba(165, 79, 71, 0.16)', secondary: '#ffffff' },
-              },
-              loading: {
-                className: 'cashiea-toast cashiea-toast-loading',
-                iconTheme: { primary: 'rgba(16, 185, 129, 0.18)', secondary: '#ffffff' },
-              },
             }}
           />
         </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>
-  </React.StrictMode>
+  </React.StrictMode>,
 )

@@ -15,7 +15,9 @@ export default function Subscription() {
   const { profile, refreshProfile } = useAuth()
   const [updating, setUpdating] = useState<PlanKey | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
-  const currentPlan = profile?.plan || 'free'
+  // Two tiers now (Free Trial / Premium). Legacy paid plans
+  // (starter/enterprise) display as Premium; anything else is the trial.
+  const currentPlan: PlanKey = profile?.plan && profile.plan !== 'free' ? 'pro' : 'free'
 
   // Handle Stripe redirect result
   useEffect(() => {
@@ -91,7 +93,7 @@ export default function Subscription() {
             <div>
               <p className="text-sm text-slate-400">Current Plan</p>
               <p className="text-xl font-bold text-white">
-                {PLANS[currentPlan].name} — ${PLANS[currentPlan].price}/mo
+                {PLANS[currentPlan].name} — ₹{PLANS[currentPlan].price}/mo
               </p>
             </div>
           </div>
@@ -105,7 +107,7 @@ export default function Subscription() {
       </div>
 
       {/* Plans */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid sm:grid-cols-2 gap-4 max-w-3xl">
         {Object.entries(PLANS).map(([key, plan]) => {
           const isCurrent = key === currentPlan
           const isPopular = key === 'pro'

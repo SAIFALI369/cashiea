@@ -314,7 +314,7 @@ export default function Landing() {
             <Reveal delay={40}>
               <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-bold leading-[1.05] tracking-tight text-fg">
                 The manager who never sleeps.<br className="hidden sm:block" />
-                <span className="text-accent">Costs ₹250 a day.</span>
+                <span className="text-accent">Costs ₹267 a day.</span>
               </h1>
             </Reveal>
             <Reveal delay={90}>
@@ -556,17 +556,17 @@ export default function Landing() {
           <Reveal className="text-center mb-12">
             <SectionEyebrow>08 / THE MATH</SectionEyebrow>
             <h2 className="mt-3 text-3xl sm:text-4xl font-bold leading-tight text-fg">The price that makes sense.</h2>
-            <p className="mt-4 text-sm text-fg-muted max-w-xl mx-auto">Most shops waste more than ₹7,500 a month on forgotten dues, late stock and hours of bookkeeping. Cashiea is the cheapest full-time employee you’ll ever hire.</p>
+            <p className="mt-4 text-sm text-fg-muted max-w-xl mx-auto">Most shops waste more than ₹8,000 a month on forgotten dues, late stock and hours of bookkeeping. Cashiea is the cheapest full-time employee you’ll ever hire.</p>
           </Reveal>
 
           <div className="grid lg:grid-cols-2 gap-5 items-start">
             <Reveal>
               <div className="card card-hover p-8">
                 <Mono className="text-fg-subtle block mb-2">CASHIEA</Mono>
-                <p className="text-5xl font-bold text-fg">₹7,500<span className="text-lg font-medium text-fg-muted">/mo</span></p>
-                <p className="text-sm text-fg-muted mt-2">That’s <strong className="text-fg">₹250/day</strong> — less than one biryani, for the employee who never takes leave.</p>
+                <p className="text-5xl font-bold text-fg">₹8,000<span className="text-lg font-medium text-fg-muted">/mo</span></p>
+                <p className="text-sm text-fg-muted mt-2">That’s <strong className="text-fg">₹267/day</strong> — about one biryani, for the employee who never takes leave.</p>
                 <div className="mt-6 space-y-2 text-left">
-                  {['Meraj AI — 90% of a manager’s work', 'GST tax invoices + UPI QR payments', 'Counter POS with split payments & offline mode', 'Khata, stock alerts, CSV import', 'Daily WhatsApp reports & payment reminders', 'AI reports with PDF & Excel export', 'Recurring invoices & cash reconciliation', '14-day free trial'].map((f) => (
+                  {['Meraj AI — 90% of a manager’s work', 'GST tax invoices + UPI QR payments', 'Counter POS with split payments & offline mode', 'Khata, stock alerts, CSV import', 'Daily WhatsApp reports & payment reminders', 'AI reports with PDF & Excel export', 'Recurring invoices & cash reconciliation', 'Free 14-day trial — 50 AI actions, no card'].map((f) => (
                     <div key={f} className="flex items-center gap-2 text-sm text-fg-muted"><Check className="w-4 h-4 text-positive flex-shrink-0" /> {f}</div>
                   ))}
                 </div>
@@ -594,7 +594,7 @@ export default function Landing() {
                 </div>
                 <div className="mt-4 rounded-2xl border border-warning/30 bg-warning/10 p-4">
                   <p className="text-sm text-fg font-semibold">Your return math</p>
-                  <p className="mt-1 text-xs text-fg-muted leading-relaxed">If Cashiea helps you recover just <strong className="text-fg">₹2,500</strong> of pending payment — or avoids one stock-out — the month is paid for. Your typical owners report recovering far more.</p>
+                  <p className="mt-1 text-xs text-fg-muted leading-relaxed">If Cashiea helps you recover <strong className="text-fg">₹8,000</strong> of pending payment — or avoids one stock-out — the month is paid for. Your typical owners report recovering far more.</p>
                 </div>
               </div>
             </Reveal>
@@ -646,12 +646,18 @@ export default function Landing() {
               <div className="flex items-center gap-2"><Logo size={22} /><span className="font-semibold text-sm">Cashiea</span></div>
               <p className="mt-3 text-xs text-fg-muted leading-relaxed">POS, CRM, GST billing, khata, WhatsApp automation and AI — built for small Indian shops.</p>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 text-xs">
               <div className="space-y-2">
                 <p className="font-bold text-fg">Product</p>
                 <a href="#meraj" className="block text-fg-muted hover:text-fg transition-colors">Meraj AI</a>
                 <a href="#features" className="block text-fg-muted hover:text-fg transition-colors">Features</a>
                 <a href="#pricing" className="block text-fg-muted hover:text-fg transition-colors">Pricing</a>
+              </div>
+              <div className="space-y-2">
+                <p className="font-bold text-fg">Company</p>
+                <Link to="/about" className="block text-fg-muted hover:text-fg transition-colors">About</Link>
+                <Link to="/contact" className="block text-fg-muted hover:text-fg transition-colors">Contact</Link>
+                <Link to="/blog" className="block text-fg-muted hover:text-fg transition-colors">Blog</Link>
               </div>
               <div className="space-y-2">
                 <p className="font-bold text-fg">Get started</p>
@@ -660,7 +666,9 @@ export default function Landing() {
                 <a href="#faq" className="block text-fg-muted hover:text-fg transition-colors">FAQ</a>
               </div>
               <div className="space-y-2">
-                <p className="font-bold text-fg">Legal</p>
+                <p className="font-bold text-fg">Trust</p>
+                <Link to="/help" className="block text-fg-muted hover:text-fg transition-colors">Help center</Link>
+                <Link to="/security" className="block text-fg-muted hover:text-fg transition-colors">Security</Link>
                 <Link to="/privacy" className="block text-fg-muted hover:text-fg transition-colors">Privacy</Link>
                 <Link to="/terms" className="block text-fg-muted hover:text-fg transition-colors">Terms</Link>
               </div>

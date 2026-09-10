@@ -1,0 +1,8 @@
+# Cashiea — public marketing/content pages are crawlable; the
+# authenticated application (/app/) must never be indexed.
+
+User-agent: *
+Allow: /
+Disallow: /app/
+
+Sitemap: https://cashiea.vercel.app/sitemap.xml
