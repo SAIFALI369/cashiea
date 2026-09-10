@@ -87,17 +87,23 @@ export function buildReportPdf(report: Pick<Report, 'title' | 'report_type' | 'c
     }
   }
 
-  // ── Cover band ──
+  // ── Cover band: emerald stripe + chip label ──
+  doc.setFillColor(...COLOR.accent)
+  doc.rect(0, 0, PAGE.w, 2.6, 'F')
   doc.setFillColor(...COLOR.band)
-  doc.rect(0, 0, PAGE.w, 42, 'F')
+  doc.rect(0, 2.6, PAGE.w, 39.4, 'F')
   doc.setTextColor(...COLOR.white)
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8)
-  doc.text('CONFIDENTIAL BRIEFING', PAGE.margin, 12)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(7)
+  const chipText = 'CONFIDENTIAL BRIEFING'
+  const chipW = doc.getTextWidth(chipText) * 1.14 + 8
+  doc.setFillColor(...COLOR.accent)
+  doc.roundedRect(PAGE.margin, 7.5, chipW, 5.8, 1.3, 1.3, 'F')
+  doc.text(chipText, PAGE.margin + 4, 11.3, { charSpace: 0.7 })
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(16)
   const titleLines = doc.splitTextToSize(title, PAGE.w - 2 * PAGE.margin) as string[]
-  doc.text(titleLines.slice(0, 2), PAGE.margin, 22)
+  doc.text(titleLines.slice(0, 2), PAGE.margin, 23.5, { charSpace: 0.3 })
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
   doc.text(`${business}  ·  ${dated}  ·  ${report.report_type} report`, PAGE.margin, 36)
@@ -201,8 +207,15 @@ export function buildReportPdf(report: Pick<Report, 'title' | 'report_type' | 'c
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7)
     doc.setTextColor(...COLOR.faint)
-    doc.text(`${business}  ·  prepared for the owner  ·  Cashiea`, PAGE.margin, PAGE.h - 8)
+    doc.text(`${business}  ·  prepared for the owner`, PAGE.margin, PAGE.h - 8)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...COLOR.accent)
+    doc.text('CASHIEA', PAGE.w - PAGE.margin - 18, PAGE.h - 8, { charSpace: 0.6 })
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(...COLOR.faint)
     doc.text(`${p} of ${pages}`, PAGE.w - PAGE.margin, PAGE.h - 8, { align: 'right' })
+    doc.setFillColor(...COLOR.accent)
+    doc.rect(0, PAGE.h - 1.6, PAGE.w, 1.6, 'F')
   }
 
   return doc

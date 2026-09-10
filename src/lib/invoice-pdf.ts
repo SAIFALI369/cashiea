@@ -1,5 +1,13 @@
 // ════════════════════════════════════════════════════════════════
-// Invoice PDF — a drafted tax invoice, not a dump of fields.
+// Invoice PDF — Cashiea Signature.
+//
+// A drafted tax invoice, not a dump of fields. The design language:
+//   · emerald accent stripe over an ink masthead
+//   · letter-spaced display type for the brand, chip for the doc label
+//   · hairline ledger table (no zebra), tabular right-aligned money
+//   · accent-edged totals panel, serif-italic amount in words
+//   · signature footer with page numbers + legal line
+//
 // Client-side jsPDF. Standard fonts cannot render ₹, so amounts
 // are written as "Rs." with Indian grouping.
 // ════════════════════════════════════════════════════════════════
@@ -18,6 +26,7 @@ const COLOR = {
   band: [28, 25, 23] as [number, number, number],
   paper: [250, 250, 249] as [number, number, number],
   accent: [5, 150, 105] as [number, number, number],
+  accentDeep: [4, 120, 87] as [number, number, number],
   white: [255, 255, 255] as [number, number, number],
 }
 
@@ -32,7 +41,7 @@ function lineGst(item: InvoiceItem, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? n : Number(fallback) || 0
 }
 
-export async function generateInvoicePdf(invoice: Invoice, profile: Profile | null): Promise<void> {
+export async function buildInvoicePdf(invoice: Invoice, profile: Profile | null): Promise<jsPDF> {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const businessName = profile?.company_name || profile?.full_name || 'My Business'
   const gstin = profile?.gstin || ''
@@ -45,34 +54,36 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
     || profile?.business_state
     || ''
 
-  // ── Masthead ──
+  // ── Masthead: emerald stripe over ink band ──
+  doc.setFillColor(...COLOR.accent)
+  doc.rect(0, 0, PAGE.w, 2.6, 'F')
   doc.setFillColor(...COLOR.band)
-  doc.rect(0, 0, PAGE.w, 38, 'F')
+  doc.rect(0, 2.6, PAGE.w, 35.4, 'F')
 
   let headerTextX = PAGE.margin
   const logo = profile?.avatar_url ? await fetchImageAsDataUrl(profile.avatar_url) : null
   if (logo) {
     try {
       const fmt = logo.includes('image/png') ? 'PNG' : 'JPEG'
-      doc.addImage(logo, fmt, PAGE.margin, 9, 18, 18)
+      doc.addImage(logo, fmt, PAGE.margin, 9.5, 18, 18)
       headerTextX = PAGE.margin + 22
     } catch { /* monogram */ }
   }
   if (!logo) {
     doc.setFillColor(...COLOR.white)
-    doc.roundedRect(PAGE.margin, 9, 18, 18, 2, 2, 'F')
+    doc.roundedRect(PAGE.margin, 9.5, 18, 18, 2, 2, 'F')
     doc.setTextColor(...COLOR.band)
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(11)
     const initials = businessName.split(/\s+/).slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join('') || 'B'
-    doc.text(initials, PAGE.margin + 9, 20.5, { align: 'center' })
+    doc.text(initials, PAGE.margin + 9, 21, { align: 'center' })
     headerTextX = PAGE.margin + 22
   }
 
   doc.setTextColor(...COLOR.white)
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(14)
-  doc.text(businessName, headerTextX, 16)
+  doc.setFontSize(15)
+  doc.text(businessName.toUpperCase(), headerTextX, 16.5, { charSpace: 0.9 })
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   const ident: string[] = []
@@ -80,29 +91,37 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
   if (profile?.business_state) ident.push(profile.business_state)
   if (profile?.phone || profile?.whatsapp_number) ident.push(String(profile.phone || profile.whatsapp_number))
   if (gstin) ident.push(`GSTIN ${gstin}`)
-  const identLines = doc.splitTextToSize(ident.join('  ·  '), 110) as string[]
-  doc.text(identLines.slice(0, 2), headerTextX, 22)
+  const identLines = doc.splitTextToSize(ident.join('  ·  '), 105) as string[]
+  doc.text(identLines.slice(0, 2), headerTextX, 22.5)
 
+  // Doc label in an emerald chip + number/date under it
+  const docLabel = isTaxInvoice ? 'TAX INVOICE' : 'INVOICE'
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(11)
-  doc.text(isTaxInvoice ? 'TAX INVOICE' : 'INVOICE', PAGE.w - PAGE.margin, 16, { align: 'right' })
+  doc.setFontSize(9.5)
+  const chipW = doc.getTextWidth(docLabel) + 10
+  doc.setFillColor(...COLOR.accent)
+  doc.roundedRect(PAGE.w - PAGE.margin - chipW, 9.5, chipW, 7.5, 1.6, 1.6, 'F')
+  doc.setTextColor(...COLOR.white)
+  doc.text(docLabel, PAGE.w - PAGE.margin - chipW / 2, 14.6, { align: 'center', charSpace: 0.6 })
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10.5)
+  doc.text(invoice.invoice_number, PAGE.w - PAGE.margin, 24, { align: 'right' })
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9)
-  doc.text(invoice.invoice_number, PAGE.w - PAGE.margin, 22, { align: 'right' })
   doc.setFontSize(8)
-  doc.text(new Date(invoice.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }), PAGE.w - PAGE.margin, 27, { align: 'right' })
+  doc.setTextColor(...COLOR.paper)
+  doc.text(new Date(invoice.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }), PAGE.w - PAGE.margin, 29, { align: 'right' })
 
   // ── Parties ──
   let y = 48
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7.5)
-  doc.setTextColor(...COLOR.faint)
-  doc.text('PREPARED FOR', PAGE.margin, y)
-  doc.text('PARTICULARS', PAGE.w / 2 + 8, y)
+  doc.setTextColor(...COLOR.accentDeep)
+  doc.text('PREPARED FOR', PAGE.margin, y, { charSpace: 0.8 })
+  doc.text('PARTICULARS', PAGE.w / 2 + 8, y, { charSpace: 0.8 })
 
-  y += 5
+  y += 5.5
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(12)
+  doc.setFontSize(12.5)
   doc.setTextColor(...COLOR.ink)
   doc.text(invoice.client_name, PAGE.margin, y)
 
@@ -137,12 +156,14 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
     doc.setTextColor(...COLOR.faint)
     doc.text(k, PAGE.w / 2 + 8, py)
     doc.setTextColor(...COLOR.ink)
+    doc.setFont('helvetica', 'bold')
     doc.text(v, PAGE.w - PAGE.margin, py, { align: 'right' })
+    doc.setFont('helvetica', 'normal')
   })
 
-  y += Math.max(8 + clientLines.length * 4.2, particulars.length * 5) + 8
+  y += Math.max(8 + clientLines.length * 4.2, particulars.length * 5) + 9
 
-  // ── Items ──
+  // ── Items — hairline ledger ──
   const col = {
     no: PAGE.margin + 1,
     desc: PAGE.margin + 10,
@@ -152,23 +173,24 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
     gst: 168,
     amt: PAGE.w - PAGE.margin - 1,
   }
-  doc.setFillColor(...COLOR.paper)
-  doc.rect(PAGE.margin, y, PAGE.w - 2 * PAGE.margin, 7, 'F')
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(7.5)
-  doc.setTextColor(...COLOR.faint)
-  doc.text('#', col.no, y + 4.8)
-  doc.text('DESCRIPTION', col.desc, y + 4.8)
-  doc.text('HSN', col.hsn, y + 4.8)
-  doc.text('QTY', col.qty, y + 4.8)
-  doc.text('RATE', col.rate, y + 4.8)
-  doc.text('GST', col.gst, y + 4.8)
-  doc.text('AMOUNT', col.amt, y + 4.8, { align: 'right' })
-  y += 8
+  doc.setFontSize(7)
+  doc.setTextColor(...COLOR.accentDeep)
+  doc.text('#', col.no, y + 2)
+  doc.text('DESCRIPTION', col.desc, y + 2, { charSpace: 0.5 })
+  doc.text('HSN', col.hsn, y + 2, { charSpace: 0.5 })
+  doc.text('QTY', col.qty, y + 2, { charSpace: 0.5 })
+  doc.text('RATE', col.rate, y + 2, { charSpace: 0.5 })
+  doc.text('GST', col.gst, y + 2, { charSpace: 0.5 })
+  doc.text('AMOUNT', col.amt, y + 2, { align: 'right', charSpace: 0.5 })
+  doc.setDrawColor(...COLOR.band)
+  doc.setLineWidth(0.5)
+  doc.line(PAGE.margin, y + 4.5, PAGE.w - PAGE.margin, y + 4.5)
+  y += 8.5
 
   const items = invoice.items || []
   items.forEach((item, i) => {
-    if (y > PAGE.h - 88) { doc.addPage(); y = PAGE.margin }
+    if (y > PAGE.h - 92) { doc.addPage(); y = PAGE.margin + 6 }
     const qty = item.quantity || 0
     const rate = item.unit_price || 0
     const amount = qty * rate
@@ -177,11 +199,7 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
     doc.setFontSize(9)
     doc.setTextColor(...COLOR.ink)
     const desc = doc.splitTextToSize(item.description || 'Item', 90) as string[]
-    const rowH = Math.max(8, desc.length * 4)
-    if (i % 2 === 1) {
-      doc.setFillColor(...COLOR.paper)
-      doc.rect(PAGE.margin, y - 3, PAGE.w - 2 * PAGE.margin, rowH, 'F')
-    }
+    const rowH = Math.max(8, desc.length * 4.2)
     doc.text(String(i + 1), col.no, y)
     doc.text(desc, col.desc, y)
     doc.setFontSize(8)
@@ -193,14 +211,19 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
     doc.setTextColor(...COLOR.ink)
     doc.text(rs(amount).replace('Rs. ', ''), col.amt, y, { align: 'right' })
     y += rowH
+    if (i < items.length - 1) {
+      doc.setDrawColor(...COLOR.line)
+      doc.setLineWidth(0.15)
+      doc.line(PAGE.margin, y - 3.2, PAGE.w - PAGE.margin, y - 3.2)
+    }
   })
 
-  doc.setDrawColor(...COLOR.line)
-  doc.setLineWidth(0.25)
-  doc.line(PAGE.margin, y, PAGE.w - PAGE.margin, y)
+  doc.setDrawColor(...COLOR.band)
+  doc.setLineWidth(0.5)
+  doc.line(PAGE.margin, y - 1, PAGE.w - PAGE.margin, y - 1)
   y += 7
 
-  // ── Totals ──
+  // ── Totals — accent-edged panel ──
   const tx = 128
   const row = (label: string, value: string, bold = false) => {
     doc.setFont('helvetica', bold ? 'bold' : 'normal')
@@ -222,37 +245,42 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
       row(`SGST${invoice.tax_rate ? ` at ${invoice.tax_rate / 2}%` : ''}`, rs(invoice.tax_amount / 2))
     }
   }
+  const panelH = 11.5
   doc.setFillColor(...COLOR.band)
-  doc.rect(tx - 4, y - 4.5, PAGE.w - PAGE.margin - tx + 4, 9, 'F')
+  doc.rect(tx - 4, y - 4.5, PAGE.w - PAGE.margin - tx + 4, panelH, 'F')
+  doc.setFillColor(...COLOR.accent)
+  doc.rect(tx - 4, y - 4.5, 1.4, panelH, 'F')
   doc.setTextColor(...COLOR.white)
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10)
-  doc.text('Total payable', tx, y + 1.5)
-  doc.text(rs(invoice.total), PAGE.w - PAGE.margin, y + 1.5, { align: 'right' })
-  y += 12
+  doc.setFontSize(11)
+  doc.text('TOTAL PAYABLE', tx, y + 2.2, { charSpace: 0.5 })
+  doc.text(rs(invoice.total), PAGE.w - PAGE.margin, y + 2.2, { align: 'right' })
+  y += panelH + 3.5
 
-  doc.setFont('helvetica', 'italic')
-  doc.setFontSize(8)
+  doc.setFont('times', 'italic')
+  doc.setFontSize(9.5)
   doc.setTextColor(...COLOR.muted)
   const words = doc.splitTextToSize(`${amountInIndianWords(Number(invoice.total))}.`, PAGE.w - 2 * PAGE.margin) as string[]
   doc.text(words, PAGE.margin, y)
-  y += words.length * 4 + 4
+  y += words.length * 4.4 + 4
 
   // ── Payment ──
   if (upiId && invoice.status !== 'paid') {
-    if (y > PAGE.h - 50) { doc.addPage(); y = PAGE.margin }
+    if (y > PAGE.h - 54) { doc.addPage(); y = PAGE.margin + 6 }
     doc.setDrawColor(...COLOR.line)
     doc.setFillColor(...COLOR.paper)
     doc.roundedRect(PAGE.margin, y, PAGE.w - 2 * PAGE.margin, 28, 1.5, 1.5, 'FD')
+    doc.setFillColor(...COLOR.accent)
+    doc.rect(PAGE.margin, y, 1.2, 28, 'F')
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(9)
     doc.setTextColor(...COLOR.ink)
-    doc.text('A note on settlement', PAGE.margin + 4, y + 7)
+    doc.text('A NOTE ON SETTLEMENT', PAGE.margin + 5, y + 7, { charSpace: 0.5 })
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
     doc.setTextColor(...COLOR.muted)
-    doc.text(`Scan the code with any UPI app, or pay ${upiId}.`, PAGE.margin + 4, y + 13)
-    doc.text(`The amount due on this bill is ${rs(invoice.total)}.`, PAGE.margin + 4, y + 18)
+    doc.text(`Scan the code with any UPI app, or pay ${upiId}.`, PAGE.margin + 5, y + 13)
+    doc.text(`The amount due on this bill is ${rs(invoice.total)}.`, PAGE.margin + 5, y + 18)
     try {
       const QRCode = (await import('qrcode')).default
       const link = buildUpiLink({
@@ -270,19 +298,19 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
   } else if (invoice.status === 'paid') {
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(9)
-    doc.setTextColor(...COLOR.accent)
+    doc.setTextColor(...COLOR.accentDeep)
     const paidOn = invoice.paid_at ? ` on ${new Date(invoice.paid_at).toLocaleDateString('en-IN')}` : ''
     doc.text(`This invoice has been received in full${paidOn}.`, PAGE.margin, y)
     y += 8
   }
 
   // ── Courtesy / terms ──
-  if (y > PAGE.h - 42) { doc.addPage(); y = PAGE.margin }
+  if (y > PAGE.h - 46) { doc.addPage(); y = PAGE.margin + 6 }
   const courtesy = (invoice.notes || '').trim() || DEFAULT_COURTESY
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7.5)
-  doc.setTextColor(...COLOR.faint)
-  doc.text(invoice.notes ? 'A NOTE FROM US' : 'WITH THANKS', PAGE.margin, y)
+  doc.setTextColor(...COLOR.accentDeep)
+  doc.text(invoice.notes ? 'A NOTE FROM US' : 'WITH THANKS', PAGE.margin, y, { charSpace: 0.8 })
   y += 4.5
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
@@ -314,10 +342,22 @@ export async function generateInvoicePdf(invoice: Invoice, profile: Profile | nu
     doc.text(isTaxInvoice
       ? 'This is a computer-generated tax invoice, valid without a physical signature.'
       : 'This is a computer-generated invoice.', PAGE.margin, PAGE.h - 9)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...COLOR.accentDeep)
+    doc.text('CASHIEA', PAGE.w - PAGE.margin - 16, PAGE.h - 9, { charSpace: 0.6 })
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(...COLOR.faint)
     doc.text(`${p} of ${pages}`, PAGE.w - PAGE.margin, PAGE.h - 9, { align: 'right' })
+    doc.setFillColor(...COLOR.accent)
+    doc.rect(0, PAGE.h - 1.6, PAGE.w, 1.6, 'F')
   }
 
-  doc.save(`Invoice-${invoice.invoice_number}.pdf`)
+  return doc
+}
+
+/** Download path — builds the PDF then saves it to disk. */
+export async function generateInvoicePdf(invoice: Invoice, profile: Profile | null): Promise<void> {
+  ;(await buildInvoicePdf(invoice, profile)).save(`Invoice-${invoice.invoice_number}.pdf`)
 }
 
 async function fetchImageAsDataUrl(url: string): Promise<string | null> {
