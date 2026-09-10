@@ -627,6 +627,10 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => null);
     if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Invalid JSON body" }, 400);
     const { message, briefing, scope, mode, confirm, pageContext, history, image, category, businessName, city, answers, dashboardState } = body as Record<string, any>;
+    // VOICE MODE: the owner is listening to this reply, not reading it.
+    const voiceFocus = (body as Record<string, any>)?.voice
+      ? " VOICE MODE (spoken reply): keep it to 40-70 words unless the owner explicitly asks for detail. Speak conversationally in the SAME language they used — Hinglish is welcome. No markdown, no bullet lists, no headings — plain spoken sentences with numbers said naturally."
+      : "";
     if (message !== undefined && (typeof message !== "string" || message.length > 8_000)) return json({ error: "message is invalid or too long" }, 400);
     if (briefing !== undefined && typeof briefing !== "boolean") return json({ error: "briefing is invalid" }, 400);
     const allowedModes = new Set(["ask", "task", "dashboard_suggestions", "onboarding_questions", "onboarding_persona"]);
@@ -1104,7 +1108,7 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
       }
       // PREPARE: model decides tool-call vs text reply
       const [ctx2, mem2] = await Promise.all([ buildContext(supabase, ownerId, String(message || ""), false, serviceSupabase), buildMemory(serviceSupabase, ownerId) ]);
-      const tr = await callGeminiToolCall(TASK_SYSTEM + scopeFocus + pageFocus, `Owner: "${message}"\n\n${mem2.block}${historyBlock}\n\nSnapshot:\n${ctx2}`, ALL_TOOLS, { feature: "task-invoice", maxTokens: 3000 });
+      const tr = await callGeminiToolCall(TASK_SYSTEM + voiceFocus + scopeFocus + pageFocus, `Owner: "${message}"\n\n${mem2.block}${historyBlock}\n\nSnapshot:\n${ctx2}`, ALL_TOOLS, { feature: "task-invoice", maxTokens: 3000 });
       if (!tr.ok) return json({ error: tr.value }, 500);
       usageConsumed = true;
       if (tr.value.kind === "tool") {
@@ -1467,7 +1471,7 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
       usageConsumed = true;
       result = imgRes.value;
     } else {
-      result = await callAIWithFallback(provider, SYSTEM + scopeFocus + pageFocus, userPrompt, 3000, "assistant");
+      result = await callAIWithFallback(provider, SYSTEM + voiceFocus + scopeFocus + pageFocus, userPrompt, 3000, "assistant");
       usageConsumed = true;
     }
 

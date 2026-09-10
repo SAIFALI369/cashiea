@@ -176,6 +176,12 @@ export function useSpeech() {
         onDone?.()
         return
       }
+      // SINGLE-VOICE RULE: kill every other engine before one starts.
+      // Without this, a slow ElevenLabs reply could start playing while a
+      // previous browser-speechSynthesis utterance was still talking —
+      // two Meraj voices at once.
+      try { if (ttsSupported) window.speechSynthesis?.cancel() } catch { /* ignore */ }
+      if (audioRef.current) { try { audioRef.current.pause() } catch { /* ignore */ } }
       // Strip markdown so it doesn't read asterisks/hashtags aloud
       const clean = text
         .replace(/[#*`>_|]/g, ' ')
@@ -386,7 +392,7 @@ export function useSpeech() {
           const res = await fetch(sttUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
-            body: JSON.stringify({ audio: base64, mimeType: 'audio/webm', language: 'en' }),
+            body: JSON.stringify({ audio: base64, mimeType: 'audio/webm', language: 'auto' }),
           })
           const data = await res.json().catch(() => ({}))
           return res.ok ? (data.text || '').trim() : ''
@@ -421,7 +427,7 @@ export function useSpeech() {
               let sum = 0
               for (let i = 0; i < buf.length; i++) { const d = (buf[i] - 128) / 128; sum += d * d }
               const rms = Math.sqrt(sum / buf.length)
-              if (rms > 0.025) spoke = true   // speech is 0.04+; ambient noise ~0.01-0.015
+              if (rms > 0.015) spoke = true   // speech is 0.04+; soft speech ~0.02 — keep the gate below real voices
             }, 100)
             window.setTimeout(() => window.clearInterval(energyTimer), windowMs + 500)
           } catch { /* energy check optional */ }

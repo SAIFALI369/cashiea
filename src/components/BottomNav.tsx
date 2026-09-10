@@ -132,6 +132,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
   const pageContext = (() => { const c = getPageContext(location.pathname); return c ? { name: c.name, description: c.description } : undefined })()
   const { speak, stopSpeaking, speaking, startListening, cancelListening, startLiveListening, listening, transcribing, unlockTts } = useSpeech()
   const [voiceActive, setVoiceActive] = useState(false)
+  const [voicePending, setVoicePending] = useState<any>(null)
   const [voiceLoading, setVoiceLoading] = useState(false)
   const [voiceReply, setVoiceReply] = useState('')
 
@@ -158,10 +159,13 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
             return
           }
           setVoiceLoading(true)
-          askAssistant(heard, false, undefined, 'ask', undefined, pageContext)
+          // TASK mode: brief employee answers AND real tool calls (invoice,
+          // product, customer…) with a one-tap confirm — voice can run the shop.
+          askAssistant(heard, false, undefined, 'task', undefined, pageContext, undefined, undefined, true)
             .then((res) => {
               const reply = (res && typeof res.reply === 'string' && res.reply.trim()) ? res.reply : "I couldn't think of a reply — try asking again."
               setVoiceReply(reply)
+              setVoicePending(res?.pending || null)
               try { window.dispatchEvent(new CustomEvent('meraj:voice-reply', { detail: { text: reply } })) } catch { /* older browsers */ }
               speak(reply, () => setTimeout(() => { setVoiceActive(false); setVoiceReply('') }, 4000))
             })
@@ -227,6 +231,38 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
           {voiceReply && (
             <div className="card p-3 max-w-[260px] max-h-48 overflow-y-auto scroll-area prose-content text-sm shadow-float">
               <div dangerouslySetInnerHTML={{ __html: renderMd(voiceReply) }} />
+            </div>
+          )}
+          {voicePending && (
+            <div className="card p-3 max-w-[260px] shadow-float space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-fg-subtle">Meraj prepared an action</p>
+              <p className="text-sm font-semibold text-fg leading-snug">
+                {String(voicePending?.preview?.summary || voicePending?.preview?.title || voicePending?.input?.summary || 'Ready to run — confirm?')}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const p = voicePending
+                    setVoicePending(null)
+                    if (p?.type === 'open_desk' && p?.input?.href) { navigate(String(p.input.href)); setVoiceActive(false); return }
+                    setVoiceLoading(true)
+                    askAssistant('', false, undefined, 'task', p, undefined, undefined, undefined, true)
+                      .then((r) => {
+                        setVoiceLoading(false)
+                        const done = (r && typeof r.reply === 'string' && r.reply.trim()) ? r.reply : 'Done.'
+                        setVoiceReply(done)
+                        speak(done, () => setTimeout(() => { setVoiceActive(false); setVoiceReply('') }, 4000))
+                      })
+                      .catch(() => { setVoiceLoading(false); setVoiceReply('Could not run that — try again.') })
+                  }}
+                  className="btn-primary text-xs h-8 flex-1"
+                >
+                  ✓ Confirm
+                </button>
+                <button onClick={() => setVoicePending(null)} className="btn-secondary text-xs h-8">
+                  Cancel
+                </button>
+              </div>
             </div>
           )}
           <div className="flex items-center gap-2">

@@ -198,7 +198,8 @@ export async function askAssistant(
   confirm?: any,
   pageContext?: { name: string; description: string },
   history?: { role: 'user' | 'meraj'; text: string }[],
-  image?: { data: string; mimeType: string }
+  image?: { data: string; mimeType: string },
+  voice = false,
 ): Promise<{ reply: string; pending?: any; executed?: any; media?: { type: string; thumb: string; url: string; alt: string; link?: string }[]; images?: { url: string; prompt: string; width: number; height: number }[] }> {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('You must be logged in.')
@@ -218,7 +219,7 @@ export async function askAssistant(
       Authorization: `Bearer ${session.access_token}`,
       apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
     },
-    body: JSON.stringify({ message, briefing, scope, mode, confirm, pageContext, history, image }),
+    body: JSON.stringify({ message, briefing, scope, mode, confirm, pageContext, history, image, voice }),
   })
 
   // ── SSE: the edge streams ask-mode replies as text/event-stream. Parse
