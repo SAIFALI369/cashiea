@@ -1416,7 +1416,7 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
           body: JSON.stringify({
             model: "groq/compound",
             messages: [
-              { role: "system", content: SYSTEM + scopeFocus + pageFocus },
+              { role: "system", content: SYSTEM + voiceFocus + scopeFocus + pageFocus },
               { role: "user", content: userPrompt },
             ],
             temperature: 0.5, max_tokens: 3000, stream: true,
