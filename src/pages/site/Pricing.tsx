@@ -11,7 +11,7 @@ import { formatINR } from '../../lib/format'
 // Trial / no-card language mirrors the existing landing page.
 // ────────────────────────────────────────────────────────────────
 
-const PLAN_ORDER = ['free', 'starter', 'pro'] as const
+const PLAN_ORDER = ['free', 'pro'] as const
 
 const COMPARE = [
   {
@@ -39,7 +39,7 @@ const COMPARE = [
 ] as const
 
 const FAQS = [
-  { q: 'Can I try it before paying?', a: 'Yes — 14-day free trial, no card required. A Free plan is also available if you want to stay free.' },
+  { q: 'Can I try it before paying?', a: 'Yes — the ₹0 plan is your 14-day trial with 50 AI actions. No card required.' },
   { q: 'Can I cancel anytime?', a: 'Yes. No lock-in contracts, no setup fees, no hidden charges. Cancel from your dashboard.' },
   { q: 'Any setup fees?', a: 'None. One price per plan, everything listed included. GST as applicable.' },
 ]
@@ -54,7 +54,7 @@ export default function SitePricing() {
             The price that makes sense.
           </h1>
           <p className="mt-4 text-sm sm:text-base text-fg-muted max-w-xl mx-auto leading-relaxed">
-            Most shops waste more than ₹7,500 a month on forgotten dues, late stock and hours of bookkeeping. Start free, upgrade when it’s paying for itself.
+            Most shops waste more than ₹8,000 a month on forgotten dues, late stock and hours of bookkeeping. Start with the free trial, upgrade when it’s paying for itself.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-[11px] font-medium text-fg-muted"><ShieldCheck className="w-3.5 h-3.5 text-accent" /> No card required</span>
@@ -66,7 +66,7 @@ export default function SitePricing() {
 
       <section className="px-4 pb-16">
         <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-3 gap-4 items-stretch">
+          <div className="grid md:grid-cols-2 gap-4 items-stretch max-w-4xl mx-auto">
             {PLAN_ORDER.map((key) => {
               const plan = PLANS[key]
               const highlight = key === 'pro'
@@ -74,13 +74,13 @@ export default function SitePricing() {
                 <div key={key} className={`card card-hover p-6 flex flex-col ${highlight ? 'ring-1 ring-accent/40' : ''}`}>
                   <div className="flex items-center justify-between">
                     <Mono className="text-fg-subtle">{plan.name}</Mono>
-                    {highlight && <span className="inline-flex items-center rounded-full bg-accent/10 px-2.5 py-1 text-[10px] font-mono text-accent-strong">THE FULL MANAGER</span>}
+                    {highlight && <span className="inline-flex items-center rounded-full bg-accent/10 px-2.5 py-1 text-[10px] font-mono text-accent-strong">FULLY PREMIUM</span>}
                   </div>
                   <p className="mt-3 text-4xl font-bold text-fg">
                     {plan.price === 0 ? '₹0' : formatINR(plan.price, 0)}
                     <span className="text-base font-medium text-fg-muted">/mo</span>
                   </p>
-                  {key === 'pro' && <p className="text-xs text-fg-muted mt-1">That’s <strong className="text-fg">₹250/day</strong> — less than one biryani.</p>}
+                  {key === 'pro' && <p className="text-xs text-fg-muted mt-1">That’s <strong className="text-fg">₹267/day</strong> — about one biryani.</p>}
                   <div className="mt-5 space-y-2 text-left flex-1">
                     {plan.features.map((f) => (
                       <div key={f} className="flex items-start gap-2 text-sm text-fg-muted"><Check className="w-4 h-4 text-positive flex-shrink-0 mt-0.5" /> {f}</div>
@@ -116,7 +116,7 @@ export default function SitePricing() {
             <div className="card card-hover p-6">
               <div className="rounded-2xl border border-warning/30 bg-warning/10 p-4">
                 <p className="text-sm text-fg font-semibold">Your return math</p>
-                <p className="mt-1 text-xs text-fg-muted leading-relaxed">If Cashiea helps you recover just <strong className="text-fg">₹2,500</strong> of pending payment — or avoids one stock-out — a month of Pro is paid for. Your typical owners report recovering far more.</p>
+                <p className="mt-1 text-xs text-fg-muted leading-relaxed">If Cashiea helps you recover <strong className="text-fg">₹8,000</strong> of pending payment — or avoids one stock-out — a month of Premium is paid for. Your typical owners report recovering far more.</p>
               </div>
               <div className="mt-4 space-y-2.5">
                 {FAQS.map((item) => (

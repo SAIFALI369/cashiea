@@ -36,7 +36,7 @@ export const ROUTE_META: Record<string, RouteMeta> = {
   '/pricing': {
     title: 'Pricing — Cashiea',
     description:
-      'One plan, ₹7,500/month — that’s ₹250 a day for a manager who never sleeps. 14-day free trial, no card required, cancel anytime.',
+      'Premium at ₹8,000/month — that’s ₹267 a day for a manager who never sleeps. Start with the free 14-day trial (50 AI actions), no card required, cancel anytime.',
   },
   '/features': {
     title: 'Features — Cashiea',

@@ -517,49 +517,33 @@ export interface FailedJob {
 }
 
 // ─── Subscription plans ─────────────────────────────────────────
+// Two tiers (owner decision, Sep 2026): ₹0 = 14-day trial with 50 AI
+// actions; Premium = the full product at ₹8,000/month. Legacy paid
+// plans (starter/enterprise) are displayed as Premium.
 export const PLANS = {
   free: {
-    name: 'Free',
+    name: 'Free Trial',
     price: 0,
     usageLimit: 50,
     features: [
-      '50 AI actions / month',
+      '14-day trial',
+      '50 AI actions',
       'GST invoicing & billing',
       'Stock & customer tracking',
       'Meraj voice assistant',
     ],
   },
-  starter: {
-    name: 'Starter',
-    price: 1499,
-    usageLimit: 1500,
-    features: [
-      '1,500 AI actions / month',
-      'WhatsApp daily reports',
-      'Payment reminders',
-      'All automation tools',
-    ],
-  },
   pro: {
-    name: 'Pro',
-    price: 7500,
+    name: 'Premium',
+    price: 8000,
     usageLimit: 10000,
     features: [
       '10,000 AI actions / month',
-      'Everything in Starter',
+      'Everything in the trial',
+      'WhatsApp daily reports',
+      'Payment reminders',
       'Priority AI (Groq + Gemini)',
       'Multi-user team accounts',
-    ],
-  },
-  enterprise: {
-    name: 'Enterprise',
-    price: 15000,
-    usageLimit: 100000,
-    features: [
-      'Unlimited AI actions',
-      'Everything in Pro',
-      'Custom AI workflows',
-      'Dedicated support',
     ],
   },
 } as const

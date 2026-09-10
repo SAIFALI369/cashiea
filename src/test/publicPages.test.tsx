@@ -62,9 +62,9 @@ function text(el: HTMLElement) {
 describe('public site pages render', () => {
   it('pricing shows the existing plan untouched', () => {
     const el = renderAt('/pricing')
-    expect(text(el)).toContain('₹7,500')
-    expect(text(el)).toContain('₹250/day')
-    expect(text(el)).toContain('14-day free trial')
+    expect(text(el)).toContain('₹8,000')
+    expect(text(el)).toContain('₹267/day')
+    expect(text(el)).toContain('14-day trial')
   })
 
   it('features documents shipped capabilities', () => {
