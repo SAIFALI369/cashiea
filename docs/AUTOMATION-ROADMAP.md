@@ -61,3 +61,58 @@ create table automation_rules (
   reminders, which the owner already configured).
 - Every rule shows its full run history — trust comes from receipts.
 - Same design system everywhere; mobile-first (owner uses a phone).
+
+---
+
+# The Employee Build — detailed specs (locked 2026-09-10)
+
+## 1. Vasooli Round (chase-all-pending) — the one that carries the rest
+- Name: test "Vasooli Round" vs 2-3 alternatives on the first 50 users (their Bihar ear wins).
+- Tone tiers: 0-7d soft convenience nudge + UPI link · 8-20d neutral factual (amount + UPI) ·
+  20+ direct but respectful, SIGNED with the owner's name. Never collections-agency energy.
+- Language per-customer, set once (Hinglish default; Hindi, Bhojpuri register, English).
+- Never sends blind: prepare → show exact message per customer → owner confirms → send → summarize.
+- Manual override: "don't chase Sharma ji yet" skip list.
+- BRAIN SHIPPED: src/lib/vasooli.ts + 14 tests (tiers, languages, UPI deep-links,
+  owner signature, no-exclamation copy rule, skip list, never-blind filters).
+- WhatsApp economics (engineering constraint): outside the 24h window, sends must use
+  APPROVED templates — file as UTILITY (≈₹0.115/msg India), NEVER marketing (≈₹0.86,
+  7-8x cost gap). Templates = fixed {{name}}/{{amount}}/{{days}}/{{shop}}/{{owner}}/
+  {{upi_link}} slots — the strings in vasooli.ts are written to be fileable as-is.
+  Meraj picks tier + fills variables; never free-generates outbound copy.
+  Meta revises rates ~6-monthly — verify with the BSP (Interakt/AiSensy, ₹999-1500/mo).
+- NEXT: Reminders-page UI (draft list + per-customer confirm), customers.language column,
+  template registration with chosen BSP, automation_events receipt per round.
+
+## 2. Snap & Stock — beat "reads the invoice"
+- Photo → line items → fuzzy SKU match by name similarity (distributors abbreviate).
+- New SKUs flagged for one-tap confirm, never silently created.
+- Price suggestion AS A RANGE WITH REASONING: "cost ₹42, similar items sell ₹58-65, suggest ₹60".
+- Low-confidence reads (blur/handwriting) flagged for manual check — one wrong stock number
+  poisons trust in every Meraj feature.
+
+## 3. The 9pm Money Report (Meraj's end-of-day report — no exclamation marks)
+Exact shape: "Aaj: ₹4,200 sales, ₹1,150 profit, ₹800 collected.
+Kal call karna hai: Ramesh ji (₹600, 12 din se baaki), Sunita ji (₹350, 3 din se baaki).
+Aaj maine 3 reminder bheje, 1 restock draft banaya."
+Last line = trust + audit trail. Wire into meraj-recap (21:00 IST cron, already live).
+
+## 4. Khata Guard (smart credit limits) — the defensible one
+- Track per customer: avg days-to-clear, longest overdue stretch, highest balance carried.
+- On extending udhaar past the computed safe cap, interrupt with number + reason:
+  "Ramesh ji ne pichhli 3 baar 15+ din liye hain, is baar ₹2,000 se zyada mat dena."
+  Never a bare red flag.
+
+## 5. Restock draft — the switching-cost moat
+- Low stock → draft WhatsApp order to the SKU's distributor on file, in that distributor's
+  usual language/format → owner taps send. Six months in, the distributor relationships
+  live inside Cashiea.
+
+## Perceived value layer
+- Hero counter on Today screen (corner, don't disturb layout): "Meraj recovered ₹12,400
+  this month" — computed from automation_events money_impact. FREE tier.
+- In-app daily digest line on dashboard: "I sent 6 reminders, flagged 1 risky credit,
+  drafted your restock." (Command Center log already records everything.)
+- Branded everything: shop name + logo on bills, reminders, storefront QR.
+- UX fixes: legend for green status dots (product cards + Pending Dues card);
+  labels/tooltips for the 4 mystery POS icons.
