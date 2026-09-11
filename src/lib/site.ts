@@ -82,11 +82,12 @@ export const ROUTE_META: Record<string, RouteMeta> = {
     description: 'How a shop moved from paper receipts to Cashiea.',
   },
   '/login': {
-    title: 'Login — Cashiea',
-    description: 'Sign in to your Cashiea dashboard.',
+    title: 'Cashiea Login — Sign in to your shop dashboard',
+    description:
+      'Sign in to Cashiea — the AI-powered POS, GST billing and shop-management app for small Indian businesses. Access billing, khata, stock and your daily report.',
   },
   '/signup': {
-    title: 'Start your 14-day free trial — Cashiea',
+    title: 'Sign up for Cashiea — Free 14-day trial, no card required',
     description:
       'Create your Cashiea account — POS billing, khata, stock and Meraj AI. No card required.',
   },

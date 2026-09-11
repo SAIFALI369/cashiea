@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, ArrowRight, Check, Store, Phone, User, MapPin, Zap, TrendingUp, Shield } from 'lucide-react'
 import { friendlyAuthError } from '../../lib/auth-errors'
 import { useInputFocus, FOCUS_SCROLL_CLASS } from '../../lib/useInputFocus'
+import AuthSeoFooter from '../../components/AuthSeoFooter'
 
 function Logo({ size = 32 }: { size?: number }) {
   return (
@@ -139,7 +140,7 @@ export default function Signup() {
             <div className="w-12 h-12 rounded-2xl bg-accent-fg/15 backdrop-blur flex items-center justify-center p-1.5"><Logo size={36} /></div>
             <span className="font-bold text-xl text-accent-fg">Cashiea</span>
           </div>
-          <h1 className="text-accent-fg font-bold mb-6 text-4xl leading-[1.2] tracking-tight">Start automating your shop in 5 minutes.</h1>
+          <p className="text-accent-fg font-bold mb-6 text-4xl leading-[1.2] tracking-tight">Start automating your shop in 5 minutes.</p>
           <p className="text-accent-fg/75 text-lg leading-relaxed mb-10">Join 47+ shop owners who save hours every week with AI-powered billing, reports, and customer follow-ups.</p>
 
           {/* Stats */}
@@ -187,7 +188,7 @@ export default function Signup() {
             <ArrowLeft className="w-4 h-4" /> Back to home
           </Link>
 
-          <h2 className="font-bold mb-1 text-fg text-[28px] tracking-tight">Create your account</h2>
+          <h1 className="font-bold mb-1 text-fg text-[28px] tracking-tight">Create your Cashiea account</h1>
           <p className="mb-6 text-base text-fg-muted">Start your 14-day free trial. No credit card required.</p>
 
           {error && (
@@ -289,6 +290,8 @@ export default function Signup() {
             Already have an account?{' '}
             <Link to="/login" className="font-bold text-accent hover:text-accent-strong transition-colors">Sign in</Link>
           </p>
+
+          <AuthSeoFooter />
         </div>
       </div>
     </div>

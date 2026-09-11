@@ -8,6 +8,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import AppLayout from './components/AppLayout'
 import ErrorBoundary from './components/ErrorBoundary'
 import PageMetaSync from './components/PageMetaSync'
+import StructuredData from './components/StructuredData'
 import NotFound from './pages/NotFound'
 import SetupScreen from './components/SetupScreen'
 
@@ -113,6 +114,7 @@ function App() {
     <ErrorBoundary>
     <Suspense fallback={<FullPageFallback />}>
       <PageMetaSync />
+      <StructuredData />
       <Routes>
         {/* Public */}
         <Route path="/" element={user ? <Navigate to="/app" replace /> : <Landing />} />
