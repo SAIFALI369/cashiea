@@ -139,25 +139,49 @@ async function bizName(userId: string): Promise<string> {
 async function runRecap(userId: string, name: string, wa: string | null, prefs: AutopilotPrefs) {
   if (!prefs.recap) return
   const o = await overview(userId)
-  const { data: todayLogs } = await svc.from("activity_logs")
-    .select("description").eq("user_id", userId).eq("provider", "meraj-autopilot")
-    .gte("created_at", new Date(Date.now() - 86400000).toISOString()).limit(10)
+  const dayStart = new Date(Date.now() - 86400000).toISOString()
+  const [{ data: todayLogs }, { data: paidInv }, { data: dayExp }] = await Promise.all([
+    svc.from("activity_logs").select("description").eq("user_id", userId).eq("provider", "meraj-autopilot")
+      .gte("created_at", dayStart).limit(10),
+    // Collected in the last ~20h = invoices that turned paid today
+    svc.from("invoices").select("total, paid_at").eq("user_id", userId).eq("status", "paid")
+      .gte("paid_at", new Date(Date.now() - 20 * 3600000).toISOString()).limit(50),
+    svc.from("expenses").select("amount").eq("user_id", userId)
+      .gte("date", new Date(Date.now() - 86400000).toISOString().slice(0, 10)).limit(50),
+  ])
+  const collected = (paidInv || []).reduce((s: number, i: any) => s + Number(i.total || 0), 0)
+  const dayCost = (dayExp || []).reduce((s: number, e: any) => s + Number(e.amount || 0), 0)
+  const profit = o.daySales - dayCost
+
+  // ── The 9pm Money Report — an employee's end-of-day account.
+  //    No hype, no exclamation marks; the last line is the trust-builder
+  //    (and the audit trail) — an employee reports what they did. ──
   const lines = [
-    `🌙 ${name}, today's recap from Meraj:`,
+    `🌙 ${name}, aaj ka hisaab:`,
     ``,
-    `📊 Sales: ${inr(o.daySales)} (${o.dayCount} bills).`,
+    `Aaj: ${inr(o.daySales)} sales (${o.dayCount} bills), ${inr(profit)} profit after expenses, ${inr(collected)} collected.`,
   ]
+  const daysLate = (d: any) => Math.max(1, Math.floor((Date.now() - new Date(d).getTime()) / 86400000))
+  const callList = (o.overdue || [])
+    .slice(0, 3)
+    .map((i: any) => `${i.client_name} (${inr(Number(i.total) || 0)}, ${daysLate(i.due_date)} din se baaki)`)
+  if (callList.length) lines.push(`Kal call karna hai: ${callList.join(", ")}.`)
   if (todayLogs && todayLogs.length) {
-    lines.push(`🤖 What I did today:`)
-    for (const l of todayLogs.slice(0, 4)) lines.push(`• ${l.description.replace("Meraj ", "").replace("meraj-autopilot", "").trim()}`)
+    const did = todayLogs.map((l: any) => String(l.description || "").toLowerCase())
+    const reminders = did.filter((d: string) => d.includes("reminder")).length
+    const drafts = did.filter((d: string) => d.includes("draft") || d.includes("reorder")).length
+    const bits: string[] = []
+    if (reminders) bits.push(`${reminders} reminder ${reminders === 1 ? "bheja" : "bheje"}`)
+    if (drafts) bits.push(`${drafts} restock draft ${drafts === 1 ? "banaya" : "banaye"}`)
+    if (bits.length) lines.push(`Aaj maine ${bits.join(", ")}.`)
   }
   const { data: dueSoon } = await svc.from("invoices").select("client_name, total, due_date")
     .eq("user_id", userId).in("status", ["sent", "viewed"]).not("due_date", "is", null)
     .gte("due_date", new Date().toISOString().slice(0, 10)).lte("due_date", new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10)).limit(3)
-  if (dueSoon && dueSoon.length) lines.push(`📅 Coming up: ${dueSoon.map((d: any) => `${d.client_name} ${inr(Number(d.total) || 0)}`).join(", ")}`)
+  if (dueSoon && dueSoon.length) lines.push(`Aane wale 3 din mein: ${dueSoon.map((d: any) => `${d.client_name} ${inr(Number(d.total) || 0)}`).join(", ")}`)
   lines.push(``, `Rest well — I'm on watch. Tomorrow's plan: ${APP}/app/manifest`)
   const ok = await send(wa, lines.join("\n"))
-  if (ok) await log(userId, "Meraj sent the evening recap on WhatsApp")
+  if (ok) await log(userId, "Meraj sent the 9pm money report on WhatsApp")
 }
 
 Deno.serve(async (req) => {
