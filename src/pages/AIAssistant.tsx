@@ -750,7 +750,7 @@ export default function AIAssistant() {
 
       {/* ── Segmented control: Ask | Execute (the command-center toggle) ── */}
       <div className="relative z-10 px-4 pt-3 pb-2 flex justify-center">
-        <div className="relative inline-flex rounded-full border border-line bg-surface-2/80 p-1 shadow-inner backdrop-blur-sm">
+        <div className="relative inline-flex rounded-full bg-surface-2 p-1 shadow-inner backdrop-blur-sm">
           {(['ask', 'task'] as const).map((m) => (
             <button
               key={m}
@@ -954,7 +954,7 @@ export default function AIAssistant() {
                   {m.media && m.media.length > 0 && (
                     <div className="mt-2 grid grid-cols-3 gap-1.5">
                       {m.media.map((mi, j) => (
-                        <a key={j} href={mi.link} target="_blank" rel="noreferrer" className="block rounded-lg overflow-hidden border border-line bg-surface-2">
+                        <a key={j} href={mi.link} target="_blank" rel="noreferrer" className="block rounded-lg overflow-hidden bg-surface-2">
                           <img src={mi.thumb} alt={mi.alt} className="w-full h-16 object-cover" loading="lazy" />
                         </a>
                       ))}

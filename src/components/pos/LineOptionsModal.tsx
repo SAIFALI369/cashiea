@@ -83,7 +83,7 @@ export function LineOptionsModal({
           {/* Inclusive pricing */}
           <button
             onClick={() => onPatch(key, { price_includes_tax: !line.price_includes_tax })}
-            className="w-full flex items-center justify-between p-3 rounded-xl bg-surface-2 border border-line"
+            className="w-full flex items-center justify-between p-3 rounded-xl bg-surface-2"
             role="switch"
             aria-checked={line.price_includes_tax}
           >

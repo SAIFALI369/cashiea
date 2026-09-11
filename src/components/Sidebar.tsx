@@ -248,11 +248,11 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         onPointerUp={onDrawerPointerUp}
         onPointerCancel={onDrawerPointerCancel}
         className={clsx(
-        'fixed lg:sticky top-0 left-0 z-50 h-screen bg-paper border-r border-line flex flex-col transition-all duration-300 ease-butter',
+        'fixed lg:sticky top-0 left-0 z-50 h-screen bg-surface shadow-card flex flex-col transition-all duration-300 ease-butter',
         collapsed ? 'w-[68px]' : 'w-72',
         isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       )}>
-        <div className="flex items-center justify-between p-5 border-b border-line">
+        <div className="flex items-center justify-between p-5">
           <div className="flex items-center gap-2.5">
             <CashieaLogo size={36} />
             <div className="min-w-0">

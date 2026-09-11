@@ -10,67 +10,71 @@
    ════════════════════════════════════════════════════════════════ */
 @layer base {
   :root {
-    --paper: 247 242 233;        /* warm ivory app background */
-    --paper-deep: 238 231 217;
-    --surface: 254 251 245;      /* soft white card */
-    --surface-2: 245 239 228;    /* secondary card / hover */
-    --surface-3: 238 230 215;
-    --line: 226 217 201;         /* warm grey hairline */
-    --line-2: 214 204 185;
-    --fg: 41 37 31;              /* warm near-black text */
-    --fg-muted: 92 84 73;
-    --fg-subtle: 132 123 108;
-    --accent: 16 185 129;        /* light emerald */
+    /* ── PREMIUM LIGHT ──
+       App background is a very light neutral gray so pure-white cards
+       pop off it. No warm beige boxes, no hairline outlines: elevation
+       comes from soft shadows only. */
+    --paper: 249 250 251;        /* #F9FAFB app background */
+    --paper-deep: 243 244 246;   /* #F3F4F6 */
+    --surface: 255 255 255;      /* #FFFFFF card */
+    --surface-2: 243 244 246;    /* #F3F4F6 soft gray fill (inputs, wells) */
+    --surface-3: 229 231 235;    /* #E5E7EB */
+    --line: 237 239 243;         /* whisper hairline (rarely used now) */
+    --line-2: 229 231 235;
+    --fg: 17 24 39;              /* #111827 primary text */
+    --fg-muted: 55 65 81;        /* #374151 body / metrics */
+    --fg-subtle: 107 114 128;    /* #6B7280 secondary labels */
+    --accent: 16 185 129;        /* #10B981 success / money */
     --accent-strong: 5 150 105;  /* emerald-600 */
     --accent-soft: 209 250 229;  /* emerald-100 tint */
-    --accent-fg: 255 255 255;    /* readable text on accent (dark-on-gold works too) */
-    /* SECONDARY — royal sapphire. "KNOW / GO": navigation, selection,
-       filters, links, information. Emerald/gold stays "DO": primary
+    --accent-fg: 255 255 255;
+    /* SECONDARY — clear blue. "KNOW / GO": navigation, selection,
+       filters, links, information. Emerald stays "DO": primary
        actions, brand, positive money. Never swap the roles. */
-    --secondary: 47 78 148;
-    --secondary-strong: 34 60 122;
-    --secondary-soft: 226 234 248;  /* pale ice tint for selected surfaces */
+    --secondary: 37 99 235;
+    --secondary-strong: 29 78 216;
+    --secondary-soft: 219 234 254;
     --secondary-fg: 255 255 255;
-    --gold: 189 156 99;
-    --copper: 167 110 63;
-    --olive: 121 128 92;
-    --positive: 74 118 92;       /* warm emerald */
-    --negative: 165 79 71;       /* muted clay red */
-    --warning: 178 132 58;       /* dusty amber */
-    --info: 92 110 130;
-    --disabled: 189 185 178;     /* muted grey for disabled surfaces/text */
+    --gold: 202 138 4;
+    --copper: 180 83 9;
+    --olive: 101 133 90;
+    --positive: 16 185 129;      /* #10B981 */
+    --negative: 239 68 68;       /* #EF4444 */
+    --warning: 245 158 11;       /* #F59E0B */
+    --info: 59 130 246;
+    --disabled: 209 213 219;
     --radius-card: 16;           /* px — cards/panels/sheets */
     --radius-control: 12;        /* px — buttons/inputs/chips */
-    --shadow: 60 50 35;          /* warm shadow base */
+    --shadow: 0 0 0;             /* neutral black shadow base */
   }
 
   .dark {
-    --paper: 22 19 16;           /* espresso */
-    --paper-deep: 16 13 11;
-    --surface: 33 28 23;         /* dark stone card */
-    --surface-2: 43 37 30;
-    --surface-3: 54 46 38;
-    --line: 58 49 40;
-    --line-2: 74 63 51;
-    --fg: 236 229 216;           /* warm off-white */
-    --fg-muted: 170 159 141;
-    --fg-subtle: 128 119 103;
-    --accent: 203 164 94;        /* champagne gold (brighter on dark) */
-    --accent-strong: 214 178 108;
-    --accent-soft: 60 49 32;
-    --accent-fg: 22 19 16;       /* dark text on gold */
-    --secondary: 118 152 214;     /* soft steel sapphire for espresso */
-    --secondary-strong: 146 180 230;
-    --secondary-soft: 35 42 62;   /* deep blue-tinged selected surface */
-    --secondary-fg: 22 19 16;
-    --gold: 214 178 108;
-    --copper: 196 138 88;
-    --olive: 142 154 110;
-    --positive: 111 166 126;
-    --negative: 199 114 104;
-    --warning: 201 149 80;
-    --info: 130 150 170;
-    --disabled: 70 64 56;
+    --paper: 13 16 21;           /* deep neutral */
+    --paper-deep: 8 10 14;
+    --surface: 23 27 34;         /* card */
+    --surface-2: 32 37 46;
+    --surface-3: 44 50 61;
+    --line: 38 44 54;
+    --line-2: 55 62 74;
+    --fg: 243 244 246;
+    --fg-muted: 209 213 219;
+    --fg-subtle: 156 163 175;
+    --accent: 52 211 153;        /* emerald-400 reads better on dark */
+    --accent-strong: 16 185 129;
+    --accent-soft: 6 59 46;
+    --accent-fg: 8 10 14;
+    --secondary: 96 165 250;
+    --secondary-strong: 147 197 253;
+    --secondary-soft: 24 38 62;
+    --secondary-fg: 8 10 14;
+    --gold: 234 179 8;
+    --copper: 217 119 6;
+    --olive: 132 162 118;
+    --positive: 52 211 153;
+    --negative: 248 113 113;
+    --warning: 251 191 36;
+    --info: 96 165 250;
+    --disabled: 71 80 94;
     --shadow: 0 0 0;
   }
 
@@ -147,16 +151,24 @@
   .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
   .no-scrollbar::-webkit-scrollbar { display: none; height: 0; width: 0; }
 
+  /* ── CARD ──
+     Premium apps separate surfaces with elevation, not outlines.
+     Pure white on light gray, 16px radius, soft diffuse shadow,
+     and a 0.98 scale-down on tap for a "haptic" feel. */
   .card {
-    @apply bg-surface border border-line rounded-card shadow-soft
-           transition-[transform,box-shadow,border-color] duration-150 ease-out;
+    @apply bg-surface rounded-card shadow-card border-0
+           transition-[transform,box-shadow] duration-150 ease-butter;
   }
   .card:active { transform: scale(0.98); }
   @media (hover: hover) {
-    .card:hover { @apply shadow-lift border-line-2; }
+    .card:hover { @apply shadow-card-lift; }
   }
-  .card-hover { @apply hover:-translate-y-0.5 hover:shadow-lift hover:border-line-2; }
+  .card-hover { @apply hover:-translate-y-0.5 hover:shadow-card-lift; }
   .card-press { @apply active:scale-[0.98]; }
+
+  /* Roomier default padding for content cards (8-pt grid: 16 / 20 / 24). */
+  .card-pad { @apply p-4 sm:p-5; }
+  .card-pad-lg { @apply p-5 sm:p-6; }
 
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm
@@ -205,10 +217,11 @@
   }
   .tap:active { transform: scale(0.97); }
 
+  /* Borderless input — soft gray fill (#F3F4F6), ring only on focus. */
   .input-field {
-    @apply w-full px-4 py-2.5 rounded-xl bg-surface border border-line text-fg text-sm
+    @apply w-full px-4 py-2.5 rounded-xl bg-surface-2 border-0 text-fg text-sm
            placeholder:text-fg-subtle
-           focus:outline-none focus:ring-4 focus:ring-accent/15 focus:border-accent
+           focus:outline-none focus:ring-2 focus:ring-accent/40 focus:bg-surface
            transition-all duration-150 ease-out;
   }
   .label { @apply block text-sm font-medium text-fg-muted mb-1.5; }
@@ -226,16 +239,28 @@
     border: 1px solid rgb(var(--line) / 0.7);
   }
 
-  /* Small interactive chip (filters, tags, quick actions). */
+  /* Small interactive chip (filters, tags, quick actions).
+     Inactive chips carry NO outline — just quiet text. Active state is
+     a solid filled pill, so the eye lands on the selection instantly. */
   .chip {
-    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold
-           bg-surface-2 text-fg-muted border border-line
+    @apply inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold
+           bg-transparent text-fg-subtle border-0
            transition-all duration-150 ease-butter
-           hover:border-line-2 hover:text-fg active:scale-95;
+           hover:bg-surface-2 hover:text-fg active:scale-95;
   }
-  /* Selected chip = sapphire (selection/navigation is the secondary's job). */
   .chip-active {
-    @apply bg-secondary-soft text-secondary-strong border-secondary/40;
+    @apply bg-fg text-paper hover:bg-fg hover:text-paper;
+  }
+  /* Text-tab variant — no pill, just an underline on the active tab. */
+  .tab {
+    @apply relative inline-flex items-center gap-1.5 px-1 pb-2 text-sm font-semibold
+           text-fg-subtle border-0 bg-transparent transition-colors duration-150
+           hover:text-fg;
+  }
+  .tab-active { @apply text-fg; }
+  .tab-active::after {
+    content: '';
+    @apply absolute left-0 right-0 -bottom-px h-0.5 rounded-full bg-fg;
   }
 
   /* Inline text link — sapphire, calm underline. */
@@ -427,6 +452,17 @@ h1, h2, h3 {
 /* Meraj's thought bubble — a gentle hover while it floats. */
 @keyframes meraj-bubble-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 .meraj-bubble-float { animation: meraj-bubble-float 4.5s ease-in-out infinite; }
+
+/* ── Meraj is ALIVE ──
+   A slow soft-glow "breath" behind the avatar so the assistant reads as
+   thinking/listening rather than a static illustration. Pure opacity +
+   scale on a blurred halo: no layout cost, no repaint of the mascot. */
+@keyframes meraj-breathe {
+  0%, 100% { opacity: 0.35; transform: scale(0.88); }
+  50%      { opacity: 0.85; transform: scale(1.12); }
+}
+.meraj-breathe { animation: meraj-breathe 3.6s ease-in-out infinite; will-change: opacity, transform; }
+@media (prefers-reduced-motion: reduce) { .meraj-breathe { animation: none; } }
 /* Soft ground shadow so the device reads as floating, not glued. */
 .meraj-body {
   /* Premium deep-green shell: calmer and more trustworthy than the bright

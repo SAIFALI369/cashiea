@@ -868,7 +868,7 @@ export default function POS() {
                 <button
                   key={u.unit}
                   onClick={() => { addToCart(unitPickerProduct, u); setUnitPickerProduct(null) }}
-                  className="w-full flex items-center justify-between p-3 rounded-xl bg-surface-2 border border-line hover:border-accent text-left"
+                  className="w-full flex items-center justify-between p-3 rounded-xl bg-surface-2 hover:border-accent text-left"
                 >
                   <span className="font-semibold text-fg capitalize">{u.unit}</span>
                   <span className="font-bold text-accent-strong tabular-nums">{formatINR(u.price)}</span>

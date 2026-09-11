@@ -23,7 +23,7 @@ function randomKey(): string {
 /** Masked key display — only the prefix is ever visible after creation. */
 function MaskedKey({ prefix }: { prefix: string }) {
   return (
-    <span className="inline-flex items-center gap-1 font-mono text-xs text-fg-muted bg-surface-2 border border-line rounded-lg px-2.5 py-1.5">
+    <span className="inline-flex items-center gap-1 font-mono text-xs text-fg-muted bg-surface-2 rounded-lg px-2.5 py-1.5">
       <Key className="w-3.5 h-3.5 text-fg-subtle" />
       <span className="text-fg">{prefix.slice(0, 12)}</span>
       <span className="tracking-widest">••••••••</span>
@@ -157,7 +157,7 @@ export default function ApiKeys() {
                 For security, the full key is shown <strong className="text-fg-muted">only once</strong>. We store only a hash — it can't be recovered later.
               </p>
               <div className="flex items-center gap-2 mt-3">
-                <code className="flex-1 min-w-0 truncate font-mono text-xs bg-surface-2 border border-line rounded-control px-3 py-2.5 text-fg">
+                <code className="flex-1 min-w-0 truncate font-mono text-xs bg-surface-2 rounded-control px-3 py-2.5 text-fg">
                   {revealCreated ? createdKey : 'biz_live_' + '•'.repeat(20)}
                 </code>
                 <button
@@ -246,7 +246,7 @@ export default function ApiKeys() {
           <code className="font-mono text-accent bg-accent-soft rounded px-1.5 py-0.5">x-api-key</code>
           <span className="text-fg-subtle font-medium">header to:</span>
         </div>
-        <div className="flex items-center gap-2 bg-surface-2 border border-line rounded-control px-3 py-2.5 mb-5">
+        <div className="flex items-center gap-2 bg-surface-2 rounded-control px-3 py-2.5 mb-5">
           <code className="flex-1 min-w-0 truncate font-mono text-xs text-fg">{apiUrl}</code>
           <CopyButton value={apiUrl} label="Copy URL" />
         </div>
@@ -266,7 +266,7 @@ export default function ApiKeys() {
           ))}
         </div>
         <div className="relative">
-          <pre className="bg-surface-2 border border-line rounded-control p-4 text-xs text-fg-muted overflow-x-auto leading-relaxed">
+          <pre className="bg-surface-2 rounded-control p-4 text-xs text-fg-muted overflow-x-auto leading-relaxed">
             <code className="font-mono">{examples[docTab].snippet('biz_live_YOUR_KEY')}</code>
           </pre>
           <div className="absolute top-2.5 right-2.5">

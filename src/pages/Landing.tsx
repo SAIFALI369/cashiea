@@ -238,7 +238,7 @@ function HeroDashboard() {
 
         <div className="grid grid-cols-2 gap-2.5 mb-4">
           {stats.map((s, i) => (
-            <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 + i * 0.08 }} className="rounded-xl border border-line bg-surface-2/60 p-3">
+            <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 + i * 0.08 }} className="rounded-xl bg-surface-2/60 p-3">
               <Mono className="text-fg-subtle block mb-1">{s.label}</Mono>
               <p className="text-lg font-bold text-fg leading-none">{s.value}</p>
               <p className="mt-1 text-[10px] font-medium text-accent">{s.delta}</p>

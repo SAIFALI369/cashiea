@@ -83,7 +83,7 @@ export function UpiQr({
 
       {/* UPI ID + copy — always available */}
       <div className="flex items-center gap-1.5">
-        <code className="text-xs font-semibold text-fg bg-surface-2 border border-line rounded-lg px-2.5 py-1.5 select-all">{upiId}</code>
+        <code className="text-xs font-semibold text-fg bg-surface-2 rounded-lg px-2.5 py-1.5 select-all">{upiId}</code>
         <button
           onClick={copyUpi}
           className="w-9 h-9 rounded-lg border border-line bg-surface flex items-center justify-center text-fg-muted hover:text-fg active:scale-95 transition-all"

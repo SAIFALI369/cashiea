@@ -108,7 +108,7 @@ export function CommandPalette() {
             placeholder="Go to… (stock, bills, khata, Meraj)"
             aria-label="Search commands"
           />
-          <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-2 border border-line text-fg-subtle">esc</kbd>
+          <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-2 text-fg-subtle">esc</kbd>
         </div>
         <div className="max-h-[46vh] overflow-y-auto scroll-area py-1.5">
           {filtered.length === 0 && (

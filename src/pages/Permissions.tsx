@@ -15,7 +15,7 @@ const MODE_META: { key: AccessMode; label: string }[] = [
 
 function Segment({ value, onChange }: { value: AccessMode; onChange: (m: AccessMode) => void }) {
   return (
-    <div className="inline-flex p-0.5 rounded-control bg-surface-2 border border-line">
+    <div className="inline-flex p-0.5 rounded-control bg-surface-2">
       {MODE_META.map((m) => (
         <button
           key={m.key}

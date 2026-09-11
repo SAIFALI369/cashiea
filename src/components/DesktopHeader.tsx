@@ -5,7 +5,7 @@ import { QueueBadge } from './QueueBadge'
 import { SyncIndicator } from './SyncIndicator'
 import { Avatar } from './Avatar'
 import { CashieaLogo } from './CashieaLogo'
-import { Settings, Search, Menu, Lightbulb } from 'lucide-react'
+import { Settings, Search, Menu, Bell } from 'lucide-react'
 
 /**
  * DesktopHeader — sticky top bar shown ONLY on the desktop shell (≥lg).
@@ -18,7 +18,7 @@ export default function DesktopHeader({ onMenu, showMenuButton }: { onMenu?: () 
   const { profile } = useAuth()
 
   return (
-    <header className="hidden lg:flex sticky top-0 z-30 bg-surface/85 backdrop-blur border-b border-line px-6 xl:px-10 h-16 items-center gap-4 shrink-0">
+    <header className="hidden lg:flex sticky top-0 z-30 bg-paper/85 backdrop-blur-xl px-6 xl:px-10 h-16 items-center gap-4 shrink-0">
       {showMenuButton && (
         <button
           onClick={onMenu}
@@ -40,19 +40,19 @@ export default function DesktopHeader({ onMenu, showMenuButton }: { onMenu?: () 
       {/* Global search bar (Ctrl+K eventually wired) */}
       <button
         onClick={() => window.dispatchEvent(new CustomEvent('cashiea:command-palette'))}
-        className="flex-1 max-w-xl mx-4 flex items-center gap-2 px-4 h-10 rounded-control bg-surface-2 border border-line text-fg-subtle hover:text-fg hover:border-secondary/40 focus-visible:ring-4 focus-visible:ring-secondary/25 outline-none transition-colors text-sm"
+        className="flex-1 max-w-xl mx-4 flex items-center gap-2 px-4 h-10 rounded-full bg-surface-2 border-0 text-fg-subtle hover:text-fg focus-visible:ring-2 focus-visible:ring-accent/40 outline-none transition-colors text-sm"
       >
         <Search className="w-4 h-4 flex-shrink-0" />
         <span className="truncate text-left flex-1">Search anything… customers, products, bills</span>
-        <kbd className="hidden xl:inline-flex text-[10px] font-mono px-1.5 py-0.5 rounded bg-paper border border-line text-fg-subtle">Ctrl K</kbd>
+        <kbd className="hidden xl:inline-flex text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface text-fg-subtle">Ctrl K</kbd>
       </button>
 
       <div className="flex items-center gap-2 ml-auto">
-        <Link to="/app/suggestions" aria-label="Open suggestions" title="Suggestions" className="icon-btn w-10 h-10 min-w-10">
-          <Lightbulb className="w-4.5 h-4.5 text-secondary" />
-        </Link>
         <SyncIndicator className="hidden xl:inline-flex" />
         <QueueBadge />
+        <Link to="/app/notifications" aria-label="Notifications" title="Notifications" className="icon-btn w-10 h-10 min-w-10">
+          <Bell className="w-[18px] h-[18px]" />
+        </Link>
         <LiveClock />
         <Link to="/app/account" aria-label="Account & settings" className="relative flex items-center gap-2 rounded-full pl-1 pr-3 h-10 hover:bg-surface-2 transition-colors">
           <Avatar url={profile?.avatar_url} name={profile?.full_name} size={34} />

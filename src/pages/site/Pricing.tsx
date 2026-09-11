@@ -120,7 +120,7 @@ export default function SitePricing() {
               </div>
               <div className="mt-4 space-y-2.5">
                 {FAQS.map((item) => (
-                  <div key={item.q} className="rounded-2xl border border-line bg-surface-2/40 p-4">
+                  <div key={item.q} className="rounded-2xl bg-surface-2/40 p-4">
                     <p className="text-sm font-semibold text-fg">{item.q}</p>
                     <p className="text-xs text-fg-muted mt-1 leading-relaxed">{item.a}</p>
                   </div>

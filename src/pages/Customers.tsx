@@ -7,11 +7,10 @@ import { formatINR } from '../lib/format'
 import { enrichCustomers, winbackText, type Customer360 } from '../lib/customer360'
 import type { Customer, Transaction } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
-import { StatStrip } from '../components/ui/StatStrip'
-import { DataToolbar } from '../components/ui/DataToolbar'
+import HeaderAction from '../components/ui/HeaderAction'
 import EmptyState from '../components/ui/EmptyState'
 import { ConfirmDialog } from '../components/ConfirmDialog'
-import { Users, Plus, Loader2, Trash2, Search, Mail, Phone, X, Clock, TrendingUp, Award, UserPlus, ChevronRight, Sparkles, IndianRupee } from 'lucide-react'
+import { Users, Plus, Loader2, Trash2, Search, Mail, Phone, X, ArrowUpRight, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const empty = { name: '', email: '', phone: '', address: '', company: '', notes: '', tags: '', credit_limit: 0 }
@@ -149,57 +148,138 @@ export default function Customers() {
 
   const totalValue = customers.reduce((s, c) => s + Number(c.total_spent || 0), 0)
 
-  const SEGMENTS: { key: Segment; label: string; icon: typeof Users }[] = [
-    { key: 'all', label: 'All', icon: Users },
-    { key: 'vip', label: 'VIP', icon: Award },
-    { key: 'regular', label: 'Regular', icon: TrendingUp },
-    { key: 'new', label: 'New', icon: UserPlus },
-    { key: 'dormant', label: 'Dormant', icon: Clock },
+  // ── Two DIFFERENT facts, deliberately not conflated ──
+  //
+  // growthPct: how much the customer BASE grew in the last 30 days. This is
+  //   real growth (new signups ÷ the base that existed before them), so it is
+  //   the only figure that earns a green ↗ arrow.
+  // activeShare: the share of lifetime value held by customers who bought
+  //   recently. That is a composition stat, NOT growth — showing it with an
+  //   up-arrow would claim revenue rose when nothing of the sort was measured.
+  const { growthPct, activeShare } = useMemo(() => {
+    const cutoff = Date.now() - 30 * 86400000
+    const added = customers.filter((c) => c.created_at && new Date(c.created_at).getTime() >= cutoff).length
+    const before = customers.length - added
+    const recentValue = customers.reduce((s, c) => {
+      const last = c.last_purchase_at ? new Date(c.last_purchase_at).getTime() : 0
+      return last >= cutoff ? s + Number(c.total_spent || 0) : s
+    }, 0)
+    return {
+      growthPct: added > 0 && before > 0 ? Math.round((added / before) * 100) : null,
+      activeShare: totalValue > 0 && recentValue > 0 ? Math.round((recentValue / totalValue) * 100) : null,
+    }
+  }, [customers, totalValue])
+
+  const SEGMENTS: { key: Segment; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'vip', label: 'VIP' },
+    { key: 'regular', label: 'Regular' },
+    { key: 'new', label: 'New' },
+    { key: 'dormant', label: 'Dormant' },
   ]
 
+  // Segment pill next to the name — small, subtle, never a floating corner tag.
   const segColor: Record<string, string> = {
-    vip: 'bg-accent-soft text-accent',
+    vip: 'bg-gold/15 text-gold',
     regular: 'bg-positive/10 text-positive',
     new: 'bg-info/10 text-info',
     dormant: 'bg-warning/10 text-warning',
   }
+  // A thin coloured ring around the avatar carries the same signal quietly.
+  const segRing: Record<string, string> = {
+    vip: 'ring-2 ring-gold/60',
+    regular: 'ring-1 ring-line-2',
+    new: 'ring-2 ring-positive/50',
+    dormant: 'ring-2 ring-warning/40',
+  }
 
   return (
-    <div className="animate-fade-in">
-      <PageHeader
-        title="Customers"
-        icon={<Users className="w-5 h-5" />}
-        action={can('customers:manage') ? <button onClick={() => { setForm(empty); setShowForm(true) }} className="btn-primary text-sm"><Plus className="w-4 h-4" /> Add customer</button> : <span className="text-xs text-fg-subtle">Read-only access</span>}
-      />
-
-      {/* Stats strip */}
-      {!loading && customers.length > 0 && (
-        <StatStrip stats={[
-          { label: 'Customers', value: String(customers.length), icon: Users, tone: 'default' },
-          { label: 'Lifetime value', value: formatINR(totalValue, 0), icon: IndianRupee, tone: 'accent' },
-          { label: 'VIP', value: String(counts.vip), icon: Award, tone: 'secondary' },
-          { label: 'Avg per customer', value: formatINR(customers.length ? totalValue / customers.length : 0, 0), icon: TrendingUp, tone: 'default' },
-        ]} />
+    <div className="animate-fade-in space-y-6">
+      {/* The page name is the large bold title in the app header; the only
+          action is a compact + in the top-right corner. */}
+      <PageHeader title="Customers" subtitle="Your customer book" />
+      {can('customers:manage') && (
+        <HeaderAction>
+          <button
+            onClick={() => { setForm(empty); setShowForm(true) }}
+            aria-label="Add customer"
+            title="Add customer"
+            className="w-10 h-10 rounded-full bg-fg text-paper flex items-center justify-center active:scale-95 transition-transform shadow-card lg:w-auto lg:px-4 lg:gap-1.5 lg:text-sm lg:font-semibold"
+          >
+            <Plus className="w-5 h-5 lg:w-4 lg:h-4" strokeWidth={2.5} />
+            <span className="hidden lg:inline">Add customer</span>
+          </button>
+        </HeaderAction>
       )}
 
-      <DataToolbar
-        search={search}
-        onSearch={setSearch}
-        placeholder="Search by name, phone, or email…"
-        trailing={<span className="hidden sm:inline text-xs font-semibold text-fg-subtle tabular-nums whitespace-nowrap">{filtered.length} of {customers.length}</span>}
-      >
-        {SEGMENTS.map((s) => (
-          <button
-            key={s.key}
-            onClick={() => setSegment(s.key)}
-            className={`chip whitespace-nowrap ${segment === s.key ? 'chip-active' : ''}`}
-          >
-            <s.icon className="w-3.5 h-3.5" />
-            {s.label}
-            {counts[s.key] > 0 && <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${segment === s.key ? 'bg-secondary/15 text-secondary-strong' : 'bg-line/50 text-fg-subtle'}`}>{counts[s.key]}</span>}
-          </button>
-        ))}
-      </DataToolbar>
+      {/* ── ONE elegant summary card, full width. Primary stats never scroll. ── */}
+      {!loading && customers.length > 0 && (
+        <section className="card p-5 sm:p-6 animate-rise-in">
+          <div className="flex flex-wrap items-start gap-x-10 gap-y-5">
+            <div>
+              <p className="text-sm text-fg-subtle">Total customers</p>
+              {/* The ↗ belongs here: this is the number that actually grew. */}
+              <div className="flex items-baseline gap-2 mt-1">
+                <p className="text-3xl font-bold text-fg tabular-nums leading-none">{customers.length}</p>
+                {growthPct != null && (
+                  <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-positive">
+                    <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={2.5} />{growthPct}%
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm text-fg-subtle">Lifetime value</p>
+              <p className="text-3xl font-bold text-fg tabular-nums leading-none mt-1">{formatINR(totalValue, 0)}</p>
+            </div>
+            <div className="hidden sm:block">
+              <p className="text-sm text-fg-subtle">Avg per customer</p>
+              <p className="text-3xl font-bold text-fg tabular-nums mt-1 leading-none">
+                {formatINR(customers.length ? totalValue / customers.length : 0, 0)}
+              </p>
+            </div>
+          </div>
+          {(growthPct != null || activeShare != null) && (
+            <p className="text-xs text-fg-subtle mt-4">
+              {growthPct != null && `${growthPct}% more customers than 30 days ago`}
+              {growthPct != null && activeShare != null && ' · '}
+              {activeShare != null && `${activeShare}% of lifetime value from customers active this month`}
+            </p>
+          )}
+        </section>
+      )}
+
+      {/* ── Search (soft gray, borderless) + text-tab filters ── */}
+      <div className="space-y-4">
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-fg-subtle pointer-events-none" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, phone, or email"
+            aria-label="Search customers"
+            className="w-full h-12 pl-11 pr-4 rounded-full bg-surface-2 border-0 text-sm text-fg placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 transition-shadow"
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar -mx-1 px-1">
+          {SEGMENTS.map((s) => (
+            <button
+              key={s.key}
+              onClick={() => setSegment(s.key)}
+              className={`chip whitespace-nowrap ${segment === s.key ? 'chip-active' : ''}`}
+            >
+              {s.label}
+              {counts[s.key] > 0 && (
+                <span className={`tabular-nums ${segment === s.key ? 'opacity-70' : 'text-fg-subtle'}`}>{counts[s.key]}</span>
+              )}
+            </button>
+          ))}
+          <span className="ml-auto hidden sm:inline text-xs text-fg-subtle tabular-nums whitespace-nowrap pl-3">
+            {filtered.length} of {customers.length}
+          </span>
+        </div>
+      </div>
 
       {loading ? (
         <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-fg-subtle" /></div>
@@ -219,78 +299,71 @@ export default function Customers() {
           </button>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        /* ── CLEAN LIST ──
+           Avatar + ringed segment · name with an inline pill · contact on
+           ONE dotted line · metrics as plain text. No beige boxes, no
+           floating corner tags. On desktop the rows tile into columns. */
+        <div className="bg-surface rounded-card shadow-card overflow-hidden divide-y divide-line lg:bg-transparent lg:shadow-none lg:rounded-none lg:overflow-visible lg:divide-y-0 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4">
           {filtered.map((c) => {
             const seg = segmentOf(c)
             const initials = (c.name || '?').split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase()
+            const c360 = list360.get(c.id)
+            const contact = [c.phone, c.email].filter(Boolean) as string[]
             return (
               <button
                 key={c.id}
                 onClick={() => openDetail(c)}
-                className="card card-hover relative p-4 text-left active:scale-[0.98] transition-all"
+                className="w-full text-left px-4 py-4 sm:px-5 flex items-start gap-3.5 transition-[background-color,transform] duration-150 ease-butter hover:bg-surface-2/60 active:scale-[0.98] lg:card lg:card-hover lg:p-5 lg:hover:bg-surface"
               >
-                {/* Header: name + segment badge */}
-                <div className="flex items-center gap-2.5 mb-3">
-                  <span className="w-9 h-9 rounded-full bg-secondary-soft text-secondary-strong text-xs font-bold flex items-center justify-center flex-shrink-0">{initials}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-fg truncate">{c.name}</p>
-                    {c.company && <p className="text-xs text-fg-subtle truncate mt-0.5">{c.company}</p>}
-                  </div>
-                  <span className={`text-[9px] font-bold uppercase px-2 py-1 rounded-full flex-shrink-0 ${segColor[seg]}`}>
-                    {seg}
-                  </span>
-                </div>
+                <span
+                  className={`w-11 h-11 rounded-full bg-surface-2 text-fg text-sm font-bold flex items-center justify-center flex-shrink-0 ${segRing[seg]}`}
+                >
+                  {initials}
+                </span>
 
-                {/* Stats: spent + orders */}
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  <div className="rounded-control bg-surface-2 px-2.5 py-2">
-                    <p className="text-[9px] font-bold uppercase text-fg-subtle">Spent</p>
-                    <p className="text-sm font-bold text-fg tabular-nums leading-tight truncate">{formatINR(Number(c.total_spent || 0), 0)}</p>
-                  </div>
-                  <div className="rounded-control bg-surface-2 px-2.5 py-2">
-                    <p className="text-[9px] font-bold uppercase text-fg-subtle">Orders</p>
-                    <p className="text-sm font-bold text-fg tabular-nums leading-tight">{c.total_orders || 0}</p>
-                  </div>
-                </div>
-                {Number(c.credit_limit) > 0 && (
-                  <div className="rounded-control bg-surface-2 px-2.5 py-2">
-                    <p className="text-[9px] font-bold uppercase text-fg-subtle">Credit Limit</p>
-                    <p className="text-sm font-bold text-warning tabular-nums leading-tight">{formatINR(Number(c.credit_limit), 0)}</p>
-                  </div>
-                )}
-
-                {/* Contact info */}
-                <div className="flex items-center gap-3 text-xs text-fg-muted">
-                  {c.phone && (
-                    <span className="flex items-center gap-1 min-w-0">
-                      <Phone className="w-3 h-3 flex-shrink-0" />
-                      <span className="truncate">{c.phone}</span>
+                <div className="min-w-0 flex-1">
+                  {/* Line 1 — name + inline segment pill */}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[15px] font-semibold text-fg truncate">{c.name}</span>
+                    <span className={`text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-md flex-shrink-0 ${segColor[seg]}`}>
+                      {seg}
                     </span>
+                  </div>
+
+                  {/* Line 2 — phone • email, one line, truncated */}
+                  {contact.length > 0 && (
+                    <p className="text-[13px] text-fg-subtle truncate mt-0.5">
+                      {contact.join('  •  ')}
+                    </p>
                   )}
-                  {c.email && (
-                    <span className="flex items-center gap-1 min-w-0">
-                      <Mail className="w-3 h-3 flex-shrink-0" />
-                      <span className="truncate">{c.email}</span>
-                    </span>
+
+                  {/* Line 3 — metrics as plain text; the number that matters is bold */}
+                  <p className="text-[13px] text-fg-subtle mt-1.5">
+                    <span className="text-fg-muted">Spent </span>
+                    <span className="font-semibold text-fg tabular-nums">{formatINR(Number(c.total_spent || 0), 0)}</span>
+                    <span className="mx-1.5 text-line-2">|</span>
+                    <span className="text-fg-muted">Orders </span>
+                    <span className="font-semibold text-fg tabular-nums">{c.total_orders || 0}</span>
+                    {c.last_purchase_at && (
+                      <>
+                        <span className="mx-1.5 text-line-2">|</span>
+                        <span className="text-fg-muted">Last </span>
+                        <span className="font-semibold text-fg">
+                          {new Date(c.last_purchase_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </>
+                    )}
+                  </p>
+
+                  {Number(c.credit_limit) > 0 && (
+                    <p className="text-[12px] text-fg-subtle mt-1">
+                      Credit limit <span className="font-semibold text-warning tabular-nums">{formatINR(Number(c.credit_limit), 0)}</span>
+                    </p>
+                  )}
+                  {c360?.churnRisk === 'high' && (
+                    <p className="text-[12px] font-medium text-warning mt-1">At risk — quiet longer than usual</p>
                   )}
                 </div>
-
-                {/* Last purchase */}
-                {c.last_purchase_at && (
-                  <div className="flex items-center gap-1 text-[10px] text-fg-subtle mt-2">
-                    <Clock className="w-3 h-3" />
-                    <span>Last: {new Date(c.last_purchase_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
-                  </div>
-                )}
-                {list360.get(c.id)?.churnRisk === 'high' && (
-                  <p className="text-[10px] font-semibold text-warning mt-1.5">At risk — quiet longer than usual</p>
-                )}
-                {(list360.get(c.id)?.tier === 'platinum' || list360.get(c.id)?.tier === 'gold') && (
-                  <p className="text-[10px] font-semibold text-accent mt-1 capitalize">{list360.get(c.id)!.tier} in this shop</p>
-                )}
-
-                {/* Chevron */}
-                <ChevronRight className="w-4 h-4 text-fg-subtle absolute right-3 top-1/2 -translate-y-1/2" />
               </button>
             )
           })}
@@ -300,7 +373,7 @@ export default function Customers() {
       {/* Add customer form */}
       {can('customers:manage') && showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setShowForm(false)}>
-          <div className="card w-full max-w-md rounded-t-2xl sm:rounded-card p-5 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="card w-full max-w-md rounded-t-3xl sm:rounded-card p-6 max-h-[85vh] overflow-y-auto animate-sheet-in" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-bold text-fg">Add customer</h3>
               <button onClick={() => setShowForm(false)} className="text-fg-muted hover:text-fg"><X className="w-5 h-5" /></button>
@@ -339,7 +412,7 @@ export default function Customers() {
       {/* Customer detail drawer */}
       {selected && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setSelected(null)}>
-          <div className="card w-full max-w-md rounded-t-2xl sm:rounded-card p-5 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="card w-full max-w-md rounded-t-3xl sm:rounded-card p-6 max-h-[85vh] overflow-y-auto animate-sheet-in" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-4">
               <div className="min-w-0">
                 <h3 className="text-lg font-bold text-fg truncate">{selected.name}</h3>
@@ -348,30 +421,30 @@ export default function Customers() {
               <button onClick={() => setSelected(null)} className="text-fg-muted hover:text-fg flex-shrink-0"><X className="w-5 h-5" /></button>
             </div>
 
-            {/* Stats grid */}
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              <div className="rounded-control bg-surface-2 px-3 py-2.5 text-center">
-                <p className="text-[9px] font-bold uppercase text-fg-subtle">Spent</p>
-                <p className="text-base font-bold text-fg tabular-nums">{formatINR(Number(selected.total_spent || 0), 0)}</p>
+            {/* Stats — plain text, no boxes. Let the numbers speak. */}
+            <div className="flex flex-wrap gap-x-8 gap-y-4 mb-5">
+              <div>
+                <p className="text-xs text-fg-subtle">Spent</p>
+                <p className="text-xl font-bold text-fg tabular-nums mt-0.5">{formatINR(Number(selected.total_spent || 0), 0)}</p>
               </div>
-              <div className="rounded-control bg-surface-2 px-3 py-2.5 text-center">
-                <p className="text-[9px] font-bold uppercase text-fg-subtle">Orders</p>
-                <p className="text-base font-bold text-fg tabular-nums">{selected.total_orders || 0}</p>
+              <div>
+                <p className="text-xs text-fg-subtle">Orders</p>
+                <p className="text-xl font-bold text-fg tabular-nums mt-0.5">{selected.total_orders || 0}</p>
               </div>
-              <div className="rounded-control bg-surface-2 px-3 py-2.5 text-center">
-                <p className="text-[9px] font-bold uppercase text-fg-subtle">Avg Order</p>
-                <p className="text-base font-bold text-fg tabular-nums">{formatINR(Number(selected.total_orders || 0) > 0 ? Number(selected.total_spent || 0) / Number(selected.total_orders) : 0, 0)}</p>
+              <div>
+                <p className="text-xs text-fg-subtle">Avg order</p>
+                <p className="text-xl font-bold text-fg tabular-nums mt-0.5">{formatINR(Number(selected.total_orders || 0) > 0 ? Number(selected.total_spent || 0) / Number(selected.total_orders) : 0, 0)}</p>
               </div>
+              {Number(selected.credit_limit) > 0 && (
+                <div>
+                  <p className="text-xs text-fg-subtle">Credit limit</p>
+                  <p className="text-xl font-bold text-warning tabular-nums mt-0.5">{formatINR(Number(selected.credit_limit), 0)}</p>
+                </div>
+              )}
             </div>
-            {Number(selected.credit_limit) > 0 && (
-              <div className="rounded-control bg-surface-2 px-3 py-2.5 text-center mb-4">
-                <p className="text-[9px] font-bold uppercase text-fg-subtle">Credit Limit</p>
-                <p className="text-base font-bold text-warning tabular-nums">{formatINR(Number(selected.credit_limit), 0)}</p>
-              </div>
-            )}
 
             {detail360 && (
-              <div className="rounded-control border border-line bg-surface-2 p-3 mb-4">
+              <div className="rounded-control bg-surface-2 p-4 mb-5">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-fg-subtle mb-1">Customer 360</p>
                 <p className="text-xs text-fg leading-relaxed">{detail360.insight}</p>
                 <div className="flex flex-wrap gap-1.5 mt-2">
@@ -404,41 +477,41 @@ export default function Customers() {
               </div>
             )}
 
-            {/* Contact */}
-            <div className="space-y-2 mb-4">
+            {/* Contact — quiet rows, no boxes */}
+            <div className="mb-5">
               {selected.phone && (
-                <a href={`tel:${selected.phone}`} className="flex items-center gap-3 p-2.5 rounded-control bg-surface-2 text-sm text-fg hover:bg-surface-3 transition-colors">
-                  <Phone className="w-4 h-4 text-accent" /> {selected.phone}
+                <a href={`tel:${selected.phone}`} className="flex items-center gap-3 py-2.5 text-sm text-fg hover:text-accent-strong transition-colors">
+                  <Phone className="w-4 h-4 text-fg-subtle" /> {selected.phone}
                 </a>
               )}
               {selected.email && (
-                <a href={`mailto:${selected.email}`} className="flex items-center gap-3 p-2.5 rounded-control bg-surface-2 text-sm text-fg hover:bg-surface-3 transition-colors">
-                  <Mail className="w-4 h-4 text-accent" /> {selected.email}
+                <a href={`mailto:${selected.email}`} className="flex items-center gap-3 py-2.5 text-sm text-fg hover:text-accent-strong transition-colors">
+                  <Mail className="w-4 h-4 text-fg-subtle" /> {selected.email}
                 </a>
               )}
               {selected.notes && (
-                <div className="p-2.5 rounded-control bg-surface-2 text-sm text-fg-muted">
-                  <Sparkles className="w-4 h-4 text-accent inline mr-2" />{selected.notes}
-                </div>
+                <p className="flex items-start gap-3 py-2.5 text-sm text-fg-muted">
+                  <Sparkles className="w-4 h-4 text-fg-subtle mt-0.5 flex-shrink-0" />{selected.notes}
+                </p>
               )}
             </div>
 
             {/* Recent orders */}
             <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-fg-subtle mb-2">Recent orders</p>
+              <p className="text-sm font-semibold text-fg mb-1">Recent orders</p>
               {loadingOrders ? (
                 <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-fg-subtle" /></div>
               ) : orders.length === 0 ? (
-                <p className="text-sm text-fg-muted text-center py-4">No orders yet</p>
+                <p className="text-sm text-fg-subtle py-3">No orders yet</p>
               ) : (
-                <div className="space-y-2">
+                <div className="divide-y divide-line">
                   {orders.map((t) => (
-                    <div key={t.id} className="flex items-center justify-between p-2.5 rounded-control bg-surface-2">
+                    <div key={t.id} className="flex items-center justify-between gap-3 py-3">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-fg truncate">{(t.items || []).map((i: any) => i.name).join(', ') || 'Order'}</p>
-                        <p className="text-[10px] text-fg-subtle">{new Date(t.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
+                        <p className="text-sm text-fg truncate">{(t.items || []).map((i: any) => i.name).join(', ') || 'Order'}</p>
+                        <p className="text-xs text-fg-subtle mt-0.5">{new Date(t.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
                       </div>
-                      <p className="text-sm font-bold text-fg tabular-nums flex-shrink-0">{formatINR(Number(t.total))}</p>
+                      <p className="text-sm font-semibold text-fg tabular-nums flex-shrink-0">{formatINR(Number(t.total))}</p>
                     </div>
                   ))}
                 </div>
@@ -446,7 +519,7 @@ export default function Customers() {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2 mt-4 pt-4 border-t border-line">
+            <div className="flex gap-2 mt-5 pt-5 border-t border-line">
               {can('customers:manage') && <button
                 onClick={() => { setConfirmDelete(selected); setSelected(null) }}
                 className="btn-secondary text-sm h-10 text-negative hover:border-negative/40"
