@@ -203,6 +203,23 @@ export default function Dashboard() {
     })()
   }, [profile])
 
+  // ── HERO COUNTER — "Meraj recovered ₹X this month" (corner chip, free tier).
+  //    Sum of Meraj's collection activity (ar_escalation money) this month;
+  //    hidden entirely when there's nothing to show — never disturbs the hero. ──
+  const [recovered, setRecovered] = useState(0)
+  useEffect(() => {
+    if (!profile?.id) return
+    const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0)
+    ;(async () => {
+      try {
+        const { data } = await supabase.from('automation_events').select('money_impact')
+          .eq('user_id', profile.id).eq('type', 'ar_escalation')
+          .gte('created_at', monthStart.toISOString()).limit(300)
+        setRecovered((data || []).reduce((s: number, e: any) => s + Number(e.money_impact || 0), 0))
+      } catch { /* chip stays hidden */ }
+    })()
+  }, [profile?.id])
+
   const firstName = (profile?.full_name || 'there').split(' ')[0]
 
   const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
@@ -222,6 +239,11 @@ export default function Dashboard() {
       {/* 1 · MONEY HERO — quiet luxury: one number owns the screen */}
       <section className="card relative overflow-hidden p-6 sm:p-8 animate-rise-in" style={{ animationDelay: '60ms' }}>
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgb(var(--accent) / 0.5), transparent)' }} aria-hidden="true" />
+        {recovered > 0 && (
+          <div className="absolute right-3 top-3 sm:right-4 sm:top-4 z-10 rounded-full bg-positive/10 border border-positive/25 px-3 py-1.5 text-[10px] sm:text-[11px] font-bold text-positive shadow-soft">
+            Meraj recovered ₹{Math.round(recovered).toLocaleString('en-IN')} this month
+          </div>
+        )}
         <div className="flex flex-col items-center text-center gap-4">
           <p className="section-title">Today's revenue</p>
           <FitAmount value={stats[0]?.value || '₹0'} base="text-6xl sm:text-7xl" minTier="text-4xl" className="font-extrabold text-fg tracking-tight" />

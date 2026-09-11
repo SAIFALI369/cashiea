@@ -58,6 +58,7 @@ const MORE: Section[] = [
   ]},
   { label: 'Automation', items: [
     { to: '/app/command-center', label: 'Command Center', icon: Zap },
+    { to: '/app/vasooli', label: 'Vasooli Round', icon: Wallet },
     { to: '/app/auto-reorder', label: 'Auto-reorder', icon: RefreshCw },
     { to: '/app/cash-flow', label: 'Cash flow', icon: LineChart },
     { to: '/app/reminders', label: 'Reminders', icon: CalendarClock },
