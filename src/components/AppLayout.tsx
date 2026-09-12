@@ -61,6 +61,9 @@ export default function AppLayout() {
   })()
 
   const isSubPage = pageHeaderName !== 'Cashiea'
+  // Bottom nav lives ONLY on the Dashboard and the Meraj AI page — every
+  // other page gets full-screen focus (the header back-arrow is the way out).
+  const showMobileNav = location.pathname === '/app' || location.pathname === '/app/assistant'
   const goBack = () => {
     if (window.history.state && window.history.state.idx > 0) navigate(-1)
     else navigate('/app')
@@ -149,8 +152,8 @@ export default function AppLayout() {
               room at the bottom for the 72px desktop nav + safe area. */}
         <main className={
           isAssistant
-            ? 'flex-1 min-w-0 flex flex-col min-h-0 lg:pb-[calc(env(safe-area-inset-bottom)+72px)]'
-            : 'flex-1 px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+72px)] sm:px-6 sm:pt-6 lg:px-10 lg:pt-8 lg:pb-[calc(env(safe-area-inset-bottom)+96px)] max-w-[1600px] mx-auto w-full'
+            ? `flex-1 min-w-0 flex flex-col min-h-0 ${showMobileNav ? 'lg:pb-[calc(env(safe-area-inset-bottom)+72px)]' : 'lg:pb-6'}`
+            : `flex-1 px-4 pt-4 ${showMobileNav ? 'pb-[calc(env(safe-area-inset-bottom)+72px)]' : 'pb-6'} sm:px-6 sm:pt-6 lg:px-10 lg:pt-8 ${showMobileNav ? 'lg:pb-[calc(env(safe-area-inset-bottom)+96px)]' : 'lg:pb-10'} max-w-[1600px] mx-auto w-full`
         }>
           <PageStack pathname={location.pathname} fullBleed={isAssistant}>
             <Suspense fallback={
@@ -170,7 +173,7 @@ export default function AppLayout() {
       </div>
 
       {/* Bottom nav — shapes itself for mobile vs desktop internally. */}
-      {showDesktopShell && <BottomNav />}
+      {(showDesktopShell || showMobileNav) && <BottomNav showMobile={showMobileNav} />}
 
       <CommandPalette />
       <SyncManager />

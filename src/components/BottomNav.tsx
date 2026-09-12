@@ -122,7 +122,7 @@ const DesktopSlot = ({ item }: { item: Item }) => (
   </NavLink>
 )
 
-export default function BottomNav() {
+export default function BottomNav({ showMobile = true }: { showMobile?: boolean }) {
   const isDesktop = useIsDesktop()
   const location = useLocation()
   const navigate = useNavigate()
@@ -287,7 +287,7 @@ export default function BottomNav() {
          sitting INSIDE the bar (Instagram/TikTok "Post" pattern) so it
          can never float over customer data. */}
       <nav
-        className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-surface shadow-nav"
+        className={`${showMobile ? 'lg:hidden' : 'hidden'} fixed bottom-0 inset-x-0 z-30 bg-surface shadow-nav`}
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         aria-label="Primary"
       >
