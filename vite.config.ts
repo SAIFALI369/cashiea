@@ -1,4 +1,7 @@
 import { defineConfig } from 'vite'
+import type { Plugin } from 'vite'
+import fs from 'node:fs'
+import path from 'node:path'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
@@ -33,8 +36,46 @@ const PWA_OPTIONS = {
   workbox: {
     cacheId: 'cashiea-v4',
     cleanupOutdatedCaches: true,
+    navigateFallback: '/index.html',
     navigateFallbackDenylist: [/^\/api\//],
   },
+}
+
+
+/**
+ * SPA FALLBACK — static shells for every app route.
+ *
+ * Some hosting configurations silently drop vercel.json rewrites; the
+ * filesystem is the only routing layer that never lies. This plugin
+ * copies the built shell to /app/<route>/index.html for every SPA route
+ * and to /404.html, so ANY fresh load of any app URL serves the app —
+ * no rewrites, no project settings, no service-worker luck required.
+ */
+const APP_ROUTES = [
+  'about', 'account', 'accounts', 'activity', 'api-keys', 'assistant', 'auto-reorder',
+  'bank-import', 'brain', 'campaigns', 'cash-flow', 'command-center', 'compliance',
+  'connect-apps', 'customers', 'data-entry', 'duplicates', 'email-assistant', 'failed-jobs',
+  'goals', 'gst-export', 'integrations', 'invoices', 'khata', 'manifest', 'notifications',
+  'permissions', 'pos', 'pricing', 'products', 'profit-dashboard', 'quotations', 'reminders',
+  'reports', 'sales', 'scorecard', 'settings', 'snapshot', 'social', 'subscription',
+  'suggestions', 'summaries', 'suppliers', 'support', 'team', 'vasooli',
+]
+function spaFallbackShells(): Plugin {
+  return {
+    name: 'cashiea-spa-fallback-shells',
+    apply: 'build',
+    closeBundle() {
+      const out = path.resolve(__dirname, 'dist')
+      const shell = fs.readFileSync(path.join(out, 'index.html'))
+      const targets = ['/app', ...APP_ROUTES.map((r) => `/app/${r}`), '/login']
+      for (const t of targets) {
+        fs.mkdirSync(path.join(out, t), { recursive: true })
+        fs.writeFileSync(path.join(out, t, 'index.html'), shell)
+      }
+      fs.writeFileSync(path.join(out, '404.html'), shell)
+      console.log(`spa-fallback: wrote ${targets.length} route shells + 404.html`)
+    },
+  }
 }
 
 // https://vitejs.dev/config/
@@ -43,6 +84,7 @@ export default defineConfig({
   // Nothing is hardcoded — credentials are rotatable without code changes.
   plugins: [
     react(),
+    spaFallbackShells(),
     ...(PWA_ENABLED ? [VitePWA(PWA_OPTIONS)] : []),
   ],
   server: {
