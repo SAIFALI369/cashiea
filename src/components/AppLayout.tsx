@@ -17,7 +17,7 @@ import { getPageContext } from '../lib/pageContext'
 import { useKeyboardShortcuts } from '../lib/useKeyboardShortcuts'
 import { useEdgeDrawer } from '../lib/useSwipeNavigation'
 import { canSwipeBack } from '../lib/butterNav'
-import { Menu, Settings, ChevronLeft, Lightbulb } from 'lucide-react'
+import { Menu, ChevronLeft, Bell } from 'lucide-react'
 import { useIsDesktop } from '../lib/useIsDesktop'
 
 export default function AppLayout() {
@@ -89,30 +89,55 @@ export default function AppLayout() {
           />
         )}
 
-        {/* ── Mobile header (<lg) — menu · brand · sync · clock · account ── */}
+        {/* ── Mobile header (<lg) ──
+            Dashboard  : hamburger · Cashiea · bell · avatar
+            Every other: back button · large bold page title · page action
+            The lightbulb and the profile picture are gone from sub-pages —
+            one title, one way back, one action. Nothing else. */}
         {!isAssistant && (
-        <header className="lg:hidden sticky top-0 z-30 glass border-b border-line px-4 py-2 flex items-center gap-3 safe-area-pt">
-          <button onClick={() => setSidebarOpen(true)} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-muted hover:text-fg">
-            <Menu className="w-6 h-6" />
-          </button>
-          {isSubPage && (
-            <button onClick={goBack} aria-label="Go back" className="min-w-[44px] min-h-[44px] flex items-center justify-center text-fg-muted hover:text-fg rounded-xl">
-              <ChevronLeft className="w-5 h-5" />
+        <header className="lg:hidden sticky top-0 z-30 bg-paper/85 backdrop-blur-xl px-4 pt-2 pb-3 flex items-center gap-2 safe-area-pt">
+          {isSubPage ? (
+            <button
+              onClick={goBack}
+              aria-label="Go back"
+              className="-ml-2 w-11 h-11 flex items-center justify-center text-fg rounded-full active:scale-95 transition-transform"
+            >
+              <ChevronLeft className="w-6 h-6" strokeWidth={2.25} />
+            </button>
+          ) : (
+            <button
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open menu"
+              className="-ml-2 w-11 h-11 flex items-center justify-center text-fg rounded-full active:scale-95 transition-transform"
+            >
+              <Menu className="w-6 h-6" strokeWidth={2} />
             </button>
           )}
+
           <div className="flex-1 min-w-0">
-            <span className="font-bold text-fg">{pageHeaderName}</span>
-          </div>
-          <Link to="/app/suggestions" aria-label="Open suggestions" className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl">
-            <Lightbulb className="w-5 h-5 text-secondary" />
-          </Link>
-          <QueueBadge />
-          <Link to="/app/account" aria-label="Open account & settings" className="relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full">
-            <Avatar url={profile?.avatar_url} name={profile?.full_name} size={34} />
-            <span className="absolute bottom-[3px] right-[3px] w-[16px] h-[16px] rounded-full bg-surface border border-line flex items-center justify-center shadow-soft">
-              <Settings className="w-2.5 h-2.5 text-fg-muted" />
+            <span className="block text-[22px] leading-tight font-bold tracking-tight text-fg truncate">
+              {pageHeaderName}
             </span>
-          </Link>
+          </div>
+
+          {/* Pages inject their primary action here (see ui/HeaderAction). */}
+          <div id="app-header-action" className="flex items-center gap-1 shrink-0" />
+
+          {!isSubPage && (
+            <>
+              <QueueBadge />
+              <Link
+                to="/app/notifications"
+                aria-label="Notifications"
+                className="w-11 h-11 flex items-center justify-center rounded-full text-fg-muted active:scale-95 transition-transform"
+              >
+                <Bell className="w-[22px] h-[22px]" strokeWidth={2} />
+              </Link>
+              <Link to="/app/account" aria-label="Open account & settings" className="w-11 h-11 flex items-center justify-center rounded-full">
+                <Avatar url={profile?.avatar_url} name={profile?.full_name} size={32} />
+              </Link>
+            </>
+          )}
         </header>
         )}
 

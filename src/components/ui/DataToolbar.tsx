@@ -27,15 +27,16 @@ export function DataToolbar({
 }) {
   const hasSearch = search !== undefined && !!onSearch
   return (
-    <div className={`flex flex-col sm:flex-row sm:items-center gap-2 mb-4 ${className}`}>
+    <div className={`flex flex-col sm:flex-row sm:items-center gap-3 mb-6 ${className}`}>
       {hasSearch && (
-        <div className="relative flex-1 min-w-0 sm:max-w-xs">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-fg-subtle pointer-events-none" />
+        <div className="relative flex-1 min-w-0 sm:max-w-sm">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-fg-subtle pointer-events-none" />
           <input
             value={search}
             onChange={(e) => onSearch!(e.target.value)}
             placeholder={placeholder}
-            className="input-field pl-10"
+            /* Soft light-gray fill, no border. The ring appears on focus only. */
+            className="w-full h-12 pl-11 pr-4 rounded-full bg-surface-2 border-0 text-sm text-fg placeholder:text-fg-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 transition-shadow"
             aria-label={placeholder}
           />
         </div>

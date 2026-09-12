@@ -22,6 +22,7 @@ const EXPECTED_PAGES = [
   'Integrations',
   'AIAssistant',
   'POS',
+  'Sales',
   'Products',
   'Customers',
   'Quotations',
@@ -94,6 +95,7 @@ describe('App.tsx routes every page', () => {
 
   it('imports Dashboard', () => expect(app).toMatch(/import\(['"]\.\/pages\/Dashboard/))
   it('imports POS', () => expect(app).toMatch(/import\(['"]\.\/pages\/POS/))
+  it('imports Sales', () => expect(app).toMatch(/import\(['"]\.\/pages\/Sales/))
   it('imports Products', () => expect(app).toMatch(/import\(['"]\.\/pages\/Products/))
   it('imports Customers', () => expect(app).toMatch(/import\(['"]\.\/pages\/Customers/))
   it('imports Suppliers', () => expect(app).toMatch(/import\(['"]\.\/pages\/Suppliers/))

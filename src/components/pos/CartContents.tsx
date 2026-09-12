@@ -1,67 +1,35 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
-  Loader2, Minus, MoreVertical, Pause, Plus, Receipt, ShoppingCart, UserCircle, X,
+  Banknote, CreditCard, Loader2, Pause, Smartphone, Split, UserCircle, Wallet, X,
 } from 'lucide-react'
 import { formatINR } from '../../lib/format'
-import { useHoldRepeat } from '../../lib/useHoldRepeat'
 import type { SaleTotals, TenderLine } from '../../lib/pos'
 import { effectiveRate } from '../../lib/pos'
 import type { CartLine } from '../../lib/pos'
 import type { Customer, PaymentMethod } from '../../lib/types'
 import { QueueBadge } from '../QueueBadge'
 import { SplitPayment } from './SplitPayment'
+import { UpiQr } from '../UpiQr'
 import { FitAmount } from '../FitAmount'
+import { CartLineRow } from './CartLineRow'
 
-// ─── Stepper with press-and-hold acceleration ────────────────────
-
-function StepperBtn({ onStep, label, children }: { onStep: (step: number) => void; label: string; children: React.ReactNode }) {
-  const repeated = useRef(false)
-  const hold = useHoldRepeat((step) => { repeated.current = true; onStep(step) })
-  return (
-    <button
-      {...hold}
-      onClick={() => { if (repeated.current) { repeated.current = false } else onStep(1) }}
-      className="w-11 h-11 rounded-lg bg-surface-2 hover:bg-surface-3 flex items-center justify-center active:scale-95 transition-transform select-none"
-      aria-label={label}
-    >
-      {children}
-    </button>
-  )
-}
-
-/** The quantity value — hold it (or click it) to open the numpad. */
-function QtyValue({ value, onNumpad }: { value: number; onNumpad: () => void }) {
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const clear = () => { if (timer.current) { clearTimeout(timer.current); timer.current = null } }
-  return (
-    <button
-      onPointerDown={() => { timer.current = setTimeout(onNumpad, 480) }}
-      onPointerUp={clear}
-      onPointerLeave={clear}
-      onPointerCancel={clear}
-      onContextMenu={(e) => e.preventDefault()}
-      onClick={() => { clear(); onNumpad() }}
-      className="min-w-8 px-1 h-11 text-center text-sm font-bold text-fg rounded-lg hover:bg-surface-2 select-none tabular-nums"
-      title="Tap to enter quantity"
-      aria-label={`Quantity ${value} — tap to enter a quantity`}
-    >
-      {value}
-    </button>
-  )
-}
-
-// ─── Cart contents (shared by desktop card and mobile sheet) ─────
+/** Chunky, unmissable payment buttons — icon over label. */
+const METHODS: { id: PaymentMethod; label: string; icon: typeof Banknote }[] = [
+  { id: 'cash', label: 'Cash', icon: Banknote },
+  { id: 'card', label: 'Card', icon: CreditCard },
+  { id: 'upi', label: 'UPI', icon: Smartphone },
+  { id: 'wallet', label: 'Wallet', icon: Wallet },
+]
 
 export function CartContents({
-  variant, cart, sale, selectedCustomer, customerInsight, onPickCustomer, onClearCustomer,
-  onChangeQty, onOpenLineOptions, onNumpad,
+  cart, sale, selectedCustomer, customerInsight, onPickCustomer, onClearCustomer,
+  onChangeQty, onOpenLineOptions, onNumpad, onRemoveLine,
   onHold, onClearCart, onCheckout, processing, checkoutReady, checkoutHint,
   paymentMethod, setPaymentMethod, splitMode, setSplitMode, tenders, setTenders,
   cartDiscountMode, setCartDiscountMode, cartDiscountValue, setCartDiscountValue,
   discountReason, setDiscountReason, defaultTaxRate, setDefaultTaxRate,
   upiId, payeeName, receiptRef, hasProductGst,
 }: {
-  variant: 'desktop' | 'sheet'
   cart: CartLine[]
   sale: SaleTotals
   selectedCustomer: Customer | null
@@ -71,6 +39,7 @@ export function CartContents({
   onChangeQty: (key: string, delta: number) => void
   onOpenLineOptions: (key: string) => void
   onNumpad: (key: string) => void
+  onRemoveLine: (key: string) => void
   onHold: () => void
   onClearCart: () => void
   onCheckout: () => void
@@ -98,38 +67,52 @@ export function CartContents({
 }) {
   const itemCount = cart.reduce((s, l) => s + l.quantity, 0)
   const anyInclusive = cart.some((l) => l.price_includes_tax && effectiveRate(l, defaultTaxRate) > 0)
-  const sheet = variant === 'sheet'
+
+  // A total that just moved because of a discount flashes green once,
+  // so the cashier sees the money change rather than having to re-read.
+  const [flash, setFlash] = useState(false)
+  const prevDiscount = useRef(sale.discountTotal)
+  useEffect(() => {
+    if (sale.discountTotal !== prevDiscount.current) {
+      prevDiscount.current = sale.discountTotal
+      if (sale.discountTotal > 0) {
+        setFlash(true)
+        const t = setTimeout(() => setFlash(false), 700)
+        return () => clearTimeout(t)
+      }
+    }
+  }, [sale.discountTotal])
+
+  const preDiscount = sale.subtotal + sale.taxTotal
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-2 px-4 pt-4 pb-3 border-b border-line">
-        <h2 className="font-bold text-fg flex items-center gap-2">
-          <Receipt className="w-5 h-5 text-accent" /> Current Sale
-          {itemCount > 0 && <span className="text-xs font-semibold text-fg-subtle tabular-nums">{itemCount} items</span>}
+      {/* Header — no divider line, just spacing */}
+      <div className="flex items-center justify-between gap-2 px-5 pt-4 pb-2 flex-shrink-0">
+        <h2 className="text-lg font-bold text-fg">
+          Current sale
+          {itemCount > 0 && <span className="ml-2 text-sm font-medium text-fg-subtle tabular-nums">{itemCount} item{itemCount !== 1 ? 's' : ''}</span>}
         </h2>
-        <div className="flex items-center gap-1.5">
-          {cart.length > 0 && (
-            <>
-              <button onClick={onHold} className="text-xs font-semibold text-fg-muted hover:text-fg px-2.5 py-1.5 rounded-lg hover:bg-surface-2 flex items-center gap-1" aria-label="Hold cart and start a new sale">
-                <Pause className="w-3.5 h-3.5" /> Hold
-              </button>
-              <button onClick={onClearCart} className="text-xs font-semibold text-negative hover:text-negative px-2.5 py-1.5 rounded-lg hover:bg-negative/10">Clear</button>
-            </>
-          )}
-        </div>
+        {cart.length > 0 && (
+          <div className="flex items-center gap-1">
+            <button onClick={onHold} className="text-xs font-semibold text-fg-muted hover:text-fg px-2.5 py-1.5 rounded-lg hover:bg-surface-2 flex items-center gap-1" aria-label="Hold cart and start a new sale">
+              <Pause className="w-3.5 h-3.5" /> Hold
+            </button>
+            <button onClick={onClearCart} className="text-xs font-semibold text-negative px-2.5 py-1.5 rounded-lg hover:bg-negative/10">Clear</button>
+          </div>
+        )}
       </div>
 
-      <div className={`flex-1 overflow-y-auto scroll-area px-4 py-3 space-y-3 ${sheet ? '' : 'max-h-[70vh]'}`}>
-        {/* Customer */}
+      <div className="flex-1 overflow-y-auto scroll-area px-5 py-2 space-y-4">
+        {/* Customer — borderless, soft fill */}
         <button
           onClick={onPickCustomer}
-          className="w-full flex items-center gap-2 p-2.5 rounded-xl bg-surface/60 border border-line hover:border-line-2 transition-colors text-left"
+          className="w-full flex items-center gap-2.5 p-3 rounded-xl bg-surface-2 text-left active:scale-[0.99] transition-transform"
         >
-          <UserCircle className="w-5 h-5 text-accent flex-shrink-0" />
+          <UserCircle className="w-5 h-5 text-fg-subtle flex-shrink-0" />
           {selectedCustomer ? (
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-fg truncate">{selectedCustomer.name}</p>
+              <p className="text-sm font-semibold text-fg truncate">{selectedCustomer.name}</p>
               <p className="text-xs text-fg-subtle">{selectedCustomer.total_orders} prior orders · {formatINR(selectedCustomer.total_spent, 0)} spent</p>
               {customerInsight && <p className="text-[11px] text-accent mt-0.5 leading-snug">{customerInsight}</p>}
             </div>
@@ -141,56 +124,38 @@ export function CartContents({
           )}
         </button>
 
-        {/* Lines */}
+        {/* Line items — generous spacing, swipe left to delete */}
         {cart.length === 0 ? (
           <p className="text-sm text-fg-subtle text-center py-8">Tap products to add them to the sale</p>
         ) : (
           <div className="space-y-2">
-            {cart.map((line) => {
-              const result = sale.lines.find((r) => r.key === line.key)
-              const rate = effectiveRate(line, defaultTaxRate)
-              return (
-                <div key={line.key} className="flex items-center gap-1.5 bg-surface/60 rounded-lg p-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-fg truncate">
-                      {line.name}
-                      {line.unit ? <span className="text-fg-subtle font-normal"> ({line.unit})</span> : null}
-                    </p>
-                    <p className="text-xs text-fg-subtle truncate">
-                      {formatINR(line.unit_price)} ea
-                      {rate > 0 && <> · GST {rate}%{line.price_includes_tax ? ' incl.' : ''}</>}
-                      {!!line.line_discount && <> · −{formatINR(line.line_discount)}</>}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-0.5">
-                    <StepperBtn onStep={(s) => onChangeQty(line.key, -s)} label={`Decrease ${line.name} quantity`}><Minus className="w-4 h-4" /></StepperBtn>
-                    <QtyValue value={line.quantity} onNumpad={() => onNumpad(line.key)} />
-                    <StepperBtn onStep={(s) => onChangeQty(line.key, s)} label={`Increase ${line.name} quantity`}><Plus className="w-4 h-4" /></StepperBtn>
-                  </div>
-                  <span className="text-sm font-semibold text-fg text-right min-w-16 max-w-24">
-                    <FitAmount value={formatINR(result ? result.total : line.quantity * line.unit_price)} base="text-sm" minTier="text-xs" className="font-semibold text-fg" />
-                  </span>
-                  <button onClick={() => onOpenLineOptions(line.key)} className="w-8 h-8 rounded-lg flex items-center justify-center text-fg-subtle hover:text-fg hover:bg-surface-2" aria-label={`Options for ${line.name}`} title="GST, discounts, quantity">
-                    <MoreVertical className="w-4 h-4" />
-                  </button>
-                </div>
-              )
-            })}
+            {cart.map((line) => (
+              <CartLineRow
+                key={line.key}
+                line={line}
+                sale={sale}
+                defaultTaxRate={defaultTaxRate}
+                onChangeQty={onChangeQty}
+                onNumpad={onNumpad}
+                onOpenLineOptions={onOpenLineOptions}
+                onRemove={onRemoveLine}
+              />
+            ))}
+            <p className="text-[11px] text-fg-subtle text-center pt-1">Swipe an item left to remove it</p>
           </div>
         )}
 
-        {/* Totals + discounts */}
+        {/* The math — minimal, right-aligned, no boxes */}
         {cart.length > 0 && (
-          <div className="space-y-1.5 text-sm border-t border-line pt-3">
+          <div className="space-y-2 text-sm pt-1">
             <div className="flex justify-between text-fg-muted">
               <span>Subtotal{anyInclusive ? ' (pre-tax)' : ''}</span>
               <span className="tabular-nums">{formatINR(sale.subtotal)}</span>
             </div>
 
-            {/* Cart discount — flat or percent, with optional reason */}
             <div className="flex justify-between items-center text-fg-muted gap-2">
               <span className="flex-shrink-0">Discount</span>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setCartDiscountMode(cartDiscountMode === 'flat' ? 'pct' : 'flat')}
                   className="w-8 h-8 rounded-lg bg-surface-2 text-xs font-bold text-fg-muted hover:text-fg"
@@ -205,11 +170,10 @@ export function CartContents({
                   step={cartDiscountMode === 'flat' ? '0.01' : '1'}
                   value={cartDiscountValue || ''}
                   onChange={(e) => setCartDiscountValue(Math.max(0, Number(e.target.value)))}
-                  className="w-20 px-2 py-1 bg-surface border border-line rounded-lg text-right text-fg text-sm tabular-nums"
+                  className="w-20 px-2.5 py-1.5 bg-surface-2 rounded-lg text-right text-fg text-sm tabular-nums border-0 focus:ring-2 focus:ring-accent/40 focus:outline-none"
                   placeholder="0"
                   aria-label="Cart discount"
                 />
-                {sale.discountTotal > 0 && <span className="text-xs text-fg-subtle tabular-nums">−{formatINR(sale.discountTotal)}</span>}
               </div>
             </div>
             {(cartDiscountValue > 0 || discountReason) && (
@@ -222,54 +186,92 @@ export function CartContents({
               />
             )}
 
-            {/* Sale-level tax — default rate for lines without a product GST rate */}
             <div className="flex justify-between items-center text-fg-muted">
-              <span>Tax %{hasProductGst && <span className="text-[10px] text-fg-subtle">(per-item GST applied)</span>}</span>
+              <span>Tax %{hasProductGst && <span className="text-[10px] text-fg-subtle ml-1">(per-item GST applied)</span>}</span>
               <input
                 type="number"
                 min={0}
                 max={100}
                 value={defaultTaxRate || ''}
                 onChange={(e) => setDefaultTaxRate(Math.min(100, Math.max(0, Number(e.target.value))))}
-                className="w-20 px-2 py-1 bg-surface border border-line rounded-lg text-right text-fg text-sm tabular-nums"
+                className="w-20 px-2.5 py-1.5 bg-surface-2 rounded-lg text-right text-fg text-sm tabular-nums border-0 focus:ring-2 focus:ring-accent/40 focus:outline-none"
                 placeholder="0"
                 aria-label="Default tax rate percent"
               />
             </div>
             {sale.taxTotal > 0 && (
               <div className="flex justify-between text-fg-muted">
-                <span>GST amount{anyInclusive ? ' (partly included)' : ''}</span>
+                <span>Tax (GST){anyInclusive ? ' (partly included)' : ''}</span>
                 <span className="tabular-nums">{formatINR(sale.taxTotal)}</span>
               </div>
             )}
+
+            {/* Total — 24px, bold. Struck-through original when discounted. */}
+            <div className="flex justify-between items-baseline pt-2">
+              <span className="text-sm font-semibold text-fg">Total</span>
+              <span className="flex items-baseline gap-2">
+                {sale.discountTotal > 0 && (
+                  <span className="text-sm text-fg-subtle line-through tabular-nums">{formatINR(preDiscount)}</span>
+                )}
+                <FitAmount
+                  value={formatINR(sale.total)}
+                  base="text-2xl"
+                  minTier="text-lg"
+                  className={`font-bold text-fg leading-none ${flash ? 'pos-total-flash' : ''}`}
+                />
+              </span>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Pinned block: payment + big total + CTA */}
+      {/* Pinned: payment choice + charge */}
       {cart.length > 0 && (
-        <div className="border-t border-line px-4 pt-3 pb-4 space-y-3" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
-          {/* Payment method */}
-          {!splitMode ? (
-            <div className="grid grid-cols-5 gap-1.5">
-              {(['cash', 'card', 'upi', 'wallet', 'other'] as PaymentMethod[]).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setPaymentMethod(m)}
-                  className={`py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${paymentMethod === m ? 'bg-secondary-soft text-secondary-strong' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-          ) : null}
+        <div className="px-5 pt-3 pb-4 space-y-3 flex-shrink-0" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
+          {!splitMode && (
+            <>
+              <div className="grid grid-cols-4 gap-2">
+                {METHODS.map((m) => {
+                  const Icon = m.icon
+                  const active = paymentMethod === m.id
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => setPaymentMethod(m.id)}
+                      aria-pressed={active}
+                      className={`flex flex-col items-center gap-1.5 py-3 rounded-xl transition-all active:scale-[0.97] ${
+                        active ? 'bg-accent text-white shadow-sm' : 'bg-surface-2 text-fg-muted hover:text-fg'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5" strokeWidth={2} />
+                      <span className="text-xs font-semibold">{m.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* UPI: show the QR immediately — no reference typing. */}
+              {paymentMethod === 'upi' && (
+                upiId ? (
+                  <div className="flex flex-col items-center gap-2 py-3 rounded-xl bg-surface-2">
+                    <p className="text-xs font-semibold text-fg-muted">Customer scans to pay {formatINR(sale.total)}</p>
+                    <UpiQr upiId={upiId} payeeName={payeeName} amount={sale.total} reference={receiptRef} size={168} />
+                  </div>
+                ) : (
+                  <p className="text-xs text-warning text-center py-2">
+                    Add your UPI ID in Settings to show a scannable QR here.
+                  </p>
+                )
+              )}
+            </>
+          )}
 
           <button
             onClick={() => setSplitMode(!splitMode)}
-            className={`w-full py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${splitMode ? 'bg-accent-soft text-accent-strong border border-accent' : 'text-fg-muted hover:text-fg border border-line'}`}
+            className={`w-full py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${splitMode ? 'bg-accent-soft text-accent-strong' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}
             aria-pressed={splitMode}
           >
-            <ShoppingCart className="w-3.5 h-3.5" />
+            <Split className="w-3.5 h-3.5" />
             {splitMode ? 'Using split payment' : 'Split payment'}
           </button>
 
@@ -284,22 +286,18 @@ export function CartContents({
             />
           )}
 
-          {/* Large total — always visible above the CTA */}
-          <div className="flex items-end justify-between pt-1">
-            <div className="text-xs text-fg-muted flex flex-col gap-0.5">
-              <span>Total</span>
-              <QueueBadge />
-            </div>
-            <FitAmount value={formatINR(sale.total)} base="text-2xl" className="font-extrabold text-fg leading-none" />
-          </div>
+          <QueueBadge />
 
+          {/* The climax: full-width pill, vibrant green */}
           <button
             onClick={onCheckout}
             disabled={processing || !checkoutReady}
             title={checkoutReady ? undefined : checkoutHint}
-            className="btn-primary w-full py-3.5 text-base flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-4 rounded-2xl bg-accent text-white text-base font-bold flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] transition-transform disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
           >
-            {processing ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Charge <FitAmount value={formatINR(sale.total)} base="text-base" minTier="text-xs" className="font-semibold" /></>}
+            {processing
+              ? <Loader2 className="w-5 h-5 animate-spin" />
+              : <>Charge <FitAmount value={formatINR(sale.total)} base="text-base" minTier="text-sm" className="font-bold" /></>}
           </button>
           {!checkoutReady && <p className="text-xs text-warning text-center">{checkoutHint}</p>}
         </div>

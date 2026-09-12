@@ -123,7 +123,7 @@ export function EodModal({
         ) : (
           <div className="p-4 space-y-4">
             {/* Expected */}
-            <div className="rounded-xl bg-surface-2 border border-line p-3">
+            <div className="rounded-xl bg-surface-2 p-3">
               <p className="text-xs font-semibold text-fg-muted">Expected cash ({cashSaleCount} cash sale{cashSaleCount !== 1 ? 's' : ''} today)</p>
               <p className="mt-0.5"><FitAmount value={formatINR(expected)} base="text-2xl" minTier="text-base" className="font-extrabold text-fg" /></p>
             </div>

@@ -158,7 +158,7 @@ export function ImportCsvModal({
                 </button>
               </>
             ) : (
-              <div className="flex items-center justify-between rounded-xl bg-surface-2 border border-line px-3 py-2.5">
+              <div className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2.5">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-fg truncate">{fileName}</p>
                   <p className="text-xs text-fg-subtle">{rows.length} data rows · {headers.length} columns</p>

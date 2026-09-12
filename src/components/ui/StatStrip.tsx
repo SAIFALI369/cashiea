@@ -9,12 +9,12 @@ export interface StatTile {
 }
 
 const TONE_ICON: Record<NonNullable<StatTile['tone']>, string> = {
-  default: 'bg-surface-2 text-fg-muted',
-  accent: 'bg-accent-soft text-accent-strong',
-  positive: 'bg-positive/10 text-positive',
-  warning: 'bg-warning/10 text-warning',
-  negative: 'bg-negative/10 text-negative',
-  secondary: 'bg-secondary-soft text-secondary-strong',
+  default: 'text-fg-subtle',
+  accent: 'text-accent-strong',
+  positive: 'text-positive',
+  warning: 'text-warning',
+  negative: 'text-negative',
+  secondary: 'text-secondary-strong',
 }
 
 const TONE_VALUE: Record<NonNullable<StatTile['tone']>, string> = {
@@ -28,32 +28,36 @@ const TONE_VALUE: Record<NonNullable<StatTile['tone']>, string> = {
 
 /**
  * StatStrip — the standard KPI row for list pages.
- * Phone: horizontally swipeable snap tiles (no layout squeeze).
- * Desktop: an even, calm grid. Numbers are tabular so columns align.
+ *
+ * Primary stats NEVER scroll horizontally: truncated headline numbers
+ * ("LIFETIME VA… ₹4,25,…") are the fastest way to look cheap. Instead
+ * this is ONE elegant card spanning the full width, with the figures
+ * laid out inside it — two columns on a phone, a calm row on desktop.
+ * Sentence-case labels in medium gray, bold dark numbers, no boxes.
  */
 export function StatStrip({ stats, className = '' }: { stats: StatTile[]; className?: string }) {
+  if (!stats.length) return null
   return (
-    <div
-      className={`flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory mb-4
-                  sm:grid sm:grid-cols-3 sm:overflow-visible lg:grid-cols-4 ${className}`}
-    >
-      {stats.map((s) => (
-        <div
-          key={s.label}
-          className="card p-3.5 min-w-[152px] sm:min-w-0 snap-start flex items-center gap-3"
-        >
-          {s.icon && (
-            <span className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${TONE_ICON[s.tone || 'default']}`}>
-              <s.icon className="w-[18px] h-[18px]" strokeWidth={2} />
-            </span>
-          )}
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-fg-subtle truncate">{s.label}</p>
-            <p className={`text-lg font-bold tabular-nums leading-tight ${TONE_VALUE[s.tone || 'default']}`}>{s.value}</p>
-            {s.hint && <p className="text-[10px] text-fg-subtle truncate">{s.hint}</p>}
+    <section className={`card p-5 sm:p-6 ${className}`}>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:flex sm:flex-wrap sm:gap-x-10 sm:gap-y-5">
+        {stats.map((s) => (
+          <div key={s.label} className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              {s.icon && (
+                <s.icon
+                  className={`w-4 h-4 flex-shrink-0 ${TONE_ICON[s.tone || 'default']}`}
+                  strokeWidth={2}
+                />
+              )}
+              <p className="text-sm text-fg-subtle truncate">{s.label}</p>
+            </div>
+            <p className={`text-2xl font-bold tabular-nums leading-none mt-1.5 ${TONE_VALUE[s.tone || 'default']}`}>
+              {s.value}
+            </p>
+            {s.hint && <p className="text-xs text-fg-subtle truncate mt-1">{s.hint}</p>}
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    </section>
   )
 }

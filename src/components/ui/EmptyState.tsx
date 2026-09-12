@@ -18,16 +18,16 @@ export default function EmptyState({
   action?: ReactNode
 }) {
   return (
-    <div className="card p-12 text-center animate-fade-in">
-      <div className="relative w-20 h-20 mx-auto mb-5">
+    <div className="card p-10 sm:p-12 text-center animate-fade-in">
+      <div className="relative w-20 h-20 mx-auto mb-6">
         {/* Soft accent halo */}
         <div className="absolute -inset-3 rounded-full bg-accent/10 blur-xl" aria-hidden="true" />
-        <div className="relative w-20 h-20 rounded-2xl bg-surface-2 border border-line flex items-center justify-center shadow-soft">
+        <div className="relative w-20 h-20 rounded-2xl bg-surface-2 flex items-center justify-center">
           <Icon className="w-9 h-9 text-fg-subtle" strokeWidth={1.5} />
         </div>
       </div>
-      <h3 className="text-lg font-semibold text-fg mb-1.5">{title}</h3>
-      <p className="text-sm text-fg-muted max-w-sm mx-auto leading-relaxed">{description}</p>
+      <h3 className="text-lg font-bold text-fg mb-2">{title}</h3>
+      <p className="text-sm text-fg-subtle max-w-sm mx-auto leading-relaxed">{description}</p>
       {action && <div className="mt-6 flex justify-center">{action}</div>}
     </div>
   )

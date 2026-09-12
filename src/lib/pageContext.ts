@@ -25,8 +25,12 @@ const PAGE_CONTEXT: Record<string, PageContextInfo> = {
     description: 'the bank statement import — upload a bank CSV, match credits to unpaid invoices by amount, name in the narration and due date, and mark matched invoices paid',
   },
   '/app/pos': {
-    name: 'Point of Sale',
+    name: 'New Sale',
     description: 'the checkout screen where you ring up a new sale — add items and quantities, apply discount and tax, take payment, and generate a bill',
+  },
+  '/app/sales': {
+    name: 'Transactions',
+    description: 'the sales ledger — every completed sale grouped by day, with receipt number, time, payment method, amount, and the full receipt for each',
   },
   '/app/products': {
     name: 'Products & Stock',

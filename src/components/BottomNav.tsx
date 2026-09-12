@@ -281,32 +281,36 @@ export default function BottomNav() {
         </div>
       )}
 
-      {/* ────────────────── MOBILE BOTTOM NAV (<lg) ────────────────── */}
+      {/* ────────────────── MOBILE BOTTOM NAV (<lg) ──────────────────
+         A solid, opaque bar with a subtle top shadow — never a
+         translucent layer over content. Meraj is the CENTER button,
+         sitting INSIDE the bar (Instagram/TikTok "Post" pattern) so it
+         can never float over customer data. */}
       <nav
-        className="lg:hidden fixed bottom-0 inset-x-0 z-30 border-t border-line bg-surface/95 backdrop-blur"
+        className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-surface shadow-nav"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         aria-label="Primary"
       >
         <div className="grid grid-cols-5 w-full items-center">
           {MOBILE_LEFT.map((it) => <MobileSlot key={it.to} item={it} />)}
 
-          {/* Center — VOICE Meraj (tap to talk) */}
+          {/* Center — VOICE Meraj (tap to talk), part of the bar itself */}
           <div className="flex justify-center">
             <button
               onClick={startVoice}
-              className="flex flex-col items-center justify-center gap-0.5 min-h-[56px]"
+              className="flex flex-col items-center justify-center gap-1 py-2 min-h-[56px]"
               aria-label="Talk to Meraj" title="Talk to Meraj"
             >
-              <span className={`w-12 h-12 -mt-6 rounded-full ring-4 ring-surface flex items-center justify-center active:scale-95 transition-all shadow-[0_6px_20px_-4px_rgb(var(--accent))] ${listening || speaking ? 'bg-accent text-accent-fg border-2 border-accent' : 'bg-accent-strong text-accent-fg'}`}>
+              <span className={`w-[42px] h-[42px] rounded-2xl flex items-center justify-center active:scale-95 transition-all ${listening || speaking ? 'bg-accent' : 'bg-accent-strong'}`}>
                 <MerajDevice interactionState={voiceActive ? interaction : 'idle'} businessMood={businessMood} size="sm" context="nav" />
               </span>
-              <span className="text-[9px] font-bold text-accent -mt-0.5">Talk to Meraj</span>
+              <span className="text-[10px] font-semibold text-accent-strong leading-none">Meraj</span>
             </button>
           </div>
 
           {MOBILE_RIGHT.map((it) => <MobileSlot key={it.to} item={it} />)}
 
-          <button onClick={onCamera} className="flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] text-accent transition-colors active:scale-95" aria-label="Scan photo" title="Scan photo">
+          <button onClick={onCamera} className="flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] text-fg-subtle hover:text-fg transition-colors active:scale-95" aria-label="Scan photo" title="Scan photo">
             <Camera className="w-[22px] h-[22px]" strokeWidth={1.75} />
             <span className="text-[10px] font-semibold">Scan</span>
           </button>
@@ -318,7 +322,7 @@ export default function BottomNav() {
          bottom of the viewport. Meraj (slot index 3) is a larger
          central launch button — the "talk" feature, not a page. */}
       <nav
-        className="hidden lg:flex fixed bottom-0 inset-x-0 z-30 border-t border-line bg-surface/95 backdrop-blur h-[72px] items-stretch px-4 xl:px-8"
+        className="hidden lg:flex fixed bottom-0 inset-x-0 z-30 bg-surface shadow-nav h-[72px] items-stretch px-4 xl:px-8"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         aria-label="Primary"
       >
@@ -329,11 +333,11 @@ export default function BottomNav() {
                 <div key="meraj" className="flex justify-center items-center col-span-1">
                   <button
                     onClick={startVoice}
-                    className="group relative flex flex-col items-center justify-center -mt-7"
+                    className="group relative flex flex-col items-center justify-center gap-1"
                     aria-label="Talk to Meraj" title="Talk to Meraj"
                   >
                     <span className={clsx(
-                      'w-14 h-14 rounded-full ring-4 ring-paper flex items-center justify-center transition-all shadow-[0_8px_24px_-6px_rgb(var(--accent))]',
+                      'w-11 h-11 rounded-2xl flex items-center justify-center transition-all',
                       listening || speaking || voiceActive
                         ? 'bg-accent scale-105'
                         : 'bg-accent-strong hover:bg-accent'
@@ -345,7 +349,7 @@ export default function BottomNav() {
                         context="nav"
                       />
                     </span>
-                    <span className="text-[10px] font-bold text-accent mt-1">Meraj</span>
+                    <span className="text-[11px] font-semibold text-accent-strong leading-none">Meraj</span>
                   </button>
                 </div>
               )

@@ -41,6 +41,7 @@ const EmailAssistant = lazy(() => import('./pages/EmailAssistant'))
 const Campaigns = lazy(() => import('./pages/Campaigns'))
 const CampaignBuilder = lazy(() => import('./pages/CampaignBuilder'))
 const POS = lazy(() => import('./pages/POS'))
+const Sales = lazy(() => import('./pages/Sales'))
 const Products = lazy(() => import('./pages/Products'))
 const Customers = lazy(() => import('./pages/Customers'))
 const Suppliers = lazy(() => import('./pages/Suppliers'))
@@ -149,6 +150,7 @@ function App() {
         >
           <Route index element={<Dashboard />} />
           <Route path="pos" element={<POS />} />
+          <Route path="sales" element={<Sales />} />
           <Route path="products" element={<Products />} />
           <Route path="customers" element={<Customers />} />
           <Route path="suppliers" element={<Suppliers />} />

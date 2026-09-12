@@ -12,7 +12,7 @@ import {
 import {
   usePendingApprovals } from '../lib/approvals'
 import {
-  LayoutDashboard, BookOpen, ShoppingCart, Receipt, FileSignature, Users, Truck,
+  LayoutDashboard, BookOpen, ShoppingCart, Receipt, ReceiptText, FileSignature, Users, Truck,
   Sparkles, ListChecks, FileBarChart, MessageCircle, Mail, ScrollText, Database,
   Package, Wallet, History, AlertOctagon, UsersRound,
   Settings as SettingsIcon, Plug, Key, CreditCard, Network, Shield, LifeBuoy,
@@ -29,6 +29,7 @@ const CORE: Section[] = [
   { label: 'Today', items: [{ to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true }, { to: '/app/manifest', label: "Meraj's Plan", icon: CalendarClock, badge: true }] },
   { label: 'Sell', items: [
     { to: '/app/pos', label: 'New Sale', icon: ShoppingCart },
+    { to: '/app/sales', label: 'Transactions', icon: ReceiptText },
     { to: '/app/invoices', label: 'Bills', icon: Receipt },
     { to: '/app/khata', label: 'Khata', icon: BookOpen },
     { to: '/app/quotations', label: 'Quotations', icon: FileSignature },
@@ -249,11 +250,11 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         onPointerUp={onDrawerPointerUp}
         onPointerCancel={onDrawerPointerCancel}
         className={clsx(
-        'fixed lg:sticky top-0 left-0 z-50 h-screen bg-paper border-r border-line flex flex-col transition-all duration-300 ease-butter',
+        'fixed lg:sticky top-0 left-0 z-50 h-screen bg-surface shadow-card flex flex-col transition-all duration-300 ease-butter',
         collapsed ? 'w-[68px]' : 'w-72',
         isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       )}>
-        <div className="flex items-center justify-between p-5 border-b border-line">
+        <div className="flex items-center justify-between p-5">
           <div className="flex items-center gap-2.5">
             <CashieaLogo size={36} />
             <div className="min-w-0">

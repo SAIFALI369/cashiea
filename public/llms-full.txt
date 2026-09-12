@@ -4,7 +4,7 @@
 >
 > This file is the full text of everything Cashiea publicly documents:
 > product overview, pricing, FAQ, every help-center article and every
-> blog post. It is generated from the live product content on 2026-09-11.
+> blog post. It is generated from the live product content on 2026-09-12.
 > Short index: https://cashiea.vercel.app/llms.txt · Website: https://cashiea.vercel.app
 
 ## Identity

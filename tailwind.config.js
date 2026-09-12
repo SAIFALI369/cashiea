@@ -142,10 +142,15 @@ export default {
         '5.5': '1.375rem',
       },
       boxShadow: {
-        // Soft elevation (warm, never harsh/neon).
+        // Premium elevation — diffuse, low-opacity, never a hard outline.
+        // `card` is the app-wide default for every white surface.
+        'card': '0 4px 20px rgb(var(--shadow) / 0.04), 0 1px 3px rgb(var(--shadow) / 0.04)',
+        'card-lift': '0 8px 28px rgb(var(--shadow) / 0.08), 0 2px 6px rgb(var(--shadow) / 0.04)',
         'soft': '0 1px 2px rgb(var(--shadow) / 0.04), 0 1px 3px rgb(var(--shadow) / 0.06)',
         'lift': '0 4px 12px -2px rgb(var(--shadow) / 0.08), 0 2px 6px -2px rgb(var(--shadow) / 0.06)',
         'float': '0 12px 32px -8px rgb(var(--shadow) / 0.16), 0 4px 12px -4px rgb(var(--shadow) / 0.08)',
+        // Upward shadow for the bottom navigation bar.
+        'nav': '0 -4px 20px rgb(var(--shadow) / 0.06)',
         'focus': '0 0 0 3px rgb(var(--accent) / 0.22)',
         // Edge shadow cast by a page sliding over another (native-stack feel).
         'page-edge': 'inset -1px 0 0 rgb(var(--shadow) / 0.06), -8px 0 24px -6px rgb(var(--shadow) / 0.18)',

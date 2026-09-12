@@ -31,19 +31,16 @@ export default function PageHeader({
 }) {
   if (visible) {
     return (
-      <header className="mb-6 animate-rise-in">
+      <header className="mb-8 animate-rise-in">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
-            {eyebrow && <p className="section-title mb-2">{eyebrow}</p>}
-            <h1 className="flex items-center gap-2.5 text-2xl font-bold tracking-tight text-fg">
-              {icon && (
-                <span className="w-9 h-9 rounded-xl bg-accent-soft text-accent-strong inline-flex items-center justify-center flex-shrink-0">
-                  {icon}
-                </span>
-              )}
+            {eyebrow && <p className="text-sm text-fg-subtle mb-1.5">{eyebrow}</p>}
+            {/* No icon medallion, no tinted box — a bold dark title is enough. */}
+            <h1 className="flex items-center gap-2.5 text-[28px] leading-tight font-bold tracking-tight text-fg">
+              {icon && <span className="text-fg-subtle flex-shrink-0">{icon}</span>}
               <span className="truncate">{title}</span>
             </h1>
-            {subtitle && <p className="text-sm text-fg-muted mt-1.5 max-w-2xl leading-relaxed">{subtitle}</p>}
+            {subtitle && <p className="text-sm text-fg-subtle mt-2 max-w-2xl leading-relaxed">{subtitle}</p>}
           </div>
           {action && <div className="flex items-center gap-2 shrink-0">{action}</div>}
         </div>
@@ -59,7 +56,7 @@ export default function PageHeader({
       {icon && <span className="hidden">{icon}</span>}
 
       {action && (
-        <div className="flex items-center justify-end gap-2 mb-4">
+        <div className="flex items-center justify-end gap-2 mb-5">
           {action}
         </div>
       )}

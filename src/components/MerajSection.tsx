@@ -2,52 +2,33 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
-import { supabase } from '../lib/supabase'
 import MerajDevice, { MerajInteractionState } from './MerajDevice'
 import { useBusinessMood } from '../lib/businessMood'
 import { useMerajThought } from '../lib/useMerajThought'
 import { askAssistant } from '../lib/ai'
 import { useSpeech } from '../lib/useSpeech'
 import { renderMd } from '../lib/markdown'
-import { salesSignal } from '../lib/salesSignal'
 import { formatINR } from '../lib/format'
-import {
-  TrendingUp, TrendingDown, Package, Wallet, AlertTriangle, Sparkles, Send, Mic,
-  Users, ArrowUpRight, Zap, Heart, Coffee, Moon, Sun,
-} from 'lucide-react'
+import { Send, Mic, ArrowUpRight, Zap, Heart, Coffee, Moon, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 /**
- * MerajSection — the larger rectangular Meraj zone on the Dashboard (replaces
- * the old "Meraj noticed X things for you" card). Meraj lives here:
- *   • He animates/reacting to business mood
- *   • A thought-bubble (💭) above him cycles a fresh short friend-phrase
- *     every hour from the 24h refreshment storage
- *   • A creative business-at-a-glance strip shows what's happening right now:
- *     profit direction, stock health, sales pulse, problems, growth
- *   • Tapping the whole panel opens the full Meraj assistant.
+ * MerajSection — the PROACTIVE AI zone on the Dashboard.
  *
- * On desktop this stretches wide (bigger than the old card); on mobile it's
- * still a comfortable, readable rectangle.
+ *   • A soft mint gradient marks it as Meraj's own space (no outline).
+ *   • The avatar carries a slow "breathing" glow so he feels alive.
+ *   • The bubble is an ACTIONABLE insight card, not a static chat line:
+ *     one real, number-backed observation plus the two next moves
+ *     ([View Report] / [Boost Sales]).
+ *   • A soft, borderless "Ask Meraj anything…" field sits at the bottom.
+ *
+ * Analytics that used to be duplicated here (the 5-tile pulse strip) now
+ * live exactly once, in the Dashboard's Business Pulse card.
  */
 
-interface Pulse {
-  label: string
-  icon: LucideIcon
-  value: string | number
-  tone: 'good' | 'bad' | 'warn' | 'neutral'
-  hint?: string
-}
+type Tone = 'good' | 'bad' | 'warn' | 'neutral'
 
-function toneColor(tone: Pulse['tone']) {
-  switch (tone) {
-    case 'good': return 'text-positive'
-    case 'bad': return 'text-negative'
-    case 'warn': return 'text-warning'
-    default: return 'text-fg-muted'
-  }
-}
-function toneBg(tone: Pulse['tone']) {
+function toneBg(tone: Tone) {
   switch (tone) {
     case 'good': return 'bg-positive/10 text-positive'
     case 'bad': return 'bg-negative/10 text-negative'
@@ -56,14 +37,12 @@ function toneBg(tone: Pulse['tone']) {
   }
 }
 
-export default function MerajSection() {
+export default function MerajSection({ weekProfit }: { weekProfit?: number } = {}) {
   const navigate = useNavigate()
   const { ownerId } = useAuth()
   const businessMood = useBusinessMood() ?? 'neutral'
   const { text: thought, awake, refreshNow } = useMerajThought(ownerId)
 
-  // Pulses are small, live business signals shown alongside Meraj.
-  const [pulses, setPulses] = useState<Pulse[]>([])
   const [ask, setAsk] = useState('')
   const [reply, setReply] = useState('')
   const [replyLoading, setReplyLoading] = useState(false)
@@ -174,76 +153,23 @@ export default function MerajSection() {
     }
   }
 
-  // Fetch tiny live snapshot (just enough to render the creative strip).
-  useEffect(() => {
-    if (!ownerId) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const now = new Date()
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
-        const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).toISOString()
+  // NOTE: this component used to fire SIX Supabase queries on every
+  // dashboard load to populate a 5-tile pulse strip. That strip is gone
+  // (its numbers are now stated once, in the Dashboard's Business Pulse
+  // card), so the queries were pure dead cost and have been removed.
+  // Meraj's thought templates already receive live numbers from the
+  // single dashboard RPC via useMerajThought.
 
-        const [salesT, salesY, inv, prod, txWeek, custRes] = await Promise.all([
-          supabase.from('transactions').select('total').eq('user_id', ownerId).eq('status', 'completed').gte('created_at', today),
-          supabase.from('transactions').select('total').eq('user_id', ownerId).eq('status', 'completed').gte('created_at', yesterday).lt('created_at', today),
-          supabase.from('invoices').select('total').eq('user_id', ownerId).eq('status', 'overdue'),
-          supabase.from('products').select('stock_quantity,low_stock_threshold').eq('user_id', ownerId),
-          supabase.from('transactions').select('total').eq('user_id', ownerId).eq('status', 'completed').gte('created_at', new Date(now.getTime() - 7 * 86400000).toISOString()),
-          supabase.from('customers').select('id', { count: 'exact', head: true }).eq('user_id', ownerId),
-        ])
-        if (cancelled) return
-
-        const todaySales = (salesT.data || []).reduce((s: number, r: any) => s + Number(r.total || 0), 0)
-        const yesterdaySales = (salesY.data || []).reduce((s: number, r: any) => s + Number(r.total || 0), 0)
-        const overdueCount = (inv.data || []).length
-        const overdueSum = (inv.data || []).reduce((s: number, r: any) => s + Number(r.total || 0), 0)
-        const lowStock = (prod.data || []).filter((p: any) => Number(p.stock_quantity ?? 0) <= Number(p.low_stock_threshold ?? 0)).length
-        const weekSales = (txWeek.data || []).reduce((s: number, r: any) => s + Number(r.total || 0), 0)
-        const customerCount = custRes.count ?? 0
-
-        // Zero sales is NOT a loss — an empty morning stays neutral.
-        const sig = salesSignal(todaySales, yesterdaySales)
-        const list: Pulse[] = [
-          {
-            label: 'Sales today',
-            icon: sig.tone === 'bad' || (sig.tone === 'neutral' && todaySales === 0) ? TrendingDown : TrendingUp,
-            value: formatINR(todaySales, 0),
-            tone: sig.tone,
-            hint: todaySales > 0 ? 'Today so far' : 'No sales yet',
-          },
-          {
-            label: 'Low stock', icon: Package,
-            value: lowStock ? `${lowStock} item${lowStock > 1 ? 's' : ''}` : 'All good',
-            tone: lowStock > 3 ? 'bad' : lowStock > 0 ? 'warn' : 'good',
-            hint: lowStock ? 'Reorder soon' : 'Stock healthy',
-          },
-          {
-            label: 'Pending', icon: overdueCount > 0 ? AlertTriangle : Wallet,
-            value: overdueCount ? formatINR(overdueSum, 0) : 'All clear',
-            tone: overdueCount > 0 ? 'warn' : 'good',
-            hint: overdueCount ? `${overdueCount} overdue` : 'Collected',
-          },
-          {
-            label: 'This week', icon: Sparkles,
-            value: formatINR(weekSales, 0),
-            tone: weekSales > todaySales * 4 ? 'good' : 'neutral',
-            hint: 'Week running total',
-          },
-          {
-            label: 'Customers', icon: Users,
-            value: customerCount,
-            tone: 'neutral',
-            hint: 'In your book',
-          },
-        ]
-        setPulses(list)
-      } catch {
-        if (!cancelled) setPulses([])
-      }
-    })()
-    return () => { cancelled = true }
-  }, [ownerId])
+  // The insight line. Meraj's daily thought templates inject live numbers of
+  // their own; until the first one resolves we fall back to the week's profit
+  // — but ONLY once the Dashboard has actually loaded it. `weekProfit` is
+  // undefined while the stats RPC is in flight, and printing a placeholder
+  // "₹0" there would contradict the Business Pulse card a few hundred pixels
+  // below. A number Meraj states must always be a number the shop really has.
+  const insightText = thought
+    || (weekProfit != null
+      ? `Profit so far this week: ${formatINR(weekProfit, 0)}. Small margins, big dreams.`
+      : 'Let me pull today\u2019s numbers together\u2026')
 
   // Decorative time-of-day icon/ambient (sun/moon/coffee/heart).
   const hourIST = new Date(Date.now() + 5.5 * 3600000).getUTCHours()
@@ -251,39 +177,38 @@ export default function MerajSection() {
 
   return (
     <section
-      className="relative card overflow-hidden cursor-pointer group hover:border-accent/40 transition-all"
+      className="relative card meraj-panel overflow-hidden cursor-pointer group"
       onClick={() => navigate('/app/assistant')}
       aria-label="Open Meraj"
       role="button"
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') navigate('/app/assistant') }}
     >
-      {/* Decorative ambient gradient */}
+      {/* Soft mint fade — distinguishes Meraj's zone from the rest of the
+          page without adding an outline or a heavy tinted block. */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 opacity-60 pointer-events-none"
+        className="absolute inset-0 pointer-events-none"
         style={{
-          background: businessMood === 'happy'
-            ? 'radial-gradient(120% 90% at 12% 20%, rgb(var(--accent-soft)) 0%, transparent 55%), radial-gradient(80% 70% at 90% 80%, rgb(var(--gold)/0.15) 0%, transparent 60%)'
-            : businessMood === 'sad'
-              ? 'radial-gradient(120% 90% at 12% 20%, rgb(var(--warning)/0.1) 0%, transparent 55%), radial-gradient(80% 70% at 90% 80%, rgb(var(--negative)/0.08) 0%, transparent 60%)'
-              : 'radial-gradient(120% 90% at 12% 20%, rgb(var(--accent-soft)/0.6) 0%, transparent 55%), radial-gradient(80% 70% at 90% 80%, rgb(var(--surface-2)) 0%, transparent 60%)'
+          background: businessMood === 'sad'
+            ? 'linear-gradient(160deg, rgb(var(--surface)) 0%, rgb(var(--warning) / 0.05) 100%)'
+            : 'linear-gradient(160deg, rgb(var(--surface)) 0%, rgb(var(--accent) / 0.07) 100%)',
         }}
       />
 
-      <div className="relative p-4 sm:p-5 lg:p-6 flex flex-col gap-4">
+      <div className="relative p-5 sm:p-6 flex flex-col gap-5">
         {/* Top row: label + open arrow */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${toneBg(businessMood === 'happy' ? 'good' : businessMood === 'sad' ? 'warn' : 'neutral')}`}>
+            <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full ${toneBg(businessMood === 'happy' ? 'good' : businessMood === 'sad' ? 'warn' : 'neutral')}`}>
               <AmbientIcon className="w-3 h-3" /> Meraj
             </span>
-            <span className="text-[10px] font-semibold text-fg-subtle">
+            <span className="text-xs text-fg-subtle">
               {awake ? 'Here with you' : 'Sleeping'}
             </span>
           </div>
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-accent group-hover:gap-1.5 transition-all">
-            Chat <ArrowUpRight className="w-3.5 h-3.5" />
+          <span className="inline-flex items-center gap-1 text-sm font-medium text-accent-strong group-hover:gap-1.5 transition-all">
+            Chat <ArrowUpRight className="w-4 h-4" />
           </span>
         </div>
 
@@ -297,13 +222,17 @@ export default function MerajSection() {
           style={{ justifyContent: bubbleVisible ? 'flex-start' : 'center' }}
         >
           <motion.div layout transition={{ type: 'spring', stiffness: 200, damping: 26 }} className="flex-shrink-0 flex flex-col items-center pt-2">
-            <MerajDevice
-              interactionState={interaction}
-              businessMood={businessMood}
-              size="lg"
-              context="card"
-              className="scale-110 sm:scale-125"
-            />
+            {/* Breathing halo — Meraj feels alive and "thinking", never static. */}
+            <span className="relative flex items-center justify-center">
+              <span className="meraj-breathe absolute w-24 h-24 rounded-full bg-accent/20 blur-2xl" aria-hidden="true" />
+              <MerajDevice
+                interactionState={interaction}
+                businessMood={businessMood}
+                size="lg"
+                context="card"
+                className="relative scale-110 sm:scale-125"
+              />
+            </span>
             {/* Friendly idle pulse dots */}
             <div className="flex items-center gap-1 mt-3">
               {[0, 1, 2].map((d) => (
@@ -350,18 +279,35 @@ export default function MerajSection() {
                   <span className="absolute -left-3.5 bottom-1.5 w-3.5 h-3.5 rounded-full bg-surface border border-accent/25 shadow-soft" aria-hidden="true" />
                   <span className="absolute -left-7 bottom-6 w-2.5 h-2.5 rounded-full bg-surface border border-accent/20 shadow-soft" aria-hidden="true" />
                   <span className="absolute -left-9.5 bottom-11 w-1.5 h-1.5 rounded-full bg-surface border border-accent/20" aria-hidden="true" />
+                  {/* ACTIONABLE INSIGHT — not a static chat bubble. Meraj
+                      states the fact, then offers the two next moves. */}
                   <div
                     onClick={(e) => { e.stopPropagation(); refreshNow(); restartCycle() }}
-                    className="meraj-bubble-float rounded-[1.9rem] bg-surface/95 border border-accent/20 px-5 py-4 shadow-soft cursor-pointer hover:border-accent/45 transition-colors"
+                    className="meraj-bubble-float rounded-[1.75rem] bg-surface px-5 py-4 shadow-card cursor-pointer"
                     role="button"
-                    aria-label="Meraj's thought — tap for another"
+                    aria-label="Meraj's insight — tap for another"
                   >
-                    <p className="text-sm sm:text-base font-semibold text-fg leading-snug">
-                      {awake ? `💡 ${thought || 'Sab theek hai, bhai.'}` : '😴 So raha hoon… subah milte hain.'}
+                    <p className="text-[15px] font-semibold text-fg leading-snug">
+                      {awake ? `💡 ${insightText}` : '😴 So raha hoon… subah milte hain.'}
                     </p>
-                    <p className="text-[10px] text-fg-subtle mt-1.5">
-                      {awake ? '✨ Tap for another idea' : '🌅 I rest between 2–5 AM so I am sharp at 5'}
-                    </p>
+                    {awake ? (
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); navigate('/app/reports') }}
+                          className="rounded-full bg-surface-2 px-3.5 py-1.5 text-xs font-semibold text-fg active:scale-95 transition-transform hover:bg-surface-3"
+                        >
+                          View Report
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); askInPlace('Give me three specific, practical ways to boost sales this week based on my shop data.') }}
+                          className="rounded-full bg-accent-strong px-3.5 py-1.5 text-xs font-semibold text-accent-fg active:scale-95 transition-transform hover:bg-accent"
+                        >
+                          Boost Sales
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-fg-subtle mt-1.5">🌅 I rest between 2–5 AM so I am sharp at 5</p>
+                    )}
                   </div>
                 </motion.div>
               ) : null}
@@ -370,10 +316,11 @@ export default function MerajSection() {
         </motion.div>
 
         {/* Ask is part of Meraj now: one character, one conversation surface. */}
-        <form onSubmit={(e) => { e.preventDefault(); const q = ask.trim(); if (q) { askInPlace(q) } }} className="flex items-center gap-2 rounded-xl border border-line bg-surface/80 px-2 focus-within:border-accent/50 transition-colors" onClick={(e) => e.stopPropagation()}>
-          <input value={ask} onChange={(e) => setAsk(e.target.value)} placeholder="💭 Ask Meraj anything…" className="flex-1 bg-transparent py-2.5 px-2 text-sm text-fg placeholder:text-fg-subtle outline-none min-w-0" />
-          <button type="button" onClick={() => navigate('/app/assistant')} aria-label="Voice" className="w-8 h-8 rounded-lg text-fg-muted hover:text-fg hover:bg-surface-2 flex items-center justify-center"><Mic className="w-4 h-4" /></button>
-          <button type="submit" aria-label="Send" className="w-8 h-8 rounded-lg bg-fg text-paper flex items-center justify-center hover:opacity-90"><Send className="w-4 h-4" /></button>
+        {/* Soft, borderless ask field — no heavy black outline. */}
+        <form onSubmit={(e) => { e.preventDefault(); const q = ask.trim(); if (q) { askInPlace(q) } }} className="flex items-center gap-1.5 rounded-full bg-surface-2 pl-4 pr-1.5 py-1.5 focus-within:ring-2 focus-within:ring-accent/40 transition-shadow" onClick={(e) => e.stopPropagation()}>
+          <input value={ask} onChange={(e) => setAsk(e.target.value)} placeholder="Ask Meraj anything…" className="flex-1 bg-transparent py-1.5 text-sm text-fg placeholder:text-fg-subtle outline-none min-w-0" />
+          <button type="button" onClick={() => navigate('/app/assistant')} aria-label="Voice" className="w-9 h-9 rounded-full text-fg-muted hover:text-fg hover:bg-surface-3 flex items-center justify-center active:scale-95 transition-transform"><Mic className="w-4 h-4" /></button>
+          <button type="submit" aria-label="Send" className="w-9 h-9 rounded-full bg-accent-strong text-accent-fg flex items-center justify-center hover:bg-accent active:scale-95 transition-transform"><Send className="w-4 h-4" /></button>
         </form>
 
         {/* Meraj's in-place reply — text bubble + voice */}
@@ -397,19 +344,11 @@ export default function MerajSection() {
           </motion.div>
         )}
 
-        {/* Bottom: business-at-a-glance pulse chips (creative read) */}
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3 pt-1">
-          {pulses.map((p) => (
-            <div key={p.label} className="rounded-xl bg-surface/80 border border-line px-2.5 py-2 sm:px-3 sm:py-2.5">
-              <div className="flex items-center gap-1.5">
-                <p.icon className={`w-3.5 h-3.5 ${toneColor(p.tone)}`} strokeWidth={2} />
-                <span className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wide text-fg-subtle truncate">{p.label}</span>
-              </div>
-              <p className={`text-sm sm:text-base font-bold leading-tight mt-1 ${toneColor(p.tone)} tabular-nums truncate`}>{p.value}</p>
-              {p.hint && <p className="text-[9px] sm:text-[10px] text-fg-subtle mt-0.5 truncate">{p.hint}</p>}
-            </div>
-          ))}
-        </div>
+        {/* NOTE: the old 5-tile "pulse chip" strip lived here. Every one of
+            those numbers (sales today, low stock, pending, week, customers)
+            is now stated exactly once in the Dashboard's Business Pulse
+            card — repeating them here was the page's main source of
+            duplicate information and visual noise. */}
       </div>
     </section>
   )

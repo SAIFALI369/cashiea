@@ -95,7 +95,7 @@ export function SplitPayment({
       {/* UPI QR — the customer scans; the cashier confirms receipt.
           Loading, error and copy states live inside UpiQr. */}
       {upiId && upiAmount > 0 && (
-        <div className="flex items-center gap-3 p-2.5 rounded-xl bg-surface-2 border border-line">
+        <div className="flex items-center gap-3 p-2.5 rounded-xl bg-surface-2">
           <UpiQr
             upiId={upiId}
             payeeName={payeeName}
