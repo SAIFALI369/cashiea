@@ -6,6 +6,7 @@ import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, ArrowRight, Check, Shield,
 import toast from 'react-hot-toast'
 import { friendlyAuthError } from '../../lib/auth-errors'
 import { useInputFocus, FOCUS_SCROLL_CLASS } from '../../lib/useInputFocus'
+import AuthSeoFooter from '../../components/AuthSeoFooter'
 
 // ═══ Logo (same as landing) ═══
 function Logo({ size = 32 }: { size?: number }) {
@@ -103,9 +104,9 @@ export default function Login() {
             <span className="font-bold text-xl text-accent-fg">Cashiea</span>
           </div>
 
-          <h1 className="text-accent-fg font-bold mb-6 text-4xl leading-[1.2] tracking-tight">
+          <p className="text-accent-fg font-bold mb-6 text-4xl leading-[1.2] tracking-tight">
             Welcome back to your<br />smart shop assistant.
-          </h1>
+          </p>
           <p className="text-accent-fg/75 text-lg leading-relaxed mb-10">
             Sign in to manage sales, customers, stock, and AI tasks — all from one dashboard.
           </p>
@@ -143,8 +144,8 @@ export default function Login() {
             <ArrowLeft className="w-4 h-4" /> Back to home
           </Link>
 
-          <h2 className="font-bold text-fg text-[28px] tracking-tight mb-1">Sign in to Cashiea</h2>
-          <p className="mb-8 text-base text-fg-muted">Enter your details to access your dashboard</p>
+          <h1 className="font-bold text-fg text-[28px] tracking-tight mb-1">Sign in to Cashiea</h1>
+          <p className="mb-8 text-base text-fg-muted">Enter your details to access your Cashiea dashboard — billing, khata, stock and today's report.</p>
 
           {/* Error message */}
           {error && (
@@ -218,6 +219,8 @@ export default function Login() {
               Sign up free
             </Link>
           </p>
+
+          <AuthSeoFooter />
         </div>
       </div>
     </div>

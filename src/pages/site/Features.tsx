@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import {
   ScanBarcode, Receipt, BookOpen, Package, Users, MessageCircle, Repeat, FileBarChart,
-  Calculator, Mic, WifiOff, Landmark, Sparkles, ShieldCheck, ArrowRight, FileSpreadsheet,
+  Calculator, WifiOff, Landmark, Sparkles, ShieldCheck, ArrowRight, FileSpreadsheet,
   type LucideIcon,
 } from 'lucide-react'
 import PublicPageShell, { SectionEyebrow, Mono } from '../../components/PublicPageShell'

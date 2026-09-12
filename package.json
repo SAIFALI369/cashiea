@@ -6,12 +6,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && npm run seo:llms && npm run seo:sitemap && vite build && npm run seo:prerender",
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "seo:prerender": "node scripts/prerender.mjs",
+    "seo:sitemap": "node scripts/generate-sitemap.mjs",
+    "seo:llms": "node scripts/generate-llms.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
@@ -40,6 +43,7 @@
     "@vitest/coverage-v8": "^2.1.9",
     "ai": "^6.0.230",
     "autoprefixer": "^10.4.20",
+    "esbuild": "^0.25.0",
     "eslint": "^10.10.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.6",

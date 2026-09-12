@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { LANDING_FAQS } from '../lib/faqs'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import MerajDevice, { MerajGlyph } from '../components/MerajDevice'
@@ -201,15 +202,9 @@ const FEATURES = [
   { icon: Landmark, label: 'India-first compliance', desc: 'GSTIN validation, state codes, filing calendar — Meraj knows the rules' },
 ]
 
-const FAQS = [
-  { q: 'Do I need technical knowledge?', a: 'No. Setup takes 5 minutes — enter your shop name, add products (or import your whole list from a CSV), and you are ready to bill.' },
-  { q: 'Is my data safe?', a: 'Your data is encrypted in transit, hosted in India, and protected by row-level security — each shop can only see its own records. We follow India’s DPDP Act 2023 and never sell your data.' },
-  { q: 'Does Cashiea work offline?', a: 'Yes. Keep billing during internet cuts — sales are saved on your device and sync automatically when you reconnect, with a visible sync status.' },
-  { q: 'Can Meraj really replace a manager?', a: 'Meraj handles about 90% of a manager’s daily work — reports, follow-ups, stock watches, payment chasing, reconciliation — and asks you before anything goes out. The 10% that needs you stays yours: decisions, relationships, and the shop floor.' },
-  { q: 'Which languages does Meraj understand?', a: 'Voice and chat in Hindi/Hinglish, English and 8 more Indian languages — Bengali, Tamil, Telugu, Marathi, Gujarati, Kannada, Malayalam and Punjabi.' },
-  { q: 'What about my GST invoices?', a: 'Cashiea creates Rule-46 compliant tax invoices — TAX INVOICE heading, HSN codes, CGST/SGST or IGST split, amount in words, place of supply and signature. For GST specifics, Meraj gives general guidance and reminds you to confirm with your CA.' },
-  { q: 'Can I cancel anytime?', a: 'Yes. No lock-in contracts, no setup fees, no hidden charges. Cancel from your dashboard.' },
-]
+// FAQ copy lives in src/lib/faqs.ts so the same answers can also be
+// emitted as FAQPage JSON-LD and baked into the prerendered HTML.
+const FAQS = LANDING_FAQS
 
 // ── Hero product mock: a believable "morning with Meraj" dashboard ──
 function HeroDashboard() {
