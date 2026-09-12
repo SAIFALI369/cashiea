@@ -309,12 +309,24 @@ export default function Onboarding() {
                 ) : questions.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 gap-3">
                     <p className="text-sm text-fg-muted">Couldn't load the questions.</p>
-                    <button
-                      onClick={() => { fetchedStep.current = 0; setQuestions([]) }}
-                      className="btn-secondary text-sm"
-                    >
-                      <Sparkles className="w-4 h-4" /> Retry
-                  </button>
+                    <div className="flex flex-wrap justify-center gap-2">
+                      <button
+                        onClick={() => { fetchedStep.current = 0; setQuestions([]) }}
+                        className="btn-secondary text-sm"
+                      >
+                        <Sparkles className="w-4 h-4" /> Retry
+                      </button>
+                      <button
+                        onClick={async () => {
+                          // Never trap a new shop owner on this screen.
+                          try { await supabase.rpc('update_onboarding_step', { step: 4, data: {} }) } catch { /* leave anyway */ }
+                          navigate('/app')
+                        }}
+                        className="btn-secondary text-sm"
+                      >
+                        Skip for now
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-5">
