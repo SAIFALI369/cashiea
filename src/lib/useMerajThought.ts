@@ -110,12 +110,12 @@ function writeBatch(ownerId: string, b: ThoughtBatch) {
   try { localStorage.setItem(`${STORE_KEY}:${ownerId}`, JSON.stringify(b)) } catch { /* ignore */ }
 }
 
-const PROMPT = `You are Meraj, the warm AI manager of an Indian shop. Write EXACTLY 30 short English "thought" templates that appear in a thought bubble on the owner's dashboard. Rules:
-- Each thought is 8-18 words, friendly manager tone, always encouraging.
+const PROMPT = `You are Meraj, the sharp AI manager of an Indian shop. Write EXACTLY 30 short English "thought" templates that appear in a thought bubble on the owner's dashboard. Rules:
+- Each thought is 8-20 words: a STRATEGIC operator's note — one live number, one decision or action. Never an empty affirmation.
 - NEVER write actual numbers or ₹ amounts — use these placeholders: {todaySales} {todayBills} {weekSales} {weekProfit} {overdueCount} {overdueSum} {lowStock}
-- Every thought must MEAN something: celebrate sales, comfort on loss days, nudge collections, note stock, appreciate customers.
-- Mix: ~8 celebrating profit/sales ("Today we sold {todaySales} of goods, bravo! We are in profit"), ~5 comforting loss ("Loss will be recovered, take it easy"), ~6 collections nudges, ~5 stock/reorder, ~6 week momentum/customer love.
-- No motivational fluff, no generic quotes, no Hinglish. Output ONLY the 30 lines.`
+- Every thought must drive money: collect faster (chase the 8-20 day debtors first, split-payment the biggest debtor), protect margin (margin-check top items, the biggest bill is not the best bill), stock smart (empty shelf = lost sale, stock more of the best-seller), pace the week, keep regulars.
+- On loss days: strategic comfort only ("expenses crossed {todaySales} — collecting {overdueSum} erases it"), never pity.
+- No motivational fluff, no quotes, no Hinglish, no exclamation marks. Output ONLY the 30 lines.`
 
 async function ensureTodayBatch(ownerId: string): Promise<ThoughtBatch> {
   const today = istDateStr()
