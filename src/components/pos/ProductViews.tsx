@@ -92,7 +92,13 @@ export function ProductCard({ product, onAdd }: { product: Product; onAdd: (p: P
       <div className="flex items-start justify-between">
         <ProductGlyph product={product} size="md" />
         {st !== 'ok' && (
-          <span className={`w-2 h-2 rounded-full mt-1.5 ${DOT[st]}`} title={DOT_LABEL[st]} aria-hidden="true" />
+          <span
+            className="inline-flex items-center gap-1 rounded-full bg-surface/95 border border-line px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-fg-muted shadow-soft"
+            title={DOT_LABEL[st]}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${DOT[st]}`} aria-hidden="true" />
+            {st === 'low' ? 'Low' : 'Out'}
+          </span>
         )}
       </div>
 
