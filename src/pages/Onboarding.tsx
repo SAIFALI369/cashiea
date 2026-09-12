@@ -317,10 +317,10 @@ export default function Onboarding() {
                         <Sparkles className="w-4 h-4" /> Retry
                       </button>
                       <button
-                        onClick={async () => {
-                          // Never trap a new shop owner on this screen.
-                          try { await supabase.rpc('update_onboarding_step', { step: 4, data: {} }) } catch { /* leave anyway */ }
+                        onClick={() => {
+                          // Leave INSTANTLY — no RPC may ever block navigation.
                           navigate('/app')
+                          void supabase.rpc('update_onboarding_step', { step: 4, data: {} }).catch(() => { /* retried next launch if needed */ })
                         }}
                         className="btn-secondary text-sm"
                       >

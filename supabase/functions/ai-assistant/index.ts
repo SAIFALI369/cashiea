@@ -710,13 +710,17 @@ Deno.serve(async (req) => {
     // Reserve one usage unit atomically for the whole request. Incrementing at
     // each early return let concurrent Meraj tabs overspend and also charged a
     // single task more than once.
-    const { data: reserved, error: reserveError } = await serviceSupabase.rpc("reserve_api_usage", {
-      p_user_id: ownerId,
-      p_amount: 1,
-    });
-    if (reserveError) return json({ error: "AI usage service is unavailable; deploy schema v27 first" }, 503);
-    if (!reserved) return json({ error: "Usage limit reached" }, 429);
-    usageReserved = true;
+    // ONBOARDING IS NEVER METERED — a new shop owner must always be able to
+    // talk to Meraj during signup, regardless of usage limits or trial state.
+    if (mode !== "onboarding_questions" && mode !== "onboarding_persona") {
+      const { data: reserved, error: reserveError } = await serviceSupabase.rpc("reserve_api_usage", {
+        p_user_id: ownerId,
+        p_amount: 1,
+      });
+      if (reserveError) return json({ error: "AI usage service is unavailable; deploy schema v27 first" }, 503);
+      if (!reserved) return json({ error: "Usage limit reached" }, 429);
+      usageReserved = true;
+    }
 
     // ── DASHBOARD SUGGESTION PILLS (under the search bar) ──────────
     // Fresh, situation-specific questions — the client regenerates these every
