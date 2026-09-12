@@ -2,7 +2,8 @@ import { ConfirmDialog } from '../components/ConfirmDialog'
 import { useDebounce } from '../lib/useDebounce'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { BarcodeScanner } from '../components/BarcodeScanner'
-import { ScanLine, Coins, History, LayoutGrid, List, Pause, Search, ShoppingCart, Loader2, UserPlus } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ScanLine, History, LayoutGrid, List, Mic, Pause, Search, Settings, ShoppingCart, Loader2, UserPlus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useCan } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
@@ -15,10 +16,15 @@ import {
 import { holdCart, listHeldCarts, deleteHeldCart, type HeldCartSnapshot } from '../lib/heldCarts'
 import type { Product, Customer, PaymentMethod, HeldCart } from '../lib/types'
 import { enrichCustomers, type Customer360 } from '../lib/customer360'
+import { prettyCategory } from '../lib/productVisuals'
+import { parseVoiceOrder, matchProduct } from '../lib/voiceOrder'
+import { topCompanion, companionTip, type BasketTxn } from '../lib/basketAffinity'
 import PageHeader from '../components/ui/PageHeader'
+import HeaderAction from '../components/ui/HeaderAction'
 import EmptyState from '../components/ui/EmptyState'
 import toast from 'react-hot-toast'
 import { CartContents } from '../components/pos/CartContents'
+import { CartSheet } from '../components/pos/CartSheet'
 import { StickyCartBar } from '../components/pos/StickyCartBar'
 import { NumpadModal } from '../components/pos/NumpadModal'
 import { LineOptionsModal } from '../components/pos/LineOptionsModal'
@@ -37,12 +43,14 @@ export default function POS() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [frequent, setFrequent] = useState<Product[]>([])
+  const [baskets, setBaskets] = useState<BasketTxn[]>([])
 
   // ── Browsing state ──
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search, 250)
   const [activeCategory, setActiveCategory] = useState('all')
   const [view, setView] = useState<'grid' | 'list'>('grid')
+  const [listening, setListening] = useState(false)
 
   // ── Cart state ──
   const [cart, setCart] = useState<CartLine[]>([])
@@ -127,9 +135,12 @@ export default function POS() {
         .gte('created_at', since)
         .order('created_at', { ascending: false })
         .limit(300)
-      const top = topSoldProducts((data as unknown as { items: { product_id: string; name: string; quantity: number }[] }[]) || [], 8)
+      const txns = (data as unknown as BasketTxn[]) || []
+      const top = topSoldProducts(txns as unknown as { items: { product_id: string; name: string; quantity: number }[] }[], 8)
       const byId = new Map(catalog.map((p) => [p.id, p]))
       setFrequent(top.map((t) => byId.get(t.productId)).filter((p): p is Product => !!p))
+      // Same rows power Meraj's cross-sell — no extra query.
+      setBaskets(txns)
     } catch { /* frequent row is best-effort */ }
   }
 
@@ -189,6 +200,21 @@ export default function POS() {
       return matchCat && matchSearch
     })
   }, [products, activeCategory, search, debouncedSearch])
+
+  // ── Meraj's cross-sell ────────────────────────────────────────
+  // Grounded in this shop's own baskets: for the item most recently added,
+  // what actually sells alongside it? If the history doesn't support a
+  // confident pairing, or the companion is already in the cart, Meraj
+  // says nothing rather than inventing a pattern.
+  const merajTip = useMemo(() => {
+    if (cart.length === 0 || baskets.length === 0) return null
+    const anchor = cart[cart.length - 1]
+    if (!anchor?.product_id) return null
+    const companion = topCompanion(baskets, anchor.product_id)
+    if (!companion) return null
+    if (cart.some((l) => l.product_id === companion.productId)) return null
+    return companionTip(anchor.name, companion)
+  }, [cart, baskets])
 
   // ── Cart operations ───────────────────────────────────────────
 
@@ -266,6 +292,47 @@ export default function POS() {
     setCart(cart.map((l) => (l.key === key ? { ...l, ...patch } : l)))
 
   const removeLine = (key: string) => setCart(cart.filter((l) => l.key !== key))
+
+  // ── Voice ordering ────────────────────────────────────────────
+  // "Add 2 Aashirvaad Atta to cart". The parse is strict: an ambiguous
+  // product match is reported back rather than guessed, because adding
+  // the wrong item to a live sale costs the shopkeeper real money.
+  const startVoiceAdd = () => {
+    const SR = (window as unknown as Record<string, unknown>).SpeechRecognition
+      || (window as unknown as Record<string, unknown>).webkitSpeechRecognition
+    if (!SR) {
+      toast.error('Voice input is not supported on this browser')
+      return
+    }
+    if (listening) return
+    try {
+      const rec = new (SR as new () => any)()
+      rec.lang = 'en-IN'
+      rec.interimResults = false
+      rec.maxAlternatives = 1
+      setListening(true)
+      rec.onresult = (event: any) => {
+        const transcript = String(event?.results?.[0]?.[0]?.transcript || '')
+        const order = parseVoiceOrder(transcript)
+        if (!order) { toast.error(`Didn't catch a product in "${transcript}"`); return }
+        const match = matchProduct(order.query, products)
+        if (!match) {
+          // Fall back to filling the search box so the cashier can finish.
+          setSearch(order.query)
+          toast(`No clear match for "${order.query}" — showing results`, { icon: '🔍' })
+          return
+        }
+        for (let i = 0; i < order.quantity; i++) addToCart(match)
+        toast.success(`Added ${order.quantity} × ${match.name}`)
+      }
+      rec.onerror = () => { setListening(false); toast.error('Could not hear that — try again') }
+      rec.onend = () => setListening(false)
+      rec.start()
+    } catch {
+      setListening(false)
+      toast.error('Could not start voice input')
+    }
+  }
 
   // ── Sale math ─────────────────────────────────────────────────
 
@@ -554,6 +621,7 @@ export default function POS() {
     onChangeQty: changeQty,
     onOpenLineOptions: setLineOptionsKey,
     onNumpad: setNumpadLine,
+    onRemoveLine: removeLine,
     onHold: () => setHoldDialog(true),
     onClearCart: () => setConfirmClear(true),
     onCheckout: handleCheckout,
@@ -576,54 +644,52 @@ export default function POS() {
   const numpadTarget = numpadLine ? cart.find((l) => l.key === numpadLine) : null
   const lineOptionsTarget = lineOptionsKey ? cart.find((l) => l.key === lineOptionsKey) : null
 
+  // The counter tools, rendered once and placed in whichever header is
+  // visible: portalled into the mobile app bar, inline on desktop.
+  const counterTools = (
+    <div className="flex items-center gap-1">
+      <button
+        onClick={() => { refreshHeld(); setShowHeld(true) }}
+        className="relative icon-btn text-fg-muted hover:text-fg"
+        aria-label={`Held carts${heldCarts.length ? ` (${heldCarts.length})` : ''}`}
+        title="Held carts"
+      >
+        <Pause className="w-5 h-5" />
+        {heldCarts.length > 0 && (
+          <span className="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-accent text-white text-[10px] font-bold flex items-center justify-center tabular-nums">
+            {heldCarts.length}
+          </span>
+        )}
+      </button>
+      <Link to="/app/sales" className="icon-btn text-fg-muted hover:text-fg" aria-label="Sale history" title="Sale history">
+        <History className="w-5 h-5" />
+      </Link>
+      <button
+        onClick={() => setShowEod(true)}
+        className="icon-btn text-fg-muted hover:text-fg"
+        aria-label="Counter settings — close the day"
+        title="Close the day"
+      >
+        <Settings className="w-5 h-5" />
+      </button>
+    </div>
+  )
+
   return (
     <div className="animate-fade-in pb-24 lg:pb-0">
-      <PageHeader
-        title="Cashier / POS"
-        subtitle="Ring up sales, bill customers, and generate receipts at the counter"
-        icon={<ShoppingCart className="w-5 h-5" />}
-        action={
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => { refreshHeld(); setShowHeld(true) }}
-              className="relative w-11 h-11 rounded-control border border-line bg-surface flex items-center justify-center text-accent hover:bg-accent-soft transition-colors"
-              aria-label={`Held carts${heldCarts.length ? ` (${heldCarts.length})` : ''}`}
-              title="Held carts"
-            >
-              <Pause className="w-5 h-5" />
-              {heldCarts.length > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full bg-accent text-accent-fg text-[10px] font-bold flex items-center justify-center tabular-nums">
-                  {heldCarts.length}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setShowRecent(true)}
-              className="w-11 h-11 rounded-control border border-line bg-surface flex items-center justify-center text-accent hover:bg-accent-soft transition-colors"
-              aria-label="Recent sales and void"
-              title="Recent sales"
-            >
-              <History className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setShowEod(true)}
-              className="w-11 h-11 rounded-control border border-line bg-surface flex items-center justify-center text-accent hover:bg-accent-soft transition-colors"
-              aria-label="Close the day — cash reconciliation"
-              title="Close the day"
-            >
-              <Coins className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setShowScanner(true)}
-              className="w-11 h-11 rounded-control border border-line bg-surface flex items-center justify-center text-accent hover:bg-accent-soft transition-colors"
-              aria-label="Scan barcode"
-              title="Scan barcode"
-            >
-              <ScanLine className="w-5 h-5" />
-            </button>
-          </div>
-        }
-      />
+      {/* ── Header: the clean slate ──
+          "New Sale" on the left; on the right only what a cashier reaches
+          for mid-shift — sale history and the counter tools. No profile
+          picture, no lightbulb: nothing that competes with the sale. */}
+      <PageHeader title="New Sale" subtitle="Ring up sales, bill customers, and generate receipts at the counter" />
+
+      {/* Counter tools ride in the mobile app header (which already shows
+          the "New Sale" title), and inline on desktop. Stated once either way. */}
+      <HeaderAction>{counterTools}</HeaderAction>
+      <header className="hidden lg:flex items-center justify-between gap-3 mb-6">
+        <h2 className="text-[28px] leading-none font-bold tracking-tight text-fg">New Sale</h2>
+        {counterTools}
+      </header>
 
       {products.length === 0 ? (
         <EmptyState
@@ -651,23 +717,43 @@ export default function POS() {
                 </div>
               )}
 
-              <div className="card p-4 sticky top-4 z-10 mb-4 bg-surface/80 backdrop-blur">
+              {/* ── Command centre: search is the hero, scan lives inside it ── */}
+              <div className="sticky top-4 z-10 mb-5 py-1 bg-paper/90 backdrop-blur">
                 <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-fg-subtle" />
+                  <div className="relative flex-1 min-w-0">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-fg-subtle pointer-events-none" />
                     <input
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      className="input-field pl-11"
-                      placeholder="Search by product name or SKU..."
+                      className="w-full h-14 pl-12 pr-[5.5rem] rounded-2xl bg-surface-2 text-fg placeholder:text-fg-subtle border-0 focus:ring-2 focus:ring-accent/40 focus:outline-none text-sm"
+                      placeholder="Scan barcode or search products..."
+                      aria-label="Scan barcode or search products"
                       onKeyDown={(e) => e.key === 'Enter' && search.trim() && handleBarcodeDetect(search.trim())}
                     />
+                    {/* Voice + scan, high-contrast, inside the right edge */}
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                      <button
+                        onClick={startVoiceAdd}
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${listening ? 'bg-accent text-white animate-pulse' : 'text-fg-subtle hover:text-fg'}`}
+                        aria-label={listening ? 'Listening — say what to add' : 'Add by voice'}
+                        title="Add by voice"
+                      >
+                        <Mic className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setShowScanner(true)}
+                        className="h-10 px-3 rounded-xl bg-fg text-white flex items-center gap-1.5 text-xs font-bold active:scale-[0.97] transition-transform"
+                        aria-label="Scan barcode with the camera"
+                      >
+                        <ScanLine className="w-4 h-4" /> Scan
+                      </button>
+                    </div>
                   </div>
-                  {/* Grid / list toggle — persists per user */}
-                  <div className="flex items-center rounded-xl border border-line overflow-hidden flex-shrink-0" role="group" aria-label="Product view">
+                  {/* Grid / list toggle — borderless */}
+                  <div className="flex items-center gap-0.5 flex-shrink-0" role="group" aria-label="Product view">
                     <button
                       onClick={() => setView('grid')}
-                      className={`w-10 h-10 flex items-center justify-center ${view === 'grid' ? 'bg-secondary-soft text-secondary-strong' : 'text-fg-subtle hover:text-fg'}`}
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${view === 'grid' ? 'bg-surface-2 text-fg' : 'text-fg-subtle hover:text-fg'}`}
                       aria-label="Grid view"
                       aria-pressed={view === 'grid'}
                     >
@@ -675,7 +761,7 @@ export default function POS() {
                     </button>
                     <button
                       onClick={() => setView('list')}
-                      className={`w-10 h-10 flex items-center justify-center ${view === 'list' ? 'bg-secondary-soft text-secondary-strong' : 'text-fg-subtle hover:text-fg'}`}
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${view === 'list' ? 'bg-surface-2 text-fg' : 'text-fg-subtle hover:text-fg'}`}
                       aria-label="List view"
                       aria-pressed={view === 'list'}
                     >
@@ -684,32 +770,44 @@ export default function POS() {
                   </div>
                 </div>
 
-                {/* Category chips — single row, horizontal scroll, never wraps */}
-                <div className="flex gap-1.5 mt-3 overflow-x-auto no-scrollbar scroll-smooth snap-x">
+                {/* Meraj's live suggestion while typing */}
+                {merajTip && (
+                  <div className="mt-2.5 flex items-start gap-2 px-1 animate-fade-in">
+                    <span className="text-sm leading-5">💡</span>
+                    <p className="text-xs text-fg-muted leading-5">
+                      <span className="font-semibold text-fg">Meraj:</span> {merajTip}
+                    </p>
+                  </div>
+                )}
+
+                {/* Category tabs — text only, dot under the active one */}
+                <div className="flex gap-5 mt-3 overflow-x-auto no-scrollbar scroll-smooth snap-x">
                   {categories.map((cat) => (
                     <button
                       key={cat}
                       onClick={() => setActiveCategory(cat)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium capitalize transition-all border whitespace-nowrap flex-shrink-0 snap-start ${
-                        activeCategory === cat
-                          ? 'bg-accent text-accent-fg border-accent'
-                          : 'border-line text-fg-muted hover:text-fg'
+                      aria-pressed={activeCategory === cat}
+                      className={`relative pb-2 text-sm whitespace-nowrap flex-shrink-0 snap-start transition-colors ${
+                        activeCategory === cat ? 'font-bold text-fg' : 'font-normal text-fg-subtle hover:text-fg-muted'
                       }`}
                     >
-                      {cat}
+                      {prettyCategory(cat)}
+                      {activeCategory === cat && (
+                        <span className="absolute -bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-fg" aria-hidden="true" />
+                      )}
                     </button>
                   ))}
                 </div>
               </div>
 
               {view === 'grid' ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {filteredProducts.map((p) => (
                     <ProductCard key={p.id} product={p} onAdd={addToCart} />
                   ))}
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {filteredProducts.map((p) => (
                     <ProductRow key={p.id} product={p} onAdd={addToCart} />
                   ))}
@@ -723,8 +821,8 @@ export default function POS() {
 
             {/* Cart — desktop column */}
             <div className="lg:col-span-1 hidden lg:block min-w-0">
-              <div className="card sticky top-4 overflow-hidden">
-                <CartContents variant="desktop" {...cartProps} />
+              <div className="card sticky top-4 overflow-hidden flex flex-col max-h-[calc(100vh-2rem)]">
+                <CartContents {...cartProps} />
               </div>
             </div>
           </div>
@@ -736,21 +834,9 @@ export default function POS() {
 
       {/* Mobile full cart / checkout sheet */}
       {sheetOpen && (
-        <div className="fixed inset-0 bg-black/60 z-50 lg:hidden flex items-end" onClick={() => setSheetOpen(false)} role="dialog" aria-label="Cart and checkout">
-          <div
-            className="card w-full rounded-b-none rounded-t-card max-h-[92vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="pt-2 flex justify-center flex-shrink-0">
-              <button onClick={() => setSheetOpen(false)} aria-label="Close cart" className="py-3 px-10 flex justify-center">
-                <span className="w-12 h-1.5 rounded-full bg-line-2" />
-              </button>
-            </div>
-            <div className="flex-1 min-h-0 flex flex-col">
-              <CartContents variant="sheet" {...cartProps} />
-            </div>
-          </div>
-        </div>
+        <CartSheet onClose={() => setSheetOpen(false)}>
+          <CartContents {...cartProps} />
+        </CartSheet>
       )}
 
       {/* Customer picker modal */}

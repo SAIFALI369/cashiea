@@ -453,6 +453,67 @@ h1, h2, h3 {
 @keyframes meraj-bubble-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 .meraj-bubble-float { animation: meraj-bubble-float 4.5s ease-in-out infinite; }
 
+/* ════════════════════════════════════════════════════════════════
+   POS — zero-friction checkout surfaces
+   ════════════════════════════════════════════════════════════════ */
+
+/* Ghost card: no border, no fill, just a whisper of elevation so the
+   product floats on the page. The tap target lifts on hover and sinks
+   on press, which is the only chrome it needs. */
+.pos-ghost-card {
+  background-color: rgb(var(--surface));
+  /* Stated outright rather than inherited from preflight: "no border" is
+     the whole point of a ghost card, so it should not depend on a reset. */
+  border: 0;
+  box-shadow: 0 4px 12px rgb(var(--shadow) / 0.03);
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 180ms ease;
+}
+@media (hover: hover) {
+  .pos-ghost-card:hover {
+    box-shadow: 0 8px 20px rgb(var(--shadow) / 0.07);
+    transform: translateY(-2px);
+  }
+}
+.pos-ghost-card:active { transform: scale(0.98); }
+.pos-ghost-card:disabled:hover { transform: none; box-shadow: 0 4px 12px rgb(var(--shadow) / 0.03); }
+
+/* The "pop": a product tapped into the cart springs past its resting
+   size and settles back, so the add is felt as well as seen. */
+@keyframes pos-pop {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+.pos-pop { animation: pos-pop 300ms cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+/* The cart sheet rises with a slight overshoot — the bouncy, premium
+   feel of a physical tray being pulled up. */
+@keyframes pos-sheet-in {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+.pos-sheet { animation: pos-sheet-in 300ms cubic-bezier(0.175, 0.885, 0.32, 1.275); will-change: transform; }
+
+/* Success checkmark: scales in from nothing with the same overshoot. */
+@keyframes pos-success-in {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+.pos-success-mark { animation: pos-success-in 300ms cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+
+/* A total that just changed (discount applied) flashes green once. */
+@keyframes pos-total-flash {
+  0%   { color: rgb(var(--fg)); }
+  25%  { color: rgb(var(--accent)); }
+  100% { color: rgb(var(--fg)); }
+}
+.pos-total-flash { animation: pos-total-flash 700ms ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pos-pop, .pos-sheet, .pos-success-mark, .pos-total-flash { animation: none; }
+  .pos-ghost-card, .pos-ghost-card:hover { transition: none; transform: none; }
+}
+
 /* ── Meraj is ALIVE ──
    A slow soft-glow "breath" behind the avatar so the assistant reads as
    thinking/listening rather than a static illustration. Pure opacity +

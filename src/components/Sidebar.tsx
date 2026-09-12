@@ -12,7 +12,7 @@ import {
 import {
   usePendingApprovals } from '../lib/approvals'
 import {
-  LayoutDashboard, BookOpen, ShoppingCart, Receipt, FileSignature, Users, Truck,
+  LayoutDashboard, BookOpen, ShoppingCart, Receipt, ReceiptText, FileSignature, Users, Truck,
   Sparkles, ListChecks, FileBarChart, MessageCircle, Mail, ScrollText, Database,
   Package, Wallet, History, AlertOctagon, UsersRound,
   Settings as SettingsIcon, Plug, Key, CreditCard, Network, Shield, LifeBuoy,
@@ -29,6 +29,7 @@ const CORE: Section[] = [
   { label: 'Today', items: [{ to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true }, { to: '/app/manifest', label: "Meraj's Plan", icon: CalendarClock, badge: true }] },
   { label: 'Sell', items: [
     { to: '/app/pos', label: 'New Sale', icon: ShoppingCart },
+    { to: '/app/sales', label: 'Transactions', icon: ReceiptText },
     { to: '/app/invoices', label: 'Bills', icon: Receipt },
     { to: '/app/khata', label: 'Khata', icon: BookOpen },
     { to: '/app/quotations', label: 'Quotations', icon: FileSignature },
