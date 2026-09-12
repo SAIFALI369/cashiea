@@ -204,10 +204,10 @@ export default function Customers() {
             onClick={() => { setForm(empty); setShowForm(true) }}
             aria-label="Add customer"
             title="Add customer"
-            className="w-10 h-10 rounded-full bg-fg text-paper flex items-center justify-center active:scale-95 transition-transform shadow-card lg:w-auto lg:px-4 lg:gap-1.5 lg:text-sm lg:font-semibold"
+            className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-accent text-white text-sm font-semibold shadow-soft hover:bg-accent-strong active:scale-95 transition-all"
           >
-            <Plus className="w-5 h-5 lg:w-4 lg:h-4" strokeWidth={2.5} />
-            <span className="hidden lg:inline">Add customer</span>
+            <Plus className="w-4 h-4" strokeWidth={2.5} />
+            Add
           </button>
         </HeaderAction>
       )}
@@ -330,25 +330,30 @@ export default function Customers() {
                     </span>
                   </div>
 
-                  {/* Line 2 — phone • email, one line, truncated */}
+                  {/* Line 2 — phone • email, one line, truncated cleanly */}
                   {contact.length > 0 && (
-                    <p className="text-[13px] text-fg-subtle truncate mt-0.5">
-                      {contact.join('  •  ')}
+                    <p className="text-xs text-fg-subtle truncate mt-0.5">
+                      {contact.map((item, i) => (
+                        <span key={i}>
+                          {i > 0 && <span className="mx-1 text-fg-subtle/60" aria-hidden="true">•</span>}
+                          {item}
+                        </span>
+                      ))}
                     </p>
                   )}
 
                   {/* Line 3 — metrics as plain text; the number that matters is bold */}
-                  <p className="text-[13px] text-fg-subtle mt-1.5">
-                    <span className="text-fg-muted">Spent </span>
-                    <span className="font-semibold text-fg tabular-nums">{formatINR(Number(c.total_spent || 0), 0)}</span>
+                  <p className="text-xs text-fg-subtle mt-1.5 whitespace-nowrap overflow-hidden text-ellipsis">
+                    <span className="text-fg-subtle">Spent </span>
+                    <span className="font-bold text-fg tabular-nums">{formatINR(Number(c.total_spent || 0), 0)}</span>
                     <span className="mx-1.5 text-line-2">|</span>
-                    <span className="text-fg-muted">Orders </span>
-                    <span className="font-semibold text-fg tabular-nums">{c.total_orders || 0}</span>
+                    <span className="text-fg-subtle">Orders </span>
+                    <span className="font-bold text-fg tabular-nums">{c.total_orders || 0}</span>
                     {c.last_purchase_at && (
                       <>
                         <span className="mx-1.5 text-line-2">|</span>
-                        <span className="text-fg-muted">Last </span>
-                        <span className="font-semibold text-fg">
+                        <span className="text-fg-subtle">Last </span>
+                        <span className="font-bold text-fg">
                           {new Date(c.last_purchase_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                         </span>
                       </>

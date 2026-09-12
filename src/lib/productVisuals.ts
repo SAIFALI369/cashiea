@@ -33,17 +33,21 @@ export interface ProductVisual {
  * legible on white and none of them competing with the accent green
  * reserved for prices and the charge button.
  */
+// Soft-filled plates (Tailwind's -50 tint on light, -950 on dark) with a
+// saturated -600/-300 glyph. Arbitrary hex values keep the palette
+// self-contained: the app-wide theme remaps every palette NAME onto the
+// semantic tokens, so the stock `bg-emerald-50` classes never resolve.
 const PALETTE = {
-  emerald: { tile: 'bg-emerald-50', fg: 'text-emerald-600' },
-  amber: { tile: 'bg-amber-50', fg: 'text-amber-600' },
-  rose: { tile: 'bg-rose-50', fg: 'text-rose-500' },
-  violet: { tile: 'bg-violet-50', fg: 'text-violet-500' },
-  sky: { tile: 'bg-sky-50', fg: 'text-sky-600' },
-  orange: { tile: 'bg-orange-50', fg: 'text-orange-500' },
-  teal: { tile: 'bg-teal-50', fg: 'text-teal-600' },
-  indigo: { tile: 'bg-indigo-50', fg: 'text-indigo-500' },
-  lime: { tile: 'bg-lime-50', fg: 'text-lime-600' },
-  fuchsia: { tile: 'bg-fuchsia-50', fg: 'text-fuchsia-500' },
+  emerald: { tile: 'bg-[#ECFDF5] dark:bg-[#064E3B]', fg: 'text-[#059669] dark:text-[#6EE7B7]' },
+  amber: { tile: 'bg-[#FFFBEB] dark:bg-[#451A03]', fg: 'text-[#D97706] dark:text-[#FCD34D]' },
+  rose: { tile: 'bg-[#FFF1F2] dark:bg-[#4C0519]', fg: 'text-[#E11D48] dark:text-[#FDA4AF]' },
+  violet: { tile: 'bg-[#F5F3FF] dark:bg-[#2E1065]', fg: 'text-[#7C3AED] dark:text-[#C4B5FD]' },
+  sky: { tile: 'bg-[#F0F9FF] dark:bg-[#082F49]', fg: 'text-[#0284C7] dark:text-[#7DD3FC]' },
+  orange: { tile: 'bg-[#FFF7ED] dark:bg-[#431407]', fg: 'text-[#EA580C] dark:text-[#FDBA74]' },
+  teal: { tile: 'bg-[#F0FDFA] dark:bg-[#042F2E]', fg: 'text-[#0D9488] dark:text-[#5EEAD4]' },
+  indigo: { tile: 'bg-[#EEF2FF] dark:bg-[#1E1B4B]', fg: 'text-[#4F46E5] dark:text-[#A5B4FC]' },
+  lime: { tile: 'bg-[#F7FEE7] dark:bg-[#1A2E05]', fg: 'text-[#65A30D] dark:text-[#BEF264]' },
+  fuchsia: { tile: 'bg-[#FDF4FF] dark:bg-[#4A044E]', fg: 'text-[#C026D3] dark:text-[#F0ABFC]' },
 } as const
 
 type PaletteKey = keyof typeof PALETTE
@@ -102,6 +106,48 @@ export function prettyCategory(raw: string): string {
   const demashed = s.replace(/^([a-z])\1{2,}(?=[a-z])/i, '')
   const base = demashed.length >= 3 ? demashed : s
   return base.charAt(0).toUpperCase() + base.slice(1)
+}
+
+/**
+ * Canonical category — the clean, stable label used to BUILD the tabs and
+ * FILTER the grid. Free-text category entry produces junk like "Generally",
+ * "General", "Fffgeneral" that would otherwise render as three different
+ * tabs for one idea. This collapses known aliases onto a small, real set
+ * (Grocery / Stationery / Electronics / Drinks) and title-cases anything
+ * unrecognised — so the tab strip is always tidy without rewriting the
+ * stored value.
+ */
+const CATEGORY_ALIASES: Record<string, string> = {
+  general: 'Grocery',
+  generally: 'Grocery',
+  generalitems: 'Grocery',
+  'general items': 'Grocery',
+  grocery: 'Grocery',
+  groceries: 'Grocery',
+  kirana: 'Grocery',
+  staples: 'Grocery',
+  stationery: 'Stationery',
+  stationary: 'Stationery',
+  'office supplies': 'Stationery',
+  electronic: 'Electronics',
+  electronics: 'Electronics',
+  gadget: 'Electronics',
+  gadgets: 'Electronics',
+  drink: 'Drinks',
+  drinks: 'Drinks',
+  beverage: 'Drinks',
+  beverages: 'Drinks',
+  'cold drink': 'Drinks',
+  'cold drinks': 'Drinks',
+}
+
+export function canonicalCategory(raw?: string | null): string {
+  const s = String(raw || '').trim().replace(/\s+/g, ' ')
+  if (!s) return 'Grocery'
+  const demashed = s.replace(/^([a-z])\1{2,}(?=[a-z])/i, '')
+  const key = (demashed.length >= 2 ? demashed : s).toLowerCase()
+  if (key === 'all') return 'All'
+  return CATEGORY_ALIASES[key] ?? key.charAt(0).toUpperCase() + key.slice(1)
 }
 
 /** Future-proofing: read a photo URL if the row ever carries one. */

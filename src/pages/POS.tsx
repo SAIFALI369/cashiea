@@ -16,7 +16,7 @@ import {
 import { holdCart, listHeldCarts, deleteHeldCart, type HeldCartSnapshot } from '../lib/heldCarts'
 import type { Product, Customer, PaymentMethod, HeldCart } from '../lib/types'
 import { enrichCustomers, type Customer360 } from '../lib/customer360'
-import { prettyCategory } from '../lib/productVisuals'
+import { canonicalCategory } from '../lib/productVisuals'
 import { parseVoiceOrder, matchProduct } from '../lib/voiceOrder'
 import { topCompanion, companionTip, type BasketTxn } from '../lib/basketAffinity'
 import PageHeader from '../components/ui/PageHeader'
@@ -171,7 +171,7 @@ export default function POS() {
   }, [ownerId, selectedCustomer])
 
   const categories = useMemo(() => {
-    const set = new Set(products.map((p) => p.category || 'general'))
+    const set = new Set(products.map((p) => canonicalCategory(p.category)))
     return ['all', ...Array.from(set)]
   }, [products])
 
@@ -193,7 +193,7 @@ export default function POS() {
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
-      const matchCat = activeCategory === 'all' || p.category === activeCategory
+      const matchCat = activeCategory === 'all' || canonicalCategory(p.category) === activeCategory
       const matchSearch = !search ||
         p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
         (p.sku || '').toLowerCase().includes(debouncedSearch.toLowerCase())
@@ -725,27 +725,28 @@ export default function POS() {
                     <input
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      className="w-full h-14 pl-12 pr-[5.5rem] rounded-2xl bg-surface-2 text-fg placeholder:text-fg-subtle border-0 focus:ring-2 focus:ring-accent/40 focus:outline-none text-sm"
+                      className="w-full h-14 pl-12 pr-24 rounded-control bg-surface-2 text-fg placeholder:text-fg-subtle border-0 focus:ring-2 focus:ring-accent/40 focus:outline-none text-sm"
                       placeholder="Scan barcode or search products..."
                       aria-label="Scan barcode or search products"
                       onKeyDown={(e) => e.key === 'Enter' && search.trim() && handleBarcodeDetect(search.trim())}
                     />
-                    {/* Voice + scan, high-contrast, inside the right edge */}
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    {/* Voice + barcode scan — quiet glyphs, no chrome, inside the right edge */}
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
                       <button
                         onClick={startVoiceAdd}
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${listening ? 'bg-accent text-white animate-pulse' : 'text-fg-subtle hover:text-fg'}`}
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${listening ? 'bg-accent text-white animate-pulse' : 'text-fg-subtle hover:text-fg'}`}
                         aria-label={listening ? 'Listening — say what to add' : 'Add by voice'}
                         title="Add by voice"
                       >
-                        <Mic className="w-4 h-4" />
+                        <Mic className="w-5 h-5" />
                       </button>
                       <button
                         onClick={() => setShowScanner(true)}
-                        className="h-10 px-3 rounded-xl bg-fg text-white flex items-center gap-1.5 text-xs font-bold active:scale-[0.97] transition-transform"
+                        className="w-10 h-10 rounded-xl flex items-center justify-center text-fg-subtle hover:text-fg transition-colors active:scale-95"
                         aria-label="Scan barcode with the camera"
+                        title="Scan barcode"
                       >
-                        <ScanLine className="w-4 h-4" /> Scan
+                        <ScanLine className="w-5 h-5" />
                       </button>
                     </div>
                   </div>
@@ -780,7 +781,7 @@ export default function POS() {
                   </div>
                 )}
 
-                {/* Category tabs — text only, dot under the active one */}
+                {/* Category tabs — text only, green dot under the active one */}
                 <div className="flex gap-5 mt-3 overflow-x-auto no-scrollbar scroll-smooth snap-x">
                   {categories.map((cat) => (
                     <button
@@ -788,12 +789,12 @@ export default function POS() {
                       onClick={() => setActiveCategory(cat)}
                       aria-pressed={activeCategory === cat}
                       className={`relative pb-2 text-sm whitespace-nowrap flex-shrink-0 snap-start transition-colors ${
-                        activeCategory === cat ? 'font-bold text-fg' : 'font-normal text-fg-subtle hover:text-fg-muted'
+                        activeCategory === cat ? 'font-bold text-fg' : 'font-normal text-fg-subtle hover:text-fg'
                       }`}
                     >
-                      {prettyCategory(cat)}
+                      {canonicalCategory(cat)}
                       {activeCategory === cat && (
-                        <span className="absolute -bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-fg" aria-hidden="true" />
+                        <span className="absolute -bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-accent" aria-hidden="true" />
                       )}
                     </button>
                   ))}

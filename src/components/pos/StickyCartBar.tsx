@@ -25,7 +25,7 @@ export function StickyCartBar({
   if (!active) {
     return (
       <div className="lg:hidden fixed inset-x-0 z-30 px-3" style={{ bottom: 'calc(env(safe-area-inset-bottom) + 58px)' }}>
-        <div className="mb-1 rounded-2xl bg-surface/80 backdrop-blur px-4 py-2.5 flex items-center gap-2.5 shadow-sm">
+        <div className="mb-1 rounded-2xl bg-surface/80 backdrop-blur px-4 py-2.5 flex items-center gap-2.5 shadow-nav">
           <ShoppingCart className="w-4 h-4 text-fg-subtle flex-shrink-0" />
           <span className="text-sm text-fg-subtle">Cart is empty. Add items to get started.</span>
         </div>
