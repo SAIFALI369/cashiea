@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import { filterNav, countNav } from '../lib/navSearch'
 import clsx from 'clsx'
 import ThemeToggle from './ThemeToggle'
 import { can } from '../lib/permissions'
@@ -16,7 +17,7 @@ import {
   Sparkles, ListChecks, FileBarChart, MessageCircle, Mail, ScrollText, Database,
   Package, Wallet, History, AlertOctagon, UsersRound,
   Settings as SettingsIcon, Plug, Key, CreditCard, Network, Shield, LifeBuoy,
-  UserCircle, Bell, ShieldCheck, Lightbulb, X, LogOut, ChevronDown, ChevronRight,
+  UserCircle, Bell, Search, ShieldCheck, Lightbulb, X, LogOut, ChevronDown, ChevronRight,
   TrendingUp, Landmark, RefreshCw, LineChart, CalendarClock, Copy, Share2, Flame, Tag, ClipboardCheck, Megaphone, Zap } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { drawerShouldDismiss } from '../lib/gestures'
@@ -96,12 +97,14 @@ const MORE: Section[] = [
 ]
 
 export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const [navQuery, setNavQuery] = useState('')
   const { profile, ownerId, signOut } = useAuth()
   const navigate = useNavigate()
   const [failedCount, setFailedCount] = useState(0)
   // More Tools is EXPANDED by default — Suppliers, Staff, AI Tools and
   // Campaigns are discoverable from the first visit. The choice sticks.
   const [showMore, setShowMore] = useState(() => {
+  const [navQuery, setNavQuery] = useState('')
     try { return localStorage.getItem('cashiea_sidebar_more') !== '0' } catch { return true }
   })
   const [collapsed, setCollapsed] = useState(false)
@@ -271,14 +274,32 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
           </div>
         </div>
 
+        {!collapsed && (
+          <div className="relative px-3 pb-2">
+            <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-fg-subtle pointer-events-none" />
+            <input
+              type="search"
+              value={navQuery}
+              onChange={(e) => setNavQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Escape') setNavQuery('') }}
+              placeholder="Search features..."
+              aria-label="Search features"
+              className="h-9 w-full pl-9 pr-3 rounded-lg bg-surface-2 border-0 text-sm text-fg placeholder:text-fg-subtle focus:ring-2 focus:ring-accent/40 focus:outline-none"
+            />
+          </div>
+        )}
         <nav className="flex-1 overflow-y-auto scroll-area px-3 py-4 space-y-5">
           {/* Core — always visible */}
-          {CORE.map((section) => (
-            <div key={section.label}>
-              <p className={clsx("px-3 mb-1.5 text-[10px] font-bold tracking-[0.12em] uppercase text-fg-subtle", collapsed && "lg:hidden")}>{section.label}</p>
-              <div className="space-y-0.5">{section.items.map(renderItem)}</div>
-            </div>
-          ))}
+          {CORE.map((section) => {
+            const items = filterNav(section.items, navQuery)
+            if (navQuery.trim() && !items.length) return null
+            return (
+              <div key={section.label}>
+                <p className={clsx("px-3 mb-2 text-[11px] font-semibold uppercase tracking-[1px] text-fg-subtle/80", collapsed && "lg:hidden")}>{section.label}</p>
+                <div className="space-y-0.5">{items.map(renderItem)}</div>
+              </div>
+            )
+          })}
 
           {/* More Tools — expanded by default, collapsible (choice persists) */}
           <div>
@@ -293,17 +314,24 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
                 <span className="ml-auto bg-negative text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{failedCount > 9 ? '9+' : failedCount}</span>
               )}
             </button>
-            {showMore && (
+            {(showMore || !!navQuery.trim()) && (
               <div className="space-y-4 mt-2 pl-2 border-l border-line/50">
-                {MORE.map((section) => (
-                  <div key={section.label}>
-                    <p className={clsx("px-3 mb-1.5 text-[10px] font-bold tracking-[0.12em] uppercase text-fg-subtle", collapsed && "lg:hidden")}>{section.label}</p>
-                    <div className="space-y-0.5">{section.items.map(renderItem)}</div>
-                  </div>
-                ))}
+                {MORE.map((section) => {
+                  const items = filterNav(section.items, navQuery)
+                  if (navQuery.trim() && !items.length) return null
+                  return (
+                    <div key={section.label}>
+                      <p className={clsx("px-3 mb-2 text-[11px] font-semibold uppercase tracking-[1px] text-fg-subtle/80", collapsed && "lg:hidden")}>{section.label}</p>
+                      <div className="space-y-0.5">{items.map(renderItem)}</div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
+{navQuery.trim() && countNav([...CORE, ...MORE], navQuery) === 0 && (
+            <p className="px-3 py-6 text-sm text-fg-subtle">Nothing matches &quot;{navQuery.trim()}&quot; — try &quot;udhaar&quot;, &quot;stock&quot; or &quot;bill&quot;.</p>
+          )}
         </nav>
 
         <div className="p-3 border-t border-line">
