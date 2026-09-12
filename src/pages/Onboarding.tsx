@@ -320,7 +320,7 @@ export default function Onboarding() {
                         onClick={() => {
                           // Leave INSTANTLY — no RPC may ever block navigation.
                           navigate('/app')
-                          void supabase.rpc('update_onboarding_step', { step: 4, data: {} }).catch(() => { /* retried next launch if needed */ })
+                          void (async () => { try { await supabase.rpc('update_onboarding_step', { step: 4, data: {} }) } catch { /* retried next launch if needed */ } })()
                         }}
                         className="btn-secondary text-sm"
                       >
