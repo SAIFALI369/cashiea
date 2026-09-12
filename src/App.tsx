@@ -8,6 +8,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import AppLayout from './components/AppLayout'
 import ErrorBoundary from './components/ErrorBoundary'
 import PageMetaSync from './components/PageMetaSync'
+import StructuredData from './components/StructuredData'
 import NotFound from './pages/NotFound'
 import SetupScreen from './components/SetupScreen'
 
@@ -34,6 +35,7 @@ const Pricing = lazy(() => import('./pages/Pricing'))
 const Scorecard = lazy(() => import('./pages/Scorecard'))
 const Social = lazy(() => import('./pages/Social'))
 const CommandCenter = lazy(() => import('./pages/CommandCenter'))
+const Vasooli = lazy(() => import('./pages/Vasooli'))
 const Summaries = lazy(() => import('./pages/Summaries'))
 const EmailAssistant = lazy(() => import('./pages/EmailAssistant'))
 const Campaigns = lazy(() => import('./pages/Campaigns'))
@@ -114,6 +116,7 @@ function App() {
     <ErrorBoundary>
     <Suspense fallback={<FullPageFallback />}>
       <PageMetaSync />
+      <StructuredData />
       <Routes>
         {/* Public */}
         <Route path="/" element={user ? <Navigate to="/app" replace /> : <Landing />} />
@@ -184,6 +187,7 @@ function App() {
           <Route path="gst-export" element={<GstExport />} />
           <Route path="manifest" element={<Manifest />} />
           <Route path="command-center" element={<CommandCenter />} />
+          <Route path="vasooli" element={<Vasooli />} />
           <Route path="auto-reorder" element={<AutoReorder />} />
           <Route path="cash-flow" element={<CashFlow />} />
           <Route path="reminders" element={<Reminders />} />

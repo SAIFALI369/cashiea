@@ -243,6 +243,25 @@ export default function Dashboard() {
     })()
   }, [profile])
 
+  // ── HERO COUNTER — "Meraj recovered ₹X this month" (corner chip, free tier).
+  //    Sum of Meraj's collection activity (ar_escalation money) this month;
+  //    hidden entirely when there's nothing to show — never disturbs the hero. ──
+  const [recovered, setRecovered] = useState(0)
+  useEffect(() => {
+    if (!profile?.id) return
+    const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0)
+    ;(async () => {
+      try {
+        const { data } = await supabase.from('automation_events').select('money_impact')
+          .eq('user_id', profile.id).eq('type', 'ar_escalation')
+          .gte('created_at', monthStart.toISOString()).limit(300)
+        setRecovered((data || []).reduce((s: number, e: any) => s + Number(e.money_impact || 0), 0))
+      } catch { /* chip stays hidden */ }
+    })()
+  }, [profile?.id])
+
+  const firstName = (profile?.full_name || 'there').split(' ')[0]
+
   const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
   const maxDay = Math.max(1, ...daily, ...dailyExp)
   const todayIdx = (new Date().getDay() + 6) % 7
@@ -269,9 +288,16 @@ export default function Dashboard() {
       <button
         onClick={() => navigate('/app/reports')}
         aria-label="Today's revenue — open the daily breakdown"
-        className="card w-full text-left p-5 sm:p-6 animate-rise-in"
+        className="card relative w-full text-left p-5 sm:p-6 animate-rise-in"
         style={{ animationDelay: '60ms' }}
       >
+        {/* Meraj's collection win this month — kept from main. Hidden when
+            there is nothing recovered, so it never disturbs the hero. */}
+        {recovered > 0 && (
+          <div className="absolute right-3 top-3 rounded-full bg-positive/10 px-3 py-1.5 text-[10px] sm:text-[11px] font-bold text-positive">
+            Meraj recovered {formatINR(recovered, 0)} this month
+          </div>
+        )}
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-sm text-fg-subtle">Today's Revenue</p>

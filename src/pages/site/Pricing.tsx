@@ -3,6 +3,7 @@ import { Check, ArrowRight, ShieldCheck, Lock, WifiOff, Zap } from 'lucide-react
 import PublicPageShell, { SectionEyebrow, Mono } from '../../components/PublicPageShell'
 import { PLANS } from '../../lib/types'
 import { formatINR } from '../../lib/format'
+import { PRICING_FAQS } from '../../lib/faqs'
 
 // ────────────────────────────────────────────────────────────────
 // Public pricing page. Plans, prices and feature lists render
@@ -38,11 +39,8 @@ const COMPARE = [
   },
 ] as const
 
-const FAQS = [
-  { q: 'Can I try it before paying?', a: 'Yes — the ₹0 plan is your 14-day trial with 50 AI actions. No card required.' },
-  { q: 'Can I cancel anytime?', a: 'Yes. No lock-in contracts, no setup fees, no hidden charges. Cancel from your dashboard.' },
-  { q: 'Any setup fees?', a: 'None. One price per plan, everything listed included. GST as applicable.' },
-]
+// Shared with the FAQPage JSON-LD emitted for /pricing.
+const FAQS = PRICING_FAQS
 
 export default function SitePricing() {
   return (

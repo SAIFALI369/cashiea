@@ -152,6 +152,10 @@ const PAGE_CONTEXT: Record<string, PageContextInfo> = {
     name: 'Command Center',
     description: 'autonomous actions with receipts, guardrails and undo',
   },
+  '/app/vasooli': {
+    name: 'Vasooli Round',
+    description: 'Meraj\'s collection round — drafts you approve before anything sends',
+  },
   '/app/auto-reorder': {
     name: 'Auto-reorder',
     description: 'velocity-based stock reorder suggestions and draft purchase orders sized from recent sales',

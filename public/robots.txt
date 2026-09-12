@@ -1,8 +1,161 @@
-# Cashiea — public marketing/content pages are crawlable; the
-# authenticated application (/app/) must never be indexed.
+# ─────────────────────────────────────────────────────────────
+# Cashiea — https://cashiea.vercel.app
+# Public marketing, help and blog pages are fully crawlable by
+# search engines AND by AI answer engines / LLM training-and-
+# retrieval bots. The authenticated application (/app/) is the
+# only disallowed area — it contains private business data.
+#
+# AI/LLM overview for agents:  https://cashiea.vercel.app/llms.txt
+# ─────────────────────────────────────────────────────────────
 
 User-agent: *
 Allow: /
 Disallow: /app/
+Disallow: /auth/callback
+
+# ── Classic search crawlers ──────────────────────────────────
+User-agent: Googlebot
+Allow: /
+Disallow: /app/
+
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+Disallow: /app/
+
+User-agent: DuckDuckBot
+Allow: /
+Disallow: /app/
+
+User-agent: Slurp
+Allow: /
+Disallow: /app/
+
+User-agent: YandexBot
+Allow: /
+Disallow: /app/
+
+User-agent: Baiduspider
+Allow: /
+Disallow: /app/
+
+# ── AI answer engines & assistants (explicitly welcomed) ─────
+# Google AI Overviews / Gemini grounding
+User-agent: Google-Extended
+Allow: /
+Disallow: /app/
+
+User-agent: GoogleOther
+Allow: /
+Disallow: /app/
+
+# OpenAI: training, live browsing, and the SearchGPT index
+User-agent: GPTBot
+Allow: /
+Disallow: /app/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /app/
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /app/
+
+# Anthropic (Claude)
+User-agent: ClaudeBot
+Allow: /
+Disallow: /app/
+
+User-agent: Claude-Web
+Allow: /
+Disallow: /app/
+
+User-agent: Claude-User
+Allow: /
+Disallow: /app/
+
+User-agent: Claude-SearchBot
+Allow: /
+Disallow: /app/
+
+User-agent: anthropic-ai
+Allow: /
+Disallow: /app/
+
+# Perplexity
+User-agent: PerplexityBot
+Allow: /
+Disallow: /app/
+
+User-agent: Perplexity-User
+Allow: /
+Disallow: /app/
+
+# Microsoft Copilot
+User-agent: BingPreview
+Allow: /
+
+# Apple Intelligence / Siri
+User-agent: Applebot
+Allow: /
+Disallow: /app/
+
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /app/
+
+# Meta AI
+User-agent: FacebookBot
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+Disallow: /app/
+
+# Amazon, ByteDance, Mistral, You.com, Common Crawl (LLM datasets)
+User-agent: Amazonbot
+Allow: /
+Disallow: /app/
+
+User-agent: Bytespider
+Allow: /
+Disallow: /app/
+
+User-agent: MistralAI-User
+Allow: /
+Disallow: /app/
+
+User-agent: YouBot
+Allow: /
+Disallow: /app/
+
+User-agent: CCBot
+Allow: /
+Disallow: /app/
+
+User-agent: Diffbot
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+User-agent: Timpibot
+Allow: /
+
+# ── Social / link unfurlers ──────────────────────────────────
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: WhatsApp
+Allow: /
+
+User-agent: TelegramBot
+Allow: /
 
 Sitemap: https://cashiea.vercel.app/sitemap.xml
