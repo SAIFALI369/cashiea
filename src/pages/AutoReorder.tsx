@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useCan } from '../lib/permissions'
-import { supabase } from '../lib/supabase'
+import { supabase, edgeFunctionUrl } from '../lib/supabase'
 import { formatINR } from '../lib/format'
 import { nextDocNumber } from '../lib/docnum'
 import {
@@ -14,7 +14,7 @@ import PageHeader from '../components/ui/PageHeader'
 import { StatStrip } from '../components/ui/StatStrip'
 import EmptyState from '../components/ui/EmptyState'
 import {
-  AlertTriangle, Check, Loader2, Package, RefreshCw, Truck, Wallet,
+  AlertTriangle, Check, Loader2, Package, RefreshCw, Send, Truck, Wallet,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -26,7 +26,7 @@ const URGENCY: Record<ReorderUrgency, { label: string; cls: string }> = {
 }
 
 export default function AutoReorder() {
-  const { ownerId } = useAuth()
+  const { ownerId, profile } = useAuth()
   const { isOwner } = useCan()
   const [loading, setLoading] = useState(true)
   const [products, setProducts] = useState<Product[]>([])
@@ -38,6 +38,41 @@ export default function AutoReorder() {
   const [supplierId, setSupplierId] = useState('')
   const [saving, setSaving] = useState(false)
   const [drafts, setDrafts] = useState<PurchaseOrder[]>([])
+  const [sendingPo, setSendingPo] = useState<string | null>(null)
+
+  /** RESTOCK: send a draft PO to its distributor on WhatsApp in one tap,
+   *  then mark it ordered. The replenishment loop's last mile. */
+  const sendPo = async (po: PurchaseOrder) => {
+    setSendingPo(po.id)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Sign in first')
+      const sup = suppliers.find((x: any) => x.id === po.supplier_id) as any
+      const phone = sup?.phone
+      if (!phone) { toast.error('No phone on this order\'s supplier — add it under Suppliers first.'); return }
+      const items = (po.items || []) as any[]
+      const msg = [
+        `Order from ${profile?.company_name || 'our shop'} — ${po.po_number}:`, '',
+        ...items.slice(0, 20).map((i: any) => `• ${i.name} × ${i.quantity}`), '',
+        po.total ? `Total: ₹${Math.round(Number(po.total)).toLocaleString('en-IN')}` : 'Prices as discussed.',
+        'Please confirm delivery. Dhanyavaad 🙏',
+      ].join('\n')
+      const res = await fetch(edgeFunctionUrl('whatsapp-send'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ to: phone, message: msg }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || `Send failed (${res.status})`)
+      await supabase.from('purchase_orders').update({ status: 'ordered' }).eq('id', po.id)
+      setDrafts((ds) => ds.filter((x) => x.id !== po.id))
+      toast.success(`${po.po_number} sent to ${sup?.name || 'the distributor'}`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Send failed')
+    } finally {
+      setSendingPo(null)
+    }
+  }
 
   useEffect(() => {
     if (!ownerId) return
@@ -54,6 +89,12 @@ export default function AutoReorder() {
       setProducts((p.data as Product[]) || [])
       setTxns((t.data as Transaction[]) || [])
       setSuppliers((s.data as Supplier[]) || [])
+      // Supplier phones separately — a missing column must never break the page
+      try {
+        const sp = await supabase.from('suppliers').select('id,phone').eq('user_id', ownerId).limit(200)
+        const pm = new Map(((sp.data || []) as any[]).map((x) => [x.id, x.phone]))
+        setSuppliers((prev) => prev.map((x: any) => ({ ...x, phone: pm.get(x.id) })))
+      } catch { /* phone column optional */ }
       setDrafts((po.data as PurchaseOrder[]) || [])
       setLoading(false)
     })()
@@ -197,6 +238,43 @@ export default function AutoReorder() {
             {!isOwner && <p className="text-[11px] text-fg-subtle mt-2">Only the owner can create the purchase order.</p>}
           </div>
         </>
+      )}
+
+      {/* ── RESTOCK: draft orders ready to send to the distributor ── */}
+      {drafts.length > 0 && (
+        <div className="card p-4 mt-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-fg-subtle mb-3">Draft orders — one tap to send</p>
+          <div className="space-y-2">
+            {drafts.map((d) => {
+              const sup = suppliers.find((x: any) => x.id === d.supplier_id) as any
+              const items = (d.items || []) as any[]
+              return (
+                <div key={d.id} className="rounded-xl border border-line bg-surface-2/40 p-3 flex flex-wrap items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-fg">
+                      {d.po_number || 'Draft'}
+                      <span className="text-fg-subtle font-normal"> · {items.length} item{items.length === 1 ? '' : 's'}</span>
+                      {d.total ? <span className="text-fg-muted font-normal"> · ₹{Math.round(Number(d.total)).toLocaleString('en-IN')}</span> : null}
+                    </p>
+                    <p className="text-[11px] text-fg-subtle mt-0.5 truncate">
+                      {items.slice(0, 4).map((i: any) => `${i.name} ×${i.quantity}`).join(', ')}{items.length > 4 ? ` +${items.length - 4} more` : ''}
+                      {sup?.name ? ` · for ${sup.name}` : ' · no supplier set'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => sendPo(d)}
+                    disabled={sendingPo === d.id || !isOwner}
+                    className="btn-primary !py-1.5 text-xs"
+                  >
+                    {sendingPo === d.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                    Send on WhatsApp
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+          {!isOwner && <p className="text-[11px] text-fg-subtle mt-2">Only the owner can send orders.</p>}
+        </div>
       )}
     </div>
   )
