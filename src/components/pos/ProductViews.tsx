@@ -61,14 +61,14 @@ export function ProductGlyph({
 
   if (img) {
     return (
-      <div className={`${box} rounded-xl overflow-hidden flex-shrink-0 bg-surface-2`}>
+      <div className={`${box} rounded-full overflow-hidden flex-shrink-0 bg-surface-2`}>
         <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" />
       </div>
     )
   }
   return (
-    <div className={`${box} rounded-xl ${tile} ${fg} flex items-center justify-center flex-shrink-0`} aria-hidden="true">
-      <Icon className={glyph} strokeWidth={1.9} />
+    <div className={`${box} rounded-full ${tile} ${fg} flex items-center justify-center flex-shrink-0`} aria-hidden="true">
+      <Icon className={glyph} strokeWidth={2} />
     </div>
   )
 }
@@ -104,7 +104,7 @@ export function ProductCard({ product, onAdd }: { product: Product; onAdd: (p: P
 
       <div className="min-w-0">
         <p className="text-sm font-semibold text-fg-muted leading-snug line-clamp-2 min-h-[2.5rem]">{product.name}</p>
-        <p className="text-base font-bold text-accent leading-none mt-1">
+        <p className="text-lg font-bold text-accent leading-none mt-1">
           {formatINR(product.price)}
           {product.units && product.units.length > 1 && (
             <span className="text-[10px] font-medium text-fg-subtle ml-1">/{product.units[0].unit}</span>
@@ -112,10 +112,10 @@ export function ProductCard({ product, onAdd }: { product: Product; onAdd: (p: P
         </p>
       </div>
 
-      {/* Floating add affordance */}
+      {/* Floating add affordance — solid green square, vertically centred */}
       <span
         aria-hidden="true"
-        className="absolute bottom-2.5 right-2.5 w-7 h-7 rounded-full bg-accent text-white flex items-center justify-center shadow-sm opacity-90 group-hover:opacity-100 transition-opacity"
+        className="absolute bottom-2.5 right-2.5 w-8 h-8 rounded-lg bg-accent text-white flex items-center justify-center shadow-sm opacity-90 group-hover:opacity-100 transition-opacity"
       >
         <Plus className="w-4 h-4" strokeWidth={3} />
       </span>
@@ -139,13 +139,13 @@ export function ProductRow({ product, onAdd }: { product: Product; onAdd: (p: Pr
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-fg-muted truncate">{product.name}</p>
         <p className="text-xs text-fg-subtle truncate">
-          {product.sku ? `SKU ${product.sku} · ` : ''}
+          {product.sku ? `SKU: ${product.sku} · ` : ''}
           <span className={st === 'out' ? 'text-negative' : st === 'low' ? 'text-warning' : 'text-fg-subtle'}>
             {st === 'out' ? 'Out of stock' : st === 'low' ? `${product.stock_quantity} left` : `${product.stock_quantity} in stock`}
           </span>
         </p>
       </div>
-      <p className="text-base font-bold text-accent whitespace-nowrap">{formatINR(product.price)}</p>
+      <p className="text-lg font-bold text-accent whitespace-nowrap">{formatINR(product.price)}</p>
       <button
         onClick={fire}
         disabled={st === 'out'}

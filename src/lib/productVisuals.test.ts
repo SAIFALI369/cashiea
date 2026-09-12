@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { productVisual, prettyCategory, productImageUrl } from './productVisuals'
+import { productVisual, prettyCategory, productImageUrl, canonicalCategory } from './productVisuals'
 
 describe('productVisual', () => {
   it('gives different categories different colours', () => {
@@ -67,6 +67,35 @@ describe('prettyCategory', () => {
 
   it('collapses internal whitespace', () => {
     expect(prettyCategory('home   care')).toBe('Home care')
+  })
+})
+
+describe('canonicalCategory', () => {
+  it('collapses the messy "general" family onto Grocery', () => {
+    expect(canonicalCategory('fffgeneral')).toBe('Grocery')
+    expect(canonicalCategory('Generally')).toBe('Grocery')
+    expect(canonicalCategory('General')).toBe('Grocery')
+    expect(canonicalCategory('general')).toBe('Grocery')
+  })
+
+  it('maps known categories onto clean names', () => {
+    expect(canonicalCategory('grocery')).toBe('Grocery')
+    expect(canonicalCategory('stationery')).toBe('Stationery')
+    expect(canonicalCategory('stationary')).toBe('Stationery')
+    expect(canonicalCategory('electronics')).toBe('Electronics')
+    expect(canonicalCategory('drinks')).toBe('Drinks')
+    expect(canonicalCategory('beverages')).toBe('Drinks')
+  })
+
+  it('keeps "All" and title-cases unknown categories', () => {
+    expect(canonicalCategory('all')).toBe('All')
+    expect(canonicalCategory('medicine')).toBe('Medicine')
+  })
+
+  it('falls back to Grocery for empty input', () => {
+    expect(canonicalCategory('')).toBe('Grocery')
+    expect(canonicalCategory(null)).toBe('Grocery')
+    expect(canonicalCategory(undefined)).toBe('Grocery')
   })
 })
 
