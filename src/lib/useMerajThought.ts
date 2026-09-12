@@ -33,29 +33,31 @@ function istNow(): Date { return new Date(Date.now() + 5.5 * 3600000) }
 function istDateStr(): string { return istNow().toISOString().split('T')[0] }
 
 // ── Built-in template pool (22; 10 rotate in per day by day-of-year) ──
+// STRATEGIC, never fluffy: every thought pairs a live number with a decision
+// or an action — collect, price, stock, pace, or protect margin.
 const BUILTINS: string[] = [
-  'Today we sold {todaySales} of goods — bravo, we are in profit! 🤗',
-  'Loss will be recovered, take it easy. Tomorrow is another day. 🌱',
-  '{todayBills} bills today totalling {todaySales} — the shop is alive!',
-  'This week we made {weekSales} — every bill counts. Keep going!',
-  'You have {overdueCount} invoices worth {overdueSum} waiting. One reminder can unlock it.',
-  'Only {lowStock} items need reorder — I already sized the draft PO.',
-  'We are {weekProfit} in profit this week. Proud of this shop!',
-  'A tough day at {todaySales}? Every big shop started exactly here.',
-  'Cash to collect: {overdueSum}. Let us chase it together tomorrow.',
-  'Today felt quiet but the week holds {weekSales} — steadiness wins.',
-  'Loss day? Expenses crossed {todaySales}. It happens to the best — we recover.',
-  '{todayBills} happy customers today. They came back for a reason.',
-  'Profit so far this week: {weekProfit}. Small margins, big dreams.',
-  'Your stock is {lowStock} items from perfect. Five minutes, sorted.',
-  '{overdueCount} payments pending — I drafted polite reminders already.',
-  'We crossed {todaySales} today. Consistency is our superpower.',
-  'The week is not over — {weekSales} banked, more to come.',
-  'Every rupee today: {todaySales}. Tomorrow we beat it together.',
-  'Slow days build patience, profit days build confidence. Onward!',
-  '{overdueSum} is waiting with your customers — a gentle nudge works.',
-  'Today we served {todayBills} bills. That is {todayBills} smiles.',
-  'Business is a marathon — this week you ran {weekSales} strong.',
+  '{overdueSum} is waiting across {overdueCount} bills — the top three debtors usually hold most of it. The Vasooli Round is drafted; one tap sends it.',
+  'Collection beats new sales today: recovering {overdueSum} is worth more than a full day at the counter.',
+  '{todaySales} from {todayBills} bills today. If profit feels thin, the leak is usually expenses, not pricing — the 9pm report will show it.',
+  'Week at {weekSales}. Same effort, smarter chasing — that is the whole game this week.',
+  '{lowStock} items are near empty. Every empty shelf today is a lost sale tomorrow — the reorder draft is ready.',
+  'Profit this week: {weekProfit}. Protect it — one big udhaar to a chronic late-payer can erase a good week.',
+  '{overdueCount} pending bills is a warning, not a number. Past 20 days, recovery gets twice as hard — chase early.',
+  'Today: {todaySales}. Check what your best-seller did — doubling down on winners beats fixing losers.',
+  'Cash timing beats cash amount. {overdueSum} collected this week changes what you can buy next week.',
+  '{todayBills} bills today — how many were repeat customers? Regulars are the cheapest growth you have.',
+  'Profit {weekProfit} this week. Margin check: did any top item quietly drop below cost plus buffer?',
+  '{lowStock} reorders pending. Stock-outs push customers to the next shop — availability is marketing.',
+  '{overdueSum} pending. Offer the biggest debtor a split payment today — partial money beats perfect money.',
+  'Today {todaySales}, week {weekSales}. If today lagged, check the busy hours — staff the peak, skip the dead hours.',
+  'A quiet day at {todaySales} is a planning day: prices, stock, reminders — three levers that cost nothing.',
+  '{overdueCount} bills overdue. The 8-to-20 day ones are the winnable ones — chase those first, firmly.',
+  'Weekly rhythm: {weekSales} banked. Set tomorrow\'s first task before closing today — momentum compounds.',
+  'Profit {weekProfit} this week. Before buying new stock, collect {overdueSum} — the cheapest capital is your own money.',
+  'Today: {todayBills} customers. Each costs nothing to keep and a fortune to replace — use their name at the counter.',
+  '{lowStock} items low, {overdueSum} uncollected. Twenty minutes on both beats an hour of browsing suppliers.',
+  'Sales {todaySales} today. Compare margin, not just total — the biggest bill is not always the best bill.',
+  'Which single item made the most profit this week? Whatever it is — stock more of it. Week total: {weekSales}.',
 ]
 
 const COMFORT_HINTS = ['loss', 'recover', 'tough', 'take it easy', 'slow day']
