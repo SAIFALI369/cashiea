@@ -63,7 +63,9 @@ export default function AppLayout() {
   const isSubPage = pageHeaderName !== 'Cashiea'
   // Bottom nav lives ONLY on the Dashboard and the Meraj AI page — every
   // other page gets full-screen focus (the header back-arrow is the way out).
-  const showMobileNav = location.pathname === '/app' || location.pathname === '/app/assistant'
+  // Meraj's page is fully immersive (its own composer rides the keyboard) —
+  // the global nav stays OFF there; it lives on the Dashboard only.
+  const showMobileNav = location.pathname === '/app'
   const goBack = () => {
     if (window.history.state && window.history.state.idx > 0) navigate(-1)
     else navigate('/app')
