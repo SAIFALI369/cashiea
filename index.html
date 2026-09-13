@@ -73,17 +73,41 @@
   <body>
     <div id="root"></div>
     <noscript>
-      <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: system-ui, sans-serif; padding: 24px; text-align: center; color: #1f2937; background: #f7f2e9;">
-        <div>
-          <p style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">Enable JavaScript to use Cashiea</p>
-          <p style="max-width: 46ch; line-height: 1.5; color: #4b5563;">
-            Cashiea is a web app — billing, khata and reports need JavaScript.
-            Enable it in your browser and reload. Your data is safe: nothing is
-            stored or synced until the app can run. You can still read about the
-            product below.
-          </p>
+      <div style="min-height: 100vh; font-family: system-ui, -apple-system, sans-serif; padding: 32px 20px; color: #1f2937; background: #f7f2e9;">
+        <div style="max-width: 720px; margin: 0 auto;">
+          <p style="font-size: 22px; font-weight: 800; margin: 0 0 6px;">Cashiea needs JavaScript — here's why</p>
+          <p style="font-size: 15px; line-height: 1.6; color: #374151; margin: 0 0 8px;">Your billing, stock and khata run <strong>inside your browser</strong> — we compile and render everything locally on your device for speed and privacy, instead of sending every keystroke to a server. That engine is JavaScript.</p>
+          <p style="font-size: 14px; color: #6b7280; margin: 0 0 28px;">Quick check: JavaScript is on for 99.9% of browsers. If you're seeing this, a privacy extension or corporate policy may have disabled it — allow this site and refresh.</p>
+          <p style="font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af; margin: 0 0 12px;">What's inside</p>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 28px;">
+            <div style="border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; background: #ffffff;">
+              <div style="width: 34px; height: 34px; border-radius: 9px; background: #d1fae5; margin-bottom: 10px;"></div>
+              <p style="font-weight: 700; font-size: 14px; margin: 0 0 6px;">Billing &amp; POS</p>
+              <div style="height: 8px; border-radius: 4px; background: #f3f4f6; margin-bottom: 6px;"></div>
+              <div style="height: 8px; border-radius: 4px; background: #f3f4f6; margin-bottom: 6px; width: 75%;"></div>
+              <div style="height: 8px; border-radius: 4px; background: #d1fae5; width: 50%;"></div>
+              <p style="font-size: 12px; color: #6b7280; margin: 10px 0 0;">Scan, bill, split payments — a sale in under 10 seconds.</p>
+            </div>
+            <div style="border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; background: #ffffff;">
+              <div style="width: 34px; height: 34px; border-radius: 9px; background: #fef3c7; margin-bottom: 10px;"></div>
+              <p style="font-weight: 700; font-size: 14px; margin: 0 0 6px;">Khata ledger</p>
+              <div style="height: 8px; border-radius: 4px; background: #f3f4f6; margin-bottom: 6px;"></div>
+              <div style="height: 8px; border-radius: 4px; background: #f3f4f6; margin-bottom: 6px; width: 82%;"></div>
+              <div style="height: 8px; border-radius: 4px; background: #fef3c7; width: 60%;"></div>
+              <p style="font-size: 12px; color: #6b7280; margin: 10px 0 0;">Udhaar in, vasooli out — every customer's balance, always current.</p>
+            </div>
+            <div style="border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; background: #ffffff;">
+              <div style="width: 34px; height: 34px; border-radius: 9px; background: #dbeafe; margin-bottom: 10px;"></div>
+              <p style="font-weight: 700; font-size: 14px; margin: 0 0 6px;">Reports &amp; Meraj AI</p>
+              <div style="height: 8px; border-radius: 4px; background: #f3f4f6; margin-bottom: 6px;"></div>
+              <div style="height: 8px; border-radius: 4px; background: #f3f4f6; margin-bottom: 6px; width: 68%;"></div>
+              <div style="height: 8px; border-radius: 4px; background: #dbeafe; width: 45%;"></div>
+              <p style="font-size: 12px; color: #6b7280; margin: 10px 0 0;">Daily money reports and an AI manager who chases your dues.</p>
+            </div>
+          </div>
+          <p style="font-size: 13px; color: #9ca3af; margin: 0;">Cashiea — your retail business, automated. <strong>cashiea.vercel.app</strong></p>
         </div>
-      </noscript>
+      </div>
     </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>

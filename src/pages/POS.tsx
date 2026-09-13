@@ -63,6 +63,27 @@ export default function POS() {
 
   // ── Payment state ──
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
+
+  // ── CASHIER SPEED: scanner-ready autofocus + keyboard workflow ──
+  // F2 = new bill (focus + select the scan box) · Ctrl/Cmd+F = product
+  // search · hardware USB scanners type the code and send Enter, which
+  // the input already routes to barcode detection.
+  const searchRef = useRef<HTMLInputElement | null>(null)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'F2' || ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F'))) {
+        e.preventDefault()
+        const el = searchRef.current
+        if (el) { el.focus(); el.select() }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    // Auto-focus the scan box the moment the billing screen loads —
+    // the cashier's hands never leave the scanner.
+    const el = searchRef.current
+    if (el) { el.focus({ preventScroll: true }) }
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
   const [splitMode, setSplitMode] = useState(false)
   const [tenders, setTenders] = useState<TenderLine[]>([])
   const [upiRef] = useState(() => `RCP-${Date.now().toString().slice(-8)}`)
@@ -724,6 +745,8 @@ export default function POS() {
                   <div className="relative flex-1 min-w-0">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-fg-subtle pointer-events-none" />
                     <input
+                      ref={searchRef}
+                      
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       className="w-full h-14 pl-12 pr-24 rounded-control bg-surface-2 text-fg placeholder:text-fg-subtle border-0 focus:ring-2 focus:ring-accent/40 focus:outline-none text-sm"
