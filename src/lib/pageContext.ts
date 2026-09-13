@@ -152,6 +152,10 @@ const PAGE_CONTEXT: Record<string, PageContextInfo> = {
     name: 'Command Center',
     description: 'autonomous actions with receipts, guardrails and undo',
   },
+  '/app/audio': {
+    name: 'Audio',
+    description: 'Meraj\'s voice greetings — generated once, saved on your device',
+  },
   '/app/vasooli': {
     name: 'Vasooli Round',
     description: 'Meraj\'s collection round — drafts you approve before anything sends',

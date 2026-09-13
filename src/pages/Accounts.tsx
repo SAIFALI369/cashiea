@@ -69,6 +69,7 @@ export default function Accounts() {
     setEntries([data as Expense, ...entries])
     setForm({ ...form, description: '', amount: '' })
     setShowForm(false)
+    try { window.dispatchEvent(new CustomEvent('cashiea:voice-event', { detail: { kind: 'expense' } })) } catch { /* voice */ }
     toast.success('Entry added')
   }
 

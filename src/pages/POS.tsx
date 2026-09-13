@@ -492,6 +492,7 @@ export default function POS() {
       resetCartState()
       setSheetOpen(false)
       if (!queued) await loadData()
+      try { window.dispatchEvent(new CustomEvent('cashiea:voice-event', { detail: { kind: 'sale' } })) } catch { /* voice */ }
       toast.success(queued ? 'Sale saved offline — will sync when reconnected' : 'Sale completed')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Checkout failed')

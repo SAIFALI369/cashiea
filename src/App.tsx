@@ -36,6 +36,7 @@ const Scorecard = lazy(() => import('./pages/Scorecard'))
 const Social = lazy(() => import('./pages/Social'))
 const CommandCenter = lazy(() => import('./pages/CommandCenter'))
 const Vasooli = lazy(() => import('./pages/Vasooli'))
+const AudioGreetings = lazy(() => import('./pages/AudioGreetings'))
 const Summaries = lazy(() => import('./pages/Summaries'))
 const EmailAssistant = lazy(() => import('./pages/EmailAssistant'))
 const Campaigns = lazy(() => import('./pages/Campaigns'))
@@ -188,6 +189,7 @@ function App() {
           <Route path="manifest" element={<Manifest />} />
           <Route path="command-center" element={<CommandCenter />} />
           <Route path="vasooli" element={<Vasooli />} />
+          <Route path="audio" element={<AudioGreetings />} />
           <Route path="auto-reorder" element={<AutoReorder />} />
           <Route path="cash-flow" element={<CashFlow />} />
           <Route path="reminders" element={<Reminders />} />

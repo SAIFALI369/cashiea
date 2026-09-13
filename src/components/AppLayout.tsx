@@ -1,4 +1,4 @@
-import { Suspense, useState } from 'react'
+import { useEffect, Suspense, useState } from 'react'
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import BottomNav from './BottomNav'
@@ -13,6 +13,7 @@ import PageStack from './PageStack'
 import Skeleton from './ui/Skeleton'
 import { Avatar } from './Avatar'
 import { useAuth } from '../context/AuthContext'
+import { onVoiceEvent } from '../lib/voiceGreetings'
 import { getPageContext } from '../lib/pageContext'
 import { useKeyboardShortcuts } from '../lib/useKeyboardShortcuts'
 import { useEdgeDrawer } from '../lib/useSwipeNavigation'
@@ -25,6 +26,20 @@ export default function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { profile, ownerId } = useAuth()
+
+  // ── MERAJ'S VOICE — greets on app open and on real shop events.
+  //    Generated once per line, cached per-account in localStorage.
+  useEffect(() => {
+    const open = setTimeout(() => { if (ownerId) void onVoiceEvent(ownerId, 'open', profile?.full_name || 'boss') }, 1500)
+    const onEvent = (e: Event) => {
+      const kind = (e as CustomEvent).detail?.kind
+      if (ownerId && (kind === 'sale' || kind === 'expense' || kind === 'customer')) {
+        void onVoiceEvent(ownerId, kind, profile?.full_name || 'boss')
+      }
+    }
+    window.addEventListener('cashiea:voice-event', onEvent)
+    return () => { clearTimeout(open); window.removeEventListener('cashiea:voice-event', onEvent) }
+  }, [ownerId, profile?.full_name])
   const isDesktop = useIsDesktop()
   useDailyIntelligence(ownerId, profile?.role === 'owner' && !profile.business_owner_id)
   useKeyboardShortcuts()

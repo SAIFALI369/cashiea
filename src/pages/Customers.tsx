@@ -74,6 +74,7 @@ export default function Customers() {
     })
     if (error) return toast.error(error.message)
     setCustomers((data as Customer[]) ? [data as Customer, ...customers] : customers)
+    try { window.dispatchEvent(new CustomEvent('cashiea:voice-event', { detail: { kind: 'customer' } })) } catch { /* voice */ }
     toast.success(`${form.name} added`)
     setForm(empty); setShowForm(false)
   }
