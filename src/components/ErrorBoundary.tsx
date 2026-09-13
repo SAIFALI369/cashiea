@@ -17,6 +17,7 @@ interface Props {
 interface State {
   hasError: boolean
   error: Error | null
+  componentStack?: string | null
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -79,15 +80,21 @@ export class ErrorBoundary extends Component<Props, State> {
               or go back to the dashboard.
             </p>
 
-            {/* Error details (collapsible) */}
+            {/* Error details — ALWAYS visible, exact break location */}
             {this.state.error && (
-              <details className="mb-6 text-left">
+              <details className="mb-6 text-left" open>
                 <summary className="text-xs font-semibold text-fg-subtle cursor-pointer hover:text-fg-muted transition-colors">
-                  Technical details
+                  Technical details — exact location of the break
                 </summary>
-                <pre className="mt-2 p-3 rounded-control bg-surface-2 text-xs text-fg-muted overflow-x-auto">
-                  {this.state.error.name}: {this.state.error.message}
+                <pre className="mt-2 p-3 rounded-control bg-surface-2 text-[10px] leading-relaxed text-fg-muted overflow-x-auto whitespace-pre-wrap break-all">
+                  {`${this.state.error.name}: ${this.state.error.message}`}
+
+{'\nWHERE IT BROKE — component trail (top = closest to the bug):\n'}
+{this.state.componentStack || 'trail not captured'}
                 </pre>
+                <p className="mt-1 text-[10px] text-fg-subtle">
+                  Screenshot or copy this box — the trail names the exact component and code position.
+                </p>
               </details>
             )}
 
