@@ -163,7 +163,7 @@ export function useMerajThought(ownerId?: string | null): {
     ;(async () => {
       const batch = await ensureTodayBatch(ownerId)
       if (!mounted) return
-      templatesRef.current = batch.templates
+      templatesRef.current = batch.templates || []
       liveRef.current = await fetchLive(ownerId)
       if (!mounted) return
       idxRef.current = 0
@@ -173,7 +173,7 @@ export function useMerajThought(ownerId?: string | null): {
   }, [ownerId])
 
   const refreshNow = () => {
-    const list = templatesRef.current.length ? templatesRef.current : builtinTenForToday()
+    const list = templatesRef.current?.length ? templatesRef.current : builtinTenForToday()
     const next = (idxRef.current + 1) % list.length
     idxRef.current = next
     // Prefer the right tone: comfort on loss days, celebration otherwise.

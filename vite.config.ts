@@ -9,7 +9,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 // worker. It precaches the immutable app shell while deliberately leaving
 // authenticated Supabase responses network-only; private data must never be
 // served from a cross-session cache.
-const PWA_ENABLED = true
+const PWA_ENABLED = false // offline mode temporarily disabled (2026-09-13) — re-enable after stabilising
 const PWA_OPTIONS = {
   registerType: 'autoUpdate',
   injectRegister: 'auto',

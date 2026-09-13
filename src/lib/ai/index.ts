@@ -51,7 +51,6 @@ async function fetchWithRetry(
         headers: {
           // Correlation: server-side logs for this AI call carry the same id
           // as the client logs/error report for the current page view.
-          'X-Request-Id': requestId(),
           ...(init.headers as Record<string, string>),
         },
       })

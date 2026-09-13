@@ -14,6 +14,14 @@ import './index.css'
 // and start a fresh correlation scope for this page view. See
 // src/lib/errorTracking.ts + src/lib/logger.ts and docs/PRODUCTION_AUDIT.md.
 rotateRequestId()
+
+// Offline mode is temporarily disabled — unregister any previously
+// installed service worker so no phone serves a stale cached shell.
+if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations()
+    .then((rs) => rs.forEach((r) => { void r.unregister() }))
+    .catch(() => { /* best-effort */ })
+}
 initErrorTracking()
 
 // vite-plugin-pwa registers the versioned service worker in production builds.
