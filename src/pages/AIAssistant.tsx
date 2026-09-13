@@ -686,14 +686,22 @@ export default function AIAssistant() {
             {convos.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />}
           </button>
           <div className="flex-1 min-w-0 flex items-center justify-center gap-2.5">
-            <span className="meraj-mascot-chip w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0">
+            <span className="meraj-mascot-chip relative w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0">
               <MerajDevice interactionState={merajInteraction} businessMood={businessMood} size="sm" context="panel" />
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-positive border-2" style={{ borderColor: 'rgb(var(--surface))' }} aria-hidden="true" />
             </span>
             <div className="text-left leading-tight min-w-0">
               <p className="font-bold text-fg text-sm">Meraj</p>
               <p className="text-[10px] text-fg-subtle truncate">{userTyping ? 'Hello — ask me anything' : scopeLabel ? `Focused · ${scopeLabel}` : 'Your shop assistant'}</p>
             </div>
           </div>
+          <button
+              onClick={() => { activeIdRef.current = null; setMessages([]); try { localStorage.removeItem(ACTIVE_KEY) } catch { /* ignore */ } }}
+              aria-label="New chat" title="New chat"
+              className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2"
+            >
+              <Plus className="w-5 h-5" strokeWidth={1.75} />
+            </button>
           <Link to="/app" className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2"><ArrowLeft className="w-5 h-5" strokeWidth={1.75} /></Link>
         </div>
 
@@ -794,22 +802,22 @@ export default function AIAssistant() {
             </p>
 
             {/* KPI cards */}
-            <div className="grid grid-cols-3 gap-2.5 mb-4">
-              <div className="rounded-card border border-line bg-surface p-3.5 shadow-soft">
+            <div className="flex gap-2.5 mb-4 overflow-x-auto scroll-area pb-1">
+              <div className="rounded-card border border-line bg-surface p-3.5 shadow-soft min-w-[150px] flex-shrink-0">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Today's Sales</span>
                   <TrendingUp className="w-3.5 h-3.5 text-positive" />
                 </div>
                 <p className="text-lg font-bold text-fg tabular-nums leading-tight">{briefing ? formatINR(briefing.salesToday, 0) : '—'}</p>
               </div>
-              <div className="rounded-card border border-line bg-surface p-3.5 shadow-soft">
+              <div className="rounded-card border border-line bg-surface p-3.5 shadow-soft min-w-[150px] flex-shrink-0">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Pending Dues</span>
                   <span className={`w-2 h-2 rounded-full ${briefing && briefing.pendingCount > 0 ? 'bg-negative' : 'bg-positive'}`} />
                 </div>
                 <p className="text-lg font-bold text-fg tabular-nums leading-tight">{briefing ? formatINR(briefing.pendingSum, 0) : '—'}</p>
               </div>
-              <div className="rounded-card border border-line bg-surface p-3.5 shadow-soft">
+              <div className="rounded-card border border-line bg-surface p-3.5 shadow-soft min-w-[150px] flex-shrink-0">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[10px] font-semibold uppercase tracking-wide text-fg-subtle">Low Stock</span>
                   <Package className={`w-3.5 h-3.5 ${briefing && briefing.lowStock > 0 ? 'text-warning' : 'text-positive'}`} />
@@ -849,16 +857,21 @@ export default function AIAssistant() {
             )}
 
             {/* Quick action cards */}
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="flex gap-2 overflow-x-auto scroll-area pb-1">
               {[
-                { icon: Wallet, label: 'Chase Payments', q: 'Chase all my pending payments — draft polite WhatsApp reminders for each customer with dues' },
-                { icon: Package, label: 'Restock Alert', q: 'Which items are low on stock and how much should I reorder? Then open Auto-reorder if a draft PO would help.' },
-                { icon: TrendingUp, label: 'Boost Sales', q: 'How can I boost my sales this week? Give me 3 specific actions and name the desk I should open.' },
-                { icon: FileText, label: 'Daily Report', q: 'Draft my daily business report for today from live numbers.' },
+                { icon: Wallet, label: 'Chase payments', q: 'Chase all my pending payments — draft polite WhatsApp reminders for each customer with dues' },
+                { icon: Package, label: 'Check low stock', q: 'Which items are low on stock and how much should I reorder?' },
+                { icon: TrendingUp, label: 'How are sales?', q: 'How are my sales today compared to yesterday?' },
+                { icon: FileText, label: 'Draft a report', q: 'Draft my daily business report for today from live numbers.' },
+                { icon: Sparkles, label: 'Boost sales', q: 'How can I boost my sales this week? Give me 3 specific actions.' },
               ].map((a) => (
-                <button key={a.label} onClick={() => send(a.q)} className="flex items-center gap-3 rounded-card border border-line bg-surface p-3.5 shadow-soft hover:border-accent/40 active:scale-[0.98] transition-all">
-                  <span className="w-9 h-9 rounded-control bg-accent-soft text-accent flex items-center justify-center flex-shrink-0"><a.icon className="w-4.5 h-4.5" /></span>
-                  <span className="text-sm font-semibold text-fg">{a.label}</span>
+                <button
+                  key={a.label}
+                  onClick={() => { setInput(a.q); inputRef.current?.focus() }}
+                  className="flex items-center gap-2 rounded-full border border-line bg-surface pl-2.5 pr-3.5 py-2 shadow-soft hover:border-accent/40 active:scale-[0.97] transition-all flex-shrink-0"
+                >
+                  <span className="w-6 h-6 rounded-full bg-accent-soft text-accent flex items-center justify-center"><a.icon className="w-3.5 h-3.5" /></span>
+                  <span className="text-xs font-semibold text-fg whitespace-nowrap">{a.label}</span>
                 </button>
               ))}
             </div>
