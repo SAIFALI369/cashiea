@@ -1010,7 +1010,7 @@ export default function AIAssistant() {
         label="Drop image here"
         clickToBrowse={false}
       >
-      <div className="relative z-10 px-3 pb-3 pt-2 sm:px-6 sm:pb-4">
+      <div className="relative z-10 px-3 pt-2 sm:px-6" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}>
         <div className="mx-auto w-full max-w-3xl">
           {pendingImage && (
             <div className="meraj-image-card">
