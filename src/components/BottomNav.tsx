@@ -7,6 +7,7 @@ import {
   Lightbulb,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import MerajIcon from './MerajIcon'
 import MerajDevice, { interactionFromAvatarState } from './MerajDevice'
 import { useBusinessMood } from '../lib/businessMood'
 import { useSpeech } from '../lib/useSpeech'
@@ -275,7 +276,7 @@ export default function BottomNav({ showMobile = true }: { showMobile?: boolean 
               <X className="w-4 h-4" />
             </button>
             <button onClick={() => (listening ? cancelVoice() : startVoice())} aria-label="Tap to talk to Meraj" className="active:scale-95 transition-transform">
-              <MerajDevice interactionState={interaction} businessMood={businessMood} size="sm" context="nav" />
+              <MerajIcon size={26} pulse />
             </button>
           </div>
         </div>

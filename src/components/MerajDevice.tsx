@@ -351,9 +351,10 @@ export function MerajGlyph({ size = 18, className = '' }: { size?: number; class
     >
       <rect x="1" y="1" width="26" height="22" rx="7.5" fill="currentColor" opacity="0.16" />
       <rect x="1" y="1" width="26" height="22" rx="7.5" stroke="currentColor" strokeWidth="1.6" />
-      <rect x="5" y="5.4" width="18" height="10" rx="2.8" stroke="currentColor" strokeWidth="1.5" fill="none" />
-      <path d="M10.4 11.8 L14 8.2 L17.6 11.8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      <circle cx="14" cy="17.2" r="1.6" stroke="currentColor" strokeWidth="1.3" fill="none" />
+      {/* the living interface: glowing crescent eyes + a smooth smile */}
+      <path d="M8 10.6 q2.6 -3.1 5.2 0" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" fill="none" />
+      <path d="M14.8 10.6 q2.6 -3.1 5.2 0" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" fill="none" />
+      <path d="M10.8 15.1 q3.2 2.5 6.4 0" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" fill="none" />
     </svg>
   )
 }

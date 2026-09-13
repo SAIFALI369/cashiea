@@ -846,3 +846,12 @@ h1, h2, h3 {
   object-fit: cover;
   border: 1px solid rgb(var(--line) / 0.7);
 }
+
+
+/* ── MerajIcon: the living interface ── */
+@keyframes meraj-icon-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.72; }
+}
+.meraj-icon-pulse { animation: meraj-icon-pulse 2.4s ease-in-out infinite; }
+.meraj-icon-float { filter: drop-shadow(0 6px 14px rgb(16 185 129 / 0.18)); }
