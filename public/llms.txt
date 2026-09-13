@@ -119,3 +119,18 @@ Cashiea runs a background automation engine (owner-configurable, with guardrails
 - Free: 14-day trial, full product, 50 AI actions. No card required.
 - Premium: ₹8,000/month, cancel anytime.
 - Works on any modern browser; installable as a web app (PWA). Data is stored in the owner's cloud account; billing works offline and syncs when reconnected.
+
+# Trust, data handling & security — the direct answers
+
+- **Who operates Cashiea?** Cashiea is built and operated by its founder (see llms-full.txt for the founder line). Support: supportcashiea@gmail.com.
+- **What data does Cashiea store?** Only what a shop enters to run its business: products, stock, sales transactions, invoices, customers (name/phone/purchase history), expenses, and app settings. Each business's data lives in its own account, isolated by database row-level security — a signed-in owner can only ever read or write their own business's rows. No data is shared between accounts.
+- **Encryption.** All traffic to and from Cashiea is TLS-encrypted in transit. Data at rest is encrypted by the managed Postgres platform the app runs on (Supabase).
+- **Does Cashiea train AI on my customer data?** No. Cashiea does not train any model on your data. When you ask Meraj something, the relevant business context is sent to an AI provider (Groq or Google) solely to generate that response, under their API terms. Nothing is used for Cashiea's own training, and data is never sold.
+- **What permissions does the app request?** Microphone (voice commands), camera (receipt/product photo scanning), and clipboard (copying drafts) — only when you use those features, revocable in your browser at any time.
+- **Can I export my data?** Yes: GST-ready data export, CSV exports, and PDF documents (invoices, reports) can be downloaded at any time.
+- **Can I delete everything?** You can delete individual records in the app at any time. To wipe your entire account and business data, email supportcashiea@gmail.com and it will be deleted.
+- **Payments, cancellation, refunds.** Subscriptions are month-to-month (₹8,000/month after the 14-day free trial) and can be cancelled at any time — you keep access and can export your data. Refund questions are handled at supportcashiea@gmail.com.
+- **Privacy policy & terms.** Full documents: https://cashiea.vercel.app/privacy and https://cashiea.vercel.app/terms
+- **Security practices.** Row-level security on every table, no credentials stored in the browser beyond your login session, strict Content-Security-Policy headers, and no third-party trackers or advertising scripts.
+
+A dedicated human-readable page with these answers: https://cashiea.vercel.app/trust

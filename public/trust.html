@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trust, Data & Security — Cashiea</title>
+<meta name="description" content="Exactly what Cashiea stores, how it is protected, and the straight answers about data export, deletion, AI training, permissions, payments and cancellation.">
+<link rel="icon" href="/favicon.svg"><style>
+:root{--ink:#111827;--mut:#4B5563;--sub:#6B7280;--line:#E5E7EB;--em:#10B981;--bg:#FFFFFF;--soft:#F3F4F6}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+.wrap{max-width:760px;margin:0 auto;padding:48px 20px 80px}
+h1{font-size:2rem;letter-spacing:-.02em;margin-bottom:8px}h2{font-size:1.05rem;margin:28px 0 6px}
+p,li{color:var(--mut);font-size:.95rem}ul{padding-left:20px;margin-top:6px}
+.badge{display:inline-block;background:#D1FAE5;color:#065F46;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:999px;margin-bottom:16px}
+.card{border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-top:14px;background:#fff}
+.card h2{margin:0 0 4px;display:flex;align-items:center;gap:8px}
+.q{color:var(--ink);font-weight:600}
+footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);font-size:.8rem;color:var(--sub)}
+a{color:#047857}
+</style></head>
+<body><div class="wrap">
+<span class="badge">STRAIGHT ANSWERS</span>
+<h1>Trust, Data &amp; Security</h1>
+<p>Everything an owner (or their advisor) should ask before putting their shop's data into Cashiea — answered directly, with nothing hidden.</p>
+<div class="card"><h2 class="q">What data does Cashiea store?</h2><p>Only what your shop enters to run its business: products, stock, sales, invoices, customers (name, phone, purchase history), expenses and settings. Every business's data lives in its own account, isolated by <strong>database row-level security</strong> — a signed-in owner can only ever read or write their own rows. Nothing is shared between accounts.</p></div>
+<div class="card"><h2 class="q">Is it encrypted?</h2><p>All traffic is TLS-encrypted in transit; data at rest is encrypted by the managed Postgres platform the app runs on.</p></div>
+<div class="card"><h2 class="q">Is my customer data used to train AI?</h2><p><strong>No.</strong> Cashiea trains no model on your data. When you ask Meraj something, the relevant business context is sent to an AI provider (Groq or Google) solely to generate that response, under their API terms. Data is never sold.</p></div>
+<div class="card"><h2 class="q">What permissions does the app request?</h2><ul><li>Microphone — voice commands (only when you use them)</li><li>Camera — receipt and product photo scanning</li><li>Clipboard — copying drafts you create</li></ul><p>All revocable in your browser at any time.</p></div>
+<div class="card"><h2 class="q">Can I export my data?</h2><p>Yes — GST-ready data export, CSV exports and PDF documents (invoices, reports) can be downloaded at any time.</p></div>
+<div class="card"><h2 class="q">Can I delete everything?</h2><p>Individual records can be deleted in the app at any time. To wipe your entire account and business data, email <a href="mailto:supportcashiea@gmail.com">supportcashiea@gmail.com</a> and it will be deleted.</p></div>
+<div class="card"><h2 class="q">Payments, cancellation, refunds</h2><p>Month-to-month subscription (₹8,000/month after the 14-day free trial), cancel any time — you keep access and can export your data. Refund questions are handled personally at support.</p></div>
+<div class="card"><h2 class="q">Security practices</h2><ul><li>Row-level security on every table</li><li>No passwords or bank credentials stored in the browser beyond your login session</li><li>Strict Content-Security-Policy headers; no third-party trackers or ad scripts</li><li>UPI payments go directly to your own UPI ID — Cashiea never holds shop money</li></ul></div>
+<div class="card"><h2 class="q">Legal</h2><p><a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a> · Support: <a href="mailto:supportcashiea@gmail.com">supportcashiea@gmail.com</a></p></div>
+<footer>Cashiea — Your Retail Business, Automated · <a href="/">Home</a> · <a href="/pricing">Pricing</a> · <a href="/help">Help center</a></footer>
+</div></body></html>
