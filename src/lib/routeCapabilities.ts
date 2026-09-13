@@ -18,6 +18,7 @@ const ROUTE_CAPABILITIES: Array<{ prefix: string; capability: Capability }> = [
   { prefix: '/app/reports', capability: 'reports:view' },
   { prefix: '/app/profit-dashboard', capability: 'reports:view' },
   { prefix: '/app/gst-export', capability: 'reports:view' },
+  { prefix: '/app/tally-export', capability: 'reports:view' },
   { prefix: '/app/cash-flow', capability: 'reports:view' },
   { prefix: '/app/reminders', capability: 'reports:view' },
   { prefix: '/app/snapshot', capability: 'reports:view' },

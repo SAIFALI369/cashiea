@@ -18,7 +18,7 @@ import {
   Package, Wallet, History, AlertOctagon, UsersRound,
   Settings as SettingsIcon, Plug, Key, CreditCard, Network, Shield, LifeBuoy,
   UserCircle, Bell, Search, ShieldCheck, Lightbulb, X, LogOut, ChevronDown, ChevronRight,
-  TrendingUp, Landmark, RefreshCw, LineChart, CalendarClock, Copy, Share2, Flame, Tag, ClipboardCheck, Megaphone, Zap , AudioLines } from 'lucide-react'
+  TrendingUp, Landmark, RefreshCw, LineChart, CalendarClock, Copy, Share2, Flame, Tag, ClipboardCheck, Megaphone, Zap , AudioLines, FileCode2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { drawerShouldDismiss } from '../lib/gestures'
 
@@ -45,6 +45,7 @@ const CORE: Section[] = [
     { to: '/app/profit-dashboard', label: 'Profit', icon: TrendingUp },
     { to: '/app/reports', label: 'Reports', icon: FileBarChart },
     { to: '/app/gst-export', label: 'GST Export', icon: FileSignature },
+    { to: '/app/tally-export', label: 'Tally Export', icon: FileCode2 },
     { to: '/app/bank-import', label: 'Bank Import', icon: Landmark },
   ]},
   { label: 'Settings', items: [

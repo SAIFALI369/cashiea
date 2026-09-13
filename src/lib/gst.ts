@@ -101,6 +101,7 @@ export const COMMON_HSN = {
   'Paper products': '4820',
 }
 
-/** Standard GST rates for common categories */
-export const GST_RATES = [0, 5, 12, 18, 28] as const
+/** Standard GST rates. 0/5/18/40 are the post-22-Sep-2025 (GST 2.0)
+ * slabs; 12 and 28 survive for legacy rows and tobacco. */
+export const GST_RATES = [0, 3, 5, 12, 18, 28, 40] as const
 export type GstRate = (typeof GST_RATES)[number]

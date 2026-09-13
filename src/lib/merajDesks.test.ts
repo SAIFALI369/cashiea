@@ -5,7 +5,7 @@ import {
 
 const EXPECTED_IDS = [
   'auto-reorder', 'pricing', 'cash-flow', 'reminders', 'duplicates',
-  'snapshot', 'goals', 'scorecard', 'social', 'gst-export', 'bank-import',
+  'snapshot', 'goals', 'scorecard', 'social', 'gst-export', 'tally-export', 'bank-import',
   'invoices', 'reports', 'customers',
 ] as const
 

@@ -141,7 +141,8 @@ export interface ImportProductRow {
   warnings: string[]
 }
 
-const GST_RATES = [0, 5, 12, 18, 28]
+// GST 2.0 slabs (0/5/18/40) plus legacy 12/28 and the 3% gems rate.
+const GST_RATES = [0, 3, 5, 12, 18, 28, 40]
 
 /**
  * Indian-shop tolerant amount parsing: accepts "₹1,200", "Rs. 1,200",
@@ -216,7 +217,7 @@ export function validateProductRows(
     let gst = 0
     if (gstStr !== '') {
       gst = parseLooseAmount(gstStr)
-      if (!Number.isFinite(gst) || !GST_RATES.includes(gst)) errors.push(`GST "${gstStr}" must be one of 0, 5, 12, 18, 28`)
+      if (!Number.isFinite(gst) || !GST_RATES.includes(gst)) errors.push(`GST "${gstStr}" must be one of 0, 3, 5, 12, 18, 28, 40`)
     }
 
     if (hsn && !/^\d{2,8}$/.test(hsn)) errors.push(`HSN "${hsn}" must be 2–8 digits`)

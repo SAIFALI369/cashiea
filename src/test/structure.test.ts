@@ -58,6 +58,7 @@ const EXPECTED_PAGES = [
   'Pricing',
   'Scorecard',
   'Social',
+  'TallyExport',
 ]
 
 const EXPECTED_EDGE_FUNCTIONS = [
@@ -162,6 +163,7 @@ describe('App.tsx routes every page', () => {
   it('has a pricing route', () => expect(app).toMatch(/path="pricing"/))
   it('has a scorecard route', () => expect(app).toMatch(/path="scorecard"/))
   it('has a social route', () => expect(app).toMatch(/path="social"/))
+  it('has a tally-export route', () => expect(app).toMatch(/path="tally-export"/))
 })
 
 describe('app pages are linked (sidebar, dashboard, or settings)', () => {

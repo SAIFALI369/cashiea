@@ -14,7 +14,7 @@ const PROVIDERS: { id: IntegrationProvider; name: string; icon: typeof Mail; des
   { id: 'excel', name: 'Excel / CSV', icon: Sheet, desc: 'Paste an export to teach Meraj (direct sync is not connected yet)', color: 'text-emerald-400' },
   { id: 'whatsapp', name: 'WhatsApp', icon: MessageCircle, desc: 'Use the configured WhatsApp sender/webhook; history import is not a direct connection', color: 'text-positive' },
   { id: 'shopify', name: 'Shopify', icon: ShoppingCart, desc: 'Paste an export to teach Meraj (Shopify API connection is not configured)', color: 'text-positive' },
-  { id: 'tally', name: 'Tally', icon: FileText, desc: 'Paste an export to teach Meraj (Tally API connection is not configured)', color: 'text-info' },
+  { id: 'tally', name: 'Tally', icon: FileText, desc: 'Export masters + vouchers as Tally import XML — Money → Tally Export (Tally API connection is not configured)', color: 'text-info' },
 ]
 
 const LIVE_PROVIDERS = new Set<IntegrationProvider>(['gmail', 'google_sheets'])

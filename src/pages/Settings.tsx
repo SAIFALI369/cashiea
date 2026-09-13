@@ -22,7 +22,7 @@ import {
   Settings as SettingsIcon, Loader2, Save, Check,
   ShoppingCart, Brain, Mail, FileSignature, ScrollText, Database, History, Key,
   Shield, ShieldCheck, CreditCard, Network, LifeBuoy, ChevronRight, Sun, Mic,
-  Building2, Sparkles, SlidersHorizontal, UserCircle,
+  Building2, Sparkles, SlidersHorizontal, UserCircle, MessageCircle,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -94,6 +94,8 @@ export default function SettingsPage() {
   const [upiId, setUpiId] = useState(profile?.upi_id || '')
   const [voiceLang, setVoiceLang] = useState(localStorage.getItem('cashiea_voice_lang') || 'hi-IN')
   const [dailyBriefing, setDailyBriefing] = useState(profile?.daily_briefing !== false)
+  const [waBilling, setWaBilling] = useState(profile?.whatsapp_billing_enabled === true)
+  const [waBillingTouched, setWaBillingTouched] = useState(false)
   const [reportTime, setReportTime] = useState(() => {
     if (!profile?.report_time_utc) return '22:30'
     const [h, m] = profile.report_time_utc.split(':').map(Number)
@@ -190,6 +192,18 @@ export default function SettingsPage() {
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dailyBriefing, briefingTouched, profile?.daily_briefing])
+
+  // WhatsApp billing commands — same debounced auto-save pattern.
+  useEffect(() => {
+    if (!profile || !waBillingTouched || waBilling === (profile.whatsapp_billing_enabled === true)) return
+    const t = setTimeout(async () => {
+      if (await updateProfile({ whatsapp_billing_enabled: waBilling })) {
+        toast.success(waBilling ? 'WhatsApp billing on — send "Add 50 notebooks at ₹25" from your WhatsApp number' : 'WhatsApp billing off')
+      }
+    }, 800)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waBilling, waBillingTouched, profile?.whatsapp_billing_enabled])
 
   const setVoiceLanguage = (lang: string) => {
     setVoiceLang(lang)
@@ -297,6 +311,20 @@ export default function SettingsPage() {
                 <button type="button" onClick={() => { setBriefingTouched(true); setDailyBriefing(!dailyBriefing) }} role="switch" aria-checked={dailyBriefing}
                   className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${dailyBriefing ? 'bg-accent' : 'bg-line-2'}`}>
                   <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${dailyBriefing ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between gap-3 pt-3 border-t border-line">
+                <div className="flex items-center gap-2.5">
+                  <MessageCircle className="w-4 h-4 text-accent" />
+                  <div>
+                    <p className="text-sm font-semibold text-fg">WhatsApp billing commands</p>
+                    <p className="text-xs text-fg-subtle">Text "Add 50 notebooks at ₹25" from your WhatsApp number — a GST bill is created and sent. Works only for your number and your staff's numbers, uses catalogue prices, never guesses an item.</p>
+                  </div>
+                </div>
+                <button type="button" onClick={() => { setWaBillingTouched(true); setWaBilling(!waBilling) }} role="switch" aria-checked={waBilling}
+                  className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${waBilling ? 'bg-accent' : 'bg-line-2'}`}>
+                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${waBilling ? 'translate-x-6' : 'translate-x-0.5'}`} />
                 </button>
               </div>
             </Section>

@@ -19,6 +19,9 @@ export interface Profile {
   phone: string | null
   shop_category: string | null
   whatsapp_number: string | null
+  /** When ON, billing commands sent from the owner's/staff's WhatsApp
+   *  number create invoices (whatsapp-webhook + order parser). */
+  whatsapp_billing_enabled: boolean
   onboarding_step: number
   role: 'owner' | 'manager' | 'accountant' | 'staff'
   permission_config: Record<string, unknown> | null

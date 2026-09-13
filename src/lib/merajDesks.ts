@@ -105,6 +105,14 @@ export const MERAJ_DESKS: MerajDesk[] = [
     icon: 'FileSpreadsheet',
   },
   {
+    id: 'tally-export',
+    label: 'Tally export',
+    desc: 'One XML for masters + vouchers',
+    href: '/app/tally-export',
+    prompt: 'I want to send this month’s books to my CA’s Tally. Summarise what the Tally export will contain, then open Tally Export.',
+    icon: 'FileCode2',
+  },
+  {
     id: 'bank-import',
     label: 'Bank match',
     desc: 'Match credits to unpaid invoices',
