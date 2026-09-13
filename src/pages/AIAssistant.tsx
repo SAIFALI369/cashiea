@@ -9,7 +9,7 @@ import { MerajGlyph } from '../components/MerajDevice'
 import { useAuth } from '../context/AuthContext'
 import MerajDevice from '../components/MerajDevice'
 import { useBusinessMood } from '../lib/businessMood'
-import { History, Camera, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft, Plus, MessageCircle, Zap, Wallet, Package, TrendingUp, Receipt, FileText, MessageSquareText, BarChart3, Download, Pencil, RefreshCw, Tag, Bell, Copy, Target, Truck, Share2, FileSpreadsheet, Landmark, Users, type LucideIcon } from 'lucide-react'
+import { History, Camera, Menu, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft, Plus, MessageCircle, Zap, Wallet, Package, TrendingUp, Receipt, FileText, MessageSquareText, BarChart3, Download, Pencil, RefreshCw, Tag, Bell, Copy, Target, Truck, Share2, FileSpreadsheet, Landmark, Users, type LucideIcon } from 'lucide-react'
 import { getPageContext } from '../lib/pageContext'
 import { MERAJ_DESKS, merajConfirmLabel } from '../lib/merajDesks'
 import { supabase } from '../lib/supabase'
@@ -17,6 +17,7 @@ import { useSpeech } from '../lib/useSpeech'
 import type { ActivityLog } from '../lib/types'
 import { formatINR } from '../lib/format'
 import toast from 'react-hot-toast'
+import MerajIcon from '../components/MerajIcon'
 
 interface Msg { role: 'user' | 'meraj'; text: string; ts?: number; pending?: { type: string; input: any; preview: any }; media?: { type: string; thumb: string; url: string; alt: string; link?: string }[]; image?: string; images?: { url: string; prompt: string; width: number; height: number }[] }
 interface Convo { id: string; title: string; msgs: Msg[]; ts: number; scope?: string }
@@ -675,19 +676,17 @@ export default function AIAssistant() {
       <div className="meraj-head-panel relative z-20">
         <div className="mx-auto w-full max-w-3xl flex items-center gap-3 px-4 py-3">
           <button
-            onClick={() => setShowActivity(v => !v)}
-            className={`min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center transition-colors relative ${
-              showActivity ? 'text-accent-strong bg-accent-soft/60' : 'text-fg-muted hover:text-fg hover:bg-surface-2'
-            }`}
-            aria-label={showActivity ? 'Hide activity' : 'Pull out activity'}
-            title={showActivity ? 'Hide activity' : 'Pull out activity'}
+            onClick={() => setShowHistory(true)}
+            className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center transition-colors relative text-fg-muted hover:text-fg hover:bg-surface-2"
+            aria-label="Chat history"
+            title="Chat history"
           >
-            <History className="w-5 h-5" strokeWidth={1.75} />
+            <Menu className="w-5 h-5" strokeWidth={1.75} />
             {convos.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />}
           </button>
           <div className="flex-1 min-w-0 flex items-center justify-center gap-2.5">
             <span className="meraj-mascot-chip relative w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0">
-              <MerajDevice interactionState={merajInteraction} businessMood={businessMood} size="sm" context="panel" />
+              <MerajIcon size={28} />
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-positive border-2" style={{ borderColor: 'rgb(var(--surface))' }} aria-hidden="true" />
             </span>
             <div className="text-left leading-tight min-w-0">
@@ -702,7 +701,7 @@ export default function AIAssistant() {
             >
               <Plus className="w-5 h-5" strokeWidth={1.75} />
             </button>
-          <Link to="/app" className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-2"><ArrowLeft className="w-5 h-5" strokeWidth={1.75} /></Link>
+          
         </div>
 
         {/* Activity pull-out — a horizontal line of the latest actions, opened
@@ -785,7 +784,7 @@ export default function AIAssistant() {
             {/* Greeting — Meraj mascot + fresh 2-4 word micro-greeting */}
             <div className="flex items-start gap-3 mb-5">
               <div className="flex-shrink-0 -mt-1">
-                <MerajDevice interactionState="idle" businessMood={businessMood} size="lg" context="panel" />
+                <MerajIcon size={88} pulse />
               </div>
               <div className="min-w-0">
                 <h2 className="text-xl font-bold text-fg leading-snug">{greeting}</h2>

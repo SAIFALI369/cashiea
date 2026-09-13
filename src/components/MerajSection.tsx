@@ -11,6 +11,7 @@ import { renderMd } from '../lib/markdown'
 import { formatINR } from '../lib/format'
 import { Send, Mic, ArrowUpRight, Zap, Heart, Coffee, Moon, Sun } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import MerajIcon from './MerajIcon'
 
 /**
  * MerajSection — the PROACTIVE AI zone on the Dashboard.
@@ -225,13 +226,7 @@ export default function MerajSection({ weekProfit }: { weekProfit?: number } = {
             {/* Breathing halo — Meraj feels alive and "thinking", never static. */}
             <span className="relative flex items-center justify-center">
               <span className="meraj-breathe absolute w-24 h-24 rounded-full bg-accent/20 blur-2xl" aria-hidden="true" />
-              <MerajDevice
-                interactionState={interaction}
-                businessMood={businessMood}
-                size="lg"
-                context="card"
-                className="relative scale-110 sm:scale-125"
-              />
+              <MerajIcon size={120} pulse />
             </span>
             {/* Friendly idle pulse dots */}
             <div className="flex items-center gap-1 mt-3">

@@ -303,7 +303,7 @@ export default function BottomNav({ showMobile = true }: { showMobile?: boolean 
               aria-label="Talk to Meraj" title="Talk to Meraj"
             >
               <span className={`w-[42px] h-[42px] rounded-2xl flex items-center justify-center active:scale-95 transition-all ${listening || speaking ? 'bg-accent' : 'bg-accent-strong'}`}>
-                <MerajDevice interactionState={voiceActive ? interaction : 'idle'} businessMood={businessMood} size="sm" context="nav" />
+                <MerajIcon size={28} pulse />
               </span>
               <span className="text-[10px] font-semibold text-accent-strong leading-none">Meraj</span>
             </button>
@@ -343,12 +343,7 @@ export default function BottomNav({ showMobile = true }: { showMobile?: boolean 
                         ? 'bg-accent scale-105'
                         : 'bg-accent-strong hover:bg-accent'
                     )}>
-                      <MerajDevice
-                        interactionState={voiceActive ? interaction : 'idle'}
-                        businessMood={businessMood}
-                        size="sm"
-                        context="nav"
-                      />
+                      <MerajIcon size={28} pulse />
                     </span>
                     <span className="text-[11px] font-semibold text-accent-strong leading-none">Meraj</span>
                   </button>
