@@ -276,7 +276,7 @@ export default function BottomNav({ showMobile = true }: { showMobile?: boolean 
               <X className="w-4 h-4" />
             </button>
             <button onClick={() => (listening ? cancelVoice() : startVoice())} aria-label="Tap to talk to Meraj" className="active:scale-95 transition-transform">
-              <MerajIcon size={26} pulse />
+              <MerajDevice interactionState={voiceActive ? interaction : 'idle'} businessMood={businessMood} size="sm" context="nav" />
             </button>
           </div>
         </div>
@@ -303,7 +303,7 @@ export default function BottomNav({ showMobile = true }: { showMobile?: boolean 
               aria-label="Talk to Meraj" title="Talk to Meraj"
             >
               <span className={`w-[42px] h-[42px] rounded-2xl flex items-center justify-center active:scale-95 transition-all ${listening || speaking ? 'bg-accent' : 'bg-accent-strong'}`}>
-                <MerajIcon size={28} pulse />
+                <MerajDevice interactionState={voiceActive ? interaction : 'idle'} businessMood={businessMood} size="sm" context="nav" />
               </span>
               <span className="text-[10px] font-semibold text-accent-strong leading-none">Meraj</span>
             </button>
@@ -343,7 +343,12 @@ export default function BottomNav({ showMobile = true }: { showMobile?: boolean 
                         ? 'bg-accent scale-105'
                         : 'bg-accent-strong hover:bg-accent'
                     )}>
-                      <MerajIcon size={28} pulse />
+                      <MerajDevice
+                        interactionState={voiceActive ? interaction : 'idle'}
+                        businessMood={businessMood}
+                        size="sm"
+                        context="nav"
+                      />
                     </span>
                     <span className="text-[11px] font-semibold text-accent-strong leading-none">Meraj</span>
                   </button>

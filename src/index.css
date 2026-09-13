@@ -528,7 +528,9 @@ h1, h2, h3 {
 .meraj-body {
   /* Premium deep-green shell: calmer and more trustworthy than the bright
      stock green, while still reading unmistakably as Cashiea's green TV. */
-  filter: sepia(.28) saturate(1.35) hue-rotate(58deg) brightness(.9) drop-shadow(0 10px 18px rgb(var(--shadow) / 0.28));
+  /* Emerald family (#10B981): shifts the mint shell to the app's brand
+     green — richer and saturated, matching the accent everywhere else. */
+  filter: sepia(.22) saturate(1.9) hue-rotate(66deg) brightness(.86) drop-shadow(0 10px 18px rgb(var(--shadow) / 0.28));
 }
 .meraj-flipbook { animation: none; }
 .meraj-device[data-active='true'] .meraj-flipbook {

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import MerajIcon from '../components/MerajIcon'
 import { LANDING_FAQS } from '../lib/faqs'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -424,7 +423,7 @@ export default function Landing() {
               <div className="absolute inset-4 rounded-full border border-line/40" />
               <div className="absolute inset-12 rounded-full border border-line/30" />
               <motion.div animate={{ y: [0, -6, 0] }} transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }} className="absolute inset-0 flex items-center justify-center">
-                <MerajIcon size={48} pulse />
+                <MerajDevice interactionState="idle" businessMood="happy" size="md" context="panel" />
               </motion.div>
               <div className="absolute -top-2 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-fg text-paper text-[10px] font-mono whitespace-nowrap z-10">Meraj is watching</div>
             </div>
@@ -625,7 +624,7 @@ export default function Landing() {
       <section className="px-4 py-24 relative overflow-hidden">
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, rgb(var(--accent) / 0.10), transparent 60%)' }} />
         <Reveal className="relative max-w-xl mx-auto text-center">
-          <div className="flex justify-center mb-5"><motion.div animate={{ y: [0, -5, 0] }} transition={{ duration: 3, repeat: Infinity }}><MerajIcon size={32} pulse /></motion.div></div>
+          <div className="flex justify-center mb-5"><motion.div animate={{ y: [0, -5, 0] }} transition={{ duration: 3, repeat: Infinity }}><MerajDevice interactionState="idle" businessMood="happy" size="sm" context="panel" /></motion.div></div>
           <Mono className="inline-flex items-center gap-2 mb-4 rounded-full border border-warning/30 bg-warning/10 px-3.5 py-2 text-warning"><Zap className="w-3.5 h-3.5" /> IF IT DOESN’T PAY FOR ITSELF, WALK AWAY</Mono>
           <h2 className="text-2xl sm:text-3xl font-bold text-fg leading-tight">Hire Meraj.<br /><span className="text-accent">Keep the shop that runs itself.</span></h2>
           <p className="text-sm text-fg-muted mt-3">14-day free trial. No card required. Works on the phone in your pocket. Every day you wait is a day your dues and stock watch themselves.</p>

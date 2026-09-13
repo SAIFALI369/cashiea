@@ -6,7 +6,6 @@ import { onboardingQuestions, onboardingPersona, type OnboardingQuestion, type O
 import MerajDevice from '../components/MerajDevice'
 import { ArrowRight, Check, Loader2, MapPin, MessageCircle, Store, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
-import MerajIcon from '../components/MerajIcon'
 
 const CATEGORIES = [
   { value: 'Grocery / Kirana', icon: '🛒' },
@@ -294,7 +293,7 @@ export default function Onboarding() {
           {step === 2 && (
             <div className="animate-fade-in">
               <div className="flex items-center gap-3 mb-5">
-                <MerajIcon size={48} pulse />
+                <MerajDevice interactionState="idle" size="md" context="panel" />
                 <div>
                   <h1 className="text-xl font-bold text-fg leading-tight">Meraj has a few quick questions</h1>
                   <p className="text-sm text-fg-muted">Tap to answer — 30 seconds, skippable.</p>
@@ -304,7 +303,7 @@ export default function Onboarding() {
               <div className="card p-5">
                 {loadingQuestions ? (
                   <div className="flex flex-col items-center justify-center py-10 gap-3">
-                    <MerajIcon size={48} pulse />
+                    <MerajDevice interactionState="thinking" size="md" context="panel" />
                     <p className="text-sm text-fg-muted">Meraj is thinking about your {resolvedCategory || 'shop'}…</p>
                   </div>
                 ) : questions.length === 0 ? (
@@ -373,7 +372,7 @@ export default function Onboarding() {
               <div className="card p-6 sm:p-8 text-center">
                 {loadingPersona || !persona ? (
                   <div className="flex flex-col items-center justify-center py-10 gap-4">
-                    <MerajIcon size={88} pulse />
+                    <MerajDevice interactionState="thinking" size="lg" context="panel" />
                     <p className="text-sm text-fg-muted">
                       Meraj is becoming your {resolvedCategory || 'business'} expert…
                     </p>
@@ -381,7 +380,7 @@ export default function Onboarding() {
                 ) : (
                   <>
                     <div className="flex justify-center mb-3">
-                      <MerajIcon size={88} pulse />
+                      <MerajDevice interactionState="idle" size="lg" context="panel" />
                     </div>
                     <p className="text-[11px] font-bold uppercase tracking-wide text-accent mb-1">Meraj is now</p>
                     <h1 className="text-2xl font-bold text-fg leading-tight mb-3">{persona.headline}</h1>

@@ -686,7 +686,7 @@ export default function AIAssistant() {
           </button>
           <div className="flex-1 min-w-0 flex items-center justify-center gap-2.5">
             <span className="meraj-mascot-chip relative w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0">
-              <MerajIcon size={28} />
+              <MerajDevice interactionState={merajInteraction} businessMood={businessMood} size="sm" context="panel" />
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-positive border-2" style={{ borderColor: 'rgb(var(--surface))' }} aria-hidden="true" />
             </span>
             <div className="text-left leading-tight min-w-0">
@@ -784,7 +784,7 @@ export default function AIAssistant() {
             {/* Greeting — Meraj mascot + fresh 2-4 word micro-greeting */}
             <div className="flex items-start gap-3 mb-5">
               <div className="flex-shrink-0 -mt-1">
-                <MerajIcon size={88} pulse />
+                <MerajDevice interactionState="idle" businessMood={businessMood} size="lg" context="panel" />
               </div>
               <div className="min-w-0">
                 <h2 className="text-xl font-bold text-fg leading-snug">{greeting}</h2>
