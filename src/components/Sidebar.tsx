@@ -18,7 +18,7 @@ import {
   Package, Wallet, History, AlertOctagon, UsersRound,
   Settings as SettingsIcon, Plug, Key, CreditCard, Network, Shield, LifeBuoy,
   UserCircle, Bell, Search, ShieldCheck, Lightbulb, X, LogOut, ChevronDown, ChevronRight,
-  TrendingUp, Landmark, RefreshCw, LineChart, CalendarClock, Copy, Share2, Flame, Tag, ClipboardCheck, Megaphone, Zap } from 'lucide-react'
+  TrendingUp, Landmark, RefreshCw, LineChart, CalendarClock, Copy, Share2, Flame, Tag, ClipboardCheck, Megaphone, Zap , AudioLines } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { drawerShouldDismiss } from '../lib/gestures'
 
@@ -61,6 +61,7 @@ const MORE: Section[] = [
   { label: 'Automation', items: [
     { to: '/app/command-center', label: 'Command Center', icon: Zap },
     { to: '/app/vasooli', label: 'Vasooli Round', icon: Wallet },
+    { to: '/app/audio', label: 'Audio', icon: AudioLines },
     { to: '/app/auto-reorder', label: 'Auto-reorder', icon: RefreshCw },
     { to: '/app/cash-flow', label: 'Cash flow', icon: LineChart },
     { to: '/app/reminders', label: 'Reminders', icon: CalendarClock },
