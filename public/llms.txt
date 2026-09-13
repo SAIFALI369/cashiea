@@ -1,6 +1,6 @@
 # Cashiea
 
-> Cashiea is an AI-powered POS, billing and shop-management web app for small and medium retail businesses in India. It combines a counter POS, Rule-46 GST invoicing, khata (udhaar/credit) tracking, stock control, customer CRM and WhatsApp automation with **Meraj**, an AI shop manager that speaks 10 Indian languages by voice. It works offline and syncs automatically, so shops in Tier 2 and Tier 3 cities can keep billing through power cuts and dead network zones.
+> Cashiea is an AI-powered POS, billing and shop-management web app for small and medium retail businesses in India. It combines a counter POS, Rule-46 GST invoicing, khata (udhaar/credit) tracking, stock control, customer CRM and WhatsApp automation with **Meraj**, an AI shop manager you can talk to by voice. It works offline and syncs automatically, so shops in Tier 2 and Tier 3 cities can keep billing through power cuts and dead network zones.
 
 **Official site:** https://cashiea.vercel.app
 **Category:** Retail POS / billing software, GST accounting, small-business SaaS
@@ -20,8 +20,8 @@ Most small Indian shops run on a paper register, memory and a calculator. Dues a
 - **Stock management** — live stock levels, low-stock and reorder alerts, CSV bulk import, auto-reorder suggestions, supplier scorecards.
 - **Customer CRM** — full purchase history, segments, dormant-regular detection, campaigns.
 - **WhatsApp automation** — daily sales report at a time you choose, bills and receipts to customers, due reminders.
-- **Meraj, the AI shop manager** — chat and voice in Hindi/Hinglish, English, Bengali, Tamil, Telugu, Marathi, Gujarati, Kannada, Malayalam and Punjabi. Drafts reports, chases payments, flags anomalies, and always asks before anything is sent.
-- **Reports & exports** — AI-written business reports from real sales and expense data, exportable to PDF and Excel; GST export, bank statement import and matching.
+- **Meraj, the AI shop manager** — chat in English and Hindi/Hinglish; voice input with automatic language detection; spoken replies. Drafts reports, chases payments, flags anomalies, and always asks before anything is sent.
+- **Reports & exports** — AI-written business reports from real sales and expense data, exportable to PDF; GST-ready data export; bank statement import and matching.
 - **End-of-day reconciliation** — expected vs counted cash with variance flagged.
 - **Recurring invoices** — rent and retainers bill themselves weekly, monthly or yearly.
 - **Offline-first** — billing continues without internet; a durable queue syncs when you reconnect.
