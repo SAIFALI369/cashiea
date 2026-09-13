@@ -104,7 +104,6 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
   // More Tools is EXPANDED by default — Suppliers, Staff, AI Tools and
   // Campaigns are discoverable from the first visit. The choice sticks.
   const [showMore, setShowMore] = useState(() => {
-  const [navQuery, setNavQuery] = useState('')
     try { return localStorage.getItem('cashiea_sidebar_more') !== '0' } catch { return true }
   })
   const [collapsed, setCollapsed] = useState(false)
