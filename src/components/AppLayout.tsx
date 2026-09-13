@@ -13,7 +13,7 @@ import PageStack from './PageStack'
 import Skeleton from './ui/Skeleton'
 import { Avatar } from './Avatar'
 import { useAuth } from '../context/AuthContext'
-import { onVoiceEvent } from '../lib/voiceGreetings'
+import { onVoiceEvent, unlockVoice } from '../lib/voiceGreetings'
 import { getPageContext } from '../lib/pageContext'
 import { useKeyboardShortcuts } from '../lib/useKeyboardShortcuts'
 import { useEdgeDrawer } from '../lib/useSwipeNavigation'
@@ -30,7 +30,14 @@ export default function AppLayout() {
   // ── MERAJ'S VOICE — greets on app open and on real shop events.
   //    Generated once per line, cached per-account in localStorage.
   useEffect(() => {
-    const open = setTimeout(() => { if (ownerId) void onVoiceEvent(ownerId, 'open', profile?.full_name || 'boss') }, 1500)
+    // dwell rule: only greet if the owner STAYED on the dashboard —
+    // passing through earns no greeting. Fires at 1.6s.
+    const open = setTimeout(() => {
+      if (ownerId && window.location.pathname === '/app') void onVoiceEvent(ownerId, 'open', profile?.full_name || 'boss')
+    }, 1600)
+    // iOS/Safari autoplay: unlock Meraj's voice on the first gesture
+    const unlock = () => unlockVoice()
+    window.addEventListener('pointerdown', unlock, { once: true })
     const onEvent = (e: Event) => {
       const kind = (e as CustomEvent).detail?.kind
       if (ownerId && (kind === 'sale' || kind === 'expense' || kind === 'customer')) {
@@ -38,7 +45,7 @@ export default function AppLayout() {
       }
     }
     window.addEventListener('cashiea:voice-event', onEvent)
-    return () => { clearTimeout(open); window.removeEventListener('cashiea:voice-event', onEvent) }
+    return () => { clearTimeout(open); window.removeEventListener('cashiea:voice-event', onEvent); window.removeEventListener('pointerdown', unlock) }
   }, [ownerId, profile?.full_name])
   const isDesktop = useIsDesktop()
   useDailyIntelligence(ownerId, profile?.role === 'owner' && !profile.business_owner_id)

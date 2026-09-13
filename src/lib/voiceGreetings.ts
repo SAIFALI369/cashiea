@@ -28,6 +28,27 @@ export interface VoiceGreetingState {
   lastPlayed: Record<string, number>
 }
 
+
+// ── GLOBAL SINGLE VOICE — only one Meraj audio may ever play at a time ──
+let currentVoice: HTMLAudioElement | null = null
+let voiceUnlocked = false
+
+/** Stop whatever Meraj voice is playing (greeting or TTS fallback). */
+export function stopAllVoice(): void {
+  try { if (currentVoice) { currentVoice.pause(); currentVoice = null } } catch { /* ignore */ }
+  try { window.speechSynthesis?.cancel() } catch { /* ignore */ }
+}
+
+/** iOS/Safari: audio needs one user gesture before any delayed play. */
+export function unlockVoice(): void {
+  if (voiceUnlocked) return
+  try {
+    const a = new Audio('data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAAEAAABIADAYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=')
+    a.volume = 0.01
+    void a.play().then(() => { voiceUnlocked = true }).catch(() => { /* try on next gesture */ })
+  } catch { /* ignore */ }
+}
+
 const KEY = (userId: string) => `cashiea_vg:${userId}`
 
 export const BUILTIN_TEXTS: Record<GreetEvent, (name: string) => string> = {
@@ -88,10 +109,12 @@ export async function generateGreeting(text: string): Promise<StoredGreeting> {
 function playStored(g: StoredGreeting): Promise<void> {
   return new Promise((resolve) => {
     try {
+      stopAllVoice() // only one voice at a time — greeting vs talking-Meraj
       const audio = new Audio(`data:audio/${g.format};base64,${g.audio}`)
-      audio.onended = () => resolve()
-      audio.onerror = () => resolve()
-      void audio.play().catch(() => resolve())
+      currentVoice = audio
+      audio.onended = () => { if (currentVoice === audio) currentVoice = null; resolve() }
+      audio.onerror = () => { if (currentVoice === audio) currentVoice = null; resolve() }
+      void audio.play().catch(() => { if (currentVoice === audio) currentVoice = null; resolve() })
     } catch { resolve() }
   })
 }
@@ -181,10 +204,12 @@ export async function onVoiceEvent(userId: string, kind: 'open' | 'sale' | 'expe
 export function playStoredKind(g: { audio: string; format: string }): Promise<void> {
   return new Promise((resolve) => {
     try {
+      stopAllVoice()
       const audio = new Audio(`data:audio/${g.format};base64,${g.audio}`)
-      audio.onended = () => resolve()
-      audio.onerror = () => resolve()
-      void audio.play().catch(() => resolve())
+      currentVoice = audio
+      audio.onended = () => { if (currentVoice === audio) currentVoice = null; resolve() }
+      audio.onerror = () => { if (currentVoice === audio) currentVoice = null; resolve() }
+      void audio.play().catch(() => { if (currentVoice === audio) currentVoice = null; resolve() })
     } catch { resolve() }
   })
 }

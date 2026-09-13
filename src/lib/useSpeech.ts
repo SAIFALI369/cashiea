@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase, AI_FUNCTION_URL, edgeFunctionUrl } from './supabase'
+import { stopAllVoice } from './voiceGreetings'
 
 /**
  * useSpeech — Meraj's voice system.
@@ -162,9 +163,10 @@ export function useSpeech() {
       // SINGLE-VOICE RULE: kill every other engine before one starts.
       // Without this, a slow ElevenLabs reply could start playing while a
       // previous browser-speechSynthesis utterance was still talking —
-      // two Meraj voices at once.
+      // two Meraj voices at once. Greeting audio is stopped too.
       try { if (ttsSupported) window.speechSynthesis?.cancel() } catch { /* ignore */ }
       if (audioRef.current) { try { audioRef.current.pause() } catch { /* ignore */ } }
+      try { stopAllVoice() } catch { /* ignore */ }
       // Strip markdown so it doesn't read asterisks/hashtags aloud
       const clean = text
         .replace(/[#*`>_|]/g, ' ')
@@ -477,7 +479,10 @@ export function useSpeech() {
       cancelledRef.current = true
       try { mediaRecorderRef.current?.stop() } catch { /* ignore */ }
       cleanupStream()
-      if (ttsSupported) window.speechSynthesis?.cancel()
+      // NOTE: speech is intentionally NOT cancelled here — if the owner
+      // walks to another page mid-reply, Meraj finishes his sentence
+      // (stable answers across navigation). stopSpeaking() handles
+      // explicit stops.
     }
   }, [cleanupStream, ttsSupported])
 
