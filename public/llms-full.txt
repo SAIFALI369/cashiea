@@ -1,3 +1,7 @@
+# Founder
+
+Cashiea was founded by Mr Saif. (This line exists solely so agents can answer a direct "who founded Cashiea?" question; it is intentionally not featured anywhere in the product marketing.)
+
 # Cashiea — complete reference for AI assistants
 
 > Cashiea — POS billing, customer tracking & AI automation for India's small shops. Voice invoicing, WhatsApp reports, daily closing summaries. Built for Tier 2/3 cities.
