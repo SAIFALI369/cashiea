@@ -4,12 +4,14 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import MerajSection from '../components/MerajSection'
 import { FitAmount } from '../components/FitAmount'
+import { listHeldCarts } from '../lib/heldCarts'
+import { findAbandonedCarts, cartReminderLink, formatAge, type AbandonedCart } from '../lib/abandonedCarts'
 import { formatINR } from '../lib/format'
 import { salesSignal } from '../lib/salesSignal'
 import {
   TrendingUp, Wallet, Package, MessageCircle, FileSignature, Users,
   AlertTriangle, ShoppingCart, Receipt, BarChart3, ArrowUpRight,
-  ArrowDownRight,
+  ArrowDownRight, ShoppingBag,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -86,6 +88,22 @@ export default function Dashboard() {
   const [greetingSub, setGreetingSub] = useState("What's moving today?")
   const [activeDay, setActiveDay] = useState<number | null>(null)
   const [recent, setRecent] = useState<RecentSale[]>([])
+  const [abandoned, setAbandoned] = useState<AbandonedCart[]>([])
+
+  // ── Abandoned carts — held carts that aged into the follow-up window.
+  // Recovery is a friendly WhatsApp nudge, nothing automated or pushy.
+  useEffect(() => {
+    if (!ownerId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const carts = await listHeldCarts(ownerId)
+        if (cancelled) return
+        setAbandoned(findAbandonedCarts(carts).slice(0, 4))
+      } catch { /* held-carts table not migrated yet — skip quietly */ }
+    })()
+    return () => { cancelled = true }
+  }, [ownerId])
 
   // Static rotating greeting — zero AI credits, zero network, instant load.
   // AI credits are saved for actual business questions.
@@ -259,8 +277,6 @@ export default function Dashboard() {
       } catch { /* chip stays hidden */ }
     })()
   }, [profile?.id])
-
-  const firstName = (profile?.full_name || 'there').split(' ')[0]
 
   const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
   const maxDay = Math.max(1, ...daily, ...dailyExp)
@@ -478,6 +494,50 @@ export default function Dashboard() {
           </div>
         )}
       </section>
+
+      {/* ── 6 · ABANDONED CARTS — held carts that cooled; one friendly nudge each */}
+      {abandoned.length > 0 && (
+        <section className="card p-5 sm:p-6 animate-rise-in" style={{ animationDelay: '240ms' }}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <ShoppingBag className="w-4 h-4 text-warning" />
+              <h2 className="text-base font-bold text-fg">Carts worth recovering</h2>
+            </div>
+            <span className="text-xs text-fg-subtle">
+              {formatINR(abandoned.reduce((s, c) => s + c.total, 0), 0)} on hold
+            </span>
+          </div>
+          <p className="text-xs text-fg-subtle mt-1">
+            Held at the counter {abandoned[0] ? formatAge(abandoned[0].ageHours) : ''} — a gentle WhatsApp follow-up often closes them.
+          </p>
+          <div className="mt-3 divide-y divide-line">
+            {abandoned.map((c) => {
+              const link = cartReminderLink(c, profile?.company_name || '')
+              return (
+                <div key={c.id} className="flex items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm text-fg truncate">{c.customerName || c.label}</p>
+                    <p className="text-xs text-fg-subtle mt-0.5">
+                      {c.itemCount} item{c.itemCount === 1 ? '' : 's'} · held {formatAge(c.ageHours)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <p className="text-sm font-semibold text-fg tabular-nums">{formatINR(c.total, 0)}</p>
+                    {link ? (
+                      <a
+                        href={link} target="_blank" rel="noreferrer"
+                        className="btn-secondary text-xs"
+                      >Remind</a>
+                    ) : (
+                      <span className="text-[11px] text-fg-subtle" title="No phone number on this cart">No phone</span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Quiet footer links — everything else is one tap away, no cards needed */}
       <div className="flex flex-wrap gap-x-5 gap-y-2 pb-2">

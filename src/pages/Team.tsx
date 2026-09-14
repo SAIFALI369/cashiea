@@ -6,6 +6,7 @@ import { validateEmail, validatePassword } from '../lib/validation'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { Workforce } from '../components/team/Workforce'
 import { Users, Plus, Loader2, Trash2, Crown, Calculator, UserCheck, Eye, EyeOff, ShieldOff, ArrowLeftRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -334,6 +335,14 @@ export default function Team() {
           })}
         </div>
       )}
+
+      {/* Shift clock + commission — staff see their own clock, owner sees all */}
+      <Workforce
+        ownerId={ownerId}
+        profileId={profile?.id ?? null}
+        staffName={profile?.full_name || 'Staff'}
+        isOwner={isOwnerProfile}
+      />
 
       {/* Confirm create */}
       <ConfirmDialog

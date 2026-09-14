@@ -7,7 +7,6 @@ import {
   Lightbulb,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import MerajIcon from './MerajIcon'
 import MerajDevice, { interactionFromAvatarState } from './MerajDevice'
 import { useBusinessMood } from '../lib/businessMood'
 import { useSpeech } from '../lib/useSpeech'

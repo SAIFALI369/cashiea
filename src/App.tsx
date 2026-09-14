@@ -48,6 +48,7 @@ const Products = lazy(() => import('./pages/Products'))
 const Customers = lazy(() => import('./pages/Customers'))
 const Suppliers = lazy(() => import('./pages/Suppliers'))
 const Quotations = lazy(() => import('./pages/Quotations'))
+const Promotions = lazy(() => import('./pages/Promotions'))
 const Accounts = lazy(() => import('./pages/Accounts'))
 const AIAssistant = lazy(() => import('./pages/AIAssistant'))
 const Team = lazy(() => import('./pages/Team'))
@@ -157,6 +158,7 @@ function App() {
           <Route path="customers" element={<Customers />} />
           <Route path="suppliers" element={<Suppliers />} />
           <Route path="quotations" element={<Quotations />} />
+          <Route path="promotions" element={<Promotions />} />
           <Route path="accounts" element={<Accounts />} />
           <Route path="team" element={<Team />} />
           <Route path="assistant" element={<AIAssistant />} />

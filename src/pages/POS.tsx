@@ -14,6 +14,8 @@ import {
   type CartLine, type ReceiptModel, type TenderLine,
 } from '../lib/pos'
 import { holdCart, listHeldCarts, deleteHeldCart, type HeldCartSnapshot } from '../lib/heldCarts'
+import { evaluatePromotions, type Promotion as PromoRule } from '../lib/promotions'
+import { redeemValue, checkRedemption, maxRedeemablePoints, type LoyaltyProgram } from '../lib/loyalty'
 import type { Product, Customer, PaymentMethod, HeldCart } from '../lib/types'
 import { enrichCustomers, type Customer360 } from '../lib/customer360'
 import { canonicalCategory } from '../lib/productVisuals'
@@ -60,6 +62,14 @@ export default function POS() {
   const [cartDiscountValue, setCartDiscountValue] = useState(0)
   const [discountReason, setDiscountReason] = useState('')
   const [defaultTaxRate, setDefaultTaxRate] = useState(0)
+
+  // ── Deals & loyalty state (promotions + loyalty are owner-configured) ──
+  const [promoRules, setPromoRules] = useState<PromoRule[]>([])
+  const [loyalty, setLoyalty] = useState<LoyaltyProgram | null>(null)
+  const [dealsOn, setDealsOn] = useState(true)
+  const [redeemPoints, setRedeemPoints] = useState(0)
+  const [redeemOpen, setRedeemOpen] = useState(false)
+  const [redeemInput, setRedeemInput] = useState('')
 
   // ── Payment state ──
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
@@ -133,12 +143,18 @@ export default function POS() {
 
   const loadData = async () => {
     setLoading(true)
-    const [p, c] = await Promise.all([
+    const [p, c, promoRows, loyaltyRow] = await Promise.all([
       supabase.from('products').select('*').eq('user_id', ownerId).eq('active', true).order('name'),
       supabase.from('customers').select('*').eq('user_id', ownerId).order('name'),
+      // Deals + loyalty ride the same load — best-effort (older DBs
+      // without the tables just show none).
+      supabase.from('promotions').select('*').eq('user_id', ownerId).eq('enabled', true).limit(50).then(r => r, () => ({ data: null })),
+      supabase.from('loyalty_program').select('*').eq('user_id', ownerId).maybeSingle().then(r => r, () => ({ data: null })),
     ])
     setProducts((p.data as Product[]) || [])
     setCustomers((c.data as Customer[]) || [])
+    setPromoRules((promoRows.data as PromoRule[]) || [])
+    setLoyalty((loyaltyRow.data as LoyaltyProgram | null) || null)
     setLoading(false)
     if (!frequentLoaded.current) { frequentLoaded.current = true; loadFrequent((p.data as Product[]) || []) }
   }
@@ -371,6 +387,25 @@ export default function POS() {
     ? (baseSubtotal * (cartDiscountValue || 0)) / 100
     : cartDiscountValue || 0
 
+  // ── Deals engine (deterministic, owner-configured; cashier can skip) ──
+  const promo = useMemo(() => {
+    if (!dealsOn || !promoRules.length || !cart.length) return null
+    return evaluatePromotions(
+      promoRules,
+      cart.map((l) => ({ key: l.key, product_id: l.product_id, name: l.name, quantity: l.quantity, unit_price: l.unit_price })),
+      products,
+    )
+  }, [dealsOn, promoRules, cart, products])
+  const promoLine = useMemo(() => new Map((promo?.lineDiscounts || []).map((d) => [d.lineKey, d])), [promo])
+  const promoCartDiscount = promo?.cartDiscount?.amount || 0
+
+  // ── Loyalty redemption for this sale ──
+  const loyaltyRedeemValue = redeemPoints > 0 && loyalty?.enabled
+    ? redeemValue(redeemPoints, loyalty)
+    : 0
+
+  const totalCartDiscount = cartDiscount + promoCartDiscount + loyaltyRedeemValue
+
   const sale = useMemo(() => {
     return computeSale(
       cart.map((l) => ({
@@ -380,11 +415,11 @@ export default function POS() {
         unit_price: l.unit_price,
         gst_rate: effectiveRate(l, defaultTaxRate),
         price_includes_tax: l.price_includes_tax,
-        line_discount: l.line_discount,
+        line_discount: (l.line_discount || 0) + (promoLine.get(l.key)?.amount || 0),
       })),
-      cartDiscount,
+      totalCartDiscount,
     )
-  }, [cart, cartDiscount, defaultTaxRate])
+  }, [cart, totalCartDiscount, defaultTaxRate, promoLine])
 
   const tender = tenderStatus(sale.total, tenders)
   const hasProductGst = cart.some((l) => l.gst_source === 'product')
@@ -403,6 +438,13 @@ export default function POS() {
     setSelectedCustomer(null)
     setSplitMode(false)
     setTenders([])
+    setRedeemPoints(0)
+  }
+
+  // Detaching the customer voids an in-flight redemption.
+  const clearCustomer = () => {
+    setSelectedCustomer(null)
+    setRedeemPoints(0)
   }
 
   const handleCheckout = async () => {
@@ -441,19 +483,31 @@ export default function POS() {
       const txnId = typeof crypto !== 'undefined' && crypto.randomUUID
         ? crypto.randomUUID()
         : `id-${Date.now()}-${Math.random().toString(36).slice(2)}`
-      const saleItems = cart.map((l) => ({
-        product_id: l.product_id,
-        name: l.name,
-        quantity: l.quantity,
-        unit_price: l.unit_price,
-        unit: l.unit || null,
-        factor: l.factor || 1,
-        gst_rate: effectiveRate(l, defaultTaxRate),
-        gst_source: l.gst_source,
-        price_includes_tax: l.price_includes_tax,
-        line_discount: l.line_discount || 0,
-        line_discount_note: l.line_discount_note || null,
-      }))
+      const saleItems = cart.map((l) => {
+        const deal = promoLine.get(l.key)
+        return {
+          product_id: l.product_id,
+          name: l.name,
+          quantity: l.quantity,
+          unit_price: l.unit_price,
+          unit: l.unit || null,
+          factor: l.factor || 1,
+          gst_rate: effectiveRate(l, defaultTaxRate),
+          gst_source: l.gst_source,
+          price_includes_tax: l.price_includes_tax,
+          // Deal discounts merge into the validated per-line discount;
+          // the note names the deal so the receipt + reports stay honest.
+          line_discount: (l.line_discount || 0) + (deal?.amount || 0),
+          line_discount_note: l.line_discount_note || (deal ? `Deal: ${deal.ruleName}` : null),
+        }
+      })
+      // One reason string covering manual + deal + loyalty discounts.
+      const reasonParts = [
+        discountReason.trim(),
+        promo?.cartDiscount ? `Deal: ${promo.cartDiscount.ruleName}` : '',
+        redeemPoints > 0 ? `Loyalty: ${redeemPoints} pts` : '',
+      ].filter(Boolean)
+      const fullDiscountReason = reasonParts.join(' · ')
 
       // Checkout is one idempotent server transaction. It validates the
       // business membership, prices, tenders and stock, then writes the sale,
@@ -470,7 +524,7 @@ export default function POS() {
         p_tax_rate: sale.effectiveTaxRate,
         p_tax_amount: sale.taxTotal,
         p_discount: sale.discountTotal,
-        p_discount_reason: discountReason.trim() || null,
+        p_discount_reason: fullDiscountReason || null,
         p_total: sale.total,
         p_default_tax_rate: defaultTaxRate,
         p_payment_method: netTenders.length > 1 ? 'split' : netTenders[0]?.method || paymentMethod,
@@ -510,8 +564,27 @@ export default function POS() {
       })
       setReceiptPhone(selectedCustomer?.phone || null)
 
+      // Loyalty redemption settles AFTER the sale commits. The RPC is
+      // idempotent on the receipt number, so an offline replay can never
+      // double-deduct; a genuine failure only warns (the discount already
+      // went out on a valid sale — the owner sees it and adjusts).
+      if (redeemPoints > 0 && selectedCustomer && loyalty?.enabled) {
+        const customerId = selectedCustomer.id
+        const points = redeemPoints
+        const { data: redeemRes } = await offlineRpc<{ ok: boolean; error?: string }>(
+          'redeem_loyalty_points',
+          { p_owner_id: ownerId, p_customer_id: customerId, p_points: points, p_ref: receiptNumber },
+          { ok: true },
+        )
+        if (redeemRes && redeemRes.ok === false) {
+          toast.error(`Points not deducted: ${redeemRes.error || 'unknown error'} — adjust in Customers`)
+        }
+      }
+
       resetCartState()
       setSheetOpen(false)
+      setRedeemPoints(0)
+      setDealsOn(true)
       if (!queued) await loadData()
       try { window.dispatchEvent(new CustomEvent('cashiea:voice-event', { detail: { kind: 'sale' } })) } catch { /* voice */ }
       toast.success(queued ? 'Sale saved offline — will sync when reconnected' : 'Sale completed')
@@ -635,11 +708,58 @@ export default function POS() {
     return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>
   }
 
+  // ── Deals + loyalty banner (rendered inside the cart panel) ──
+  const loyaltyEligible = !!(loyalty?.enabled && selectedCustomer)
+  const redeemableMax = loyaltyEligible && loyalty
+    ? maxRedeemablePoints(selectedCustomer!.loyalty_points, loyalty)
+    : 0
+
+  const dealsBanner = cart.length > 0 && (promo || loyaltyEligible) ? (
+    <div className="space-y-2">
+      {promo && promo.labels.length > 0 && (
+        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-positive/10 text-positive">
+          <p className="text-xs font-semibold truncate" title={promo.labels.join(' · ')}>
+            🏷 {promo.labels.join(' · ')}
+          </p>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-[11px] font-bold tabular-nums">−{formatINR(promo.totalDiscount)}</span>
+            <button type="button" onClick={() => setDealsOn(false)} className="text-[10px] font-bold underline underline-offset-2">skip</button>
+          </div>
+        </div>
+      )}
+      {promoRules.length > 0 && dealsOn && !promo && (
+        <button type="button" onClick={() => setDealsOn(false)} className="w-full text-left px-3 py-1.5 rounded-xl bg-surface-2 text-[11px] text-fg-subtle">
+          Deals are on — none apply to this cart
+        </button>
+      )}
+      {loyaltyEligible && (
+        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-secondary-soft/60">
+          {redeemPoints > 0 ? (
+            <>
+              <p className="text-xs font-semibold text-secondary-strong">
+                ★ Redeeming {redeemPoints} pts → −{formatINR(loyaltyRedeemValue)}
+              </p>
+              <button type="button" onClick={() => setRedeemPoints(0)} className="text-[10px] font-bold text-secondary-strong underline underline-offset-2">remove</button>
+            </>
+          ) : redeemableMax > 0 ? (
+            <>
+              <p className="text-xs text-fg-muted">★ {selectedCustomer!.loyalty_points} loyalty points</p>
+              <button type="button" onClick={() => { setRedeemInput(String(loyalty!.min_redeem_points)); setRedeemOpen(true) }} className="text-xs font-bold text-secondary-strong">Redeem</button>
+            </>
+          ) : (
+            <p className="text-[11px] text-fg-subtle">★ {selectedCustomer!.loyalty_points} pts{loyalty?.enabled ? '' : ' — loyalty off'}</p>
+          )}
+        </div>
+      )}
+    </div>
+  ) : null
+
   const cartProps = {
     cart, sale, selectedCustomer,
+    promoBanner: dealsBanner,
     customerInsight: customer360?.insight || null,
     onPickCustomer: () => setShowCustomerPicker(true),
-    onClearCustomer: () => setSelectedCustomer(null),
+    onClearCustomer: clearCustomer,
     onChangeQty: changeQty,
     onOpenLineOptions: setLineOptionsKey,
     onNumpad: setNumpadLine,
@@ -945,6 +1065,53 @@ export default function POS() {
             <div className="flex gap-2">
               <button onClick={() => setHoldDialog(false)} className="btn-ghost flex-1 py-3">Cancel</button>
               <button onClick={() => doHold(holdLabel)} className="btn-primary flex-1 py-3">Hold cart</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loyalty redemption — deducts after checkout, idempotent by receipt */}
+      {redeemOpen && loyalty && selectedCustomer && (
+        <div className="fixed inset-0 bg-black/60 z-[70] flex items-end sm:items-center justify-center sm:p-4" onClick={() => setRedeemOpen(false)} role="dialog" aria-label="Redeem loyalty points">
+          <div className="card p-4 w-full sm:max-w-sm rounded-b-none sm:rounded-card" onClick={(e) => e.stopPropagation()} style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+            <h3 className="font-bold text-fg mb-1">Redeem points — {selectedCustomer.name}</h3>
+            <p className="text-xs text-fg-subtle mb-3">
+              Balance {selectedCustomer.loyalty_points} pts · each point = {formatINR(loyalty.point_value)} · minimum {loyalty.min_redeem_points} pts
+            </p>
+            <input
+              autoFocus
+              type="number"
+              min={0}
+              max={redeemableMax}
+              value={redeemInput}
+              onChange={(e) => setRedeemInput(e.target.value)}
+              className="input-field mb-2 tabular-nums"
+              placeholder="Points to redeem"
+              aria-label="Points to redeem"
+            />
+            <div className="flex justify-between text-xs mb-3">
+              <span className="text-fg-subtle">Cart value {formatINR(baseSubtotal)}</span>
+              <span className="font-bold text-fg tabular-nums">
+                −{formatINR(redeemValue(Math.max(0, Number(redeemInput) || 0), loyalty))} off this bill
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setRedeemOpen(false)} className="btn-ghost flex-1 py-3">Cancel</button>
+              <button
+                onClick={() => {
+                  const pts = Math.floor(Number(redeemInput) || 0)
+                  const check = checkRedemption(pts, selectedCustomer.loyalty_points, loyalty)
+                  if (!check.ok) { toast.error(check.error!); return }
+                  const value = redeemValue(pts, loyalty)
+                  if (value > baseSubtotal + 0.01) {
+                    toast.error(`Cart is only ${formatINR(baseSubtotal)} — redeem fewer points`)
+                    return
+                  }
+                  setRedeemPoints(pts)
+                  setRedeemOpen(false)
+                }}
+                className="btn-primary flex-1 py-3"
+              >Apply to bill</button>
             </div>
           </div>
         </div>

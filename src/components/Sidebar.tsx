@@ -18,7 +18,7 @@ import {
   Package, Wallet, History, AlertOctagon, UsersRound,
   Settings as SettingsIcon, Plug, Key, CreditCard, Network, Shield, LifeBuoy,
   UserCircle, Bell, Search, ShieldCheck, Lightbulb, X, LogOut, ChevronDown, ChevronRight,
-  TrendingUp, Landmark, RefreshCw, LineChart, CalendarClock, Copy, Share2, Flame, Tag, ClipboardCheck, Megaphone, Zap , AudioLines, FileCode2 } from 'lucide-react'
+  TrendingUp, Landmark, RefreshCw, LineChart, CalendarClock, Copy, Share2, Flame, Tag, ClipboardCheck, Megaphone, Zap , AudioLines, FileCode2, Percent } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { drawerShouldDismiss } from '../lib/gestures'
 
@@ -34,6 +34,7 @@ const CORE: Section[] = [
     { to: '/app/invoices', label: 'Bills', icon: Receipt },
     { to: '/app/khata', label: 'Khata', icon: BookOpen },
     { to: '/app/quotations', label: 'Quotations', icon: FileSignature },
+    { to: '/app/promotions', label: 'Deals & Loyalty', icon: Percent },
   ]},
   { label: 'Shop', items: [
     { to: '/app/products', label: 'Stock', icon: Package },

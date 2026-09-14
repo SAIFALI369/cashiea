@@ -5,7 +5,6 @@
 // ════════════════════════════════════════════════════════════════
 
 import { supabase, AI_FUNCTION_URL, edgeFunctionUrl } from '../supabase'
-import { requestId } from '../logger'
 import type { GoogleProvider } from '../app-catalog'
 
 export type TaskType = 'invoice' | 'report' | 'extract' | 'summary' | 'email' | 'sentiment'

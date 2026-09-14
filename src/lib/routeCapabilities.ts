@@ -33,6 +33,7 @@ const ROUTE_CAPABILITIES: Array<{ prefix: string; capability: Capability }> = [
   { prefix: '/app/scorecard', capability: 'inventory:view' },
   { prefix: '/app/bank-import', capability: 'settings:manage' },
   { prefix: '/app/team', capability: 'team:manage' },
+  { prefix: '/app/promotions', capability: 'settings:manage' },
   { prefix: '/app/assistant', capability: 'ai:use' },
   { prefix: '/app/brain', capability: 'ai:use' },
   { prefix: '/app/data-entry', capability: 'ai:use' },

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   Banknote, CreditCard, Loader2, Pause, Smartphone, Split, UserCircle, Wallet, X,
 } from 'lucide-react'
@@ -22,7 +22,7 @@ const METHODS: { id: PaymentMethod; label: string; icon: typeof Banknote }[] = [
 ]
 
 export function CartContents({
-  cart, sale, selectedCustomer, customerInsight, onPickCustomer, onClearCustomer,
+  cart, sale, selectedCustomer, customerInsight, onPickCustomer, onClearCustomer, promoBanner,
   onChangeQty, onOpenLineOptions, onNumpad, onRemoveLine,
   onHold, onClearCart, onCheckout, processing, checkoutReady, checkoutHint,
   paymentMethod, setPaymentMethod, splitMode, setSplitMode, tenders, setTenders,
@@ -34,6 +34,8 @@ export function CartContents({
   sale: SaleTotals
   selectedCustomer: Customer | null
   customerInsight?: string | null
+  /** Deals + loyalty strip rendered under the customer row (POS-owned). */
+  promoBanner?: ReactNode
   onPickCustomer: () => void
   onClearCustomer: () => void
   onChangeQty: (key: string, delta: number) => void
@@ -123,6 +125,9 @@ export function CartContents({
             <X className="w-4 h-4 text-fg-subtle hover:text-fg" onClick={(e) => { e.stopPropagation(); onClearCustomer() }} aria-label="Detach customer" />
           )}
         </button>
+
+        {/* Deals / loyalty banner from the POS (promotions + redeemable points) */}
+        {promoBanner}
 
         {/* Line items — generous spacing, swipe left to delete */}
         {cart.length === 0 ? (
