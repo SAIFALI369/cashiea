@@ -47,10 +47,14 @@ describe('sparklinePath — micro-chart geometry', () => {
 })
 
 describe('RULE_META — every rule has metadata and guardrails', () => {
-  it('covers all five autonomous departments', () => {
+  it('covers all autonomous departments (5 engine rules + 2 event-only types)', () => {
     expect(Object.keys(RULE_META).sort()).toEqual([
       'ar_escalation', 'cash_runway', 'churn_winback', 'expiry_guard', 'self_order',
+      'stock_alert', 'wa_order',
     ])
+    // Event-only types carry no engine config guardrails.
+    expect(RULE_META.stock_alert.guardrails).toEqual([])
+    expect(RULE_META.wa_order.guardrails).toEqual([])
   })
 
   it('guardrail keys match the default config (engine sync)', () => {

@@ -9,7 +9,7 @@ import { MerajGlyph } from '../components/MerajDevice'
 import { useAuth } from '../context/AuthContext'
 import MerajDevice from '../components/MerajDevice'
 import { useBusinessMood } from '../lib/businessMood'
-import { History, Camera, Menu, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, ArrowLeft, Plus, MessageCircle, Zap, Wallet, Package, TrendingUp, Receipt, FileText, MessageSquareText, BarChart3, Download, Pencil, RefreshCw, Tag, Bell, Copy, Target, Truck, Share2, FileSpreadsheet, Landmark, Users, type LucideIcon } from 'lucide-react'
+import { Camera, Menu, Mic, Square, Send, Loader2, Image as ImageIcon, X, Sparkles, Plus, MessageCircle, Zap, Wallet, Package, TrendingUp, Receipt, FileText, MessageSquareText, BarChart3, Download, Pencil, RefreshCw, Tag, Bell, Copy, Target, Truck, Share2, FileSpreadsheet, FileCode2, Landmark, Users, Percent, Clock, type LucideIcon } from 'lucide-react'
 import { getPageContext } from '../lib/pageContext'
 import { MERAJ_DESKS, merajConfirmLabel } from '../lib/merajDesks'
 import { supabase } from '../lib/supabase'
@@ -17,7 +17,6 @@ import { useSpeech } from '../lib/useSpeech'
 import type { ActivityLog } from '../lib/types'
 import { formatINR } from '../lib/format'
 import toast from 'react-hot-toast'
-import MerajIcon from '../components/MerajIcon'
 
 interface Msg { role: 'user' | 'meraj'; text: string; ts?: number; pending?: { type: string; input: any; preview: any }; media?: { type: string; thumb: string; url: string; alt: string; link?: string }[]; image?: string; images?: { url: string; prompt: string; width: number; height: number }[] }
 interface Convo { id: string; title: string; msgs: Msg[]; ts: number; scope?: string }
@@ -48,7 +47,9 @@ const DESK_ICONS: Record<string, LucideIcon> = {
   'auto-reorder': RefreshCw, pricing: Tag, 'cash-flow': Wallet, reminders: Bell,
   duplicates: Copy, snapshot: Camera, goals: Target, scorecard: Truck,
   social: Share2, 'gst-export': FileSpreadsheet, 'bank-import': Landmark,
+  'tally-export': FileCode2,
   invoices: FileText, reports: BarChart3, customers: Users,
+  promotions: Percent, team: Clock,
 }
 
 function timeAgo(iso: string): string {
@@ -335,7 +336,8 @@ export default function AIAssistant() {
   const [focused, setFocused] = useState(false)
   const [convos, setConvos] = useState<Convo[]>([])
   const [showHistory, setShowHistory] = useState(false)
-  const [showActivity, setShowActivity] = useState(false)
+  // Activity drawer state — opened by the bell in the header strip.
+  const [showActivity, _setShowActivity] = useState(false)
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
   const [mode, setMode] = useState<'ask' | 'task'>('ask')
 
@@ -605,7 +607,7 @@ export default function AIAssistant() {
 
   const confirmAction = async (pending: any) => {
     if (loading) return
-    const confirmText = '✓ ' + merajConfirmLabel(pending?.type)
+    const confirmText = '✓ ' + merajConfirmLabel(pending?.type, pending?.input)
     if (pending?.type === 'open_desk' && pending?.input?.href) {
       const href = String(pending.input.href)
       const label = String(pending.input.label || 'that desk')
@@ -974,7 +976,7 @@ export default function AIAssistant() {
                   )}
                   {m.pending && (
                     <div className="mt-3 flex gap-2">
-                      <button onClick={() => confirmAction(m.pending)} disabled={loading} className="btn-primary text-sm flex-1 h-9"><Sparkles className="w-4 h-4" /> {merajConfirmLabel(m.pending?.type)}</button>
+                      <button onClick={() => confirmAction(m.pending)} disabled={loading} className="btn-primary text-sm flex-1 h-9"><Sparkles className="w-4 h-4" /> {merajConfirmLabel(m.pending?.type, m.pending?.input)}</button>
                       <button onClick={() => cancelAction(i)} className="btn-secondary text-sm h-9">Cancel</button>
                     </div>
                   )}

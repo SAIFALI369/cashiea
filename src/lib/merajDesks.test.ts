@@ -5,8 +5,8 @@ import {
 
 const EXPECTED_IDS = [
   'auto-reorder', 'pricing', 'cash-flow', 'reminders', 'duplicates',
-  'snapshot', 'goals', 'scorecard', 'social', 'gst-export', 'bank-import',
-  'invoices', 'reports', 'customers',
+  'snapshot', 'goals', 'scorecard', 'social', 'gst-export', 'tally-export', 'bank-import',
+  'invoices', 'reports', 'customers', 'promotions', 'team',
 ] as const
 
 describe('MERAJ_DESKS', () => {
@@ -31,12 +31,14 @@ describe('MERAJ_DESKS', () => {
     expect(catalog).toContain('GST working')
   })
 
-  it('write desks (PO / prices / invoice) are flagged; inspect desks are not', () => {
+  it('write desks (PO / prices / invoice / deals) are flagged; inspect desks are not', () => {
     expect(getMerajDesk('auto-reorder')?.write).toBe(true)
     expect(getMerajDesk('pricing')?.write).toBe(true)
     expect(getMerajDesk('invoices')?.write).toBe(true)
+    expect(getMerajDesk('promotions')?.write).toBe(true)
     expect(getMerajDesk('cash-flow')?.write).toBeFalsy()
     expect(getMerajDesk('social')?.write).toBeFalsy()
+    expect(getMerajDesk('team')?.write).toBeFalsy()
   })
 })
 
@@ -52,7 +54,19 @@ describe('merajConfirmLabel', () => {
     expect(merajConfirmLabel('add_product')).toBe('Add it')
     expect(merajConfirmLabel('add_products')).toBe('Add it')
     expect(merajConfirmLabel('add_customer')).toBe('Add it')
+    expect(merajConfirmLabel('redeem_loyalty_points')).toBe('Redeem points')
+    expect(merajConfirmLabel('set_loyalty_program')).toBe('Save program')
+    expect(merajConfirmLabel('create_promotion')).toBe('Create deal')
+    expect(merajConfirmLabel('set_promotion_status')).toBe('Update deal')
+    expect(merajConfirmLabel('set_commission')).toBe('Set commission')
+    expect(merajConfirmLabel('send_cart_reminders')).toBe('Send nudges')
     expect(merajConfirmLabel('unknown')).toBe('Confirm')
     expect(merajConfirmLabel(undefined)).toBe('Confirm')
+  })
+
+  it('labels the shift clock by direction — in vs out', () => {
+    expect(merajConfirmLabel('clock_shift', { action: 'in' })).toBe('Clock in')
+    expect(merajConfirmLabel('clock_shift', { action: 'out' })).toBe('Clock out')
+    expect(merajConfirmLabel('clock_shift')).toBe('Clock in')
   })
 })

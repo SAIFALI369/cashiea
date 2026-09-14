@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase'
 import { offlineInsert } from '../lib/mutations'
 import { formatINR } from '../lib/format'
 import { validateHsn, validatePrice } from '../lib/validation'
+import { suggestGstRate } from '../lib/hsnRates'
 import { categoryHints, normalizeCategory } from '../lib/categories'
 import type { Product } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
@@ -34,6 +35,13 @@ export default function Products() {
   const [showImport, setShowImport] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<Product | null>(null)
   const [form, setForm] = useState(empty)
+  // HSN master suggestion (GST 2.0 rates) — only nudges, never overwrites.
+  const hsnSuggestion = useMemo(() => {
+    const v = validateHsn(form.hsn_code)
+    if (!v.valid) return null
+    const price = form.price === '' ? null : Number(form.price)
+    return suggestGstRate(form.hsn_code.trim(), price)
+  }, [form.hsn_code, form.price])
   const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [search, setSearch] = useState('')
   const PAGE_SIZE = 50
@@ -339,13 +347,22 @@ export default function Products() {
                 <label className="label">GST Rate</label>
                 <select value={form.gst_rate} onChange={(e) => setField('gst_rate', e.target.value)} className="input-field">
                   <option value="0">0% (Exempt)</option>
+                  <option value="3">3% (Gold/ gems)</option>
                   <option value="5">5%</option>
-                  <option value="12">12%</option>
+                  <option value="12">12% (pre-Sep 2025)</option>
                   <option value="18">18%</option>
-                  <option value="28">28%</option>
+                  <option value="28">28% (pre-Sep 2025)</option>
+                  <option value="40">40% (Sin goods)</option>
                 </select>
               </div>
             </div>
+            {hsnSuggestion && Number(form.gst_rate) !== hsnSuggestion.rate && (
+              <button type="button" onClick={() => setField('gst_rate', String(hsnSuggestion.rate))}
+                className="text-left text-[11px] leading-snug rounded-lg bg-info/10 text-info px-2.5 py-2 hover:bg-info/20 transition-colors">
+                <span className="font-bold">HSN {hsnSuggestion.entry.code} suggests {hsnSuggestion.rate}%.</span>{' '}
+                <span className="opacity-80">{hsnSuggestion.basis}. Tap to apply — confirm with your CA if unsure.</span>
+              </button>
+            )}
             <div>
               <label className="label">{isRestock ? 'Quantity to add' : 'Stock quantity'}{hints.unit ? <span className="text-fg-subtle font-normal"> ({hints.unit})</span> : null}</label>
               <input type="number" step="0.01" value={form.stock_quantity} onChange={(e) => setField('stock_quantity', e.target.value)} onBlur={() => touch('stock_quantity')} className={`input-field ${fieldError('stock_quantity') ? 'border-negative' : ''}`} placeholder="100" aria-invalid={!!fieldError('stock_quantity')} />

@@ -105,6 +105,14 @@ export const MERAJ_DESKS: MerajDesk[] = [
     icon: 'FileSpreadsheet',
   },
   {
+    id: 'tally-export',
+    label: 'Tally export',
+    desc: 'One XML for masters + vouchers',
+    href: '/app/tally-export',
+    prompt: 'I want to send this month’s books to my CA’s Tally. Summarise what the Tally export will contain, then open Tally Export.',
+    icon: 'FileCode2',
+  },
+  {
     id: 'bank-import',
     label: 'Bank match',
     desc: 'Match credits to unpaid invoices',
@@ -137,6 +145,23 @@ export const MERAJ_DESKS: MerajDesk[] = [
     prompt: 'Who are my top customers and who has gone quiet? Suggest one follow-up, then open Customers.',
     icon: 'Users',
   },
+  {
+    id: 'promotions',
+    label: 'Deals & Loyalty',
+    desc: 'Create a deal, run the points program',
+    href: '/app/promotions',
+    prompt: 'I want to run a deal at the counter. Ask me what kind — percent off, BOGO, or spend tiers — then create it for me. Never guess a product or price.',
+    icon: 'Percent',
+    write: true,
+  },
+  {
+    id: 'team',
+    label: 'Shift clock',
+    desc: 'Clock in/out, commission rules',
+    href: '/app/team',
+    prompt: 'Clock me in for my shift, and tell me who else is on the clock right now.',
+    icon: 'Clock',
+  },
 ]
 
 export const MERAJ_DESK_IDS = MERAJ_DESKS.map((d) => d.id)
@@ -150,7 +175,7 @@ export function merajDeskCatalogText(): string {
   return MERAJ_DESKS.map((d) => `- ${d.label} (${d.href}): ${d.desc}`).join('\n')
 }
 
-export function merajConfirmLabel(type: string | undefined): string {
+export function merajConfirmLabel(type: string | undefined, input?: unknown): string {
   switch (type) {
     case 'create_invoice': return 'Create it'
     case 'send_whatsapp': return 'Send it'
@@ -159,6 +184,16 @@ export function merajConfirmLabel(type: string | undefined): string {
     case 'open_desk': return 'Open it'
     case 'draft_purchase_order': return 'Draft the PO'
     case 'apply_price_changes': return 'Apply prices'
+    case 'redeem_loyalty_points': return 'Redeem points'
+    case 'set_loyalty_program': return 'Save program'
+    case 'create_promotion': return 'Create deal'
+    case 'set_promotion_status': return 'Update deal'
+    case 'clock_shift': {
+      const action = (input as { action?: string } | null | undefined)?.action
+      return action === 'out' ? 'Clock out' : 'Clock in'
+    }
+    case 'set_commission': return 'Set commission'
+    case 'send_cart_reminders': return 'Send nudges'
     case 'add_product':
     case 'add_products':
     case 'add_customer':

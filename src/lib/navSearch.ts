@@ -25,6 +25,7 @@ export const NAV_SYNONYMS: Record<string, string[]> = {
   '/app/auto-reorder': ['restock', 'purchase', 'order'],
   '/app/khata': ['udhaar', 'credit', 'ledger'],
   '/app/reports': ['hisab', 'report'],
+  '/app/tally-export': ['tally', 'accountant', 'ca', 'xml', 'books'],
   '/app/suppliers': ['distributor', 'vendor', 'supplier'],
 }
 

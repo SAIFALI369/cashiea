@@ -20,6 +20,10 @@ const PAGE_CONTEXT: Record<string, PageContextInfo> = {
     name: 'GST Export',
     description: 'the GST working sheet — rate-wise summary, B2B vs B2C, JSON/Excel export, and filing-health flags (not a GSTN filing)',
   },
+  '/app/tally-export': {
+    name: 'Tally Export',
+    description: 'the Tally XML export — invoices, POS sales, receipts and expenses as a Tally import file with party/stock masters and CGST/SGST/IGST ledger entries',
+  },
   '/app/bank-import': {
     name: 'Bank Import',
     description: 'the bank statement import — upload a bank CSV, match credits to unpaid invoices by amount, name in the narration and due date, and mark matched invoices paid',
@@ -82,7 +86,11 @@ const PAGE_CONTEXT: Record<string, PageContextInfo> = {
   },
   '/app/team': {
     name: 'Team & Staff',
-    description: 'your staff members and their roles',
+    description: 'your staff members, their roles, the shift clock and commission rules',
+  },
+  '/app/promotions': {
+    name: 'Deals & Loyalty',
+    description: 'BOGO, tiered and percent-off deals that auto-apply at the counter, plus the loyalty points program',
   },
   '/app/data-entry': {
     name: 'Data Entry',

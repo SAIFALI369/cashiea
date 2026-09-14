@@ -12,7 +12,10 @@ import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
  * Cashiea" cards in real time.
  */
 
-export type AutomationType = 'self_order' | 'churn_winback' | 'ar_escalation' | 'cash_runway' | 'expiry_guard'
+export type AutomationType =
+  | 'self_order' | 'churn_winback' | 'ar_escalation' | 'cash_runway' | 'expiry_guard'
+  // v39+: sale-time low stock (complete_sale) and WhatsApp billing commands.
+  | 'stock_alert' | 'wa_order'
 export type Severity = 'info' | 'success' | 'warning' | 'critical'
 
 export interface AutomationEvent {
@@ -37,13 +40,17 @@ export interface AutomationRule {
   last_run_at: string | null
 }
 
-/** Must stay in sync with supabase/functions/automation-engine/index.ts RULES */
+/** Must stay in sync with supabase/functions/automation-engine/index.ts RULES.
+ *  stock_alert + wa_order are event-only types (no scheduled rule or
+ *  config) — they fire from complete_sale and the WhatsApp webhook. */
 export const DEFAULT_CONFIG: Record<AutomationType, Record<string, number>> = {
   self_order: { maxOrderValue: 15000, leadDays: 3, coverDays: 7 },
   churn_winback: { dormantDays: 45, discountPercent: 20, maxPerDay: 3 },
   ar_escalation: { friendlyDays: 3, firmDays: 10, finalDays: 21, maxPerDay: 5 },
   cash_runway: { horizonDays: 7 },
   expiry_guard: { daysAhead: 3 },
+  stock_alert: {},
+  wa_order: {},
 }
 
 export const RULE_META: Record<AutomationType, {
@@ -98,6 +105,18 @@ export const RULE_META: Record<AutomationType, {
     guardrails: [
       { key: 'daysAhead', label: 'Warn before expiry', suffix: 'days', min: 1, max: 14 },
     ],
+  },
+  stock_alert: {
+    label: 'Live low-stock alerts',
+    tagline: 'A bill that empties a shelf alerts every device the same second.',
+    department: 'Procurement',
+    guardrails: [],
+  },
+  wa_order: {
+    label: 'WhatsApp billing commands',
+    tagline: '"Add 50 notebooks at ₹25" from your own number becomes a GST bill.',
+    department: 'Counter',
+    guardrails: [],
   },
 }
 

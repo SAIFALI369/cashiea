@@ -10,25 +10,33 @@ Live at **[cashiea.vercel.app](https://cashiea.vercel.app)**
 
 ### Counter & billing
 - **New Sale (POS)** — fast product grid/list, barcode scanning (camera), **hold & resume carts**, split payments (cash + UPI + card with live change math), quick-quantity numpad, digital receipts (PDF / WhatsApp / print)
-- **GST tax invoices** — Rule 46 CGST Rules compliant: TAX INVOICE heading, supplier + buyer GSTIN, HSN/SAC, CGST/SGST or IGST split, **amount in words**, place of supply, reverse-charge indicator, signature line, UPI QR
+- **GST tax invoices** — Rule 46 CGST Rules compliant: TAX INVOICE heading, supplier + buyer GSTIN, HSN/SAC, CGST/SGST or IGST split, **amount in words**, place of supply, reverse-charge indicator, signature line, UPI QR. An **HSN → GST rate master** (`lib/hsnRates.ts` + `schema-v38`) suggests the current rate (GST 2.0, 22-Sep-2025) from the HSN code, honouring value-based splits like apparel ≤ ₹2,500 → 5% / above → 18%
+- **WhatsApp billing commands** (opt-in, Settings → AI) — text *"Add 50 notebooks at ₹25"* from the owner's/staff's WhatsApp number: a deterministic parser (no AI tokens, fully unit-tested) matches the catalogue, creates the GST invoice, replies with the bill + UPI link and pushes a live card to the dashboard (`_shared/order-parser.ts`, `whatsapp-webhook`, `schema-v40`)
 - **Khata (digital udhaar book)** — who owes what, payment reminders, settled history
+- **Deals & promotions engine** (`/app/promotions`) — BOGO (buy X get Y at % off, by product or category), tiered spend discounts ("spend ₹1000 → 10%") and simple percent-off with an optional cap. Rules have start/end windows, pausable, never stack, capped at cart value, and **auto-apply at the POS counter** — the cashier sees a live "Deal applied" banner and each line's discount is recorded on the bill with the rule name
+- **Loyalty program** (schema v41) — points on every billed sale (e.g. 1 pt per ₹100), redeemable as rupees at the counter with a minimum-redemption guard; Bronze → Platinum lifetime tiers. Owner configures it on the Customers page; the POS can apply points to a sale in one tap and records the redemption against the receipt (idempotent by reference). Earning is a database trigger — works even if the tab was offline
+- **Abandoned-cart recovery** — held carts that cool past 2 hours (and are worth chasing) surface on the Dashboard with a one-tap WhatsApp follow-up drafted for you; no phone on the cart, no nudge
+- **Workforce: shift clock & commission** (schema v42/43) — staff clock in/out at Team with break-minute deduction; the owner sets commission % per staff and sees a 30-day table of sales, revenue, hours, revenue/hour and estimated commission (from the "served by" name on each bill)
 - **Recurring invoices** — weekly/monthly/yearly profiles with pause/resume; a scheduled job generates them daily, duplicate-proof by database constraint
 - **Offline-first** — keep billing through power cuts and dead zones; sales queue locally and sync on reconnect with a visible sync status
 
 ### Stock & customers
 - Inventory with low-stock alerts, **multi-unit pricing** (per kg / 500 g / dozen) and **bulk CSV import** (column auto-mapping, duplicate-SKU detection, validation preview)
+- **Sale-time stock alerts** — the moment a bill pushes an item at/below its threshold, `complete_sale` (schema v39) writes a `stock_alert` into `automation_events`, which the realtime publication pushes to every logged-in device as a live card
 - Customer CRM with segments, spending history and dormant-regular detection
 - Suppliers, purchase orders, quotations, expenses
 
 ### Meraj — the AI staff member
 - Answers business questions from your **real data** (never hand-typed): "how was business today?", "who bought cement last month?", "which customers should I follow up?"
 - **Acts, with approval** — creates invoices, adds products/customers in bulk, sends WhatsApp messages, generates images, syncs stock from Google Sheets — always prepare → confirm → execute
+- **Runs the counter programs too** — "redeem 50 points for Ramesh", "turn loyalty on at 2 points per ₹100", "make a buy-2-get-1 deal on shampoo", "pause the Diwali BOGO", "clock me out with a 30-minute break", "set Ramesh's commission to 5%", "any carts worth recovering?" → Meraj prepares the exact action with live numbers, you confirm, it's done (owner-only where money or settings move; staff can clock only themselves)
 - **Voice in 10 Indian languages** (Hindi, Bengali, Tamil, Telugu, Marathi, Gujarati, Kannada, Malayalam, Punjabi, English)
 - Daily briefing at 7 AM, WhatsApp sales report at 8 PM, 9 PM intelligence prompts
 - Knows Indian compliance: GST slabs, GSTIN state codes, Rule 46 invoice requirements, filing deadlines, presumptive taxation — with "confirm with your CA" honesty
 
 ### Reports & money
 - AI reports auto-populated from your transactions/expenses/receivables/stock — **PDF and Excel (real .xlsx) export**, WhatsApp sharing
+- **Tally export** (`/app/tally-export`) — invoices, POS sales, receipts and expenses as a **Tally import XML** (TallyPrime / ERP 9): party ledgers with GSTIN, stock items with HSN + GST rate, explicit CGST/SGST/IGST ledger lines and round-off so every voucher balances to the paisa. One file, `Gateway of Tally → Import → Vouchers`
 - End-of-day cash reconciliation (expected vs counted vs variance)
 - Payment reminders and overdue automation (scheduled backend job)
 - Multi-provider AI routing: Groq → Gemini fallback cascade, all free tiers
@@ -44,7 +52,7 @@ Live at **[cashiea.vercel.app](https://cashiea.vercel.app)**
 - **Backend:** Supabase (Postgres + RLS + pg_cron + 24 edge functions), ap-south-1 (Mumbai)
 - **AI:** Groq (primary) + Google Gemini (fallback) with a multi-pass patient cascade; function-calling tools for Meraj's actions
 - **Integrations:** WhatsApp Cloud API, Google Sheets/Drive/Gmail, UPI deep links + QR, Pollination.ai (image gen), GNews
-- **Testing:** Vitest (597 tests — sale math, GST split, CSV engine, XLSX writer, compliance knowledge, error-tracking pipeline); CI gates on lint + type-check + coverage thresholds + build + bundle size
+- **Testing:** Vitest (854 tests — sale math, GST split, CSV engine, XLSX writer, Tally XML, WhatsApp order parser, HSN rate master, compliance knowledge, error-tracking pipeline); CI gates on lint + type-check + coverage thresholds + build + bundle size
 
 ## Project layout
 

@@ -98,8 +98,15 @@ describe('validateProductRows', () => {
 
   it('flags invalid GST slab and HSN format', () => {
     const out = validateProductRows([['Item', 'I-1', 'c', '10', '1', '15', '12ab']], mapping, headers, new Set())
-    expect(out[0].errors.join(' ')).toContain('GST "15" must be one of 0, 5, 12, 18, 28')
+    expect(out[0].errors.join(' ')).toContain('GST "15" must be one of 0, 3, 5, 12, 18, 28, 40')
     expect(out[0].errors.join(' ')).toContain('HSN "12ab" must be 2–8 digits')
+  })
+
+  it('accepts the GST 2.0 rates (3% gems, 40% sin goods) and legacy 12/28', () => {
+    for (const rate of ['3', '5', '12', '18', '28', '40']) {
+      const out = validateProductRows([['Item', `I-${rate}`, 'c', '10', '1', rate, '']], mapping, headers, new Set())
+      expect(out[0].errors).toHaveLength(0)
+    }
   })
 
   it('flags duplicate SKUs within the file', () => {

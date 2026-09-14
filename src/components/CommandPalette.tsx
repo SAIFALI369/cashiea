@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Search, LayoutDashboard, ShoppingCart, Package, Users, Receipt, BookOpen,
   FileBarChart, Sparkles, Landmark, FileSignature, TrendingUp, Wallet, CornerDownLeft,
-  RefreshCw, LineChart, CalendarClock, Copy, Share2, Flame, Tag, ClipboardCheck, Megaphone, Zap,
+  RefreshCw, LineChart, CalendarClock, Copy, Share2, Flame, Tag, ClipboardCheck, Megaphone, Zap, FileCode2,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -32,6 +32,7 @@ const COMMANDS: Command[] = [
   { label: 'Reports', hint: 'AI reports, PDF & Excel', icon: FileBarChart, to: '/app/reports', keywords: 'reports analysis excel pdf' },
   { label: 'Profit dashboard', hint: 'Revenue, COGS, net profit', icon: TrendingUp, to: '/app/profit-dashboard', keywords: 'profit revenue cogs margin' },
   { label: 'GST export', hint: 'GSTR-1 sheet for your CA', icon: FileSignature, to: '/app/gst-export', keywords: 'gst gstr1 export filing tax' },
+  { label: 'Tally export', hint: 'Import XML for Tally Prime / ERP 9', icon: FileCode2, to: '/app/tally-export', keywords: 'tally xml import vouchers ledger accounting erp' },
   { label: 'Bank import', hint: 'Match statement to invoices', icon: Landmark, to: '/app/bank-import', keywords: 'bank statement import reconcile' },
   { label: 'Accounts — expenses', hint: 'Cash flow, income, entries', icon: Wallet, to: '/app/accounts', keywords: 'accounts expenses income cashflow' },
   { label: 'Quotations', hint: 'Price quotes', icon: FileSignature, to: '/app/quotations', keywords: 'quotes quotations estimate' },

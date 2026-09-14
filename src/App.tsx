@@ -24,6 +24,7 @@ const DataEntryPage = lazy(() => import('./pages/DataEntry'))
 const ProfitDashboard = lazy(() => import('./pages/ProfitDashboard'))
 const BankImport = lazy(() => import('./pages/BankImport'))
 const GstExport = lazy(() => import('./pages/GstExport'))
+const TallyExport = lazy(() => import('./pages/TallyExport'))
 const AutoReorder = lazy(() => import('./pages/AutoReorder'))
 const CashFlow = lazy(() => import('./pages/CashFlow'))
 const Reminders = lazy(() => import('./pages/Reminders'))
@@ -47,6 +48,7 @@ const Products = lazy(() => import('./pages/Products'))
 const Customers = lazy(() => import('./pages/Customers'))
 const Suppliers = lazy(() => import('./pages/Suppliers'))
 const Quotations = lazy(() => import('./pages/Quotations'))
+const Promotions = lazy(() => import('./pages/Promotions'))
 const Accounts = lazy(() => import('./pages/Accounts'))
 const AIAssistant = lazy(() => import('./pages/AIAssistant'))
 const Team = lazy(() => import('./pages/Team'))
@@ -156,6 +158,7 @@ function App() {
           <Route path="customers" element={<Customers />} />
           <Route path="suppliers" element={<Suppliers />} />
           <Route path="quotations" element={<Quotations />} />
+          <Route path="promotions" element={<Promotions />} />
           <Route path="accounts" element={<Accounts />} />
           <Route path="team" element={<Team />} />
           <Route path="assistant" element={<AIAssistant />} />
@@ -186,6 +189,7 @@ function App() {
           <Route path="profit-dashboard" element={<ProfitDashboard />} />
           <Route path="bank-import" element={<BankImport />} />
           <Route path="gst-export" element={<GstExport />} />
+          <Route path="tally-export" element={<TallyExport />} />
           <Route path="manifest" element={<Manifest />} />
           <Route path="command-center" element={<CommandCenter />} />
           <Route path="vasooli" element={<Vasooli />} />

@@ -5,12 +5,13 @@ import { supabase } from '../lib/supabase'
 import { offlineInsert } from '../lib/mutations'
 import { formatINR } from '../lib/format'
 import { enrichCustomers, winbackText, type Customer360 } from '../lib/customer360'
+import { DEFAULT_LOYALTY_PROGRAM, sanitiseProgram, tierForLifetimePoints, type LoyaltyProgram } from '../lib/loyalty'
 import type { Customer, Transaction } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import HeaderAction from '../components/ui/HeaderAction'
 import EmptyState from '../components/ui/EmptyState'
 import { ConfirmDialog } from '../components/ConfirmDialog'
-import { Users, Plus, Loader2, Trash2, Search, Mail, Phone, X, ArrowUpRight, Sparkles } from 'lucide-react'
+import { Users, Plus, Loader2, Trash2, Search, Mail, Phone, X, ArrowUpRight, Sparkles, Star } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const empty = { name: '', email: '', phone: '', address: '', company: '', notes: '', tags: '', credit_limit: 0 }
@@ -42,6 +43,47 @@ export default function Customers() {
   const [loadingOrders, setLoadingOrders] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<Customer | null>(null)
   const [applyingCredit, setApplyingCredit] = useState(false)
+
+  // ── Loyalty program (owner-configured; schema v41) ──
+  const { isOwner } = useCan()
+  const [loyalty, setLoyalty] = useState<LoyaltyProgram | null>(null)
+  const [loyaltyEdit, setLoyaltyEdit] = useState(false)
+  const [loyaltyDraft, setLoyaltyDraft] = useState<LoyaltyProgram>(DEFAULT_LOYALTY_PROGRAM)
+  const [savingLoyalty, setSavingLoyalty] = useState(false)
+
+  useEffect(() => {
+    if (!ownerId) return
+    let cancelled = false
+    supabase.from('loyalty_program').select('*').eq('user_id', ownerId).maybeSingle()
+      .then((r: { data: unknown }) => {
+        if (cancelled) return
+        const prog = (r.data as LoyaltyProgram) || DEFAULT_LOYALTY_PROGRAM
+        setLoyalty(prog)
+        setLoyaltyDraft(sanitiseProgram(prog))
+      }, () => { /* older DB without the table — loyalty stays off */ })
+    return () => { cancelled = true }
+  }, [ownerId])
+
+  const saveLoyalty = async () => {
+    if (!ownerId) return
+    const clean = sanitiseProgram(loyaltyDraft)
+    setSavingLoyalty(true)
+    try {
+      const { error } = await supabase.from('loyalty_program').upsert({
+        user_id: ownerId, enabled: clean.enabled,
+        points_per_100: clean.points_per_100, point_value: clean.point_value,
+        min_redeem_points: clean.min_redeem_points, updated_at: new Date().toISOString(),
+      })
+      if (error) throw error
+      setLoyalty(clean)
+      setLoyaltyEdit(false)
+      toast.success(clean.enabled ? 'Loyalty program on — points start on the next sale' : 'Loyalty program paused')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not save the loyalty program')
+    } finally {
+      setSavingLoyalty(false)
+    }
+  }
 
   useEffect(() => {
     if (ownerId) void loadCustomers()
@@ -250,6 +292,99 @@ export default function Customers() {
         </section>
       )}
 
+      {/* ── Loyalty program (owner) — earn on every sale, redeem at the counter ── */}
+      {loyalty && (
+        <section className={`card p-5 sm:p-6 animate-rise-in ${loyalty.enabled ? '' : 'opacity-90'}`}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <Star className={`w-4 h-4 ${loyalty.enabled ? 'text-secondary-strong' : 'text-fg-subtle'}`} />
+                <h2 className="text-sm font-bold text-fg">Loyalty program</h2>
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${loyalty.enabled ? 'bg-positive/15 text-positive' : 'bg-surface-2 text-fg-subtle'}`}>
+                  {loyalty.enabled ? 'ON' : 'OFF'}
+                </span>
+              </div>
+              {loyalty.enabled ? (
+                <p className="text-xs text-fg-muted mt-1.5 leading-relaxed">
+                  {loyalty.points_per_100} pt per {formatINR(100, 0)} spent · each point redeems {formatINR(loyalty.point_value)} at the counter · min {loyalty.min_redeem_points} pts per redemption.
+                  Customers earn automatically on every billed sale.
+                </p>
+              ) : (
+                <p className="text-xs text-fg-subtle mt-1.5">Points on every purchase, redeemable as rupees at the counter. Turn it on when you're ready.</p>
+              )}
+              {loyalty.enabled && customers.length > 0 && (
+                <p className="text-xs text-fg-subtle mt-1">
+                  {customers.filter((c) => Number(c.loyalty_points) > 0).length} customers hold points · {customers.reduce((s, c) => s + Number(c.loyalty_points || 0), 0).toLocaleString('en-IN')} pts outstanding
+                </p>
+              )}
+            </div>
+            {isOwner && !loyaltyEdit && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setLoyaltyEdit(true)}
+                  className="btn-secondary text-xs"
+                >{loyalty.enabled ? 'Edit' : 'Set up'}</button>
+                {loyalty.enabled && (
+                  <button
+                    onClick={async () => {
+                      const clean = sanitiseProgram({ ...loyalty, enabled: false })
+                      const { error } = await supabase.from('loyalty_program').upsert({
+                        user_id: ownerId, enabled: false,
+                        points_per_100: clean.points_per_100, point_value: clean.point_value,
+                        min_redeem_points: clean.min_redeem_points, updated_at: new Date().toISOString(),
+                      })
+                      if (error) toast.error(error.message)
+                      else { setLoyalty(clean); toast.success('Loyalty paused — earned points are safe') }
+                    }}
+                    className="btn-ghost text-xs"
+                  >Pause</button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {loyaltyEdit && (
+            <div className="mt-4 pt-4 border-t border-line space-y-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="label">Points per ₹100</label>
+                  <input type="number" min={0} step="0.5" value={loyaltyDraft.points_per_100}
+                    onChange={(e) => setLoyaltyDraft((d) => ({ ...d, points_per_100: Number(e.target.value) }))}
+                    className="input-field tabular-nums" aria-label="Points per 100 rupees" />
+                </div>
+                <div>
+                  <label className="label">₹ per point</label>
+                  <input type="number" min={0} step="0.05" value={loyaltyDraft.point_value}
+                    onChange={(e) => setLoyaltyDraft((d) => ({ ...d, point_value: Number(e.target.value) }))}
+                    className="input-field tabular-nums" aria-label="Rupees per point" />
+                </div>
+                <div>
+                  <label className="label">Min pts / redemption</label>
+                  <input type="number" min={0} value={loyaltyDraft.min_redeem_points}
+                    onChange={(e) => setLoyaltyDraft((d) => ({ ...d, min_redeem_points: Number(e.target.value) }))}
+                    className="input-field tabular-nums" aria-label="Minimum points per redemption" />
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-xs text-fg-muted cursor-pointer select-none">
+                <input type="checkbox" checked={loyaltyDraft.enabled}
+                  onChange={(e) => setLoyaltyDraft((d) => ({ ...d, enabled: e.target.checked }))}
+                  className="accent-[var(--color-accent)]" />
+                Turn the program on — customers start earning on the next sale
+              </label>
+              <p className="text-[11px] text-fg-subtle">
+                Example: 1 pt per ₹100 at {formatINR(loyaltyDraft.point_value)}/pt = a {((loyaltyDraft.points_per_100 * loyaltyDraft.point_value) / 1).toFixed(1)}% reward on every rupee spent. Adjust to your margins.
+              </p>
+              <div className="flex gap-2">
+                <button onClick={() => { setLoyaltyEdit(false); setLoyaltyDraft(sanitiseProgram(loyalty)) }} className="btn-ghost flex-1 py-2.5">Cancel</button>
+                <button onClick={saveLoyalty} disabled={savingLoyalty} className="btn-primary flex-1 py-2.5">
+                  {savingLoyalty ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save program'}
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
       {/* ── Search (soft gray, borderless) + text-tab filters ── */}
       <div className="space-y-4">
         <div className="relative">
@@ -350,6 +485,14 @@ export default function Customers() {
                     <span className="mx-1.5 text-line-2">|</span>
                     <span className="text-fg-subtle">Orders </span>
                     <span className="font-bold text-fg tabular-nums">{c.total_orders || 0}</span>
+                    {loyalty?.enabled && Number(c.loyalty_points) > 0 && (
+                      <>
+                        <span className="mx-1.5 text-line-2">|</span>
+                        <span className="text-secondary-strong" title={tierForLifetimePoints(Number(c.loyalty_points) || 0) + ' tier'}>
+                          ★ <span className="font-bold tabular-nums">{c.loyalty_points}</span> pts
+                        </span>
+                      </>
+                    )}
                     {c.last_purchase_at && (
                       <>
                         <span className="mx-1.5 text-line-2">|</span>
