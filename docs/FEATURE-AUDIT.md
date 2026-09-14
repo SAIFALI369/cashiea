@@ -274,3 +274,51 @@ surfacing state, idempotency keys so a replayed sale can never double-charge.
 **Deploy order for the backend pieces:** schema v38 → v39 → v40 in the SQL
 editor, then `supabase functions deploy whatsapp-webhook`. Everything else is
 client-side and ships with the next Vercel deploy.
+
+---
+
+# Part 2 — Competitive Audit (2026-09-14)
+
+A second feature audit against the leading POS platforms: **Shopify POS, Square,
+Lightspeed, KORONA, Clover, Springboard Retail**. Every gap was checked not
+just for value but for **harmlessness to Cashiea** — competitive parity is not
+a mandate, and features that would add regulatory, security or scope risk to
+a single-shop Indian retail app were deliberately excluded.
+
+## Already existed (verified, tested)
+
+Variant pricing, reorder points + auto-reorder, dashboards, purchase-order
+automation, customer segmentation, `served_by` on sales (commission source),
+mobile-first POS, held carts, invoicing, RBAC + audit trail, offline-first
+sync, multi-format exports (PDF/XLSX/Tally XML/GST).
+
+## Built in this pass
+
+| Feature | vs the market | Where |
+|---|---|---|
+| **Loyalty program** — points per ₹100, redeem as ₹ at the counter, min-redemption guard, Bronze→Platinum lifetime tiers, DB-trigger earning | Square Loyalty, KORONA tiered loyalty | `schema-v41-loyalty.sql`, `lib/loyalty.ts`, Customers page (owner config), POS (redeem modal) |
+| **Promotions engine** — BOGO (product/category), tiered spend discounts, percent-off with cap; windows, pause, never stack, capped at cart value | Shopify dynamic discounting, Lightspeed markdowns | `schema-v43-promotions.sql`, `lib/promotions.ts`, `/app/promotions` (owner-only), POS auto-apply + deals banner |
+| **Workforce** — staff shift clock in/out with break deduction; commission rules per staff; 30-day performance table (sales, revenue, hours, rev/hr, commission) | Square Teams/Shifts, Lightspeed staff commissions, Clover shift mgmt | `schema-v42-staff-workforce.sql`, `lib/workforce.ts`, Team page |
+| **Abandoned-cart recovery** — held carts aged into a follow-up window surface on the Dashboard with a one-tap WhatsApp nudge (drafted message, wa.me deep link) | Shopify abandoned checkout | `lib/abandonedCarts.ts`, Dashboard card |
+
+## Deliberately NOT built — harmful or misfit for Cashiea
+
+| Feature | Why excluded |
+|---|---|
+| Payment processing network (Square/Fiserv) | Moves money — needs PCI-DSS, RBI PSS licensing and fraud liability. One bug = lost shop money. Third-party UPI already covers payments. |
+| 8,000-app marketplace | Maintenance + review liability for third-party code we can't vet. |
+| Square Capital / merchant advances | Lending is a regulated activity (RBI NBFC licence). |
+| White-label / enterprise customization (KORONA) | Conflicts with the single-product, single-brand model. |
+| High-risk industry modes (KORONA) | Cannabis/firearms/gambling verticals — legal exposure in India. |
+| Restaurant/kitchen hybrid (KORONA) | Different product: kitchen display, tickets, course timing. Retail POS focus stays. |
+| Hardware ecosystem (Clover terminals) | Physical hardware supply chain; browser/barcode-camera already works. |
+| Shopify/WooCommerce channel sync | Requires storing merchants' external API keys/credentials — a security surface we shouldn't hold. |
+| 50+ multi-location (Lightspeed) | Cashiea is single-business by design; RLS and pricing assume one shop per account. |
+
+**Deploy order:** v38 → v39 → v40 → v41 (loyalty) → v42 (workforce) → v43
+(promotions) in the SQL editor, then `supabase functions deploy
+whatsapp-webhook`. Client changes ship with the next Vercel deploy.
+
+**Test totals after this pass:** 924 passing, 70 of them new (loyalty,
+promotions, workforce, abandoned carts). `tsc`, ESLint (0 errors) and the
+production build are all clean.
