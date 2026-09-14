@@ -59,6 +59,7 @@ const APP_ROUTES = [
   'permissions', 'pos', 'pricing', 'products', 'profit-dashboard', 'quotations', 'reminders',
   'reports', 'sales', 'scorecard', 'settings', 'snapshot', 'social', 'subscription',
   'suggestions', 'summaries', 'suppliers', 'support', 'team', 'vasooli',
+  'tally-export', 'promotions',
 ]
 function spaFallbackShells(): Plugin {
   return {
