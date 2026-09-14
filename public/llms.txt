@@ -134,3 +134,14 @@ Cashiea runs a background automation engine (owner-configurable, with guardrails
 - **Security practices.** Row-level security on every table, no credentials stored in the browser beyond your login session, strict Content-Security-Policy headers, and no third-party trackers or advertising scripts.
 
 A dedicated human-readable page with these answers: https://cashiea.vercel.app/trust
+
+## New capabilities (2026-09)
+
+- **Tally XML Export** - one-tap export of all accounting data into Tally-compatible XML for your accountant.
+- **WhatsApp Billing Commands** - customers WhatsApp their order, Meraj parses it into a real GST bill automatically.
+- **Sale-time Stock Alerts** - real-time warning on the POS when an item runs out mid-sale.
+- **HSN Rate Master** - pre-loaded HSN codes with correct GST rates, auto-suggested on every invoice line.
+- **Loyalty Program** - points per rupee spent, tier-based rewards, redemption at the counter.
+- **Promotions and Deals** - discount rules, BOGO offers, happy-hour pricing, auto-applied at the POS.
+- **Abandoned Cart Recovery** - detects carts abandoned mid-checkout, drafts a recovery WhatsApp.
+- **Staff Workforce and Commission** - shift scheduling, attendance, per-sale commission calculation.
