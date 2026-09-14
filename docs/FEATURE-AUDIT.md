@@ -322,3 +322,39 @@ whatsapp-webhook`. Client changes ship with the next Vercel deploy.
 **Test totals after this pass:** 924 passing, 70 of them new (loyalty,
 promotions, workforce, abandoned carts). `tsc`, ESLint (0 errors) and the
 production build are all clean.
+
+---
+
+# Part 3 — Meraj wired to the new features (2026-09-14)
+
+Every feature from Part 2 is now drivable by **Meraj** in Task mode, using the
+same prepare → confirm → execute flow as invoices and POs. Nothing executes
+without the owner tapping the confirm button in chat.
+
+## New Meraj tools (`ai-assistant` edge function)
+
+| Say | Tool | Guard |
+|---|---|---|
+| "Redeem 50 points for Ramesh" / "redeem all his points" | `redeem_loyalty_points` | Owner-only; executes through the balance-checked, idempotent `redeem_loyalty_points` RPC as the signed-in user — never the service role |
+| "Turn loyalty on" / "2 points per ₹100, ₹1 a point" / "pause loyalty" | `set_loyalty_program` | Owner-only; merges with current settings, shows the reward-rate math before saving |
+| "Make a buy-2-get-1 deal on shampoo" / "10% off this weekend" / "spend ₹1000 get 15% off" | `create_promotion` | Owner-only; resolves the product from the catalogue (never invents one), validates kind/config server-side, mirrors `lib/promotions.ts` rules |
+| "Pause the Diwali BOGO" / "resume it" | `set_promotion_status` | Owner-only; exact + fuzzy name match, lists candidates when ambiguous |
+| "Clock me in" / "clock out with a 30-min break" | `clock_shift` | Any team member — staff can only clock **themselves** (server-checked against the signed-in user); owner can clock anyone by name; no double open shifts |
+| "Set Ramesh's commission to 5%" | `set_commission` | Owner-only; upserts the same `commission_rules` the Team page uses |
+| "Any carts worth recovering?" | `review_abandoned_carts` | Owner/manager; lists held carts aged 2–72 h worth ≥ ₹100, resolves phones from the customer book, drafts one friendly WhatsApp each → **Send nudges** confirm |
+
+## Awareness (so Meraj can answer, not just act)
+
+- `buildContext` now includes `loyalty` (program + point holders), `activeDeals`
+  (live window-checked), `abandonedCarts` and `staff` (on-shift + commission
+  rules) — fetched **only** when the question mentions them, and absent on
+  databases not yet migrated to v41–v43.
+- Two new desks on the Meraj Execute grid: **Deals & Loyalty** (`/app/promotions`)
+  and **Shift clock** (`/app/team`), each with a live briefing (running deals +
+  program status; who's on shift + commission rules).
+- Confirmation whitelist extended server-side; every new confirmation is
+  validated (ranges, ownership, actor identity) before any write, and each
+  execution lands in `activity_logs`.
+
+**Deploy:** `supabase functions deploy ai-assistant` (client changes ship with
+the next Vercel deploy). Tests: 925 passing (tsc, ESLint 0 errors, build clean).

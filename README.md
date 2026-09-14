@@ -29,6 +29,7 @@ Live at **[cashiea.vercel.app](https://cashiea.vercel.app)**
 ### Meraj — the AI staff member
 - Answers business questions from your **real data** (never hand-typed): "how was business today?", "who bought cement last month?", "which customers should I follow up?"
 - **Acts, with approval** — creates invoices, adds products/customers in bulk, sends WhatsApp messages, generates images, syncs stock from Google Sheets — always prepare → confirm → execute
+- **Runs the counter programs too** — "redeem 50 points for Ramesh", "turn loyalty on at 2 points per ₹100", "make a buy-2-get-1 deal on shampoo", "pause the Diwali BOGO", "clock me out with a 30-minute break", "set Ramesh's commission to 5%", "any carts worth recovering?" → Meraj prepares the exact action with live numbers, you confirm, it's done (owner-only where money or settings move; staff can clock only themselves)
 - **Voice in 10 Indian languages** (Hindi, Bengali, Tamil, Telugu, Marathi, Gujarati, Kannada, Malayalam, Punjabi, English)
 - Daily briefing at 7 AM, WhatsApp sales report at 8 PM, 9 PM intelligence prompts
 - Knows Indian compliance: GST slabs, GSTIN state codes, Rule 46 invoice requirements, filing deadlines, presumptive taxation — with "confirm with your CA" honesty

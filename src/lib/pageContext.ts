@@ -86,7 +86,11 @@ const PAGE_CONTEXT: Record<string, PageContextInfo> = {
   },
   '/app/team': {
     name: 'Team & Staff',
-    description: 'your staff members and their roles',
+    description: 'your staff members, their roles, the shift clock and commission rules',
+  },
+  '/app/promotions': {
+    name: 'Deals & Loyalty',
+    description: 'BOGO, tiered and percent-off deals that auto-apply at the counter, plus the loyalty points program',
   },
   '/app/data-entry': {
     name: 'Data Entry',

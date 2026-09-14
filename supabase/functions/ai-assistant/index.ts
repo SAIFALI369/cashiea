@@ -144,12 +144,48 @@ async function buildContext(supabase: any, userId: string, message = "", briefin
   const wantDrive = briefing || /\b(drive|file|document|sheet|doc\b|pdf|spreadsheet|folder)\b/i.test(message);
   const wantWa = briefing || /\b(whatsapp|message|customer (wrote|sent|asked))\b/i.test(message);
   const wantNews = wantsNews(message);
-  const [recentEmails, driveFiles, recentWhatsApp, currentNews] = await Promise.all([
+  // New-feature context (schema v41–v43): loyalty, deals, held carts, staff.
+  // Fetched only when relevant; missing tables on an unmigrated DB resolve
+  // to null data and the snapshot section is simply absent.
+  const wantLoyalty = briefing || /\b(loyalty|points?|reward|redeem)\b/i.test(message);
+  const wantDeals = briefing || /\b(deal|deals|discount|offer|offers|promo|promotion|bogo|markdown)\b/i.test(message);
+  const wantCarts = briefing || /\b(cart|carts|abandoned|held|recover)\b/i.test(message);
+  const wantStaff = briefing || /\b(shift|shifts|clock|clocked|commission|workforce|on duty)\b/i.test(message);
+  const [recentEmails, driveFiles, recentWhatsApp, currentNews, loyaltyProg, loyaltyCustomers, promoRules, heldCartRows, openShifts, commissionRules] = await Promise.all([
     wantEmails ? getRecentEmails(supabase, userId, secretSupabase) : Promise.resolve([]),
     wantDrive ? getDriveContext(supabase, userId, secretSupabase) : Promise.resolve([]),
     wantWa ? getRecentWhatsApp(supabase, userId) : Promise.resolve([]),
     wantNews ? fetchNews(extractNewsTopic(message), Deno.env.get("GNEWS_API_KEY") || "") : Promise.resolve([]),
+    wantLoyalty || wantDeals ? supabase.from("loyalty_program").select("enabled,points_per_100,point_value,min_redeem_points").eq("user_id", userId).maybeSingle() : Promise.resolve({ data: null }),
+    wantLoyalty ? supabase.from("customers").select("name,phone,loyalty_points,total_spent").eq("user_id", userId).limit(50) : Promise.resolve({ data: null }),
+    wantDeals ? supabase.from("promotions").select("name,kind,config,starts_at,ends_at,enabled").eq("user_id", userId).limit(20) : Promise.resolve({ data: null }),
+    wantCarts ? supabase.from("held_carts").select("id,label,cart,total,created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(50) : Promise.resolve({ data: null }),
+    wantStaff ? supabase.from("staff_shifts").select("id,staff_name,clock_in,break_minutes").eq("user_id", userId).is("clock_out", null).limit(10) : Promise.resolve({ data: null }),
+    wantStaff ? supabase.from("commission_rules").select("staff_name,percent,active").eq("user_id", userId).limit(30) : Promise.resolve({ data: null }),
   ]);
+
+  // Abandoned carts — held, valuable, aged into the follow-up window
+  // (2h–72h). Same thresholds as lib/abandonedCarts.ts on the client.
+  const abandonedCarts = (heldCartRows.data || []).map((c: any) => {
+    const held = new Date(c.created_at).getTime();
+    const ageHours = Number.isFinite(held) ? (now.getTime() - held) / 3600000 : -1;
+    const total = Math.max(0, Number(c.total) || 0);
+    if (ageHours < 2 || ageHours > 72 || total < 100) return null;
+    const snapshot = c.cart || {};
+    const lines = Array.isArray(snapshot.lines) ? snapshot.lines : [];
+    const itemCount = lines.reduce((s: number, l: any) => s + (Number(l?.quantity) > 0 ? Math.floor(Number(l.quantity)) : 1), 0);
+    const customerName = snapshot.customer?.name ? String(snapshot.customer.name) : null;
+    return {
+      id: c.id,
+      label: String(c.label || "").trim() || (customerName ? `${customerName}'s cart` : "Held cart"),
+      customerName,
+      customerId: snapshot.customer?.id || null,
+      total: Math.round(total * 100) / 100,
+      itemCount,
+      heldAt: c.created_at,
+      ageHours: Math.round(ageHours * 10) / 10,
+    };
+  }).filter(Boolean).sort((a: any, b: any) => b.total - a.total || a.ageHours - b.ageHours).slice(0, 6);
 
   return JSON.stringify({
     date: now.toISOString().split("T")[0],
@@ -162,6 +198,20 @@ async function buildContext(supabase: any, userId: string, message = "", briefin
     productCatalog: (products.data || []).slice(0, 12).map((p: any) => ({ name: p.name, category: p.category, price: p.price, stock: p.stock_quantity, cost: p.cost, gst_rate: p.gst_rate, hsn_code: p.hsn_code })),
     customers: (customers.data || []).slice(0, 6).map((c: any) => ({ name: c.name, phone: c.phone, spent: +Number(c.total_spent).toFixed(2), orders: c.total_orders, last: c.last_purchase_at })),
     suppliersOwed: (suppliers.data || []).filter((s: any) => s.outstanding > 0).map((s: any) => ({ name: s.name, outstanding: s.outstanding })),
+    loyalty: wantLoyalty || wantDeals ? {
+      program: loyaltyProg.data || null,
+      customers: (loyaltyCustomers.data || []).filter((c: any) => Number(c.loyalty_points) > 0).slice(0, 15).map((c: any) => ({ name: c.name, phone: c.phone, points: Number(c.loyalty_points) || 0, value: +(Number(c.loyalty_points) * Number(loyaltyProg.data?.point_value || 0)).toFixed(2) })),
+    } : undefined,
+    activeDeals: wantDeals ? (promoRules.data || []).filter((p: any) => {
+      if (!p.enabled) return false;
+      const today = now.toISOString().split("T")[0];
+      return (!p.starts_at || String(p.starts_at) <= today) && (!p.ends_at || String(p.ends_at) >= today);
+    }).map((p: any) => ({ name: p.name, kind: p.kind, config: p.config, from: p.starts_at, to: p.ends_at })) : undefined,
+    abandonedCarts: wantCarts && abandonedCarts.length ? abandonedCarts : undefined,
+    staff: wantStaff ? {
+      onShift: (openShifts.data || []).map((s: any) => ({ name: s.staff_name, since: s.clock_in })),
+      commissions: (commissionRules.data || []).filter((r: any) => r.active).map((r: any) => ({ name: r.staff_name, percent: Number(r.percent) })),
+    } : undefined,
     recentEmails,
     driveFiles,
     recentWhatsApp,
@@ -172,7 +222,7 @@ async function buildContext(supabase: any, userId: string, message = "", briefin
 // ── Meraj persona + scope ─────────────────────────────────────────
 const SYSTEM = `You are Meraj — the owner's digital manager and right-hand inside Cashiea, built for a shop owner's retail business. You are not a chatbot or a "feature" — you are the owner's most capable staff member and friend: energetic, sharp, and genuinely invested in THIS shop's success. You receive (a) what you already know about this owner and their business, and (b) a JSON snapshot of their current business data.
 
-You handle everything about running the shop: sales and revenue, profit and margins, top and slow products, inventory and low stock, customer history, dormant customers to follow up, suppliers they owe, daily summaries, and trends. Beyond answering, you quietly run the business WITH the owner — but you bring up opportunities ONLY when they directly answer the current question, or when something genuinely needs attention right now (a stock-out, a large overdue payment). Never pad a reply with unrequested suggestions or briefings.
+You handle everything about running the shop: sales and revenue, profit and margins, top and slow products, inventory and low stock, customer history, dormant customers to follow up, suppliers they owe, daily summaries, and trends. You also know the shop's loyalty points program, the deals/discounts running at the counter, staff shifts and commission, and held carts worth recovering (when the snapshot includes them). Beyond answering, you quietly run the business WITH the owner — but you bring up opportunities ONLY when they directly answer the current question, or when something genuinely needs attention right now (a stock-out, a large overdue payment). Never pad a reply with unrequested suggestions or briefings.
 
 - Address the owner by name when you know it, and refer to their shop by name. Be warm, energetic, and proactive — like a trusted senior staff member and friend who genuinely cares. Keep replies SHORT and conversational by default; give a longer, detailed answer only when the task truly needs depth. Never robotic, never pushy.
 - Use short bullet points and real numbers from the snapshot. Never invent figures.
@@ -336,7 +386,18 @@ The shop has desks you can open or run:
 - auto-reorder (/app/auto-reorder) — velocity-based draft PO
 - pricing (/app/pricing) — raise/markdown, never below cost
 - cash-flow, reminders, duplicates, snapshot, goals, scorecard, social, gst-export, bank-import, invoices, reports, customers
-When the owner asks about one of these, first answer with live numbers from the snapshot, then call open_desk so they can tap Open it. When they ask you to actually draft a purchase order, call draft_purchase_order (use_suggestions true if they did not name the lines). When they ask you to apply a new selling price, call apply_price_changes — never below cost. For team roles, subscriptions, API keys, or account/login changes, tell the owner those must be done directly in Settings — do not attempt them.`;
+- promotions (/app/promotions) — deals & the loyalty points program
+- team (/app/team) — staff shift clock & commission
+When the owner asks about one of these, first answer with live numbers from the snapshot, then call open_desk so they can tap Open it. When they ask you to actually draft a purchase order, call draft_purchase_order (use_suggestions true if they did not name the lines). When they ask you to apply a new selling price, call apply_price_changes — never below cost. For team roles, subscriptions, API keys, or account/login changes, tell the owner those must be done directly in Settings — do not attempt them.
+
+You also run the shop's loyalty, deals, staff and cart-recovery features:
+- "redeem N points for <customer>" → redeem_loyalty_points (pass 0 to redeem the maximum).
+- "turn loyalty on/off", "change points per ₹100 / point value / minimum" → set_loyalty_program. If the owner gives only some settings, keep the current ones for the rest (the snapshot's loyalty.program lists them).
+- "make a deal", "10% off this weekend", "buy 2 get 1 free on <product>", "spend ₹1000 get 15% off" → create_promotion. Map the ask to percent / bogo / tiered. "Buy X get Y free" means bogo with percent=100. Resolve the product or category from the catalogue in the snapshot when named; never invent one.
+- "pause/resume/stop the <name> deal" → set_promotion_status with the rule's exact name.
+- "clock me in/out", "clock out Ramesh with 30 min break" → clock_shift. No name means the person speaking.
+- "set Ramesh's commission to 5%" → set_commission.
+- "any carts to recover?", "follow up the abandoned carts" → review_abandoned_carts; it lists the held carts worth chasing and prepares WhatsApp nudges (one per cart, only where a phone is on file).`;
 
 const CREATE_INVOICE_TOOL = [{ function_declarations: [{ name: "create_invoice", description: "Create a GST invoice/bill for a customer. Use when the owner asks to make, create, or generate an invoice or bill. Automatically splits GST into CGST/SGST (intra-state) or IGST (inter-state). Look up unit_price, gst_rate and hsn_code from the product catalogue in the snapshot when the owner does not name a price.", parameters: { type: "OBJECT", properties: { customer_name: { type: "STRING", description: "Customer name" }, customer_phone: { type: "STRING", description: "Customer phone (optional)" }, customer_email: { type: "STRING" }, customer_gstin: { type: "STRING", description: "Buyer GSTIN for B2B (optional)" }, due_date: { type: "STRING", description: "Due date YYYY-MM-DD (optional, default +7 days)" }, items: { type: "ARRAY", description: "Line items", items: { type: "OBJECT", properties: { name: { type: "STRING" }, qty: { type: "NUMBER" }, unit_price: { type: "NUMBER", description: "Price per unit in rupees (pre-tax). Omit if the catalogue has this item." }, gst_rate: { type: "NUMBER", description: "GST % for this item: 0, 5, 12, 18, or 28 (default 0)" }, hsn_code: { type: "STRING", description: "HSN code for this item (optional)" } }, required: ["name", "qty"] } }, discount_pct: { type: "NUMBER", description: "Discount % (optional, 0-100)" }, is_interstate: { type: "BOOLEAN", description: "true if customer is in a different state (uses IGST instead of CGST+SGST)" }, notes: { type: "STRING" } }, required: ["customer_name", "items"] } }] }];
 
@@ -352,9 +413,16 @@ const ALL_TOOLS = [{ function_declarations: [
   { name: "generate_image", description: "Generate an image using AI. Use when the owner asks to create, generate, make, or design an image, picture, photo, banner, poster, advertisement, or social media visual (Instagram, Facebook, etc.). Describe what the image should show clearly and visually.", parameters: { type: "OBJECT", properties: { prompt: { type: "STRING", description: "A clear, detailed description of what the image should show — style, colors, subject, setting" }, size: { type: "STRING", description: "Image shape: square (default, 1024x1024), banner (wide 1024x512), or portrait (512x1024)" } }, required: ["prompt"] } },
   { name: "sync_stock_from_sheet", description: "Read product/stock data from the owner's connected Google Sheet and prepare to update/add products in Cashiea. Shows a preview for the owner to confirm first.", parameters: { type: "OBJECT", properties: {}, required: [] } },
   { name: "export_to_sheet", description: "Export data from Cashiea (stock, customers, or sales) as rows appended to the owner's connected Google Sheet — or a new sheet if none is connected. Use when the owner asks to export, save, or write data to Google Sheets.", parameters: { type: "OBJECT", properties: { data_type: { type: "STRING", description: "What to export: stock, customers, or sales" } }, required: ["data_type"] } },
-  { name: "open_desk", description: "Open one of the shop's automation desks after a short live briefing. Use when the owner asks about reorder, prices, cash flow, reminders, duplicates, snapshot, goals, supplier scorecard, social captions, GST working, bank matching, invoices, reports, or customers.", parameters: { type: "OBJECT", properties: { desk: { type: "STRING", description: "One of: auto-reorder, pricing, cash-flow, reminders, duplicates, snapshot, goals, scorecard, social, gst-export, bank-import, invoices, reports, customers" } }, required: ["desk"] } },
+  { name: "open_desk", description: "Open one of the shop's automation desks after a short live briefing. Use when the owner asks about reorder, prices, cash flow, reminders, duplicates, snapshot, goals, supplier scorecard, social captions, GST working, bank matching, invoices, reports, customers, deals/loyalty, or staff shifts/commission.", parameters: { type: "OBJECT", properties: { desk: { type: "STRING", description: "One of: auto-reorder, pricing, cash-flow, reminders, duplicates, snapshot, goals, scorecard, social, gst-export, bank-import, invoices, reports, customers, promotions, team" } }, required: ["desk"] } },
   { name: "draft_purchase_order", description: "Prepare a draft purchase order from named lines, or from current low-stock alerts when use_suggestions is true. Owner confirms before it is saved.", parameters: { type: "OBJECT", properties: { use_suggestions: { type: "BOOLEAN", description: "true = size the PO from products at or below their alert" }, supplier_name: { type: "STRING" }, items: { type: "ARRAY", items: { type: "OBJECT", properties: { name: { type: "STRING" }, quantity: { type: "NUMBER" }, unit_price: { type: "NUMBER" } }, required: ["name", "quantity"] } }, notes: { type: "STRING" } }, required: [] } },
   { name: "apply_price_changes", description: "Apply new selling prices. A price must never go below the product's cost. Owner confirms before anything is written.", parameters: { type: "OBJECT", properties: { changes: { type: "ARRAY", items: { type: "OBJECT", properties: { product_name: { type: "STRING" }, product_id: { type: "STRING" }, price: { type: "NUMBER" } }, required: ["price"] } } }, required: ["changes"] } },
+  { name: "redeem_loyalty_points", description: "Redeem a customer's loyalty points as rupees off their bill (e.g. 'redeem 50 points for Ramesh'). Pass 0 as points to redeem the maximum the customer's balance allows. Owner confirms before points are deducted.", parameters: { type: "OBJECT", properties: { customer_name: { type: "STRING", description: "Customer name as it appears in the customer book" }, points: { type: "NUMBER", description: "Points to redeem; 0 = maximum allowed" } }, required: ["customer_name", "points"] } },
+  { name: "set_loyalty_program", description: "Change the shop's loyalty program settings: turn it on or off, or set points per 100 rupees, rupee value of each point, and the minimum points per redemption. Owner confirms before saving.", parameters: { type: "OBJECT", properties: { enabled: { type: "BOOLEAN", description: "true = program on, false = paused" }, points_per_100: { type: "NUMBER", description: "Points earned per 100 rupees spent" }, point_value: { type: "NUMBER", description: "Rupees each point redeems for" }, min_redeem_points: { type: "NUMBER", description: "Minimum points per redemption" } }, required: [] } },
+  { name: "create_promotion", description: "Create a deal/discount rule that auto-applies at the POS counter. Kinds: 'percent' (flat % off the bill, optional cap), 'bogo' (buy N of a product or category, get M at a % off — 100% = free), 'tiered' (spend thresholds, e.g. spend 1000 get 10% off). Optional start/end dates. Owner confirms before it goes live.", parameters: { type: "OBJECT", properties: { kind: { type: "STRING", description: "One of: percent, bogo, tiered" }, name: { type: "STRING", description: "Short deal name shown on bills, e.g. Diwali BOGO" }, percent: { type: "NUMBER", description: "percent kind: % off the bill. bogo kind: % off the gotten items (100 = free)" }, max_discount: { type: "NUMBER", description: "percent kind: optional cap in rupees" }, product_name: { type: "STRING", description: "bogo kind: the product the deal applies to" }, category: { type: "STRING", description: "bogo kind: the category the deal applies to" }, buy: { type: "NUMBER", description: "bogo kind: quantity to buy" }, get: { type: "NUMBER", description: "bogo kind: quantity to get discounted" }, tiers: { type: "ARRAY", description: "tiered kind: spend thresholds", items: { type: "OBJECT", properties: { min_spend: { type: "NUMBER", description: "Spend threshold in rupees" }, percent: { type: "NUMBER", description: "% off when spend reaches the threshold" } }, required: ["min_spend", "percent"] } }, starts_at: { type: "STRING", description: "Start date YYYY-MM-DD (optional, default today)" }, ends_at: { type: "STRING", description: "End date YYYY-MM-DD (optional)" } }, required: ["kind"] } },
+  { name: "set_promotion_status", description: "Pause, resume, or stop a deal by name (e.g. 'pause the Diwali BOGO'). Owner confirms before the change.", parameters: { type: "OBJECT", properties: { rule_name: { type: "STRING", description: "Name of the existing deal" }, enabled: { type: "BOOLEAN", description: "false = pause, true = resume" } }, required: ["rule_name", "enabled"] } },
+  { name: "clock_shift", description: "Clock a staff member in or out of their shift (the staff shift clock). Use when the owner or a staff member says 'clock me in' / 'clock out' / 'punch out'. If no staff name is given, it means the person speaking. Break minutes can be subtracted when clocking out.", parameters: { type: "OBJECT", properties: { action: { type: "STRING", description: "in or out" }, staff_name: { type: "STRING", description: "Staff name (default: the person speaking)" }, break_minutes: { type: "NUMBER", description: "Clock-out only: break minutes to subtract (0-600)" } }, required: ["action"] } },
+  { name: "set_commission", description: "Set a staff member's commission percent of the sales they serve (e.g. 'set Ramesh's commission to 5 percent'). Owner confirms before saving.", parameters: { type: "OBJECT", properties: { staff_name: { type: "STRING", description: "Staff name exactly as it appears on bills (served by)" }, percent: { type: "NUMBER", description: "Commission percent, 0-100" } }, required: ["staff_name", "percent"] } },
+  { name: "review_abandoned_carts", description: "Review held carts that went cold (parked at the counter hours ago but never billed) and prepare friendly WhatsApp recovery reminders for the ones worth chasing. Owner confirms before anything is sent.", parameters: { type: "OBJECT", properties: {}, required: [] } },
 ] }];
 
 const DESKS: Record<string, { label: string; href: string; desc: string }> = {
@@ -372,6 +440,8 @@ const DESKS: Record<string, { label: string; href: string; desc: string }> = {
   invoices: { label: "Invoices", href: "/app/invoices", desc: "GST bills — review, then save" },
   reports: { label: "Reports", href: "/app/reports", desc: "briefings from live Cashiea numbers" },
   customers: { label: "Customers", href: "/app/customers", desc: "who spends, who has gone quiet" },
+  promotions: { label: "Deals & Loyalty", href: "/app/promotions", desc: "BOGO, tiered and percent-off deals + the points program" },
+  team: { label: "Shift clock & commission", href: "/app/team", desc: "staff shifts, hours and commission" },
 };
 
 function nextDocNumber(prefix: string): string {
@@ -426,6 +496,42 @@ async function summarizeDesk(supabase: any, userId: string, desk: string): Promi
       const { data } = await supabase.from("customers").select("name,total_spent,last_purchase_at").eq("user_id", userId).order("total_spent", { ascending: false }).limit(6);
       if (!data?.length) return `${title}\n\nNo customers on the book yet.`;
       return `${title}\n\nTop of the book:\n` + data.map((c: any) => `- ${c.name} · ₹${Number(c.total_spent || 0).toLocaleString("en-IN")}`).join("\n");
+    }
+    if (desk === "promotions") {
+      const today = new Date().toISOString().slice(0, 10);
+      const [pr, lo] = await Promise.all([
+        supabase.from("promotions").select("name,kind,config,starts_at,ends_at,enabled").eq("user_id", userId).limit(20),
+        supabase.from("loyalty_program").select("enabled,points_per_100,point_value,min_redeem_points").eq("user_id", userId).maybeSingle(),
+      ]);
+      const rules = pr.data || [];
+      const live = rules.filter((r: any) => r.enabled && (!r.starts_at || String(r.starts_at) <= today) && (!r.ends_at || String(r.ends_at) >= today));
+      const paused = rules.filter((r: any) => !r.enabled);
+      const lines = live.slice(0, 6).map((r: any) => {
+        if (r.kind === "percent") return `- ${r.name} — ${Number(r.config?.pct) || 0}% off the bill${r.config?.maxDiscount ? ` (max ₹${Number(r.config.maxDiscount).toLocaleString("en-IN")})` : ""}`;
+        if (r.kind === "bogo") return `- ${r.name} — buy ${Number(r.config?.buy) || 0} get ${Number(r.config?.get) || 0} at ${Number(r.config?.discountPct) || 0}% off${r.config?.category ? ` (${r.config.category})` : ""}`;
+        return `- ${r.name} — spend-tier discount (${(Array.isArray(r.config?.tiers) ? r.config.tiers : []).map((t: any) => `₹${t.minSpend}→${t.pct}%`).join(", ")})`;
+      });
+      const prog = lo.data;
+      const loLine = prog?.enabled
+        ? `Loyalty is **ON** — ${prog.points_per_100} pt per ₹100, each point ₹${prog.point_value}, min ${prog.min_redeem_points} pts per redemption.`
+        : "Loyalty is **off** — turn it on and customers earn points on every bill.";
+      if (!live.length) return `${title}\n\nNo deals running right now. ${paused.length ? `${paused.length} paused. ` : ""}${loLine}`;
+      return `${title}\n\n**${live.length} deal${live.length === 1 ? "" : "s"} live** at the counter:\n${lines.join("\n")}\n\n${loLine}`;
+    }
+    if (desk === "team") {
+      const [sh, cr] = await Promise.all([
+        supabase.from("staff_shifts").select("id,staff_name,clock_in").eq("user_id", userId).is("clock_out", null).limit(10),
+        supabase.from("commission_rules").select("staff_name,percent,active").eq("user_id", userId).limit(30),
+      ]);
+      const onShift = sh.data || [];
+      const rules = (cr.data || []).filter((r: any) => r.active);
+      const nowMs = Date.now();
+      const shiftLines = onShift.map((s: any) => `- ${s.staff_name} — since ${new Date(s.clock_in).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })} (${Math.floor((nowMs - new Date(s.clock_in).getTime()) / 3600000)}h)`);
+      const commLines = rules.map((r: any) => `- ${r.staff_name} — ${Number(r.percent)}% of sales served`);
+      let out = `${title}\n\n`;
+      out += onShift.length ? `**On shift now:**\n${shiftLines.join("\n")}` : "Nobody is clocked in right now.";
+      if (commLines.length) out += `\n\n**Commission rules:**\n${commLines.join("\n")}`;
+      return out;
     }
     if (desk === "gst-export") {
       return `${title}\n\nThis is a working sheet — not a GSTN filing. Open it to check mismatches and export JSON or Excel.`;
@@ -508,12 +614,19 @@ const OWNER_ONLY_CONFIRMATIONS = new Set([
   "record_expense",
   "mark_invoice_paid",
   "create_quotation",
+  "redeem_loyalty_points",
+  "set_loyalty_program",
+  "create_promotion",
+  "set_promotion_status",
+  "set_commission",
 ]);
 const ALLOWED_CONFIRMATIONS = new Set([
   ...OWNER_ONLY_CONFIRMATIONS,
   "add_customer",
   "send_whatsapp",
   "open_desk",
+  "clock_shift",
+  "send_cart_reminders",
 ]);
 
 const MAX_MONEY = 1_000_000_000;
@@ -712,6 +825,13 @@ Deno.serve(async (req) => {
     }
     if (confirmationType === "send_whatsapp" && !isOwner && actorRole !== "manager") {
       return json({ error: "Only the owner or an authorised manager can approve WhatsApp messages" }, 403);
+    }
+    if (confirmationType === "send_cart_reminders" && !isOwner && actorRole !== "manager") {
+      return json({ error: "Only the owner or an authorised manager can approve cart recovery messages" }, 403);
+    }
+    // Staff may only clock their own shift in/out — never another person's.
+    if (confirmationType === "clock_shift" && !isOwner && String(confirm?.input?.staff_user_id || "") !== user.id) {
+      return json({ error: "You can only clock your own shift through Meraj" }, 403);
     }
     if (confirmationType === "add_customer" && !isOwner && !["manager", "staff"].includes(actorRole)) {
       return json({ error: "Your role cannot create customers through Meraj" }, 403);
@@ -1132,6 +1252,154 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
           return json({ reply: `Done — **${applied}** selling price${applied === 1 ? "" : "s"} updated${skipped.length ? `. Skipped: ${skipped.slice(0, 4).join(", ")}` : ""}.`, executed: { type: "prices", count: applied } });
         } catch (ex) { return json({ reply: `Something went wrong applying prices: ${(ex as Error)?.message}.` }); }
       }
+      // EXECUTE a confirmed action — loyalty, deals, staff, cart recovery (v41–v43)
+      if (confirm && confirm.type === "redeem_loyalty_points" && confirm.input) {
+        try {
+          const customerId = String(confirm.input.customer_id || "");
+          const points = Math.floor(finiteNumber(confirm.input.points, 1, 10_000_000) ?? 0);
+          if (!customerId || points < 1) return json({ reply: "That redemption is no longer valid — ask me again with the customer's name and points.", invalid: true }, 400);
+          const ref = String(confirm.input.ref || `meraj-${Date.now()}`);
+          // The RPC re-checks the caller, program, balance and idempotency —
+          // it must run as the user (auth.uid()), not the service role.
+          const { data: rd, error: rerr } = await supabase.rpc("redeem_loyalty_points", { p_owner_id: ownerId, p_customer_id: customerId, p_points: points, p_ref: ref });
+          if (rerr) return json({ reply: `I couldn't redeem those points: ${rerr.message}.` });
+          const out = typeof rd === "string" ? JSON.parse(rd) : rd;
+          if (!out || out.ok === false) return json({ reply: `I couldn't redeem those points: ${out?.error || "check the loyalty settings"}.` });
+          usageConsumed = true;
+          const value = Number(out.value ?? confirm.input.value ?? 0);
+          await serviceSupabase.from("activity_logs").insert({ user_id: ownerId, action_type: "summary", description: `Meraj redeemed ${points} loyalty points for ${confirm.input.customer_name} (₹${value})`, time_saved_minutes: 3, money_saved: value, provider: "meraj-task" });
+          return json({ reply: `Done — **${points} points** redeemed for **${confirm.input.customer_name}**, worth **₹${value.toLocaleString("en-IN")}** off their bill${out.duplicate ? " (this was already recorded — no double deduction)" : ""}.`, executed: { type: "loyalty_redemption", points, value } });
+        } catch (ex) { return json({ reply: `Something went wrong redeeming points: ${(ex as Error)?.message}.` }); }
+      }
+      if (confirm && confirm.type === "set_loyalty_program" && confirm.input) {
+        try {
+          const enabled = !!confirm.input.enabled;
+          const pp100 = finiteNumber(confirm.input.points_per_100, 0, 1000);
+          const pv = finiteNumber(confirm.input.point_value, 0, 100);
+          const minr = finiteNumber(confirm.input.min_redeem_points, 0, 100000);
+          if (pp100 === null || pv === null || minr === null) return json({ reply: "Those loyalty settings are out of range.", invalid: true }, 400);
+          const { error: ue } = await serviceSupabase.from("loyalty_program").upsert({
+            user_id: ownerId, enabled,
+            points_per_100: pp100, point_value: pv, min_redeem_points: minr,
+            updated_at: new Date().toISOString(),
+          });
+          if (ue) return json({ reply: `I couldn't save the loyalty program: ${ue.message}.` });
+          usageConsumed = true;
+          await serviceSupabase.from("activity_logs").insert({ user_id: ownerId, action_type: "summary", description: `Meraj ${enabled ? "updated" : "paused"} the loyalty program (${pp100} pt/₹100, ₹${pv}/pt, min ${minr})`, time_saved_minutes: 5, money_saved: 2, provider: "meraj-task" });
+          return json({ reply: `Done — loyalty is **${enabled ? "ON" : "paused"}**. ${pp100} pt per ₹100 spent · each point redeems ₹${pv} · minimum ${minr} pts per redemption.${enabled ? " Customers earn from the next bill." : " Earned points stay safe."}`, executed: { type: "loyalty_program", enabled } });
+        } catch (ex) { return json({ reply: `Something went wrong saving the program: ${(ex as Error)?.message}.` }); }
+      }
+      if (confirm && confirm.type === "create_promotion" && confirm.input) {
+        try {
+          const name = cleanTaskText(confirm.input.name, 60);
+          const kind = String(confirm.input.kind || "");
+          if (!name || !["percent", "bogo", "tiered"].includes(kind)) return json({ reply: "That deal needs a name and a valid kind (percent, bogo or tiered).", invalid: true }, 400);
+          const config = confirm.input.config || {};
+          if (kind === "percent" && finiteNumber(config.pct, 0.01, 100) === null) return json({ reply: "A percent deal needs a discount between 0 and 100.", invalid: true }, 400);
+          if (kind === "bogo") {
+            if (finiteNumber(config.buy, 1, 1000) === null || finiteNumber(config.get, 1, 1000) === null || finiteNumber(config.discountPct, 0.01, 100) === null || !(config.productId || config.category)) return json({ reply: "A BOGO deal needs a product or category, buy/get quantities and a discount %.", invalid: true }, 400);
+          }
+          if (kind === "tiered") {
+            const tiers = Array.isArray(config.tiers) ? config.tiers : [];
+            if (!tiers.length || tiers.length > 10 || tiers.some((t: any) => finiteNumber(t.minSpend, 0.01, 100_000_000) === null || finiteNumber(t.pct, 0.01, 100) === null)) return json({ reply: "A tiered deal needs 1–10 spend tiers with a spend and a % off.", invalid: true }, 400);
+          }
+          const startsAt = cleanTaskText(confirm.input.starts_at, 10) || null;
+          const endsAt = cleanTaskText(confirm.input.ends_at, 10) || null;
+          if (startsAt && endsAt && endsAt < startsAt) return json({ reply: "The deal's end date is before its start date.", invalid: true }, 400);
+          const { data: ins, error: pe } = await serviceSupabase.from("promotions").insert({
+            user_id: ownerId, name, kind, config,
+            starts_at: startsAt, ends_at: endsAt, enabled: true,
+          }).select().single();
+          if (pe) return json({ reply: `I couldn't save the deal: ${pe.message}.` });
+          usageConsumed = true;
+          await serviceSupabase.from("activity_logs").insert({ user_id: ownerId, action_type: "summary", description: `Meraj created the ${kind} deal "${name}"`, time_saved_minutes: 6, money_saved: 3, provider: "meraj-task" });
+          return json({ reply: `Done — deal **${ins.name}** is live at the counter. It applies automatically when the cart matches; the cashier sees it on the bill. Manage it any time on the Deals & Loyalty page.`, executed: { type: "promotion", name: ins.name } });
+        } catch (ex) { return json({ reply: `Something went wrong creating the deal: ${(ex as Error)?.message}.` }); }
+      }
+      if (confirm && confirm.type === "set_promotion_status" && confirm.input) {
+        try {
+          const ruleId = String(confirm.input.rule_id || "");
+          const enabled = !!confirm.input.enabled;
+          if (!ruleId) return json({ reply: "That deal is no longer valid.", invalid: true }, 400);
+          const { error: pe } = await serviceSupabase.from("promotions").update({ enabled }).eq("id", ruleId).eq("user_id", ownerId);
+          if (pe) return json({ reply: `I couldn't change the deal: ${pe.message}.` });
+          usageConsumed = true;
+          return json({ reply: `Done — **${confirm.input.rule_name}** is now **${enabled ? "live again" : "paused"}**.${enabled ? "" : " It stops applying at the counter immediately."}`, executed: { type: "promotion_status", enabled } });
+        } catch (ex) { return json({ reply: `Something went wrong updating the deal: ${(ex as Error)?.message}.` }); }
+      }
+      if (confirm && confirm.type === "clock_shift" && confirm.input) {
+        try {
+          const action = String(confirm.input.action || "in") === "out" ? "out" : "in";
+          const staffName = cleanTaskText(confirm.input.staff_name, 120) || "Staff";
+          const staffUserId = cleanTaskText(confirm.input.staff_user_id, 64) || null;
+          // Open-shift lookup is service-role: the execute path already proved
+          // the actor (owner, or staff clocking only themselves).
+          let openQ: any;
+          if (staffUserId) {
+            openQ = await serviceSupabase.from("staff_shifts").select("id,clock_in").eq("user_id", ownerId).eq("staff_user_id", staffUserId).is("clock_out", null).limit(1);
+          } else {
+            openQ = await serviceSupabase.from("staff_shifts").select("id,clock_in").eq("user_id", ownerId).ilike("staff_name", staffName).is("clock_out", null).limit(1);
+          }
+          if (action === "in") {
+            if (openQ.data?.length) {
+              return json({ reply: `**${staffName}** is already on the clock — since ${new Date(openQ.data[0].clock_in).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}.` });
+            }
+            const { error: se } = await serviceSupabase.from("staff_shifts").insert({ user_id: ownerId, staff_user_id: staffUserId, staff_name: staffName, clock_in: new Date().toISOString() });
+            if (se) return json({ reply: `I couldn't clock in: ${se.message}.` });
+            usageConsumed = true;
+            return json({ reply: `Done — **${staffName}** clocked in at ${new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}. See the shift on the Team page.`, executed: { type: "shift", action: "in" } });
+          }
+          if (!openQ.data?.length) return json({ reply: `**${staffName}** isn't clocked in right now.` });
+          const breakMinutes = Math.max(0, Math.min(600, Math.floor(Number(confirm.input.break_minutes) || 0)));
+          const clockOut = new Date().toISOString();
+          const { error: sue } = await serviceSupabase.from("staff_shifts").update({ clock_out: clockOut, break_minutes: breakMinutes }).eq("id", openQ.data[0].id).eq("user_id", ownerId);
+          if (sue) return json({ reply: `I couldn't clock out: ${sue.message}.` });
+          usageConsumed = true;
+          const worked = Math.max(0, Math.round((Date.now() - new Date(openQ.data[0].clock_in).getTime()) / 60000) - breakMinutes);
+          const hrs = `${Math.floor(worked / 60)}h ${worked % 60}m`;
+          return json({ reply: `Done — **${staffName}** clocked out${breakMinutes ? ` with a ${breakMinutes}-minute break` : ""}. Worked: **${hrs}** (after break).`, executed: { type: "shift", action: "out" } });
+        } catch (ex) { return json({ reply: `Something went wrong with the shift clock: ${(ex as Error)?.message}.` }); }
+      }
+      if (confirm && confirm.type === "set_commission" && confirm.input) {
+        try {
+          const staffName = cleanTaskText(confirm.input.staff_name, 120);
+          const percent = finiteNumber(confirm.input.percent, 0, 100);
+          if (!staffName || percent === null) return json({ reply: "A commission rule needs a staff name and a percent between 0 and 100.", invalid: true }, 400);
+          const { error: ce } = await serviceSupabase.from("commission_rules").upsert({
+            user_id: ownerId, staff_name: staffName, percent, active: true,
+          }, { onConflict: "user_id,staff_name" });
+          if (ce) return json({ reply: `I couldn't save the commission rule: ${ce.message}.` });
+          usageConsumed = true;
+          await serviceSupabase.from("activity_logs").insert({ user_id: ownerId, action_type: "summary", description: `Meraj set ${staffName}'s commission to ${percent}%`, time_saved_minutes: 3, money_saved: 1, provider: "meraj-task" });
+          return json({ reply: `Done — **${staffName}** now earns **${percent}%** of the sales they serve. The Team page shows the 30-day estimate.`, executed: { type: "commission", percent } });
+        } catch (ex) { return json({ reply: `Something went wrong setting commission: ${(ex as Error)?.message}.` }); }
+      }
+      if (confirm && confirm.type === "send_cart_reminders" && confirm.input) {
+        try {
+          const carts = Array.isArray(confirm.input.carts) ? confirm.input.carts.slice(0, 10) : [];
+          if (!carts.length) return json({ reply: "There are no carts to follow up on." });
+          let sent = 0;
+          const skipped: string[] = [];
+          for (const c of carts) {
+            const to = validatePhone(c.phone);
+            const msg = cleanTaskText(c.message, 4096);
+            if (!to || !msg) { skipped.push(String(c.name || "a cart")); continue; }
+            const r = await sendWhatsAppText(to, msg);
+            try {
+              await serviceSupabase.from("whatsapp_messages").insert({
+                user_id: ownerId, to_phone: to, body: msg,
+                direction: "outbound", status: r.ok ? "sent" : "failed",
+                wa_message_id: r.messageId || null, meta: r.error ? { error: r.error, cart_id: c.id || null } : { cart_id: c.id || null },
+              });
+            } catch { /* best-effort log */ }
+            if (r.ok) sent++; else skipped.push(`${c.name} (${r.error})`);
+          }
+          if (!sent) return json({ reply: `I couldn't send those reminders${skipped.length ? ` — ${skipped.slice(0, 3).join("; ")}` : ""}. (Outside the 24-hour WhatsApp window, free text is blocked by Meta — an approved template is needed.)` });
+          usageConsumed = true;
+          await serviceSupabase.from("activity_logs").insert({ user_id: ownerId, action_type: "summary", description: `Meraj sent ${sent} abandoned-cart recovery WhatsApp${sent === 1 ? "" : "s"}`, time_saved_minutes: 4 * sent, money_saved: 2 * sent, provider: "meraj-task" });
+          return json({ reply: `Done — **${sent}** recovery reminder${sent === 1 ? "" : "s"} sent on WhatsApp${skipped.length ? `. Skipped: ${skipped.slice(0, 3).join("; ")}` : ""}.`, executed: { type: "cart_reminders", sent } });
+        } catch (ex) { return json({ reply: `Something went wrong sending the reminders: ${(ex as Error)?.message}.` }); }
+      }
       // PREPARE: model decides tool-call vs text reply
       const [ctx2, mem2] = await Promise.all([ buildContext(supabase, ownerId, String(message || ""), false, serviceSupabase), buildMemory(serviceSupabase, ownerId) ]);
       const tr = await callGeminiToolCall(TASK_SYSTEM + voiceFocus + scopeFocus + pageFocus, `Owner: "${message}"\n\n${mem2.block}${historyBlock}\n\nSnapshot:\n${ctx2}`, ALL_TOOLS, { feature: "task-invoice", maxTokens: 3000 });
@@ -1303,7 +1571,7 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
         if (tn === "open_desk") {
           const desk = String(args.desk || "").toLowerCase().trim();
           const info = DESKS[desk];
-          if (!info) return json({ reply: "Which desk should I open — Auto-reorder, Prices, Cash flow, Reminders, Hygiene, Snapshot, Goals, Scorecard, Social, GST, Bank match, Invoices, Reports or Customers?" });
+          if (!info) return json({ reply: "Which desk should I open — Auto-reorder, Prices, Cash flow, Reminders, Hygiene, Snapshot, Goals, Scorecard, Social, GST, Bank match, Invoices, Reports, Customers, Deals & Loyalty or Staff shifts?" });
           const briefing = await summarizeDesk(supabase, ownerId, desk);
           return json({ reply: briefing + `\n\nTap **Open it** to work this on the ${info.label} page.`, pending: { type: "open_desk", input: { desk, href: info.href, label: info.label }, preview: { href: info.href } } });
         }
@@ -1336,6 +1604,201 @@ Return ONLY a JSON array of exactly 4 strings. Example style: ["Why is ₹52,000
           if (!changes.length) return json({ reply: "Which products should I reprice, and to what?" });
           const lines = changes.slice(0, 8).map((c: any) => `- ${c.product_name || c.product_id || "item"} → ₹${Number(c.price).toLocaleString("en-IN")}`).join("\n");
           return json({ reply: `I'll write these selling prices (a cut never goes below cost):\n\n${lines}\n\nTap **Apply prices** to confirm.`, pending: { type: "apply_price_changes", input: { changes }, preview: { count: changes.length } } });
+        }
+        if (tn === "redeem_loyalty_points") {
+          if (!isOwner) return json({ reply: "Only the business owner can redeem loyalty points." });
+          const custName = cleanTaskText(args.customer_name, 200);
+          if (!custName) return json({ reply: "Which customer should I redeem points for? Tell me their name." });
+          const [{ data: progRow }, { data: custRows }] = await Promise.all([
+            supabase.from("loyalty_program").select("enabled,points_per_100,point_value,min_redeem_points").eq("user_id", ownerId).maybeSingle(),
+            supabase.from("customers").select("id,name,loyalty_points,phone").eq("user_id", ownerId).ilike("name", `%${custName}%`).limit(5),
+          ]);
+          if (!progRow?.enabled) return json({ reply: "The loyalty program isn't on yet. Want me to turn it on? Say \"turn on loyalty\" and I'll set it up." });
+          const exact = (custRows || []).find((c: any) => String(c.name).toLowerCase().trim() === custName.toLowerCase().trim());
+          const cust = exact || (custRows || []).sort((a: any, b: any) => Number(b.loyalty_points || 0) - Number(a.loyalty_points || 0))[0];
+          if (!cust) return json({ reply: `I couldn't find a customer called **${custName}** in your book. Check the spelling, or add them on the Customers page first.` });
+          const balance = Math.max(0, Math.floor(Number(cust.loyalty_points) || 0));
+          const minRedeem = Math.floor(Number(progRow.min_redeem_points) || 0);
+          if (balance < 1 || balance < minRedeem) return json({ reply: `**${cust.name}** has ${balance} point${balance === 1 ? "" : "s"} — below your minimum of ${minRedeem} per redemption. Nothing to redeem yet.` });
+          let points = Math.floor(Number(args.points) || 0);
+          if (points <= 0) points = balance; // "redeem all/max"
+          if (points > balance) return json({ reply: `**${cust.name}** only has **${balance}** points — how many should I redeem?` });
+          if (points < minRedeem) return json({ reply: `Your minimum is **${minRedeem}** points per redemption — ${cust.name} has ${balance}. Redeem at least ${minRedeem}?` });
+          const value = +(points * Number(progRow.point_value)).toFixed(2);
+          return json({ reply: `Redeem loyalty points:\n\n**Customer:** ${cust.name}\n**Points:** ${points} of ${balance}\n**Worth:** ₹${value.toLocaleString("en-IN")} off their bill\n\nTap **Redeem points** to confirm.`, pending: { type: "redeem_loyalty_points", input: { customer_id: cust.id, customer_name: cust.name, points, value, ref: `meraj-${Date.now()}` }, preview: { points, value } } });
+        }
+        if (tn === "set_loyalty_program") {
+          if (!isOwner) return json({ reply: "Only the business owner can change the loyalty program." });
+          const { data: current } = await supabase.from("loyalty_program").select("enabled,points_per_100,point_value,min_redeem_points").eq("user_id", ownerId).maybeSingle();
+          const base = current || { enabled: false, points_per_100: 1, point_value: 0.5, min_redeem_points: 20 };
+          const hasAny = ["enabled", "points_per_100", "point_value", "min_redeem_points"].some((k) => args[k] !== undefined && args[k] !== null);
+          if (!hasAny) return json({ reply: "What should I change — turn loyalty on or off, points per ₹100, rupee value of a point, or the minimum points per redemption?" });
+          const next = {
+            enabled: typeof args.enabled === "boolean" ? args.enabled : args.enabled === "true" ? true : args.enabled === "false" ? false : Boolean(base.enabled),
+            points_per_100: finiteNumber(args.points_per_100, 0, 1000) ?? Number(base.points_per_100),
+            point_value: finiteNumber(args.point_value, 0, 100) ?? Number(base.point_value),
+            min_redeem_points: Math.floor(finiteNumber(args.min_redeem_points, 0, 100000) ?? Number(base.min_redeem_points)),
+          };
+          const pct = (next.points_per_100 * next.point_value).toFixed(1);
+          return json({ reply: `Loyalty program settings:\n\n**Program:** ${next.enabled ? "ON" : "paused"}\n**Earn:** ${next.points_per_100} pt per ₹100 spent\n**Each point redeems:** ₹${next.point_value}\n**Minimum redemption:** ${next.min_redeem_points} pts\n\nThat's about a ${pct}% reward on every rupee spent.\n\nTap **Save program** to confirm.`, pending: { type: "set_loyalty_program", input: next, preview: next } });
+        }
+        if (tn === "create_promotion") {
+          if (!isOwner) return json({ reply: "Only the business owner can create deals." });
+          const kind = String(args.kind || "").toLowerCase();
+          if (!["percent", "bogo", "tiered"].includes(kind)) return json({ reply: "Which kind of deal — **percent off**, **BOGO** (buy X get Y), or **tiered** (spend thresholds)?" });
+          const name = cleanTaskText(args.name, 60) || (kind === "percent" ? `${Number(args.percent) || 0}% off` : kind === "bogo" ? `Buy ${Math.floor(Number(args.buy) || 0)} get ${Math.floor(Number(args.get) || 0)}` : "Spend & save");
+          let config: any = null;
+          let line = "";
+          if (kind === "percent") {
+            const pct = finiteNumber(args.percent, 0.01, 100);
+            if (pct === null) return json({ reply: "How many percent off should the deal be?" });
+            const cap = finiteNumber(args.max_discount, 0, 100_000_000);
+            config = { pct, ...(cap !== null ? { maxDiscount: cap } : {}) };
+            line = `**${pct}% off the bill${cap ? ` (max ₹${cap.toLocaleString("en-IN")})` : ""}**`;
+          } else if (kind === "bogo") {
+            const buy = Math.floor(finiteNumber(args.buy, 1, 1000) ?? 0);
+            const get = Math.floor(finiteNumber(args.get, 1, 1000) ?? 0);
+            const pct = finiteNumber(args.percent, 0.01, 100) ?? 100;
+            if (buy < 1 || get < 1) return json({ reply: "For a BOGO deal — buy how many, and get how many? (e.g. buy 2 get 1)" });
+            let productId: string | null = null;
+            let category: string | null = null;
+            const prodName = cleanTaskText(args.product_name, 200);
+            const catName = cleanTaskText(args.category, 120);
+            if (prodName) {
+              const { data: prod } = await supabase.from("products").select("id,name,category").eq("user_id", ownerId).ilike("name", `%${prodName}%`).limit(1);
+              if (!prod?.length) return json({ reply: `I couldn't find **${prodName}** in your catalogue. Check the name, or should the deal cover a whole category instead?` });
+              productId = prod[0].id;
+            } else if (catName) {
+              category = catName;
+            } else {
+              return json({ reply: "Which product or category is the BOGO deal for?" });
+            }
+            config = { productId, category, buy, get, discountPct: pct };
+            line = `**Buy ${buy} get ${get} at ${pct}% off${pct === 100 ? " (free)" : ""}** — ${productId ? "one product" : `all ${category}`} items`;
+          } else {
+            const tiers = (Array.isArray(args.tiers) ? args.tiers : []).map((t: any) => ({ minSpend: Math.round(finiteNumber(t.min_spend, 0.01, 100_000_000) ?? 0), pct: finiteNumber(t.percent, 0.01, 100) ?? 0 })).filter((t: any) => t.minSpend > 0 && t.pct > 0);
+            if (!tiers.length) return json({ reply: "Give me the spend tiers — e.g. \"spend ₹1000 get 10% off, spend ₹2000 get 15% off\"." });
+            tiers.sort((a: any, b: any) => a.minSpend - b.minSpend);
+            config = { tiers };
+            line = "**" + tiers.map((t: any) => `spend ₹${t.minSpend.toLocaleString("en-IN")} → ${t.pct}% off`).join(" · ") + "**";
+          }
+          const startsAt = cleanTaskText(args.starts_at, 10) || null;
+          const endsAt = cleanTaskText(args.ends_at, 10) || null;
+          if (startsAt && endsAt && endsAt < startsAt) return json({ reply: "The end date is before the start date — which dates should the deal run?" });
+          return json({ reply: `New deal ready:\n\n**Name:** ${name}\n${line}${startsAt || endsAt ? `\n**Runs:** ${startsAt || "today"} → ${endsAt || "no end"}` : ""}\n\nIt applies automatically at the POS when the cart matches. Tap **Create deal** to make it live.`, pending: { type: "create_promotion", input: { name, kind, config, starts_at: startsAt, ends_at: endsAt }, preview: { kind, name } } });
+        }
+        if (tn === "set_promotion_status") {
+          if (!isOwner) return json({ reply: "Only the business owner can change deals." });
+          const ruleName = cleanTaskText(args.rule_name, 200);
+          const enabled = args.enabled === true || args.enabled === "true";
+          if (!ruleName) return json({ reply: "Which deal should I " + (enabled ? "resume" : "pause") + "? Tell me its name." });
+          const { data: rules } = await supabase.from("promotions").select("id,name,kind,enabled").eq("user_id", ownerId).limit(50);
+          const list = rules || [];
+          const exact = list.find((r: any) => String(r.name).toLowerCase().trim() === ruleName.toLowerCase().trim());
+          const fuzzy = list.filter((r: any) => String(r.name).toLowerCase().includes(ruleName.toLowerCase().trim()));
+          const rule = exact || (fuzzy.length === 1 ? fuzzy[0] : null);
+          if (!rule) {
+            if (fuzzy.length > 1) return json({ reply: `I found several deals matching **${ruleName}**:\n` + fuzzy.slice(0, 5).map((r: any) => `- ${r.name}${r.enabled ? "" : " (paused)"}`).join("\n") + "\n\nWhich one?" });
+            return json({ reply: `I couldn't find a deal called **${ruleName}**. Running deals right now:\n` + (list.filter((r: any) => r.enabled).slice(0, 6).map((r: any) => `- ${r.name}`).join("\n") || "- none") });
+          }
+          if (rule.enabled === enabled) return json({ reply: `**${rule.name}** is already ${enabled ? "live" : "paused"}.` });
+          return json({ reply: `I'll ${enabled ? "resume" : "pause"} the deal **${rule.name}**.${enabled ? "" : " It stops applying at the counter immediately."}\n\nTap **Update deal** to confirm.`, pending: { type: "set_promotion_status", input: { rule_id: rule.id, rule_name: rule.name, enabled }, preview: { enabled } } });
+        }
+        if (tn === "clock_shift") {
+          const action = String(args.action || "").toLowerCase() === "out" ? "out" : "in";
+          // Who is speaking? The loaded `profile` is the OWNER's; a staff
+          // member's own name comes from their own profile row. Staff can
+          // only clock themselves; the owner may name anyone.
+          let actorName = cleanTaskText(profile?.full_name, 120) || "Owner";
+          if (!isOwner) {
+            const { data: actorProfile } = await serviceSupabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
+            actorName = cleanTaskText(actorProfile?.full_name, 120) || "Staff";
+          }
+          let staffName: string;
+          let staffUserId: string | null;
+          if (isOwner) {
+            const named = cleanTaskText(args.staff_name, 120);
+            staffName = named || actorName;
+            staffUserId = named ? null : user.id;
+          } else {
+            staffName = actorName;
+            staffUserId = user.id;
+          }
+          const breakMinutes = Math.max(0, Math.min(600, Math.floor(Number(args.break_minutes) || 0)));
+          let open: any = null;
+          if (staffUserId) {
+            const q = await serviceSupabase.from("staff_shifts").select("id,clock_in").eq("user_id", ownerId).eq("staff_user_id", staffUserId).is("clock_out", null).limit(1);
+            open = q.data?.[0] || null;
+          } else {
+            const q = await serviceSupabase.from("staff_shifts").select("id,clock_in").eq("user_id", ownerId).ilike("staff_name", staffName).is("clock_out", null).limit(1);
+            open = q.data?.[0] || null;
+          }
+          if (action === "in" && open) return json({ reply: `**${staffName}** is already clocked in — since ${new Date(open.clock_in).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}.` });
+          if (action === "out" && !open) return json({ reply: `**${staffName}** isn't clocked in right now.` });
+          if (action === "in") {
+            return json({ reply: `Clock **${staffName}** in now (${new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })})?\n\nTap **Clock in** to start the shift.`, pending: { type: "clock_shift", input: { action: "in", staff_name: staffName, staff_user_id: staffUserId }, preview: { action: "in" } } });
+          }
+          const soFarMin = Math.max(0, Math.round((Date.now() - new Date(open.clock_in).getTime()) / 60000));
+          return json({ reply: `Clock **${staffName}** out now?\n\n**On shift since:** ${new Date(open.clock_in).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })} (${Math.floor(soFarMin / 60)}h ${soFarMin % 60}m)${breakMinutes ? `\n**Break to subtract:** ${breakMinutes} min` : ""}\n\nTap **Clock out** to close the shift.`, pending: { type: "clock_shift", input: { action: "out", staff_name: staffName, staff_user_id: staffUserId, break_minutes: breakMinutes }, preview: { action: "out" } } });
+        }
+        if (tn === "set_commission") {
+          if (!isOwner) return json({ reply: "Only the business owner can set commission." });
+          const staffName = cleanTaskText(args.staff_name, 120);
+          const percent = finiteNumber(args.percent, 0, 100);
+          if (!staffName) return json({ reply: "Which staff member? Tell me the name exactly as it appears on bills (the \"served by\" name)." });
+          if (percent === null) return json({ reply: `What commission percent should I set for **${staffName}**? (0–100)` });
+          return json({ reply: `Set commission:\n\n**Staff:** ${staffName}\n**Commission:** ${percent}% of the sales they serve\n\nThe Team page will show the 30-day estimate from billed sales.\n\nTap **Set commission** to confirm.`, pending: { type: "set_commission", input: { staff_name: staffName, percent }, preview: { percent } } });
+        }
+        if (tn === "review_abandoned_carts") {
+          if (!isOwner && actorRole !== "manager") return json({ reply: "Only the owner or a manager can review abandoned carts." });
+          const { data: cartRows } = await supabase.from("held_carts").select("id,label,cart,total,created_at").eq("user_id", ownerId).order("created_at", { ascending: false }).limit(50);
+          const nowMs = Date.now();
+          const carts = (cartRows || []).map((c: any) => {
+            const held = new Date(c.created_at).getTime();
+            const ageHours = Number.isFinite(held) ? (nowMs - held) / 3600000 : -1;
+            const total = Math.max(0, Number(c.total) || 0);
+            if (ageHours < 2 || ageHours > 72 || total < 100) return null;
+            const snapshot = c.cart || {};
+            const lines = Array.isArray(snapshot.lines) ? snapshot.lines : [];
+            const itemCount = lines.reduce((s: number, l: any) => s + (Number(l?.quantity) > 0 ? Math.floor(Number(l.quantity)) : 1), 0);
+            const customerName = snapshot.customer?.name ? String(snapshot.customer.name) : null;
+            return {
+              id: c.id,
+              label: String(c.label || "").trim() || (customerName ? `${customerName}'s cart` : "Held cart"),
+              customerName,
+              customerId: snapshot.customer?.id || null,
+              total: Math.round(total * 100) / 100,
+              itemCount,
+              ageHours: Math.round(ageHours * 10) / 10,
+            };
+          }).filter(Boolean).sort((a: any, b: any) => b.total - a.total).slice(0, 6);
+          if (!carts.length) return json({ reply: "Good news — no carts worth chasing right now. Nothing valuable has been sitting held for 2+ hours." });
+          const shopName = String(profile?.company_name || profile?.full_name || "our shop");
+          // Resolve phones: the cart snapshot keeps {id, name}; the phone
+          // lives on the customer row.
+          const ids = carts.map((c: any) => c.customerId).filter(Boolean);
+          const { data: phoneRows } = ids.length
+            ? await supabase.from("customers").select("id,name,phone").eq("user_id", ownerId).in("id", ids)
+            : { data: [] };
+          const phoneById = new Map((phoneRows || []).map((p: any) => [p.id, p]));
+          const nudge = (c: any): string => {
+            const who = c.customerName || c.label.replace(/'s cart$/i, "");
+            return `Hi ${who}! This is ${shopName} 🙂\n\nWe kept your items ready — ${c.itemCount} item${c.itemCount === 1 ? "" : "s"}, ₹${c.total.toLocaleString("en-IN")}.\n\nWould you like us to hold them until evening, or should we bill and deliver? Reply here and we'll sort it out. 🙏`;
+          };
+          const list = carts.map((c: any) => {
+            const cust = c.customerId ? phoneById.get(c.customerId) : null;
+            const phone = cust?.phone || null;
+            return `- **${c.customerName || c.label}** — ${c.itemCount} item${c.itemCount === 1 ? "" : "s"}, ₹${c.total.toLocaleString("en-IN")}, held ${c.ageHours < 24 ? `${Math.round(c.ageHours)}h` : `${Math.round(c.ageHours / 24)}d`} ago${phone ? "" : " · no phone on file"}`;
+          }).join("\n");
+          const sendable = carts
+            .map((c: any) => ({ ...c, phone: (c.customerId ? phoneById.get(c.customerId)?.phone : null) || null }))
+            .filter((c: any) => c.phone)
+            .map((c: any) => ({ id: c.id, name: c.customerName || c.label, phone: c.phone, message: nudge(c) }));
+          const worth = carts.reduce((s: number, c: any) => s + c.total, 0);
+          if (!sendable.length) {
+            return json({ reply: `**${carts.length} held cart${carts.length === 1 ? "" : "s"}** worth ₹${worth.toLocaleString("en-IN")} went cold:\n\n${list}\n\nNone of them have a phone on file, so I can't WhatsApp them — but you can call the customers directly.` });
+          }
+          return json({ reply: `**${carts.length} held cart${carts.length === 1 ? "" : "s"}** worth ₹${worth.toLocaleString("en-IN")} went cold:\n\n${list}\n\nI've drafted a friendly WhatsApp for the ${sendable.length} with a phone on file — one nudge each, never pushy.\n\nTap **Send nudges** to send.`, pending: { type: "send_cart_reminders", input: { carts: sendable }, preview: { count: sendable.length } } });
         }
       }
       return json({ reply: tr.value.text || "How can I help?" });
