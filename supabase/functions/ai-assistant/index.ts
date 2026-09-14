@@ -111,14 +111,27 @@ async function buildContext(supabase: any, userId: string, message = "", briefin
   const sixtyDaysAgo = new Date(now.getTime() - 60 * 86400000).toISOString();
 
   const [todayTx, monthTx, products, customers, expenses, lowStock, dormant, suppliers] = await Promise.all([
-    supabase.from("transactions").select("*").eq("user_id", userId).eq("status", "completed").gte("created_at", startToday),
-    supabase.from("transactions").select("*").eq("user_id", userId).eq("status", "completed").gte("created_at", startMonth),
-    supabase.from("products").select("name,sku,category,price,cost,stock_quantity,low_stock_threshold,gst_rate,hsn_code").eq("user_id", userId).limit(100),
-    supabase.from("customers").select("name,email,phone,total_spent,total_orders,last_purchase_at").eq("user_id", userId).limit(100),
-    supabase.from("expenses").select("*").eq("user_id", userId).gte("date", startMonth),
-    supabase.from("products").select("name,stock_quantity,low_stock_threshold").eq("user_id", userId).limit(50),
-    supabase.from("customers").select("name,email,total_orders,last_purchase_at").eq("user_id", userId).lt("last_purchase_at", sixtyDaysAgo).limit(12),
-    supabase.from("suppliers").select("name,outstanding").eq("user_id", userId).limit(30),
+    supabase.from("transactions").select("total,items,created_at").eq("user_id", userId).eq("status", "completed").gte("created_at", startToday),
+    supabase.from("transactions").select("total,items,created_at").eq("user_id", userId).eq("status", "completed").gte("created_at", startMonth).limit(200),
+    // ── LAZY SNAPSHOT: only fetch the heavy lists when the question needs them.
+    // A "hello" or "how was business" gets summary numbers only — saving ~70%
+    // of the tokens per request. The AI never sees data it doesn't need.
+    (briefing || /\b(stock|product|item|inventory|maal|reorder|low|price|cost|sell|catalog|sku|hsn|gst rate)\b/i.test(message))
+      ? supabase.from("products").select("name,sku,category,price,cost,stock_quantity,low_stock_threshold,gst_rate,hsn_code").eq("user_id", userId).limit(100)
+      : Promise.resolve({ data: [] }),
+    (briefing || /\b(customer|customers|client|buyers?|party|khata|udhaar|follow.?up|dormant|loyalty|points?|regular|buyer|owe|owes|due|payment|collect)\b/i.test(message))
+      ? supabase.from("customers").select("name,email,phone,total_spent,total_orders,last_purchase_at").eq("user_id", userId).limit(100)
+      : Promise.resolve({ data: [] }),
+    supabase.from("expenses").select("amount,type,category,date").eq("user_id", userId).gte("date", startMonth),
+    (briefing || /\b(stock|product|item|inventory|reorder|low)\b/i.test(message))
+      ? supabase.from("products").select("name,stock_quantity,low_stock_threshold").eq("user_id", userId).limit(50)
+      : Promise.resolve({ data: [] }),
+    (briefing || /\b(customer|dormant|follow.?up|win.?back)\b/i.test(message))
+      ? supabase.from("customers").select("name,email,total_orders,last_purchase_at").eq("user_id", userId).lt("last_purchase_at", sixtyDaysAgo).limit(12)
+      : Promise.resolve({ data: [] }),
+    (briefing || /\b(supplier|suppliers|vendor|distributor|purchase|order|outstanding|owe them)\b/i.test(message))
+      ? supabase.from("suppliers").select("name,outstanding").eq("user_id", userId).limit(30)
+      : Promise.resolve({ data: [] }),
   ]);
 
   const today = todayTx.data || [];

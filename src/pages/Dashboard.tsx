@@ -84,6 +84,8 @@ export default function Dashboard() {
   const [weekIncome, setWeekIncome] = useState(0)
   const [salesToday, setSalesToday] = useState(0)
   const [salesYesterday, setSalesYesterday] = useState(0)
+  const [cogsToday, setCogsToday] = useState(0)
+  const [revenueView, setRevenueView] = useState(0) // 0=Total Revenue 1=Rev-Expenses 2=Total Profit
   const [greetingLine, setGreetingLine] = useState('')
   const [greetingSub, setGreetingSub] = useState("What's moving today?")
   const [activeDay, setActiveDay] = useState<number | null>(null)
@@ -171,6 +173,9 @@ export default function Dashboard() {
       const incomeWeek = Number(s.week_income) || 0
       setSalesToday(salesToday)
       setSalesYesterday(salesYesterday)
+      setCogsToday(Number(s.cogs_today) || 0)
+      setWeekExpenses(expensesWeek)
+      setWeekIncome(incomeWeek)
 
       // overdue (from the single RPC)
       const overdue = (s.overdue || []) as OverdueInv[]
@@ -316,13 +321,30 @@ export default function Dashboard() {
         )}
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-sm text-fg-subtle">Today's Revenue</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-fg-subtle">
+                {revenueView === 0 ? "Total Revenue" : revenueView === 1 ? "Revenue − Expenses" : "Total Profit"}
+              </p>
+              <button
+                onClick={(e) => { e.stopPropagation(); setRevenueView((v) => (v + 1) % 3) }}
+                className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-surface-2 border border-line text-fg-subtle hover:text-fg hover:border-accent/40 transition-colors flex-shrink-0"
+                aria-label="Switch revenue view"
+                title="Switch between Total Revenue / Revenue after Expenses / Total Profit"
+              >
+                <svg className="w-3 h-3" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M2 5h12M4 8h8M6 11h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
             <FitAmount
-              value={stats[0]?.value || '₹0'}
+              value={revenueView === 0 ? formatINR(salesToday, 0) : revenueView === 1 ? formatINR(Math.max(0, salesToday - (weekExpenses / 7)), 0) : formatINR(salesToday - cogsToday - (weekExpenses / 7), 0)}
               base="text-[2rem] sm:text-4xl"
               minTier="text-2xl"
-              className="font-extrabold text-fg tracking-tight leading-none mt-1.5 block"
+              className={`font-extrabold tracking-tight leading-none mt-1.5 block ${revenueView === 2 && (salesToday - cogsToday - (weekExpenses / 7)) < 0 ? 'text-negative' : 'text-fg'}`}
             />
+            <p className="text-[11px] text-fg-subtle mt-1">
+              {revenueView === 0 ? "All sales today, before any deductions" : revenueView === 1 ? "Today's sales minus daily share of expenses" : "Sales − cost of goods − expenses (real profit)"}
+            </p>
           </div>
           <div className="flex flex-col items-end gap-2 shrink-0">
             <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-3 py-1.5 text-xs font-medium text-fg-muted whitespace-nowrap">
