@@ -1,9 +1,9 @@
 import { NavLink } from 'react-router-dom'
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import clsx from 'clsx'
 import { motion } from './motion'
 import {
-  LayoutDashboard, ShoppingCart, Package, Users, Camera,
+  LayoutDashboard, ShoppingCart, Package, Users,
   Lightbulb,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -22,13 +22,13 @@ import { useIsDesktop } from '../lib/useIsDesktop'
  * BottomNav — primary navigation, different shapes on mobile vs desktop.
  *
  * MOBILE (<lg): fixed bottom bar with 5 slots (Today · New Sale · [Meraj
- *   voice button] · Customers · Scan). Voice launches a tiny companion
+ *   voice button] · Customers · Stock). Voice launches a tiny companion
  *   overlay in the corner (the whole app stays usable while Meraj
  *   listens/thinks/speaks).
  *
- * DESKTOP (≥lg): a wider fixed bottom bar with 7 slots arranged as
- *   Dashboard · Sales (POS) · Stocks · [Meraj talk] · Customers ·
- *   Suggestions · Scanner. Same 7-entry order the owner requested.
+ * DESKTOP (≥lg): a wider fixed bottom bar with 6 slots arranged as
+ *   Dashboard · Sales (POS) · [Meraj talk] · Customers ·
+ *   Suggestions · Stocks.
  *   The Meraj slot is a voice launcher (not a page) just like mobile,
  *   sized to feel premium on desktop. The voice companion floats in
  *   the bottom-right corner rather than covering the nav.
@@ -45,19 +45,16 @@ const MOBILE_RIGHT: Item[] = [
   { to: '/app/customers', label: 'Customers', icon: Users },
 ]
 
-// ── Desktop items (7 slots; index 3 is the Meraj talk feature, not a page) ──
-// ── Desktop dock entries — 7 slots. 'meraj' and 'scanner' are special
-// (buttons, not NavLinks): Meraj opens voice, Scanner opens the camera.
-type DeskEntry = Item | { special: 'meraj'; label: string } | { special: 'scanner'; label: string }
+// ── Desktop dock entries. Meraj is the only special action. ──
+type DeskEntry = Item | { special: 'meraj'; label: string }
 
 const DESKTOP_ITEMS: DeskEntry[] = [
   { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/app/pos', label: 'Sales (POS)', icon: ShoppingCart },
-  { to: '/app/products', label: 'Stocks', icon: Package },
   { special: 'meraj', label: 'Meraj' },
   { to: '/app/customers', label: 'Customers', icon: Users },
   { to: '/app/suggestions', label: 'Suggestions', icon: Lightbulb },
-  { special: 'scanner', label: 'Scanner' },
+  { to: '/app/products', label: 'Stocks', icon: Package },
 ]
 
 function deriveAvatarStateCompat({ listening, loading, speaking }: { listening: boolean; loading?: boolean; speaking: boolean }) {
@@ -189,33 +186,9 @@ export default function BottomNav({ showMobile = true }: { showMobile?: boolean 
 
   const cancelVoice = () => { cancelListening(); stopSpeaking(); setVoiceActive(false); setVoiceReply(''); setVoiceLoading(false) }
 
-  // ── Camera / Scanner (mobile + desktop) ──
-  const cameraRef = useRef<HTMLInputElement>(null)
-  const onCamera = () => cameraRef.current?.click()
-  const onCameraFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file || !file.type.startsWith('image/')) { toast.error('Please take a photo.'); return }
-    try {
-      toast.loading('Processing photo…', { id: 'cam' })
-      const dataUrl = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = rej; r.readAsDataURL(file) })
-      const img = await new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataUrl })
-      const maxSize = 1024; const scale = Math.min(1, maxSize / Math.max(img.width, img.height))
-      const canvas = document.createElement('canvas'); canvas.width = img.width * scale; canvas.height = img.height * scale
-      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
-      const resized = canvas.toDataURL('image/jpeg', 0.8)
-      try { sessionStorage.setItem('cashiea_pending_photo', resized) } catch {
-        toast.error('Could not save the photo — storage is full or private mode is on.'); return
-      }
-      toast.dismiss('cam')
-      navigate('/app/assistant?photo=true')
-    } catch { toast.error('Could not process the photo.'); toast.dismiss('cam') }
-  }
 
   return (
     <>
-      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onCameraFile} />
-
       {/* ── Voice companion — positioned differently on mobile vs desktop ── */}
       {voiceActive && !onDashboard && (
         <div
@@ -310,15 +283,12 @@ export default function BottomNav({ showMobile = true }: { showMobile?: boolean 
 
           {MOBILE_RIGHT.map((it) => <MobileSlot key={it.to} item={it} />)}
 
-          <button onClick={onCamera} className="flex flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] text-fg-subtle hover:text-fg transition-colors active:scale-95" aria-label="Scan photo" title="Scan photo">
-            <Camera className="w-[22px] h-[22px]" strokeWidth={1.75} />
-            <span className="text-[10px] font-semibold">Scan</span>
-          </button>
+          <MobileSlot item={{ to: '/app/products', label: 'Stock', icon: Package }} />
         </div>
       </nav>
 
       {/* ────────────────── DESKTOP BOTTOM NAV (≥lg) ──────────────────
-         7 slots spread evenly across the full width, anchored to the
+         6 slots spread evenly across the full width, anchored to the
          bottom of the viewport. Meraj (slot index 3) is a larger
          central launch button — the "talk" feature, not a page. */}
       <nav
@@ -326,7 +296,7 @@ export default function BottomNav({ showMobile = true }: { showMobile?: boolean 
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         aria-label="Primary"
       >
-        <div className="max-w-[1400px] w-full mx-auto grid grid-cols-7 items-stretch">
+        <div className="max-w-[1400px] w-full mx-auto grid grid-cols-6 items-stretch">
           {DESKTOP_ITEMS.map((entry) => {
             if ('special' in entry && entry.special === 'meraj') {
               return (
@@ -352,20 +322,6 @@ export default function BottomNav({ showMobile = true }: { showMobile?: boolean 
                     <span className="text-[11px] font-semibold text-accent-strong leading-none">Meraj</span>
                   </button>
                 </div>
-              )
-            }
-            if ('special' in entry && entry.special === 'scanner') {
-              return (
-                <button
-                  key="scanner"
-                  onClick={onCamera}
-                  className="group flex flex-col items-center justify-center gap-1 py-2 h-full flex-1 transition-colors text-fg-muted hover:text-fg hover:bg-surface-2/60 rounded-t-xl"
-                  aria-label="Open scanner"
-                  title="Scan"
-                >
-                  <Camera className="w-[22px] h-[22px]" strokeWidth={1.75} />
-                  <span className="text-[11px] font-semibold">Scanner</span>
-                </button>
               )
             }
             const item = entry as Item
