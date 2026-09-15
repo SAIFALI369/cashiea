@@ -4,9 +4,9 @@ import { useCan } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
 import { formatINR } from '../lib/format'
 import PageHeader from '../components/ui/PageHeader'
-import EmptyState from '../components/ui/EmptyState'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { FitAmount } from '../components/FitAmount'
+import { MerajGlyph } from '../components/MerajDevice'
 import { BookOpen, Plus, Loader2, Trash2, Search, X, TrendingUp, AlertCircle, CheckCircle2, MessageCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -46,6 +46,8 @@ export default function Khata() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'settled'>('pending')
   const [confirmSettle, setConfirmSettle] = useState<KhataEntry | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<KhataEntry | null>(null)
+  const [swipedId, setSwipedId] = useState<string | null>(null)
+  const [touchStart, setTouchStart] = useState<number | null>(null)
 
   useEffect(() => {
     if (!ownerId) { setEntries([]); setLoading(false); return }
@@ -148,7 +150,7 @@ export default function Khata() {
   }, [entries, search, filter])
 
   return (
-    <div className="animate-fade-in">
+    <div className="khata-page animate-fade-in">
       <PageHeader
         title="Khata"
         subtitle="Digital udhaar book — track credit, collect payments"
@@ -162,18 +164,18 @@ export default function Khata() {
 
       {/* Stats strip */}
       {!loading && entries.length > 0 && (
-        <div className="grid grid-cols-3 gap-2.5 mb-5">
-          <div className="card p-3.5">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-fg-subtle">Outstanding</p>
-            <FitAmount value={formatINR(totalPending, 0)} base="text-xl" minTier="text-sm" className="font-bold text-negative" />
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="card bg-[#FEF2F2] p-5">
+            <p className="text-xs font-semibold text-red-700">Outstanding</p>
+            <FitAmount value={formatINR(totalPending, 0)} base="text-2xl" minTier="text-base" className="mt-2 font-extrabold text-red-700" />
           </div>
-          <div className="card p-3.5">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-fg-subtle">Collected</p>
-            <FitAmount value={formatINR(totalCollected, 0)} base="text-xl" minTier="text-sm" className="font-bold text-positive" />
+          <div className="card bg-[#ECFDF5] p-5">
+            <p className="text-xs font-semibold text-emerald-700">Collected</p>
+            <FitAmount value={formatINR(totalCollected, 0)} base="text-2xl" minTier="text-base" className="mt-2 font-extrabold text-emerald-700" />
           </div>
-          <div className="card p-3.5">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-fg-subtle">Customers</p>
-            <p className="text-xl font-bold text-fg tabular-nums">{customerSummary.length}</p>
+          <div className="card p-5">
+            <p className="text-xs font-semibold text-fg-subtle">Customers</p>
+            <p className="mt-2 text-2xl font-extrabold text-fg tabular-nums">{customerSummary.length}</p>
           </div>
         </div>
       )}
@@ -210,80 +212,50 @@ export default function Khata() {
       {loading ? (
         <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-fg-subtle" /></div>
       ) : entries.length === 0 ? (
-        <EmptyState
-          icon={BookOpen}
-          title="No udhaar entries yet"
-          description="Track credit you give to customers. When they pay, one tap settles it. Send WhatsApp reminders with AI-drafted messages."
-        />
+        <div className="flex min-h-[320px] flex-col items-center justify-center py-12 text-center">
+          <MerajGlyph size={112} />
+          <p className="mt-5 max-w-sm text-base font-semibold leading-6 text-fg">💡 Meraj: No other pending Udhaar. Your customers are paying on time!</p>
+        </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="w-16 h-16 rounded-full bg-surface-2 flex items-center justify-center mb-4">
-            <BookOpen className="w-8 h-8 text-fg-subtle" />
-          </div>
-          <p className="text-base font-semibold text-fg">No {filter} entries</p>
-          <p className="text-sm text-fg-muted mt-1">
-            {filter === 'pending' ? "All udhaar collected! Nothing outstanding." : "Switch filters to see other entries."}
-          </p>
-          <button onClick={() => setFilter('all')} className="btn-secondary text-xs h-9 px-4 mt-4">View all</button>
+        <div className="flex min-h-[300px] flex-col items-center justify-center py-12 text-center">
+          {filter === 'pending' && !search ? (
+            <>
+              <MerajGlyph size={112} />
+              <p className="mt-5 max-w-sm text-base font-semibold leading-6 text-fg">💡 Meraj: No other pending Udhaar. Your customers are paying on time!</p>
+            </>
+          ) : (
+            <>
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-surface-2"><BookOpen className="h-8 w-8 text-fg-subtle" /></div>
+              <p className="text-base font-semibold text-fg">No {filter} entries</p>
+              <p className="mt-1 text-sm text-fg-muted">Switch filters to see other entries.</p>
+              <button onClick={() => setFilter('all')} className="btn-secondary mt-4 h-9 px-4 text-xs">View all</button>
+            </>
+          )}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {filtered.map((e) => (
-            <div
-              key={e.id}
-              className={`card p-4 flex items-start justify-between gap-3 ${e.status === 'settled' ? 'opacity-60' : ''}`}
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-bold text-fg truncate">{e.customer_name}</p>
-                  <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                    e.status === 'pending' ? 'bg-warning/10 text-warning' : 'bg-positive/10 text-positive'
-                  }`}>
-                    {e.status === 'pending' ? 'Pending' : 'Collected'}
-                  </span>
-                </div>
-                {e.note && <p className="text-xs text-fg-muted truncate mt-0.5">{e.note}</p>}
-                <div className="flex items-center gap-2 text-[10px] text-fg-subtle mt-1.5">
-                  <span>{new Date(e.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
-                  {e.customer_phone && <><span>·</span><span>{e.customer_phone}</span></>}
-                </div>
+            <div key={e.id} className="relative overflow-hidden rounded-2xl" onTouchStart={(event) => setTouchStart(event.touches[0].clientX)} onTouchEnd={(event) => { if (touchStart !== null && touchStart - event.changedTouches[0].clientX > 48) setSwipedId(e.id); else if (touchStart !== null && event.changedTouches[0].clientX - touchStart > 48) setSwipedId(null); setTouchStart(null) }}>
+              <div className="absolute inset-y-0 right-0 flex w-40 items-stretch">
+                {e.status === 'pending' && isOwner && <button onClick={() => setConfirmSettle(e)} className="flex flex-1 flex-col items-center justify-center gap-1 bg-emerald-600 text-xs font-semibold text-white"><CheckCircle2 className="h-4 w-4" />Received</button>}
+                {isOwner && <button onClick={() => setConfirmDelete(e)} className="flex flex-1 flex-col items-center justify-center gap-1 bg-red-600 text-xs font-semibold text-white"><Trash2 className="h-4 w-4" />Delete</button>}
               </div>
-              <div className="text-right flex-shrink-0">
-                <p className={`text-lg font-bold tabular-nums number-fit ${e.status === 'pending' ? 'text-negative' : 'text-positive'}`}>
-                  {formatINR(e.amount, 0)}
-                </p>
-                <div className="flex items-center gap-1.5 mt-2">
-                  {e.status === 'pending' && (
-                    <>
-                      {isOwner && <button
-                        onClick={() => setConfirmSettle(e)}
-                        className="text-xs font-bold text-positive bg-positive/10 rounded-control px-2.5 h-7 hover:bg-positive/20 transition-colors"
-                      >
-                        Received
-                      </button>}
-                      <button
-                        onClick={() => sendReminder(e)}
-                        className="text-xs font-bold text-accent bg-accent-soft rounded-control px-2.5 h-7 hover:bg-accent-soft/70 transition-colors"
-                        aria-label="Send WhatsApp reminder"
-                      >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                      </button>
-                    </>
-                  )}
-                  {isOwner && <button
-                    onClick={() => setConfirmDelete(e)}
-                    className="text-xs text-fg-subtle hover:text-negative transition-colors p-1"
-                    aria-label="Delete entry"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>}
+              <div className={`card relative flex min-h-[92px] items-center gap-3 border-l-4 p-5 transition-transform duration-200 ${e.status === 'pending' ? 'border-red-400' : 'border-emerald-500'} ${swipedId === e.id ? '-translate-x-40' : ''} ${e.status === 'settled' ? 'opacity-70' : ''}`}>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="truncate text-sm font-bold text-fg">{e.customer_name}</p>
+                    <p className={`flex-shrink-0 text-lg font-extrabold tabular-nums ${e.status === 'pending' ? 'text-red-600' : 'text-emerald-600'}`}>{formatINR(e.amount, 0)}</p>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2 text-xs text-fg-subtle">
+                    <span className="truncate">{e.note || 'Udhaar entry'}</span><span>·</span><span className="flex-shrink-0">{new Date(e.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                  </div>
                 </div>
+                {e.status === 'pending' && <button onClick={() => sendReminder(e)} className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent-strong" aria-label="Send WhatsApp reminder"><MessageCircle className="h-4 w-4" /></button>}
               </div>
             </div>
           ))}
         </div>
       )}
-
       {/* Customer summary section */}
       {!loading && customerSummary.length > 1 && filter === 'all' && (
         <div className="mt-8">

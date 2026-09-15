@@ -88,6 +88,7 @@ export default function AppLayout() {
   // Meraj's page is fully immersive (its own composer rides the keyboard) —
   // the global nav stays OFF there; it lives on the Dashboard only.
   const showMobileNav = location.pathname === '/app'
+  const hideBottomNav = location.pathname === '/app/khata' || location.pathname === '/app/accounts'
   const goBack = () => {
     if (window.history.state && window.history.state.idx > 0) navigate(-1)
     else navigate('/app')
@@ -197,7 +198,7 @@ export default function AppLayout() {
       </div>
 
       {/* Bottom nav — shapes itself for mobile vs desktop internally. */}
-      {(showDesktopShell || showMobileNav) && <BottomNav showMobile={showMobileNav} />}
+      {!hideBottomNav && (showDesktopShell || showMobileNav) && <BottomNav showMobile={showMobileNav} />}
 
       <CommandPalette />
       <SyncManager />

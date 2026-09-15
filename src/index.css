@@ -314,6 +314,15 @@
   }
 }
 
+/* Tier-1 ledger surfaces: roomy, borderless cards with one consistent
+   elevation language across Khata and Accounts. */
+.khata-page .card,
+.accounts-page .card {
+  border: 0;
+  border-radius: 20px;
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.04);
+}
+
 /* ════════════════════════════════════════════════════════════════
    FOCUS VISIBILITY — a single, calm, theme-aware ring for every
    interactive element (audit: keyboard focus was invisible in places).
