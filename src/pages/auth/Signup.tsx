@@ -6,18 +6,9 @@ import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, ArrowRight, Check, Store, 
 import { friendlyAuthError } from '../../lib/auth-errors'
 import { useInputFocus, FOCUS_SCROLL_CLASS } from '../../lib/useInputFocus'
 import AuthSeoFooter from '../../components/AuthSeoFooter'
+import { CashieaLogo } from '../../components/CashieaLogo'
 
-function Logo({ size = 32 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs><linearGradient id="sg" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="rgb(var(--accent))" /><stop offset="100%" stopColor="rgb(var(--gold))" /></linearGradient></defs>
-      <rect width="100" height="100" rx="24" fill="url(#sg)" />
-      <path d="M62 28 A26 26 0 1 0 62 72" fill="none" stroke="white" strokeWidth="9" strokeLinecap="round" />
-      <circle cx="55" cy="50" r="5" fill="white" />
-      <path d="M55 30 L55 42 M55 58 L55 70 M35 50 L47 50 M63 50 L75 50" stroke="white" strokeWidth="3.5" strokeLinecap="round" opacity="0.45" />
-    </svg>
-  )
-}
+const Logo = CashieaLogo
 
 // ── Defined at MODULE scope on purpose ─────────────────────────────
 // Defined inside the component before, every keystroke remounted the

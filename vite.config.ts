@@ -13,13 +13,13 @@ const PWA_ENABLED = false // offline mode temporarily disabled (2026-09-13) — 
 const PWA_OPTIONS = {
   registerType: 'autoUpdate',
   injectRegister: 'auto',
-  includeAssets: ['favicon.svg', 'icon-192.png', 'icon-512.png'],
+  includeAssets: ['favicon.svg', 'logo.svg', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'],
   manifest: {
     name: 'Cashiea — AI Shop Manager',
     short_name: 'Cashiea',
     description: "POS billing, customer tracking & AI automation for India's small shops.",
-    theme_color: '#0c1322',
-    background_color: '#0c1322',
+    theme_color: '#0b3c2a',
+    background_color: '#0b3c2a',
     display: 'standalone',
     start_url: '/',
     scope: '/',
