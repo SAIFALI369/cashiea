@@ -171,30 +171,28 @@ export default function ProfitDashboard() {
     )
   }
 
-  const cards = [
-    { label: 'Sales (POS)', value: data.salesRevenue, icon: Wallet, tone: 'text-fg' },
-    { label: 'Invoices paid', value: data.invoiceRevenue, icon: Landmark, tone: 'text-fg' },
-    { label: 'COGS (estimated)', value: -data.cogs, icon: Truck, tone: 'text-fg-muted', hint: `${data.cogsCoverage}% of lines had cost data` },
-    { label: 'Gross profit', value: figures!.gross, icon: figures!.gross >= 0 ? TrendingUp : TrendingDown, tone: figures!.gross >= 0 ? 'text-positive' : 'text-negative' },
-    { label: 'Expenses', value: -data.expenses, icon: Wallet, tone: 'text-fg-muted', hint: data.inventorySpend > 0 ? `excl. ${formatINR(data.inventorySpend, 0)} stock purchases` : undefined },
-    { label: 'Net profit', value: figures!.net, icon: figures!.net >= 0 ? TrendingUp : TrendingDown, tone: figures!.net >= 0 ? 'text-positive' : 'text-negative' },
-    { label: 'Supplier dues', value: data.supplierDues, icon: Truck, tone: data.supplierDues > 0 ? 'text-warning' : 'text-fg-muted' },
-    { label: 'Customer udhaar', value: data.khataPending, icon: BookOpen, tone: data.khataPending > 0 ? 'text-warning' : 'text-fg-muted' },
+
+
+  const impactCards = [
+    { label: 'Revenue', value: figures!.revenue, tone: 'text-fg', icon: Wallet },
+    { label: 'Costs', value: data.cogs + data.expenses, tone: 'text-fg', icon: Truck },
+    { label: 'Gross Profit', value: figures!.gross, tone: figures!.gross >= 0 ? 'text-emerald-600' : 'text-red-500', icon: TrendingUp },
+    { label: 'Net Profit', value: figures!.net, tone: figures!.net >= 0 ? 'text-emerald-600' : 'text-red-500', icon: figures!.net >= 0 ? TrendingUp : TrendingDown },
   ]
 
   return (
-    <div className="animate-fade-in">
+    <div className="profit-page animate-fade-in">
       {/* Period switch + export */}
       <div className="flex items-center justify-between gap-2 mb-5 flex-wrap">
         <div className="flex gap-2">
           {PERIODS.map((p) => (
             <button key={p.key} onClick={() => setDays(p.key)}
-              className={`px-3.5 py-2 rounded-full text-xs font-semibold transition-all ${days === p.key ? 'bg-secondary-soft text-secondary-strong' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}>
+              className={`px-3.5 py-2 rounded-full text-xs font-semibold transition-all ${days === p.key ? 'bg-[#111827] text-white' : 'bg-[#F3F4F6] text-[#6B7280] hover:text-[#111827]'}`}>
               {p.label}
             </button>
           ))}
         </div>
-        <button onClick={exportExcel} className="btn-secondary text-xs"><FileSpreadsheet className="w-3.5 h-3.5" /> Export Excel</button>
+        <button onClick={exportExcel} className="btn-secondary border-0 bg-[#F3F4F6] text-[#111827] text-xs"><FileSpreadsheet className="w-3.5 h-3.5" /> Export Excel</button>
       </div>
 
       {/* Profit hero */}
@@ -203,28 +201,36 @@ export default function ProfitDashboard() {
         <p className={figures!.net >= 0 ? 'text-positive' : 'text-negative'}>
           <FitAmount value={formatINR(Math.abs(figures!.net), 0)} base="text-4xl" minTier="text-xl" className="font-extrabold" />
         </p>
-        <p className="text-xs text-fg-subtle mt-1">
-          {figures!.net >= 0 ? 'In profit' : 'In loss'} · revenue {formatINR(figures!.revenue, 0)} · COGS {formatINR(data.cogs, 0)} · expenses {formatINR(data.expenses, 0)}
-        </p>
+        <p className="mt-2 text-xs font-medium text-fg-subtle">{figures!.net >= 0 ? 'In profit' : 'In loss'}</p>
       </div>
 
-      {/* Breakdown grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {cards.map((c) => (
-          <div key={c.label} className="card p-4">
-            <div className="flex items-center gap-1.5 mb-2">
-              <c.icon className="w-4 h-4 text-fg-subtle" strokeWidth={1.75} />
-              <p className="text-[10px] font-bold uppercase tracking-wide text-fg-subtle">{c.label}</p>
-            </div>
-            <FitAmount value={formatINR(Math.abs(c.value), 0)} base="text-xl" minTier="text-sm" className={`font-bold ${c.tone}`} />
-            {c.hint && <p className="text-[10px] text-fg-subtle mt-1">{c.hint}</p>}
-          </div>
-        ))}
-      </div>
+      {/* Clean breakdown */}
+      <section className="card mb-6 p-5">
+        <h2 className="mb-4 text-base font-bold text-fg">Breakdown</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div><p className="text-xs text-fg-subtle">Revenue</p><p className="mt-1 text-lg font-bold text-fg">{formatINR(figures!.revenue, 0)}</p></div>
+          <div><p className="text-xs text-fg-subtle">COGS</p><p className="mt-1 text-lg font-bold text-fg">{formatINR(data.cogs, 0)}</p></div>
+          <div><p className="text-xs text-fg-subtle">Expenses</p><p className="mt-1 text-lg font-bold text-fg">{formatINR(data.expenses, 0)}</p></div>
+        </div>
+      </section>
 
-      <p className="text-[11px] text-fg-subtle mt-4 leading-relaxed max-w-2xl">
-        COGS is estimated from each sold product's cost price ({data.cogsCoverage}% of sale lines had cost data). Lines without cost data are excluded from COGS, so gross profit may be optimistic — fill in product costs in Stock for a truer picture. Stock purchases logged under the Inventory category are excluded from Expenses here — their cost is counted once, when the items sell.
-      </p>
+      {/* Four impact metrics */}
+      <section className="mb-6">
+        <h2 className="mb-3 text-base font-bold text-fg">Performance</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {impactCards.map(({ label, value, tone, icon: Icon }) => <div key={label} className="card p-5"><div className="flex items-center gap-2"><Icon className="h-4 w-4 text-fg-subtle" /><p className="text-xs font-semibold text-fg-subtle">{label}</p></div><FitAmount value={formatINR(Math.abs(value), 0)} base="text-2xl" minTier="text-lg" className={`mt-3 font-extrabold ${tone}`} /></div>)}
+        </div>
+      </section>
+
+      <section className="card mb-6 p-5">
+        <h2 className="mb-4 text-base font-bold text-fg">Outstanding</h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="flex items-center justify-between rounded-xl bg-orange-50 px-4 py-3"><span className="flex items-center gap-2 text-sm font-semibold text-fg"><Truck className="h-4 w-4 text-orange-500" /> Supplier Dues</span><span className="font-bold text-orange-600">{formatINR(data.supplierDues, 0)}</span></div>
+          <div className="flex items-center justify-between rounded-xl bg-orange-50 px-4 py-3"><span className="flex items-center gap-2 text-sm font-semibold text-fg"><BookOpen className="h-4 w-4 text-orange-500" /> Customer Udhaar</span><span className="font-bold text-orange-600">{formatINR(data.khataPending, 0)}</span></div>
+        </div>
+      </section>
+
+      <details className="mb-4 max-w-2xl text-[11px] text-fg-subtle"><summary className="cursor-pointer font-semibold">View calculation notes</summary><p className="mt-2 leading-relaxed">COGS is estimated from product cost prices ({data.cogsCoverage}% of sale lines had cost data). Lines without cost data are excluded from COGS, so gross profit may be optimistic. Stock purchases logged under Inventory are counted when items sell.</p></details>
 
       <Link to="/app/cash-flow" className="card p-4 mt-5 flex items-center gap-3 hover:border-accent/40 transition-colors">
         <span className="w-9 h-9 rounded-xl bg-secondary-soft text-secondary-strong flex items-center justify-center flex-shrink-0">
