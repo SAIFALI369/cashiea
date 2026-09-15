@@ -311,7 +311,7 @@ export default function TallyExport() {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="tally-export-page animate-fade-in">
       <PageHeader
         icon={<FileCode2 className="w-5 h-5" />}
         title="Tally Export"
@@ -319,7 +319,6 @@ export default function TallyExport() {
         action={
           !nothing && (
             <div className="flex gap-2 flex-wrap">
-              <button onClick={exportAll} className="btn-primary text-xs"><FileDown className="w-3.5 h-3.5" /> Tally XML</button>
               <button onClick={exportVouchers} className="btn-secondary text-xs">Vouchers only</button>
               <button onClick={exportMasters} className="btn-secondary text-xs">Masters only</button>
             </div>
@@ -332,19 +331,19 @@ export default function TallyExport() {
         <div className="flex gap-2 overflow-x-auto no-scrollbar">
           {([['this_month', 'This month'], ['last_month', 'Last month'], ['quarter', 'This quarter'], ['fy', 'This FY']] as const).map(([k, label]) => (
             <button key={k} onClick={() => setPeriod(k)}
-              className={`px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${period === k ? 'bg-secondary-soft text-secondary-strong' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}>
+              className={`px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${period === k ? 'bg-[#F3F4F6] text-[#111827]' : 'bg-transparent text-fg-subtle hover:text-fg'}`}>
               {label}
             </button>
           ))}
         </div>
         <div className="flex gap-3 text-xs text-fg-muted">
-          <label className="flex items-center gap-1.5 cursor-pointer select-none">
-            <input type="checkbox" checked={includePos} onChange={(e) => setIncludePos(e.target.checked)} className="accent-[var(--color-accent)]" />
-            POS sales
+          <label className="flex cursor-pointer select-none items-center gap-2 text-sm font-medium text-fg-muted">
+            <span className={`relative h-6 w-11 rounded-full p-1 transition-colors ${includePos ? 'bg-accent' : 'bg-line-2'}`}><span className={`block h-4 w-4 rounded-full bg-white shadow transition-transform ${includePos ? 'translate-x-5' : ''}`} /></span>
+            <input type="checkbox" checked={includePos} onChange={(e) => setIncludePos(e.target.checked)} className="sr-only" /> POS sales
           </label>
-          <label className="flex items-center gap-1.5 cursor-pointer select-none">
-            <input type="checkbox" checked={includeExpenses} onChange={(e) => setIncludeExpenses(e.target.checked)} className="accent-[var(--color-accent)]" />
-            Expenses
+          <label className="flex cursor-pointer select-none items-center gap-2 text-sm font-medium text-fg-muted">
+            <span className={`relative h-6 w-11 rounded-full p-1 transition-colors ${includeExpenses ? 'bg-accent' : 'bg-line-2'}`}><span className={`block h-4 w-4 rounded-full bg-white shadow transition-transform ${includeExpenses ? 'translate-x-5' : ''}`} /></span>
+            <input type="checkbox" checked={includeExpenses} onChange={(e) => setIncludeExpenses(e.target.checked)} className="sr-only" /> Expenses
           </label>
         </div>
       </div>
@@ -361,10 +360,10 @@ export default function TallyExport() {
               { label: 'Payment vouchers', value: String(result.stats.paymentVouchers), sub: formatINR(result.stats.paymentsTotal, 0) },
               { label: 'Masters created', value: String(result.stats.ledgers + result.stats.stockItems), sub: `${result.stats.ledgers} ledgers · ${result.stats.stockItems} stock items` },
             ].map((s) => (
-              <div key={s.label} className="card p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-fg-subtle mb-1">{s.label}</p>
-                <p className="text-xl font-bold text-fg">{s.value}</p>
-                <p className="text-[11px] text-fg-muted mt-0.5">{s.sub}</p>
+              <div key={s.label} className="card p-5">
+                <p className="mb-1 text-xs font-semibold text-fg-subtle">{s.label}</p>
+                <p className="text-3xl font-extrabold text-[#111827]">{s.value}</p>
+                <p className="mt-1 text-sm font-bold text-emerald-600">{s.sub}</p>
               </div>
             ))}
           </div>
@@ -382,22 +381,18 @@ export default function TallyExport() {
           )}
 
           {/* How to import */}
-          <div className="card p-4 mb-5">
-            <div className="flex items-center gap-2 mb-3">
-              <CheckCircle2 className="w-4 h-4 text-positive" />
-              <h2 className="text-sm font-bold text-fg">How to import into Tally</h2>
+          <section className="card mb-6 p-5">
+            <div className="mb-4 flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-accent" /><h2 className="text-base font-bold text-fg">How to import</h2></div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {[
+                ['1', 'Open your company in TallyPrime.', '↗'],
+                ['2', 'Gateway of Tally → Import → Vouchers.', ''],
+                ['3', 'Party ledgers and stock items auto-create.', ''],
+                ['4', 'Check Day Book and reconcile.', ''],
+              ].map(([number, text, mark]) => <div key={number} className="flex items-start gap-3 rounded-2xl bg-surface-2 p-4"><span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent text-sm font-extrabold text-white">{number}</span><p className="text-sm font-semibold leading-5 text-fg">{text} {mark && <span className="text-accent">{mark}</span>}</p></div>)}
             </div>
-            <ol className="space-y-1.5 text-xs text-fg-muted list-decimal list-inside">
-              <li>Open your company in <span className="text-fg font-semibold">TallyPrime</span> (or Tally ERP 9 Release 6.x+).</li>
-              <li><span className="text-fg font-semibold">Gateway of Tally → Import → Vouchers</span> and pick the downloaded file.</li>
-              <li>Party ledgers, stock items (with HSN + GST rate) and the CGST/SGST/IGST duty ledgers are created automatically — Tally adds what it doesn't find.</li>
-              <li>Tax posts as explicit CGST+SGST (or IGST) ledger lines, so every voucher balances to the paisa against your Cashiea totals.</li>
-              <li>Check the import report Tally shows, then reconcile Day Book against your Cashiea Bills page{profile?.company_name ? ` (${profile.company_name})` : ''}.</li>
-            </ol>
-            <p className="text-[11px] text-fg-subtle mt-3">
-              Bookkeeping import, not a GSTN filing — GSTR-1 still goes through the GST portal. First time? Take the import on a trial company and verify Day Book before repeating on your live books.
-            </p>
-          </div>
+            <details className="mt-4 text-xs text-fg-subtle"><summary className="cursor-pointer font-semibold text-fg-muted">Read full guide</summary><p className="mt-2 leading-5">This is a bookkeeping import, not a GSTN filing. Take the first import on a trial company, verify the import report, then reconcile Day Book against Cashiea totals before repeating on live books. Masters include party ledgers, stock items and tax ledgers; vouchers include sales, receipts and payments.</p></details>
+          </section>
 
           {/* Voucher preview */}
           <div className="card overflow-hidden mb-5">
@@ -463,6 +458,8 @@ export default function TallyExport() {
           </div>
         </>
       )}
+
+      <button onClick={exportAll} disabled={!isOwner} className="btn-primary mb-6 flex w-full items-center justify-center gap-2 rounded-full py-4 text-base font-bold disabled:opacity-50">📥 Download Tally XML</button>
 
       {!isOwner && (
         <p className="text-[11px] text-fg-subtle mt-4">Exports are read-only for your role — ask the owner if you need import rights in Tally.</p>
