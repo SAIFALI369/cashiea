@@ -13,7 +13,7 @@ const PWA_ENABLED = false // offline mode temporarily disabled (2026-09-13) — 
 const PWA_OPTIONS = {
   registerType: 'autoUpdate',
   injectRegister: 'auto',
-  includeAssets: ['favicon.svg', 'logo.svg', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'],
+  includeAssets: ['cashiea-logo.png', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'],
   manifest: {
     name: 'Cashiea — AI Shop Manager',
     short_name: 'Cashiea',

@@ -2,7 +2,7 @@
 export function CashieaLogo({ size = 36, className = '' }: { size?: number; className?: string }) {
   return (
     <img
-      src="/logo.svg"
+      src="/cashiea-logo.png"
       width={size}
       height={size}
       className={className}
