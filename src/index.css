@@ -317,7 +317,9 @@
 /* Tier-1 ledger surfaces: roomy, borderless cards with one consistent
    elevation language across Khata and Accounts. */
 .khata-page .card,
-.accounts-page .card {
+.accounts-page .card,
+.promotions-page .card,
+.reports-page .card {
   border: 0;
   border-radius: 20px;
   box-shadow: 0 8px 30px rgb(0 0 0 / 0.04);
