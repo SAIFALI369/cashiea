@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import MerajSection from '../components/MerajSection'
@@ -11,7 +12,7 @@ import { salesSignal } from '../lib/salesSignal'
 import {
   TrendingUp, Wallet, Package, MessageCircle, FileSignature, Users,
   AlertTriangle, ShoppingCart, Receipt, BarChart3, ArrowUpRight,
-  ArrowDownRight, ShoppingBag,
+  ArrowDownRight, ShoppingBag, Camera, Lightbulb,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -38,13 +39,13 @@ interface Stat {
 }
 interface Insight { severity: 'critical' | 'warning' | 'healthy'; title: string; subtitle: string }
 interface OverdueInv { id: string; invoice_number: string; client_name: string; total: number; due_date: string | null }
-interface RecentSale { id: string; total: number; created_at: string; label: string }
+interface RecentSale { id: string; total: number; created_at: string; customerName: string; itemsLabel: string }
 
 /** Quick actions — one tap to the four things an owner does all day. */
-const QUICK_ACTIONS: { to: string; label: string; icon: LucideIcon }[] = [
-  { to: '/app/pos', label: 'New Sale', icon: ShoppingCart },
+const QUICK_ACTIONS: { to?: string; label: string; icon: LucideIcon; camera?: boolean }[] = [
+  { to: '/app/suggestions', label: 'Suggestions', icon: Lightbulb },
   { to: '/app/accounts', label: 'Add Expense', icon: Receipt },
-  { to: '/app/products', label: 'Check Stock', icon: Package },
+  { label: 'Camera', icon: Camera, camera: true },
   { to: '/app/reports', label: 'View Reports', icon: BarChart3 },
 ]
 
@@ -68,6 +69,7 @@ function Sparkline({ values, height = 48, quiet = false }: { values: number[]; h
 export default function Dashboard() {
   const { profile, ownerId } = useAuth()
   const navigate = useNavigate()
+  const cameraRef = useRef<HTMLInputElement>(null)
   // Gates the numbers handed to Meraj: while the stats RPC is in flight the
   // week's figures are still 0, and Meraj must not narrate a zero the rest of
   // the page doesn't agree with.
@@ -135,17 +137,25 @@ export default function Dashboard() {
     ;(async () => {
       const { data } = await supabase
         .from('transactions')
-        .select('id,total,created_at,items')
+        .select('id,total,created_at,items,customer_id')
         .eq('user_id', ownerId)
         .eq('status', 'completed')
         .order('created_at', { ascending: false })
         .limit(3)
+      const rows = (data as any[]) || []
+      const customerIds = [...new Set(rows.map((t) => t.customer_id).filter(Boolean))]
+      const names = new Map<string, string>()
+      if (customerIds.length) {
+        const { data: customers } = await supabase.from('customers').select('id,name').in('id', customerIds)
+        ;((customers as any[]) || []).forEach((customer) => names.set(String(customer.id), String(customer.name || 'Customer')))
+      }
       if (cancelled) return
-      setRecent(((data as any[]) || []).map((t) => ({
+      setRecent(rows.map((t) => ({
         id: String(t.id),
         total: Number(t.total || 0),
         created_at: String(t.created_at),
-        label: ((t.items || []) as any[]).map((i) => i?.name).filter(Boolean).join(', ') || 'Sale',
+        customerName: names.get(String(t.customer_id)) || 'Walk-in customer',
+        itemsLabel: ((t.items || []) as any[]).map((i) => i?.name).filter(Boolean).join(', ') || 'Sale',
       })))
     })()
     return () => { cancelled = true }
@@ -294,11 +304,29 @@ export default function Dashboard() {
   // "-100%" red alarm, and a first sale with no baseline is good news without
   // a meaningless percentage.
   const signal = salesSignal(salesToday, salesYesterday)
-  const lowStockCount = stats[2]?.count || 0
   const pendingSumLabel = stats[1]?.count ? stats[1].value : '₹0'
+
+  const onCameraFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file || !file.type.startsWith('image/')) return
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result))
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      sessionStorage.setItem('cashiea_pending_photo', dataUrl)
+      navigate('/app/assistant?photo=true')
+    } catch {
+      toast.error('Could not process the photo.')
+    }
+  }
 
   return (
     <div className="animate-fade-in space-y-6">
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onCameraFile} />
       {/* ── GREETING ── soft personal line, bold intent underneath */}
       <div className="animate-rise-in">
         <p className="text-base text-fg-subtle">{greetingLine || 'Welcome back'}</p>
@@ -384,8 +412,9 @@ export default function Dashboard() {
       >
         {QUICK_ACTIONS.map((a) => (
           <Link
-            key={a.to}
-            to={a.to}
+            key={a.label}
+            to={a.to || '#'}
+            onClick={a.camera ? (event) => { event.preventDefault(); cameraRef.current?.click() } : undefined}
             className="tap flex flex-col items-center gap-2 shrink-0 w-[76px]"
           >
             <span className="w-14 h-14 rounded-2xl bg-surface shadow-card flex items-center justify-center text-fg">
@@ -401,12 +430,12 @@ export default function Dashboard() {
           never quotes a figure that disagrees with the Business Pulse card. */}
       <MerajSection weekProfit={statsLoaded ? weekProfit : undefined} />
 
-      {/* ── 4 · BUSINESS PULSE ── every analytic in ONE card, stated once */}
+      {/* ── 4 · PERFORMANCE ── focused, spacious financial overview */}
       <section className="card p-5 sm:p-6 animate-rise-in" style={{ animationDelay: '160ms' }}>
-        <h2 className="text-base font-bold text-fg">Business Pulse</h2>
+        <h2 className="text-base font-bold text-fg">Performance</h2>
 
         {/* Row 1 — the two numbers that decide the week */}
-        <div className="flex flex-wrap gap-x-10 gap-y-4 mt-4">
+        <div className="flex flex-wrap gap-x-10 gap-y-4 py-4">
           <Link to="/app/profit-dashboard" className="min-w-0">
             <p className="text-sm text-fg-subtle">This Week's Profit</p>
             <p className={`text-2xl font-bold tabular-nums mt-1 leading-none ${weekProfit > 0 ? 'text-positive' : weekProfit < 0 ? 'text-negative' : 'text-fg'}`}>
@@ -426,8 +455,8 @@ export default function Dashboard() {
         </div>
 
         {/* Row 2 — Sales vs Expenses, tap a bar for the exact numbers */}
-        <div className="mt-6">
-          <div className="flex items-center gap-4 mb-3">
+        <div className="mt-4 px-2 sm:px-3 pt-3 pb-2">
+          <div className="flex items-center gap-4 mb-5">
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-fg-muted">
               <span className="w-2.5 h-2.5 rounded-[3px] bg-accent" /> Sales
             </span>
@@ -439,7 +468,7 @@ export default function Dashboard() {
 
           <div className="relative flex items-end justify-between gap-1.5 h-28" onMouseLeave={() => setActiveDay(null)}>
             {[25, 50, 75].map((p) => (
-              <div key={p} className="absolute inset-x-0 border-t border-dashed border-line pointer-events-none" style={{ bottom: `${p}%` }} />
+              <div key={p} className="absolute inset-x-0 border-t border-dashed border-surface-2 pointer-events-none" style={{ bottom: `${p}%` }} />
             ))}
             {daily.map((v, i) => {
               const e = dailyExp[i] || 0
@@ -472,17 +501,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Row 3 — alerts */}
-        <Link
-          to="/app/products"
-          className="flex items-center gap-2.5 mt-5 pt-5 border-t border-line text-sm"
-        >
-          <span className={`w-2 h-2 rounded-full shrink-0 ${lowStockCount ? 'bg-warning' : 'bg-positive'}`} aria-hidden="true" />
-          <span className="text-fg-muted">Low Stock:</span>
-          <span className={`font-semibold ${lowStockCount ? 'text-warning' : 'text-fg'}`}>
-            {lowStockCount ? `${lowStockCount} item${lowStockCount > 1 ? 's' : ''} need attention` : 'All good'}
-          </span>
-        </Link>
+
       </section>
 
       {/* ── 5 · RECENT ACTIVITY ── keeps the page alive on a quiet day */}
@@ -490,7 +509,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-base font-bold text-fg">Recent Activity</h2>
           {recent.length > 0 && (
-            <Link to="/app/reports" className="text-sm font-medium text-secondary-strong">View all</Link>
+            <Link to="/app/reports" className="rounded-lg bg-surface-2 px-3 py-2 text-sm font-medium text-fg transition-colors hover:bg-line">View all</Link>
           )}
         </div>
         {recent.length === 0 ? (
@@ -501,16 +520,14 @@ export default function Dashboard() {
             </Link>
           </div>
         ) : (
-          <div className="mt-2 divide-y divide-line">
+          <div className="mt-4 space-y-4">
             {recent.map((r) => (
-              <div key={r.id} className="flex items-center justify-between gap-3 py-3">
+              <div key={r.id} className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm text-fg truncate">{r.label}</p>
-                  <p className="text-xs text-fg-subtle mt-0.5">
-                    {new Date(r.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
-                  </p>
+                  <p className="text-sm font-bold text-fg truncate">{r.customerName}</p>
+                  <p className="text-xs text-fg-subtle mt-0.5 truncate">{r.itemsLabel}</p>
                 </div>
-                <p className="text-sm font-semibold text-fg tabular-nums shrink-0">{formatINR(r.total, 0)}</p>
+                <p className="text-sm font-bold text-fg tabular-nums shrink-0">{formatINR(r.total, 0)}</p>
               </div>
             ))}
           </div>
@@ -561,19 +578,7 @@ export default function Dashboard() {
         </section>
       )}
 
-      {/* Quiet footer links — everything else is one tap away, no cards needed */}
-      <div className="flex flex-wrap gap-x-5 gap-y-2 pb-2">
-        {[
-          ['/app/cash-flow', 'Cash flow'],
-          ['/app/reminders', 'Reminders'],
-          ['/app/pricing', 'Pricing'],
-          ['/app/goals', 'Goals & streak'],
-          ['/app/auto-reorder', 'Auto-reorder'],
-          ['/app/manifest', "Meraj's plan"],
-        ].map(([to, label]) => (
-          <Link key={to} to={to} className="text-sm text-fg-subtle hover:text-fg transition-colors">{label}</Link>
-        ))}
-      </div>
+
     </div>
   )
 }
