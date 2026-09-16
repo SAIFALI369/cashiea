@@ -75,17 +75,17 @@ export default function About() {
   }
 
   return (
-    <div className="animate-fade-in max-w-2xl xl:max-w-3xl">
+    <div className="about-page animate-fade-in">
       <PageHeader title="About" subtitle="Your business at a glance — and exactly what Meraj knows about it." icon={<Store className="w-5 h-5" />} />
 
       {/* Business identity */}
-      <div className="card p-5 sm:p-6 mb-5">
+      <div className="about-memory card p-5 sm:p-6 mb-5">
         <div className="flex items-center gap-3 mb-4">
           <span className="w-11 h-11 rounded-control bg-accent-soft text-accent flex items-center justify-center flex-shrink-0">
             <Store className="w-5 h-5" />
           </span>
           <div className="min-w-0">
-            <h2 className="text-lg font-bold text-fg truncate">{profile?.company_name || 'Your business'}</h2>
+            <h2 className="text-2xl font-bold text-fg truncate">{profile?.company_name || 'Your business'}</h2>
             <p className="text-sm text-fg-muted">{mem?.business_type || profile?.shop_category || 'Business type not set yet'}</p>
           </div>
         </div>
@@ -98,10 +98,10 @@ export default function About() {
       </div>
 
       {/* What Meraj remembers — owner-controlled */}
-      <div className="card p-5 sm:p-6 mb-5">
+      <div className="about-memory card p-5 sm:p-6 mb-5">
         <div className="flex items-center gap-2 mb-1">
           <Brain className="w-4 h-4 text-accent" />
-          <h3 className="text-sm font-semibold text-fg">What Meraj remembers (you told me to)</h3>
+          <h3 className="text-sm font-semibold text-fg">🧠 Explicit Memories</h3>
         </div>
         <p className="text-xs text-fg-subtle mb-3">Meraj saves a memory only when you explicitly say "remember this". Everything here is yours to edit or delete.</p>
         {loading ? (
@@ -111,7 +111,7 @@ export default function About() {
         ) : (
           <ul className="space-y-1.5">
             {remembers.map((r, i) => (
-              <li key={i} className="flex items-center gap-2 rounded-lg bg-surface-2/60 border border-line px-3 py-2">
+              <li key={i} className="flex items-center gap-2 rounded-2xl bg-surface-2/60 px-3 py-3 shadow-sm">
                 <Sparkles className="w-3.5 h-3.5 text-accent flex-shrink-0" />
                 <span className="text-sm text-fg flex-1 min-w-0">{r}</span>
                 <button
@@ -129,10 +129,10 @@ export default function About() {
       </div>
 
       {/* Learned business facts — editable */}
-      <div className="card p-5 sm:p-6">
+      <div className="about-memory card p-5 sm:p-6">
         <div className="flex items-center gap-2 mb-1">
           <Sparkles className="w-4 h-4 text-accent" />
-          <h3 className="text-sm font-semibold text-fg">What Meraj has learned about your business</h3>
+          <h3 className="text-sm font-semibold text-fg">✨ Learned Business Context</h3>
         </div>
         {loading ? (
           <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-fg-subtle" /></div>
@@ -147,7 +147,7 @@ export default function About() {
         ) : (
           <ul className="space-y-1.5">
             {facts.map((f, i) => (
-              <li key={i} className="flex items-center gap-2 rounded-lg border border-line px-3 py-2">
+              <li key={i} className="flex items-center gap-2 rounded-2xl bg-surface-2/60 px-3 py-3 shadow-sm">
                 {editing === i ? (
                   <>
                     <input
@@ -166,7 +166,7 @@ export default function About() {
                     <span className="w-1.5 h-1.5 rounded-full bg-accent mt-0.5 flex-shrink-0" />
                     <span className="text-sm text-fg flex-1 min-w-0">{factText(f)}</span>
                     <button onClick={() => { setEditing(i); setEditVal(factText(f)) }} aria-label="Edit" className="text-fg-subtle hover:text-accent transition-colors"><Pencil className="w-4 h-4" /></button>
-                    <button onClick={() => delFact(i)} disabled={saving} aria-label="Delete" className="text-fg-subtle hover:text-negative transition-colors"><Trash2 className="w-4 h-4" /></button>
+
                   </>
                 )}
               </li>

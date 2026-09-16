@@ -86,16 +86,16 @@ export default function Snapshot() {
   }
 
   return (
-    <div className="animate-fade-in max-w-lg">
+    <div className="snapshot-page animate-fade-in max-w-lg">
       <PageHeader
         title="Business snapshot"
-        subtitle="A square card ready for WhatsApp status or a partner group. Profit is shown only when enough items have a cost price. Captions live under Social drafts — we never auto-post."
+        subtitle="Create a shareable business card for WhatsApp or partners."
         icon={<Sparkles className="w-5 h-5" />}
         visible
         action={
           <div className="flex gap-2">
             <button onClick={share} className="btn-primary text-sm" disabled={!stats}><Share2 className="w-4 h-4" /> Share</button>
-            <button onClick={download} className="btn-secondary text-sm" disabled={!stats}><Download className="w-4 h-4" /> Save</button>
+            <button onClick={download} className="btn-secondary border-0 bg-[#F3F4F6] text-[#111827] text-sm" disabled={!stats}><Download className="w-4 h-4" /> Save</button>
           </div>
         }
       />
@@ -103,7 +103,7 @@ export default function Snapshot() {
       <div className="flex gap-2 mb-5">
         {PERIODS.map((p) => (
           <button key={p.key} onClick={() => setPeriod(p.key)}
-            className={`px-3.5 py-2 rounded-full text-xs font-semibold transition-all ${period === p.key ? 'bg-secondary-soft text-secondary-strong' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}>
+            className={`px-3.5 py-2 rounded-full text-xs font-semibold transition-all ${period === p.key ? 'bg-[#111827] text-white' : 'bg-[#F3F4F6] text-[#6B7280] hover:text-[#111827]'}`}>
             {p.label}
           </button>
         ))}
@@ -115,7 +115,7 @@ export default function Snapshot() {
         <EmptyState icon={Sparkles} title="No snapshot yet" description="Ring up a sale and come back — the card fills itself." />
       ) : (
         <>
-          <div className="rounded-2xl overflow-hidden border border-line shadow-float bg-surface">
+          <div className="overflow-hidden rounded-[20px] bg-surface shadow-float">
             <canvas ref={canvasRef} width={1080} height={1080} className="w-full h-auto block" />
           </div>
           {stats.profit == null && stats.bills > 0 && (
@@ -171,18 +171,16 @@ function drawSnapshot(canvas: HTMLCanvasElement, s: SnapshotStats) {
     const row = Math.floor(i / 2)
     const x = 80 + col * 470
     const y = 340 + row * 230
-    ctx.fillStyle = 'rgba(255,255,255,0.06)'
-    roundRect(ctx, x, y, 430, 200, 28)
-    ctx.fill()
-    ctx.fillStyle = '#64748b'
+    ctx.fillStyle = 'rgba(255,255,255,0)'
+    ctx.fillStyle = '#d1fae5'
     ctx.font = '700 26px ui-sans-serif, system-ui, sans-serif'
     ctx.fillText(t.label, x + 36, y + 58)
-    ctx.fillStyle = '#f8fafc'
+    ctx.fillStyle = '#34d399'
     ctx.font = '700 56px ui-sans-serif, system-ui, sans-serif'
     fitText(ctx, t.value, x + 36, y + 140, 360, 56)
   })
 
-  ctx.fillStyle = '#94a3b8'
+  ctx.fillStyle = '#f8fafc'
   ctx.font = '500 28px ui-sans-serif, system-ui, sans-serif'
   const footer = s.topItem
     ? `Top item · ${s.topItem.name} (${s.topItem.qty})`
@@ -191,7 +189,7 @@ function drawSnapshot(canvas: HTMLCanvasElement, s: SnapshotStats) {
       : `${s.lowStock} low-stock item${s.lowStock === 1 ? '' : 's'}`
   ctx.fillText(footer, 80, 920)
 
-  ctx.fillStyle = '#34d399'
+  ctx.fillStyle = '#94a3b8'
   ctx.font = '600 26px ui-sans-serif, system-ui, sans-serif'
   ctx.fillText('Made with Cashiea', 80, 990)
 }

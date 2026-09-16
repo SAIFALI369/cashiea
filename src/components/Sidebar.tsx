@@ -27,75 +27,28 @@ interface Section { label: string; items: Item[] }
 
 // ── CORE NAVIGATION (always visible — the 80% the shop owner uses daily) ──
 const CORE: Section[] = [
-  { label: 'Today', items: [{ to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true }, { to: '/app/manifest', label: "Meraj's Plan", icon: CalendarClock, badge: true }] },
-  { label: 'Sell', items: [
-    { to: '/app/pos', label: 'New Sale', icon: ShoppingCart },
-    { to: '/app/sales', label: 'Transactions', icon: ReceiptText },
-    { to: '/app/invoices', label: 'Bills', icon: Receipt },
-    { to: '/app/khata', label: 'Khata', icon: BookOpen },
-    { to: '/app/quotations', label: 'Quotations', icon: FileSignature },
-    { to: '/app/promotions', label: 'Deals & Loyalty', icon: Percent },
-  ]},
-  { label: 'Shop', items: [
-    { to: '/app/products', label: 'Stock', icon: Package },
-    { to: '/app/customers', label: 'Customers', icon: Users },
+  { label: 'Main', items: [
+    { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
     { to: '/app/assistant', label: 'Meraj', icon: Sparkles, ai: true },
+    { to: '/app/pos', label: 'New Sale (POS)', icon: ShoppingCart },
+    { to: '/app/sales', label: 'Transactions', icon: ReceiptText },
+    { to: '/app/customers', label: 'Customers', icon: Users },
+    { to: '/app/products', label: 'Stock', icon: Package },
   ]},
   { label: 'Money', items: [
-    { to: '/app/accounts', label: 'Accounts', icon: Wallet },
-    { to: '/app/profit-dashboard', label: 'Profit', icon: TrendingUp },
-    { to: '/app/reports', label: 'Reports', icon: FileBarChart },
-    { to: '/app/gst-export', label: 'GST Export', icon: FileSignature },
-    { to: '/app/tally-export', label: 'Tally Export', icon: FileCode2 },
-    { to: '/app/bank-import', label: 'Bank Import', icon: Landmark },
-  ]},
-  { label: 'Settings', items: [
-    { to: '/app/settings', label: 'Settings', icon: SettingsIcon },
+    { to: '/app/khata', label: 'Khata', icon: BookOpen },
+    { to: '/app/accounts', label: 'Accounts & Reports', icon: Wallet },
+    { to: '/app/suppliers', label: 'Suppliers', icon: Truck },
+    { to: '/app/team', label: 'Staff & Team', icon: UsersRound },
   ]},
 ]
 
-// ── MORE TOOLS (expanded by default — Suppliers, Staff, AI Tools, Campaigns) ──
 const MORE: Section[] = [
-  { label: 'Suppliers & Team', items: [
-    { to: '/app/suppliers', label: 'Suppliers', icon: Truck },
-    { to: '/app/team', label: 'Staff', icon: UsersRound },
-  ]},
-  { label: 'Automation', items: [
+  { label: 'AI Automation', items: [
     { to: '/app/command-center', label: 'Command Center', icon: Zap },
     { to: '/app/vasooli', label: 'Vasooli Round', icon: Wallet },
-    { to: '/app/audio', label: 'Audio', icon: AudioLines },
-    { to: '/app/auto-reorder', label: 'Auto-reorder', icon: RefreshCw },
-    { to: '/app/cash-flow', label: 'Cash flow', icon: LineChart },
-    { to: '/app/reminders', label: 'Reminders', icon: CalendarClock },
-    { to: '/app/duplicates', label: 'Data hygiene', icon: Copy },
-    { to: '/app/snapshot', label: 'Snapshot', icon: Share2 },
-    { to: '/app/goals', label: 'Goals', icon: Flame },
-    { to: '/app/pricing', label: 'Pricing', icon: Tag },
-    { to: '/app/scorecard', label: 'Scorecard', icon: ClipboardCheck },
-    { to: '/app/social', label: 'Social drafts', icon: Megaphone },
-  ]},
-  { label: 'AI Tools', items: [
-    { to: '/app/brain', label: 'Tasks', icon: ListChecks },
-    { to: '/app/campaigns', label: 'Campaigns', icon: MessageCircle },
-    { to: '/app/email-assistant', label: 'Email', icon: Mail },
-    { to: '/app/summaries', label: 'Summaries', icon: ScrollText },
-    { to: '/app/data-entry', label: 'Data Entry', icon: Database },
-  ]},
-  { label: 'Advanced', items: [
-    { to: '/app/activity', label: 'Activity', icon: History },
-    { to: '/app/failed-jobs', label: 'Pending', icon: AlertOctagon, badge: true },
-    { to: '/app/notifications', label: 'Notifications', icon: Bell },
-    { to: '/app/suggestions', label: 'Suggestions', icon: Lightbulb },
-    { to: '/app/permissions', label: 'Permissions', icon: ShieldCheck },
-  ]},
-  { label: 'Connections', items: [
-    { to: '/app/connect-apps', label: 'Connect Apps', icon: Plug },
-    { to: '/app/integrations', label: 'Integrations', icon: Network },
-    { to: '/app/api-keys', label: 'API Keys', icon: Key },
-    { to: '/app/subscription', label: 'Subscription', icon: CreditCard },
-    { to: '/app/compliance', label: 'Compliance', icon: Shield },
-    { to: '/app/support', label: 'Support', icon: LifeBuoy },
-    { to: '/app/about', label: 'About', icon: UserCircle },
+    { to: '/app/reminders', label: 'Reminders & Goals', icon: CalendarClock },
+    { to: '/app/email-assistant', label: 'Email & Summaries', icon: Mail },
   ]},
 ]
 
@@ -150,7 +103,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
     if (e.pointerType === 'mouse') return
     if (!isOpen) return
     // On desktop the sidebar is part of the layout, not a drawer.
-    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) return
+    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) return
     const d = dragRef.current
     d.active = true
     d.id = e.pointerId
@@ -212,10 +165,10 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
       end={item.end}
       onClick={onClose}
       className={({ isActive }) => clsx(
-        'group relative flex items-center gap-3 rounded-control font-medium text-sm transition-colors min-h-[40px] px-3 py-2',
-        collapsed && 'lg:justify-center lg:px-2',
+        'group relative flex items-center gap-3 rounded-[10px] font-medium text-[15px] transition-colors min-h-[40px] px-3 py-2',
+        collapsed && 'md:justify-center md:px-2',
         isActive
-          ? 'bg-secondary-soft text-secondary-strong font-semibold'
+          ? 'bg-[#F3F4F6] text-[#111827] font-bold'
           : item.ai
             ? 'text-accent hover:bg-surface-2'
             : 'text-fg-muted hover:text-fg hover:bg-surface-2'
@@ -223,9 +176,9 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
     >
       {({ isActive }) => (
         <>
-          {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-secondary" aria-hidden="true" />}
+          {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-[#10B981]" aria-hidden="true" />}
           <item.icon className="w-[18px] h-[18px] flex-shrink-0" strokeWidth={1.75} />
-          <span className={clsx("flex-1 truncate", collapsed && "lg:hidden")}>{item.label}</span>
+          <span className={clsx("flex-1 truncate", collapsed && "md:hidden")}>{item.label}</span>
           {item.ai && <span className="text-[9px] font-bold tracking-wide px-1.5 py-0.5 rounded-full bg-accent text-accent-fg">AI</span>}
           {item.badge && failedCount > 0 && (
             <span className="bg-negative text-accent-fg text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{failedCount > 9 ? '9+' : failedCount}</span>
@@ -246,7 +199,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         ref={backdropRef}
         onClick={onClose}
         aria-hidden="true"
-        className={`fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
       />
       <aside
         ref={asideRef}
@@ -255,24 +208,23 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         onPointerUp={onDrawerPointerUp}
         onPointerCancel={onDrawerPointerCancel}
         className={clsx(
-        'fixed lg:sticky top-0 left-0 z-50 h-screen bg-surface shadow-card flex flex-col transition-all duration-300 ease-butter',
+        'fixed md:sticky top-0 left-0 z-50 h-screen bg-surface shadow-card flex flex-col transition-all duration-300 ease-butter',
         collapsed ? 'w-[68px]' : 'w-72',
-        isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       )}>
         <div className="flex items-center justify-between p-5">
           <div className="flex items-center gap-2.5">
             <CashieaLogo size={36} />
             <div className="min-w-0">
-              <h1 className={clsx("font-bold text-fg text-lg leading-none", collapsed && "lg:hidden")}>Cashiea</h1>
-              <p className={clsx("text-xs text-fg-subtle mt-0.5 truncate max-w-[140px]", collapsed && "lg:hidden")}>{profile?.company_name || 'AI Platform'}</p>
+              <h1 className={clsx("font-bold text-fg text-lg leading-none", collapsed && "md:hidden")}>Cashiea <span className="text-fg-muted">| Joker</span></h1>
             </div>
           </div>
           <div className="flex items-center gap-1">
             <ThemeToggle />
-            <button onClick={() => setCollapsed((v) => !v)} className="hidden lg:flex icon-btn" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+            <button onClick={() => setCollapsed((v) => !v)} className="hidden md:flex icon-btn" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
               <ChevronRight className={clsx('w-4 h-4 transition-transform duration-300', collapsed ? '' : 'rotate-180')} />
             </button>
-            <button onClick={onClose} className="lg:hidden icon-btn" aria-label="Close menu" title="Close menu"><X className="w-5 h-5" /></button>
+            <button onClick={onClose} className="md:hidden icon-btn" aria-label="Close menu" title="Close menu"><X className="w-5 h-5" /></button>
           </div>
         </div>
 
@@ -297,13 +249,13 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
             if (navQuery.trim() && !items.length) return null
             return (
               <div key={section.label}>
-                <p className={clsx("px-3 mb-2 text-[11px] font-semibold uppercase tracking-[1px] text-fg-subtle/80", collapsed && "lg:hidden")}>{section.label}</p>
+                <p className={clsx("px-3 mb-2 text-[11px] font-semibold uppercase tracking-[1px] text-fg-subtle/80", collapsed && "md:hidden")}>{section.label}</p>
                 <div className="space-y-0.5">{items.map(renderItem)}</div>
               </div>
             )
           })}
 
-          {/* More Tools — expanded by default, collapsible (choice persists) */}
+          {/* AI Automation — collapsible */}
           <div>
             <button
               onClick={toggleMore}
@@ -311,7 +263,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
               aria-expanded={showMore}
             >
               {showMore ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-              <span>More Tools</span>
+              <span className={clsx(collapsed && "md:hidden")}>AI Automation</span>
               {failedCount > 0 && (
                 <span className="ml-auto bg-negative text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">{failedCount > 9 ? '9+' : failedCount}</span>
               )}
@@ -323,7 +275,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
                   if (navQuery.trim() && !items.length) return null
                   return (
                     <div key={section.label}>
-                      <p className={clsx("px-3 mb-2 text-[11px] font-semibold uppercase tracking-[1px] text-fg-subtle/80", collapsed && "lg:hidden")}>{section.label}</p>
+                      <p className={clsx("px-3 mb-2 text-[11px] font-semibold uppercase tracking-[1px] text-fg-subtle/80", collapsed && "md:hidden")}>{section.label}</p>
                       <div className="space-y-0.5">{items.map(renderItem)}</div>
                     </div>
                   )
@@ -337,14 +289,15 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         </nav>
 
         <div className="p-3 border-t border-line">
+          <NavLink to="/app/settings" onClick={onClose} className="flex items-center gap-3 rounded-[10px] px-3 py-2 text-[15px] font-medium text-fg-muted hover:bg-surface-2 hover:text-fg transition-colors"><SettingsIcon className="h-5 w-5" /><span className={clsx(collapsed && "md:hidden")}>Settings</span></NavLink>
           <NavLink to="/app/account" onClick={onClose} className="flex items-center gap-2.5 p-2 rounded-control hover:bg-surface-2 transition-colors">
             <Avatar url={profile?.avatar_url} name={profile?.full_name} size={36} />
             <div className="min-w-0 flex-1">
-              <p className={clsx("text-sm font-medium text-fg truncate", collapsed && "lg:hidden")}>{profile?.full_name || 'User'}</p>
-              <p className="text-[11px] text-fg-subtle truncate">{profile?.role ? `${profile.role[0].toUpperCase()}${profile.role.slice(1)}` : 'Account'} · Edit account</p>
+              <p className={clsx("text-sm font-medium text-fg truncate", collapsed && "md:hidden")}>{profile?.full_name || 'User'}</p>
+              <p className={clsx("text-[11px] text-fg-subtle truncate", collapsed && "md:hidden")}>{profile?.role ? `${profile.role[0].toUpperCase()}${profile.role.slice(1)}` : 'Account'} · Edit account</p>
             </div>
           </NavLink>
-          <button onClick={handleSignOut} className="w-full mt-1 flex items-center gap-2 px-3 py-2 rounded-control text-sm text-fg-muted hover:text-negative hover:bg-surface-2 transition-colors">
+          <button onClick={handleSignOut} className="w-full mt-1 flex items-center gap-3 px-3 py-2 rounded-control text-sm text-fg-muted hover:text-negative hover:bg-surface-2 transition-colors">
             <LogOut className="w-4 h-4" /> Sign out
           </button>
         </div>

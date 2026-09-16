@@ -5,7 +5,7 @@ export function CashieaLogo({ size = 36, className = '' }: { size?: number; clas
       src="/cashiea-logo.png"
       width={size}
       height={size}
-      className={className}
+      className={`block rounded-[18%] object-cover ${className}`}
       alt="Cashiea"
       draggable={false}
     />

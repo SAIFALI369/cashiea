@@ -18,7 +18,7 @@ export default function DesktopHeader({ onMenu, showMenuButton }: { onMenu?: () 
   const { profile } = useAuth()
 
   return (
-    <header className="hidden lg:flex sticky top-0 z-30 bg-paper/85 backdrop-blur-xl px-6 xl:px-10 h-16 items-center gap-4 shrink-0">
+    <header className="hidden md:flex sticky top-0 z-30 bg-paper/85 backdrop-blur-xl px-6 xl:px-10 h-16 items-center gap-4 shrink-0">
       {showMenuButton && (
         <button
           onClick={onMenu}

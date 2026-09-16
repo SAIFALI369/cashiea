@@ -16,6 +16,7 @@ import {
   buildWhatsappLink, buildSmsLink, copyToClipboard, type UPIParams,
 } from '../lib/payments'
 import { generateInvoicePdf } from '../lib/invoice-pdf'
+import { formatINR } from '../lib/format'
 import type { Customer, Invoice, Product } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import { StatStrip } from '../components/ui/StatStrip'
@@ -272,6 +273,7 @@ export default function Invoices() {
   const unpaid = invoices.filter((i) => i.status !== 'paid' && i.status !== 'draft')
   const unpaidTotal = unpaid.reduce((s, i) => s + (Number(i.total) || 0), 0)
   const overdueCount = invoices.filter((i) => i.status === 'overdue').length
+  const overdueTotal = invoices.filter((i) => i.status === 'overdue').reduce((sum, invoice) => sum + Number(invoice.total || 0), 0)
 
   const q = search.trim().toLowerCase()
   const filteredInvoices = invoices.filter((inv) => {
@@ -283,7 +285,7 @@ export default function Invoices() {
   })
 
   return (
-    <div className="animate-fade-in">
+    <div className="invoices-page animate-fade-in">
       <PageHeader
         title="Invoices"
         subtitle="Draft a GST bill, send it on WhatsApp, collect on UPI"
@@ -291,20 +293,20 @@ export default function Invoices() {
         action={isOwner ? (
           <div className="flex gap-2">
             <button onClick={() => { setRecurringSeed(null); setShowRecurring(true) }} className="btn-secondary text-sm"><Repeat className="w-4 h-4" /> Recurring</button>
-            <button onClick={() => { setShowAi((v) => !v); setComposer(null) }} className="btn-secondary text-sm"><Sparkles className="w-4 h-4" /> {showAi ? 'Close' : 'From words'}</button>
+            <button onClick={() => { setShowAi((v) => !v); setComposer(null) }} className="btn-secondary text-sm"><Sparkles className="w-4 h-4" /> {showAi ? 'Close' : 'Voice to Invoice'}</button>
             <button onClick={openComposer} className="btn-primary text-sm"><Plus className="w-4 h-4" /> New invoice</button>
           </div>
         ) : <span className="text-xs text-fg-subtle">Owner-only changes</span>}
       />
 
       {/* Unpaid summary */}
-      {invoices.length > 0 && (
-        <StatStrip stats={[
-          { label: 'Unpaid', value: `₹${unpaidTotal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: Wallet, tone: unpaid.length ? 'warning' : 'positive', hint: unpaid.length ? `${unpaid.length} to collect` : 'All collected' },
-          { label: 'Invoices', value: String(invoices.length), icon: FileText, tone: 'default' },
-          { label: 'Overdue', value: String(overdueCount), icon: AlertTriangle, tone: overdueCount ? 'negative' : 'positive', hint: overdueCount ? 'Chase today' : 'None' },
-        ]} />
-      )}
+      {invoices.length > 0 && <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {[
+          ['Unpaid', `₹${unpaidTotal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, Wallet, 'text-[#F87171]'],
+          ['Invoices', String(invoices.length), FileText, 'text-fg'],
+          ['Overdue', `₹${overdueTotal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, AlertTriangle, 'text-[#F87171]'],
+        ].map(([label, value, Icon, tone]) => <div key={label as string} className="card flex items-center gap-3 p-5"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2"><Icon className="h-5 w-5 text-fg-subtle" /></span><div><p className="text-xs font-semibold text-fg-subtle">{label as string}</p><p className={`mt-1 text-2xl font-extrabold ${tone}`}>{value as string}</p></div></div>)}
+      </div>}
 
       {isOwner && showAi && !composer && (
         <div className="card p-4 mb-6 animate-slide-up">
@@ -353,17 +355,17 @@ export default function Invoices() {
           <div className="flex items-center gap-2 mb-5">
             <div className="flex gap-2 overflow-x-auto scroll-area flex-1">
               {([['all', 'All'], ['unpaid', 'Unpaid'], ['paid', 'Paid'], ['overdue', 'Overdue']] as const).map(([key, label]) => (
-                <button key={key} onClick={() => setStatusFilter(key)} className={`chip whitespace-nowrap ${statusFilter === key ? 'chip-active' : ''}`}>{label}</button>
+                <button key={key} onClick={() => setStatusFilter(key)} className={`relative whitespace-nowrap px-1 py-2 text-sm font-semibold transition-colors ${statusFilter === key ? 'text-fg' : 'text-fg-subtle hover:text-fg'} ${statusFilter === key ? 'after:absolute after:bottom-0 after:left-1/2 after:h-1 after:w-1 after:-translate-x-1/2 after:rounded-full after:bg-accent' : ''}`}>{label}</button>
               ))}
             </div>
             <div className="flex gap-2 flex-shrink-0">
               <button
                 onClick={selectedIds.size > 0 ? clearSelection : selectAllVisible}
                 className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${selectedIds.size > 0 ? 'bg-secondary-soft text-secondary-strong' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}
-                aria-label={selectedIds.size > 0 ? 'Clear selection' : 'Select all visible invoices'}
+                aria-label={selectedIds.size > 0 ? 'Clear selection' : 'Select visible invoices'}
               >
                 {selectedIds.size > 0 ? <X className="w-3.5 h-3.5" /> : <CheckSquare className="w-3.5 h-3.5" />}
-                {selectedIds.size > 0 ? 'Clear' : 'Select all'}
+                {selectedIds.size > 0 ? 'Clear' : 'Select'}
               </button>
             </div>
           </div>
@@ -401,7 +403,7 @@ export default function Invoices() {
                     <Avatar name={inv.client_name} size={32} className="mt-0.5 flex-shrink-0" />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-bold text-fg">{inv.invoice_number}</h3>
+                        <p className="text-xs text-fg-subtle">{inv.invoice_number}</p>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor[inv.status]}`}>{inv.status}</span>
                         {inv.recurring_id && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-accent-soft text-accent-strong flex items-center gap-1"><Repeat className="w-3 h-3" /> recurring</span>}
                         {inv.reminder_count > 0 && <span className="text-xs text-fg-subtle">({inv.reminder_count} reminders)</span>}
@@ -411,7 +413,7 @@ export default function Invoices() {
                   </div>
                   <div className="flex items-start gap-1">
                     <div className="text-right max-w-40">
-                      <FitAmount value={`₹${inv.total.toFixed(2)}`} base="text-xl" minTier="text-sm" className="font-bold text-fg" />
+                      <FitAmount value={formatINR(Number(inv.total), 0)} base="text-2xl" minTier="text-base" className="font-extrabold text-fg" />
                       {inv.due_date && <p className="text-xs text-fg-subtle">Due {inv.due_date}</p>}
                     </div>
                     {/* ⋮ menu — replaces swipe actions */}
@@ -430,12 +432,12 @@ export default function Invoices() {
                 </div>
 
                 {/* Quick actions — menu (⋮) holds the full set */}
-                <div className="flex gap-2 overflow-x-auto scroll-area pb-1 mt-3 pt-3 border-t border-line [&>button]:flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <button onClick={() => setShareInv(inv)} className="btn-ghost text-xs h-11"><QrCode className="w-3.5 h-3.5" /> Pay / Share</button>
-                  <button onClick={() => downloadPdf(inv)} disabled={downloadingPdf === inv.id} className="btn-ghost text-xs h-11">
+                <div className="mt-4 flex gap-2 overflow-x-auto scroll-area pb-1 [&>button]:flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <button onClick={() => setShareInv(inv)} className="rounded-full bg-[#F3F4F6] px-3 py-2 text-xs font-semibold text-[#111827] inline-flex items-center gap-1.5"><QrCode className="w-3.5 h-3.5" /> Pay / Share</button>
+                  <button onClick={() => downloadPdf(inv)} disabled={downloadingPdf === inv.id} className="rounded-full bg-[#F3F4F6] px-3 py-2 text-xs font-semibold text-[#111827] inline-flex items-center gap-1.5">
                     {downloadingPdf === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />} PDF
                   </button>
-                  <button onClick={() => share('whatsapp', inv)} className="btn-ghost text-xs h-11 text-positive"><MessageCircle className="w-3.5 h-3.5" /> WhatsApp</button>
+                  <button onClick={() => share('whatsapp', inv)} className="rounded-full bg-[#F3F4F6] px-3 py-2 text-xs font-semibold text-[#111827] inline-flex items-center gap-1.5"><MessageCircle className="w-3.5 h-3.5" /> WhatsApp</button>
                 </div>
               </div>
             ))}

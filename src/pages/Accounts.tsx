@@ -5,10 +5,8 @@ import { supabase, edgeFunctionUrl } from '../lib/supabase'
 import { offlineInsert } from '../lib/mutations'
 import type { Expense } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
-import { StatStrip } from '../components/ui/StatStrip'
-import EmptyState from '../components/ui/EmptyState'
 import { exportToCSV } from '../lib/export'
-import { Wallet, Plus, Loader2, Trash2, TrendingDown, TrendingUp, Download, Camera } from 'lucide-react'
+import { Wallet, Plus, Loader2, Trash2, TrendingDown, TrendingUp, Download, Camera, Bus, BriefcaseBusiness, Zap, ShoppingBag } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const categories = ['Rent', 'Salaries', 'Inventory', 'Utilities', 'Marketing', 'Transport', 'Maintenance', 'Sales', 'Other']
@@ -21,6 +19,8 @@ export default function Accounts() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ type: 'expense', category: 'Inventory', description: '', amount: '', payment_method: 'cash', date: new Date().toISOString().split('T')[0], notes: '' })
   const [scanning, setScanning] = useState(false)
+  const [swipedId, setSwipedId] = useState<string | null>(null)
+  const [touchStart, setTouchStart] = useState<number | null>(null)
   const scanRef = useRef<HTMLInputElement>(null)
 
   const scanReceipt = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,16 +90,29 @@ export default function Accounts() {
   const monthIncome = entries.filter((e) => e.type === 'income' && e.date >= monthStart).reduce((s, e) => s + Number(e.amount), 0)
 
   return (
-    <div className="animate-fade-in">
-      <PageHeader title="Accounts" subtitle="Track expenses, income, cash flow & profit" icon={<Wallet className="w-5 h-5" />} action={<div className="flex gap-2">{isOwner && <><input ref={scanRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={scanReceipt} /><button onClick={() => scanRef.current?.click()} disabled={scanning} className="btn-secondary text-xs">{scanning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />} Scan</button></>}<button onClick={() => exportToCSV('accounts', entries as unknown as Record<string, unknown>[])} className="btn-secondary text-xs"><Download className="w-3.5 h-3.5" /> Export</button>{isOwner && <button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showForm ? 'Close' : 'Add Entry'}</button>}</div>} />
+    <div className="accounts-page animate-fade-in">
+      <PageHeader title="Accounts" subtitle="Track expenses, income, cash flow & profit" icon={<Wallet className="w-5 h-5" />} action={<div className="flex gap-2">{isOwner && <><input ref={scanRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={scanReceipt} /><button onClick={() => scanRef.current?.click()} disabled={scanning} className="btn-secondary border-0 bg-[#F3F4F6] text-[#111827] text-xs">{scanning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />} Scan</button></>}<button onClick={() => exportToCSV('accounts', entries as unknown as Record<string, unknown>[])} className="btn-secondary border-0 bg-[#F3F4F6] text-[#111827] text-xs"><Download className="w-3.5 h-3.5" /> Export</button>{isOwner && <button onClick={() => setShowForm(!showForm)} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {showForm ? 'Close' : 'Add Entry'}</button>}</div>} />
 
-      {/* Overview — numbers are the hero */}
-      <StatStrip stats={[
-        { label: 'Income today', value: `₹${todayIncome.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: TrendingUp, tone: 'positive' },
-        { label: 'Expenses today', value: `₹${todayExpenses.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: TrendingDown, tone: 'negative' },
-        { label: 'Net this month', value: `₹${(monthIncome - monthExpenses).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: Wallet, tone: monthIncome - monthExpenses >= 0 ? 'positive' : 'negative' },
-        { label: 'Month expenses', value: `₹${monthExpenses.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: TrendingDown, tone: 'default', hint: `of ₹${monthIncome.toLocaleString('en-IN', { maximumFractionDigits: 0 })} income` },
-      ]} />
+      {/* Cashflow — one focused financial picture */}
+      <section className="card mb-6 p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold text-fg-subtle">Cashflow</p>
+            <p className={`mt-2 text-3xl font-extrabold tracking-tight ${monthIncome - monthExpenses >= 0 ? 'text-emerald-600' : 'text-fg'}`}>
+              {monthIncome - monthExpenses < 0 ? '−' : ''}₹{Math.abs(monthIncome - monthExpenses).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+            </p>
+            <p className="mt-1 text-sm font-medium text-fg-muted">Net this month</p>
+          </div>
+          <Wallet className="h-5 w-5 text-accent" />
+        </div>
+        <div className="mt-6 grid grid-cols-2 gap-4">
+          <div><p className="text-xs text-fg-subtle">Income</p><p className="mt-1 text-lg font-bold text-emerald-600">₹{monthIncome.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p></div>
+          <div className="border-l border-line pl-4"><p className="text-xs text-fg-subtle">Expenses</p><p className="mt-1 text-lg font-bold text-fg">₹{monthExpenses.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p></div>
+        </div>
+        <div className="mt-5 flex h-2 overflow-hidden rounded-full bg-red-100" aria-label="Income versus expenses">
+          <span className="bg-emerald-500" style={{ width: `${monthIncome + monthExpenses > 0 ? Math.min(100, (monthIncome / (monthIncome + monthExpenses)) * 100) : 0}%` }} />
+        </div>
+      </section>
 
       {isOwner && showForm && (
         <div className="card p-4 mb-6 animate-slide-up">
@@ -121,19 +134,33 @@ export default function Accounts() {
       {loading ? (
         <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>
       ) : entries.length === 0 ? (
-        <EmptyState icon={Wallet} title="No entries yet" description="Record expenses and income to track cash flow, profit, and spending by category." />
-      ) : (
-        <div className="card divide-y divide-line">
-          {entries.slice(0, 50).map((e) => (
-            <div key={e.id} className="p-4 flex items-center justify-between hover:bg-surface-2/50 transition-colors">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${e.type === 'income' ? 'bg-positive/15' : 'bg-negative/15'}`}>{e.type === 'income' ? <TrendingUp className="w-4 h-4 text-positive" /> : <TrendingDown className="w-4 h-4 text-negative" />}</div>
-                <div className="min-w-0"><p className="text-sm text-fg truncate">{e.description}</p><p className="text-xs text-fg-subtle">{e.category} · {e.date} · {e.payment_method}</p></div>
-              </div>
-              <div className="flex items-center gap-3 flex-shrink-0"><span className={`font-bold tabular-nums ${e.type === 'income' ? 'text-positive' : 'text-negative'}`}>{e.type === 'income' ? '+' : '−'}₹{Number(e.amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>{isOwner && <button onClick={() => del(e.id)} className="text-fg-subtle hover:text-negative"><Trash2 className="w-3.5 h-3.5" /></button>}</div>
-            </div>
-          ))}
+        <div className="card flex min-h-[220px] flex-col items-center justify-center p-6 text-center">
+          <Wallet className="h-10 w-10 text-fg-subtle" />
+          <p className="mt-4 text-base font-bold text-fg">No entries yet</p>
+          <p className="mt-1 text-sm text-fg-muted">Record expenses and income to track your cashflow.</p>
         </div>
+      ) : (
+        <section>
+          <div className="mb-4 flex items-end justify-between"><div><p className="text-xs font-semibold text-fg-subtle">Transactions</p><h2 className="mt-1 text-lg font-bold text-fg">Clean Log</h2></div><span className="text-xs text-fg-subtle">{entries.length} entries</span></div>
+          <div className="space-y-4">
+            {entries.slice(0, 50).map((e) => {
+              const CategoryIcon = e.category === 'Transport' ? Bus : e.category === 'Salaries' ? BriefcaseBusiness : e.category === 'Utilities' ? Zap : ShoppingBag
+              const categoryTone = e.category === 'Transport' ? 'bg-blue-100 text-blue-600' : e.category === 'Salaries' ? 'bg-purple-100 text-purple-600' : e.category === 'Utilities' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600'
+              return (
+                <div key={e.id} className="relative overflow-hidden rounded-2xl" onTouchStart={(event) => setTouchStart(event.touches[0].clientX)} onTouchEnd={(event) => { if (touchStart !== null && touchStart - event.changedTouches[0].clientX > 48) setSwipedId(e.id); else if (touchStart !== null && event.changedTouches[0].clientX - touchStart > 48) setSwipedId(null); setTouchStart(null) }}>
+                  {isOwner && <div className="absolute inset-y-0 right-0 flex w-20 items-stretch"><button onClick={() => del(e.id)} className="flex flex-1 flex-col items-center justify-center gap-1 bg-red-600 text-xs font-semibold text-white"><Trash2 className="h-4 w-4" />Delete</button></div>}
+                  <div className={`card relative flex items-center justify-between gap-3 p-5 transition-transform duration-200 ${swipedId === e.id ? '-translate-x-20' : ''}`}>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full ${categoryTone}`}><CategoryIcon className="h-5 w-5" /></div>
+                      <div className="min-w-0"><p className="truncate text-sm font-bold text-fg">{e.description}</p><p className="mt-1 truncate text-xs text-fg-subtle">{e.category} · {e.date}</p></div>
+                    </div>
+                    <div className="flex flex-shrink-0 items-center gap-3"><span className={`font-bold tabular-nums ${e.type === 'income' ? 'text-emerald-600' : 'text-[#F87171]'}`}>{e.type === 'income' ? '+' : '−'}₹{Number(e.amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span></div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
       )}
     </div>
   )

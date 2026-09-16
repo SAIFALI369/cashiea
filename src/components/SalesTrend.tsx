@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { TrendingUp, TrendingDown, ChevronDown } from 'lucide-react'
+import { TrendingUp, TrendingDown, ChevronDown, Check } from 'lucide-react'
 import { formatINR } from '../lib/format'
 
 /**
@@ -23,6 +23,7 @@ export function SalesTrend({ ownerId }: { ownerId: string | null | undefined }) 
   const [curTotal, setCurTotal] = useState(0)
   const [pct, setPct] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -70,10 +71,25 @@ export function SalesTrend({ ownerId }: { ownerId: string | null | undefined }) 
   const H = 96
   const pad = 4
   const step = daily.length > 1 ? (W - pad * 2) / (daily.length - 1) : 0
-  const pts = daily
-    .map((v, i) => `${(pad + i * step).toFixed(1)},${(H - pad - (v / max) * (H - pad * 2)).toFixed(1)}`)
-    .join(' ')
-  const area = `${pad},${H - pad} ${pts} ${W - pad},${H - pad}`
+  const points = daily.map((v, i) => ({
+    x: pad + i * step,
+    y: H - pad - (v / max) * (H - pad * 2),
+  }))
+  const smoothPath = (values: Array<{ x: number; y: number }>) => {
+    if (!values.length) return ''
+    if (values.length === 1) return `M ${values[0].x} ${values[0].y}`
+    let path = `M ${values[0].x.toFixed(1)} ${values[0].y.toFixed(1)}`
+    for (let i = 1; i < values.length - 1; i += 1) {
+      const midX = (values[i].x + values[i + 1].x) / 2
+      const midY = (values[i].y + values[i + 1].y) / 2
+      path += ` Q ${values[i].x.toFixed(1)} ${values[i].y.toFixed(1)} ${midX.toFixed(1)} ${midY.toFixed(1)}`
+    }
+    const last = values[values.length - 1]
+    path += ` Q ${last.x.toFixed(1)} ${last.y.toFixed(1)} ${last.x.toFixed(1)} ${last.y.toFixed(1)}`
+    return path
+  }
+  const linePath = smoothPath(points)
+  const area = `${linePath} L ${W - pad} ${H - pad} L ${pad} ${H - pad} Z`
   const up = (pct ?? 0) >= 0
 
   return (
@@ -85,32 +101,14 @@ export function SalesTrend({ ownerId }: { ownerId: string | null | undefined }) 
             <div className="h-9 w-44 bg-surface-2 rounded animate-pulse mt-1.5" />
           ) : (
             <>
-              <p className="text-3xl font-bold text-fg mt-0.5">{formatINR(curTotal, 0)}</p>
-              {pct !== null && (
-                <p className={`text-xs font-semibold mt-1.5 inline-flex items-center gap-1 ${up ? 'text-positive' : 'text-negative'}`}>
-                  {up ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                  {up ? '+' : ''}
-                  {pct.toFixed(1)}% vs previous period
-                </p>
-              )}
+              <p className="mt-0.5 whitespace-nowrap text-3xl font-extrabold tracking-tight text-fg sm:text-4xl">{formatINR(curTotal, 0)}</p>
+              {pct !== null && <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold ${up ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
+                {up ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />} {up ? '+' : ''}{pct.toFixed(0)}% vs last period
+              </span>}
             </>
           )}
         </div>
-        <div className="relative flex-shrink-0">
-          <select
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-            className="input-field text-xs py-1.5 pl-3 pr-8 appearance-none cursor-pointer"
-            aria-label="Time period"
-          >
-            {PERIODS.map((p) => (
-              <option key={p.key} value={p.key}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="w-3.5 h-3.5 text-fg-subtle absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-        </div>
+        <button onClick={() => setPickerOpen(true)} className="inline-flex flex-shrink-0 items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 text-xs font-semibold text-fg-muted" aria-label="Choose time period">{PERIODS.find((p) => p.key === key)?.label}<ChevronDown className="h-3.5 w-3.5" /></button>
       </div>
       <div className="w-full">
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-24" preserveAspectRatio="none" role="img" aria-label="Sales trend">
@@ -120,10 +118,16 @@ export function SalesTrend({ ownerId }: { ownerId: string | null | undefined }) 
               <stop offset="100%" stopColor="rgb(var(--accent))" stopOpacity="0" />
             </linearGradient>
           </defs>
-          <polygon points={area} fill="url(#salesFill)" />
-          <polyline points={pts} fill="none" stroke="rgb(var(--accent))" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+          <path d={area} fill="url(#salesFill)" />
+          <path d={linePath} fill="none" stroke="rgb(var(--accent))" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
         </svg>
       </div>
+      {pickerOpen && <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onClick={() => setPickerOpen(false)} role="dialog" aria-label="Choose report period">
+        <div className="card w-full rounded-b-none p-5 sm:max-w-sm sm:rounded-[20px]" onClick={(event) => event.stopPropagation()}>
+          <div className="mb-3 flex items-center justify-between"><h3 className="text-base font-bold text-fg">Choose period</h3><button onClick={() => setPickerOpen(false)} className="text-sm font-medium text-fg-subtle">Close</button></div>
+          <div className="space-y-1">{PERIODS.map((period) => <button key={period.key} onClick={() => { setKey(period.key); setPickerOpen(false) }} className="flex w-full items-center justify-between rounded-xl px-3 py-3 text-left text-sm font-semibold text-fg hover:bg-surface-2">{period.label}{period.key === key && <Check className="h-5 w-5 text-accent-strong" />}</button>)}</div>
+        </div>
+      </div>}
     </div>
   )
 }

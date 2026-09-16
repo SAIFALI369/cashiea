@@ -21,13 +21,13 @@ function Segment({ value, onChange }: { value: AccessMode; onChange: (m: AccessM
           key={m.key}
           onClick={() => onChange(m.key)}
           className={clsx(
-            'px-2.5 py-1 rounded-[8px] text-[11px] font-semibold transition-colors min-w-[44px]',
+            'min-h-[32px] min-w-[44px] rounded-[8px] px-2 py-1 text-[12px] font-semibold transition-colors',
             value === m.key
               ? m.key === 'approved'
-                ? 'bg-warning text-white'
+                ? 'bg-[#FEF3C7] text-[#92400E]'
                 : m.key === 'direct'
-                  ? 'bg-positive text-white'
-                  : 'bg-negative text-white'
+                  ? 'bg-[#ECFDF5] text-[#065F46]'
+                  : 'bg-[#F3F4F6] text-[#6B7280]'
               : 'text-fg-subtle hover:text-fg'
           )}
         >
@@ -64,17 +64,10 @@ export default function PermissionsPage() {
   }
 
   return (
-    <div className="animate-fade-in max-w-2xl">
+    <div className="permissions-page animate-fade-in">
       <PageHeader title="Permission Chamber" subtitle="Control who can do what — and what needs your approval" icon={<ShieldCheck className="w-5 h-5" />} />
 
-      <div className="card p-4 mb-5 flex items-start gap-3" style={{ background: 'rgb(var(--accent-soft) / 0.4)' }}>
-        <ShieldCheck className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
-        <p className="text-xs text-fg-muted leading-relaxed">
-          Your own changes always apply instantly. By default, <strong>managers &amp; accountants need your approval</strong> for money and inventory actions
-          (sales, payments, invoices, expenses, adding/removing products). Use the controls below to trust someone fully, require approval, or turn an action off.
-          Minor non-money edits (like fixing a phone number) are always allowed directly.
-        </p>
-      </div>
+      <details className="card mb-5 p-4"><summary className="cursor-pointer list-none text-sm font-semibold text-fg">ℹ️ How permissions work. Tap to read.</summary><ul className="mt-3 list-disc space-y-2 pl-5 text-xs leading-5 text-fg-muted"><li>Your own changes always apply instantly.</li><li>Managers and accountants can require approval for money and inventory actions.</li><li>Direct lets a role act without approval; Off blocks that action.</li></ul></details>
 
       <div className="flex items-center gap-2 mb-4">
         <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-fg-subtle"><span className="w-2 h-2 rounded-full bg-warning" /> Approval</span>
@@ -83,9 +76,9 @@ export default function PermissionsPage() {
         {saving && <Loader2 className="w-3.5 h-3.5 text-fg-subtle animate-spin ml-auto" />}
       </div>
 
-      <div className="space-y-5">
+      <div className="permissions-table"><div className="permissions-table-head"><span>Role</span><span>Products &amp; Stock</span><span>New Sale</span><span>Invoices &amp; Payments</span><span>Expenses</span></div><div className="space-y-5">
         {TUNABLE_ROLES.map((role) => (
-          <section key={role.key} className="card p-4 sm:p-5">
+          <section key={role.key} className="permissions-role card p-4 sm:p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-bold text-fg">{role.label}</h2>
               <div className="flex gap-2">
@@ -93,9 +86,9 @@ export default function PermissionsPage() {
                 <button onClick={() => allFor(role.key, 'direct')} className="btn-ghost text-xs h-8 px-2.5">Trust all</button>
               </div>
             </div>
-            <div className="space-y-2.5">
+            <div className="permission-rows space-y-2.5">
               {MONEY_CAPABILITIES.map((cap) => (
-                <div key={cap.key} className="flex items-center justify-between gap-3 py-1.5">
+                <div key={cap.key} className="permission-row flex items-center justify-between gap-3 py-1.5">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-fg">{cap.label}</p>
                     <p className="text-[11px] text-fg-subtle truncate">{cap.desc}</p>
@@ -106,7 +99,7 @@ export default function PermissionsPage() {
             </div>
           </section>
         ))}
-      </div>
+      </div></div>
     </div>
   )
 }

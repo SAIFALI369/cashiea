@@ -23,6 +23,7 @@ export default function Scorecard() {
   const [loading, setLoading] = useState(true)
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [pos, setPos] = useState<PurchaseOrder[]>([])
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!ownerId) return
@@ -49,7 +50,7 @@ export default function Scorecard() {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="scorecard-page animate-fade-in">
       <PageHeader
         title="Supplier scorecard"
         subtitle="Volume, outstanding and open POs past the expected date. We do not invent an on-time % — purchase orders have no received timestamp."
@@ -67,9 +68,11 @@ export default function Scorecard() {
       {cards.length === 0 ? (
         <EmptyState icon={Truck} title="No suppliers yet" description="Add vendors under Suppliers — the scorecard fills itself from purchase orders." />
       ) : (
-        <div className="space-y-3">
+        <div className="scorecard-layout">
+          <div className="scorecard-list space-y-3">
           {cards.map((c) => (
-            <div key={c.supplierId} className="card p-4">
+            <button key={c.supplierId} onClick={() => setSelectedId(c.supplierId)} className={`card w-full p-5 text-left transition-shadow ${selectedId === c.supplierId ? 'ring-2 ring-accent/40' : ''}`}>
+
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -95,11 +98,11 @@ export default function Scorecard() {
                   Dearer on {c.dearerLosses[0].item} than {c.dearerLosses[0].rivalName} ({formatINR(c.dearerLosses[0].ourPrice, 0)} vs {formatINR(c.dearerLosses[0].rivalPrice, 0)})
                 </p>
               )}
-            </div>
+            </button>
           ))}
-          <Link to="/app/suppliers" className="btn-ghost text-xs inline-flex">
-            Open suppliers <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+          <Link to="/app/suppliers" className="btn-ghost text-xs inline-flex min-h-[44px]">Open suppliers <ArrowRight className="w-3.5 h-3.5" /></Link>
+          </div>
+          {(() => { const selected = cards.find((c) => c.supplierId === (selectedId || cards[0]?.supplierId)); return selected ? <aside className="scorecard-detail card p-6"><p className="text-xs font-bold uppercase tracking-wide text-fg-subtle">Selected supplier</p><h2 className="mt-2 text-2xl font-extrabold text-fg">{selected.name}</h2><span className={`mt-3 inline-flex rounded-full px-3 py-1 text-sm font-bold ${GRADE_CLS[selected.grade]}`}>Grade {selected.grade}</span><p className="mt-5 text-sm leading-6 text-fg-muted">{selected.gradeWhy}</p><div className="mt-6 grid grid-cols-2 gap-4"><div><p className="text-xs text-fg-subtle">Outstanding</p><p className="mt-1 text-lg font-extrabold text-red-500">{formatINR(selected.outstanding, 0)}</p></div><div><p className="text-xs text-fg-subtle">Volume</p><p className="mt-1 text-lg font-extrabold text-fg">{formatINR(selected.volume, 0)}</p></div></div></aside> : null })()}
         </div>
       )}
     </div>

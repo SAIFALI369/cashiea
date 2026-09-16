@@ -314,6 +314,30 @@
   }
 }
 
+/* Tier-1 ledger surfaces: roomy, borderless cards with one consistent
+   elevation language across Khata and Accounts. */
+.khata-page .card,
+.accounts-page .card,
+.promotions-page .card,
+.reports-page .card,
+.invoices-page .card,
+.profit-page .card,
+.gst-export-page .card,
+.tally-export-page .card,
+.team-page .card,
+.suppliers-page .card,
+.vasooli-page .card,
+.command-center-page .card,
+.reminders-page .card,
+.hygiene-page .card,
+.snapshot-page .card,
+.goals-page .card,
+.scorecard-page .card {
+  border: 0;
+  border-radius: 20px;
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.04);
+}
+
 /* ════════════════════════════════════════════════════════════════
    FOCUS VISIBILITY — a single, calm, theme-aware ring for every
    interactive element (audit: keyboard focus was invisible in places).
@@ -857,3 +881,125 @@ h1, h2, h3 {
 }
 .meraj-icon-pulse { animation: meraj-icon-pulse 2.4s ease-in-out infinite; }
 .meraj-icon-float { filter: drop-shadow(0 6px 14px rgb(16 185 129 / 0.18)); }
+
+/* Responsive premium layouts for Goals and Supplier Scorecard. */
+.goals-layout { display: block; }
+.scorecard-layout { display: block; }
+@media (min-width: 768px) {
+  .goals-layout { display: grid; grid-template-columns: minmax(0, 7fr) minmax(300px, 3fr); gap: 24px; align-items: start; }
+  .goal-side-panel { position: sticky; top: 24px; }
+  .scorecard-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(300px, 2fr); gap: 24px; align-items: start; }
+  .scorecard-detail { position: sticky; top: 24px; }
+}
+
+
+
+
+.pricing-desktop-cell { display: none; }
+.pricing-mobile-reason { display: inline-flex; }
+.pricing-table-head { display: none; }
+@media (min-width: 768px) {
+  .pricing-page { max-width: 1200px; }
+  .pricing-table-head { display: grid; grid-template-columns: minmax(0, 2fr) 120px 140px 150px 100px 100px; gap: 20px; padding: 0 20px 12px; border-bottom: 1px solid rgb(var(--line-2)); color: rgb(var(--fg)); font-size: 12px; font-weight: 700; }
+  .pricing-row { display: grid; grid-template-columns: minmax(0, 2fr) 120px 140px 150px 100px 100px; gap: 20px; align-items: center; border-radius: 0; box-shadow: none; border-bottom: 1px solid rgb(var(--line)); }
+  .pricing-row:hover { background: rgb(var(--surface-2) / 0.65); }
+  .pricing-row > span, .pricing-row > div:first-child { min-width: 0; }
+  .pricing-row > div:first-child { grid-column: 1; }
+  .pricing-desktop-cell { display: block; }
+  .pricing-row .pricing-action { grid-column: 6; grid-row: 1; }
+  .pricing-mobile-reason { display: none; }
+}
+
+
+.email-layout, .summary-layout { display: block; }
+.email-form, .summary-form { margin-bottom: 24px; }
+@media (min-width: 768px) {
+  .email-assistant-page, .summaries-page { max-width: 1200px; }
+  .email-layout, .summary-layout { display: grid; grid-template-columns: minmax(300px, 2fr) minmax(0, 3fr); gap: 24px; align-items: start; }
+  .email-form, .summary-form { margin-bottom: 0; }
+  .email-preview, .summary-output { position: sticky; top: 24px; }
+}
+.permissions-page { max-width: 1100px; }
+@media (min-width: 768px) {
+  .permissions-role { border-radius: 20px; }
+  .permissions-role .permission-rows { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; }
+  .permissions-role .permission-row { display: block; padding: 16px; border-right: 1px solid rgb(var(--line)); }
+}
+.permissions-table-head { display: none; }
+@media (min-width: 768px) {
+  .permissions-table-head { display: grid; grid-template-columns: 180px repeat(4, minmax(0, 1fr)); gap: 0; padding: 0 20px 12px; color: rgb(var(--fg-subtle)); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+  .permissions-role { display: block; }
+  .permissions-role > div:first-child { display: flex; }
+  .permissions-role .permission-rows { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; }
+  .permissions-role .permission-row { display: block; border-bottom: 1px solid rgb(var(--line)); border-right: 1px solid rgb(var(--line)); padding: 16px 20px; }
+  .permissions-role .permission-row::before { content: attr(data-role); }
+}
+
+
+@media (min-width: 768px) {
+  .connections-page { max-width: 1100px; }
+  .connections-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .integrations-page { max-width: 1150px; }
+  .integrations-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .api-keys-page { max-width: 1200px; }
+  .api-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, .9fr); gap: 24px; align-items: start; }
+  .api-layout > .card:last-child { position: sticky; top: 24px; grid-column: 2; grid-row: 1 / span 3; }
+}
+
+@media (min-width: 768px) {
+  .subscription-page { max-width: 1100px; }
+  .subscription-plans { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .compliance-page { max-width: 1150px; }
+  .certification-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .security-practices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .about-page { max-width: 1100px; }
+  .about-page > .card:first-of-type { display: grid; grid-template-columns: 1fr 1.4fr; gap: 28px; align-items: center; }
+  .about-page > .card:first-of-type .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .about-page > .about-memory { display: inline-block; vertical-align: top; width: calc(50% - 12px); margin-right: 20px; }
+  .about-page > .about-memory:last-child { margin-right: 0; }
+}
+
+.settings-tabs { position: sticky; top: 0; z-index: 10; background: #F9FAFB; padding-top: 4px; padding-bottom: 8px; }
+@media (min-width: 768px) {
+  .settings-page, .settings-shell { max-width: 1200px; }
+  .settings-shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 32px; align-items: start; }
+  .settings-tabs { position: sticky; top: 24px; display: flex; flex-direction: column; margin: 0; padding: 8px; border-radius: 20px; background: #fff; box-shadow: 0 8px 30px rgba(0,0,0,.04); }
+  .settings-tabs button { justify-content: flex-start; border-radius: 12px; padding: 13px 14px; }
+  .settings-content { max-width: none; }
+  .settings-business-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+  .account-page { max-width: 1000px; }
+  .account-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .account-save { width: auto; float: right; padding-left: 24px; padding-right: 24px; }
+}
+@media (max-width: 767px) { .account-save { position: sticky; bottom: 12px; z-index: 5; box-shadow: 0 8px 24px rgba(16,185,129,.25); } }
+
+/* Premium navigation: drawer on phones, collapsible rail on desktop. */
+.sidebar-premium { background: #F9FAFB; }
+@media (min-width: 1024px) {
+  .sidebar-premium { width: 280px; }
+  .sidebar-premium.sidebar-collapsed { width: 72px; }
+}
+
+/* Centralized premium type scale */
+.text-h1 { font-size: 32px; line-height: 1.15; font-weight: 800; letter-spacing: -0.03em; }
+.text-h2 { font-size: 24px; line-height: 1.25; font-weight: 700; letter-spacing: -0.02em; }
+.text-body { font-size: 15px; line-height: 1.55; font-weight: 400; }
+.text-caption { font-size: 12px; line-height: 1.4; font-weight: 500; color: rgb(var(--fg-subtle)); }
+
+/* Meraj personality: a gentle eye blink every four seconds and a thinking halo. */
+@keyframes meraj-eye-blink {
+  0%, 93%, 100% { opacity: 1; }
+  94%, 96% { opacity: .18; }
+}
+.meraj-screen { animation: meraj-eye-blink 4s ease-in-out infinite; }
+@keyframes meraj-thinking-ring {
+  to { transform: rotate(360deg); }
+}
+.meraj-device[data-face='thinking'] .meraj-glow {
+  animation: meraj-thinking-ring 2.8s linear infinite, meraj-breathe 1.8s ease-in-out infinite;
+  outline: 2px solid rgb(16 185 129 / .28);
+  outline-offset: 5px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .meraj-screen, .meraj-device[data-face='thinking'] .meraj-glow { animation: none; }
+}

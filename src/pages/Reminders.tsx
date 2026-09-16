@@ -80,7 +80,7 @@ export default function Reminders() {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="reminders-page animate-fade-in">
       <PageHeader
         title="Smart reminders"
         subtitle="GST dates, overdue bills, festivals, quiet customers and low stock — pulled from your live data. Confirm GST with your CA."
@@ -91,13 +91,13 @@ export default function Reminders() {
       <StatStrip stats={[
         { label: 'Open', value: String(reminders.length), icon: Bell, tone: 'default' },
         { label: 'Overdue', value: String(overdue), icon: FileSignature, tone: overdue ? 'negative' : 'positive' },
-        { label: 'Today', value: String(today), icon: CalendarClock, tone: today ? 'warning' : 'default' },
-        { label: 'Win-backs', value: String(reminders.filter((r) => r.kind === 'dormant').length), icon: Users, tone: 'secondary' },
+        { label: 'Today', value: String(today), icon: CalendarClock, tone: today ? 'negative' : 'default' },
+        { label: 'Win-backs', value: String(reminders.filter((r) => r.kind === 'dormant').length), icon: Users, tone: 'default' },
       ]} />
 
       <div className="flex gap-1.5 overflow-x-auto no-scrollbar mb-4">
         {FILTERS.map((f) => (
-          <button key={f.key} onClick={() => setFilter(f.key)} className={`chip whitespace-nowrap ${filter === f.key ? 'chip-active' : ''}`}>
+          <button key={f.key} onClick={() => setFilter(f.key)} className={`relative whitespace-nowrap px-1 py-2 text-sm font-semibold ${filter === f.key ? 'text-fg after:absolute after:bottom-0 after:left-1/2 after:h-1 after:w-1/2 after:-translate-x-1/2 after:rounded-full after:bg-accent' : 'text-fg-subtle hover:text-fg'}`}>
             {f.label}
           </button>
         ))}
@@ -114,7 +114,7 @@ export default function Reminders() {
           {shown.map((r) => {
             const Icon = KIND_ICON[r.kind]
             return (
-              <div key={r.id} className="card p-4 flex items-start gap-3">
+              <div key={r.id} className="card p-4">
                 <span className="w-9 h-9 rounded-xl bg-surface-2 text-fg-muted flex items-center justify-center flex-shrink-0">
                   <Icon className="w-4.5 h-4.5" strokeWidth={1.75} />
                 </span>
@@ -123,13 +123,11 @@ export default function Reminders() {
                     <p className="text-sm font-semibold text-fg">{r.title}</p>
                     <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full ${URGENCY_CLS[r.urgency]}`}>{r.urgency}</span>
                   </div>
-                  <p className="text-xs text-fg-muted mt-1 leading-relaxed">{r.detail}</p>
+                  <p className="mt-1 truncate text-xs text-fg-muted" title={r.detail}>{r.detail}</p><button className="mt-0.5 text-[10px] font-semibold text-fg-subtle hover:text-fg">Read more</button>
                   {r.amount ? <p className="text-xs font-semibold tabular-nums text-fg mt-1">{formatINR(r.amount, 0)}</p> : null}
                 </div>
                 {r.href && (
-                  <Link to={r.href} className="btn-ghost text-xs h-9 px-3 flex-shrink-0">
-                    {r.actionLabel || 'Open'} <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
+                  <Link to={r.href} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#F3F4F6] px-3 py-2 text-xs font-semibold text-[#111827]">{r.actionLabel || 'Open'} <ArrowRight className="w-3.5 h-3.5" /></Link>
                 )}
               </div>
             )

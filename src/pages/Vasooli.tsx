@@ -24,7 +24,7 @@ import clsx from 'clsx'
 
 const TIER_TONE: Record<string, string> = {
   soft: 'bg-positive/10 text-positive',
-  factual: 'bg-info/10 text-info',
+  factual: 'bg-surface-2 text-fg-muted',
   direct: 'bg-negative/10 text-negative',
 }
 const LANGS: { id: VasooliLanguage; label: string }[] = [
@@ -188,7 +188,7 @@ export default function Vasooli() {
   const guardFlags = Object.values(khata).filter((k) => k.timesLate15 >= 2).length
 
   return (
-    <div className="animate-fade-in">
+    <div className="vasooli-page animate-fade-in">
       <PageHeader
         title="Vasooli Round"
         subtitle="Meraj's collection round — every message shown to you before anything is sent."
@@ -197,10 +197,10 @@ export default function Vasooli() {
       />
 
       <StatStrip stats={[
-        { label: 'To collect', value: `₹${Math.round(totalDue).toLocaleString('en-IN')}`, icon: IndianRupee, tone: 'accent' },
+        { label: 'Total to Collect', value: `₹${Math.round(totalDue).toLocaleString('en-IN')}`, icon: IndianRupee, tone: 'negative' },
         { label: 'Messages ready', value: String(drafts.length), icon: Send, tone: drafts.length ? 'positive' : 'default' },
         { label: 'Khata Guard flags', value: String(guardFlags), icon: ShieldAlert, tone: guardFlags ? 'warning' : 'default' },
-        { label: 'Paused', value: String(paused.length), icon: PauseCircle, tone: 'secondary' },
+        { label: 'Paused', value: String(paused.length), icon: PauseCircle, tone: 'default' },
       ]} />
 
       {!profile?.upi_id && drafts.length > 0 && (
@@ -208,13 +208,12 @@ export default function Vasooli() {
       )}
 
       {drafts.length === 0 ? (
-        <EmptyState
-          icon={Wallet}
-          title={paused.length ? 'Everyone pausable is paused or settled' : 'Nothing to collect'}
-          description={paused.length
-            ? `All clear — ${paused.length} customer${paused.length === 1 ? '' : 's'} paused from chasing, the rest settled.`
-            : 'No customer has dues right now. When bills go overdue, Meraj prepares the round here automatically.'}
-        />
+        <div className="card flex min-h-[280px] flex-col items-center justify-center p-8 text-center">
+          <Wallet className="h-12 w-12 text-fg-subtle" />
+          <h2 className="mt-4 text-lg font-bold text-fg">{paused.length ? 'Everyone pausable is paused or settled' : 'Nothing to collect'}</h2>
+          <p className="mt-2 max-w-md text-sm leading-6 text-fg-muted">{paused.length ? `All clear — ${paused.length} customer${paused.length === 1 ? '' : 's'} paused from chasing, the rest settled.` : 'No customer has dues right now.'}</p>
+          <p className="mt-4 max-w-md text-xs leading-5 text-fg-subtle">💡 Meraj is watching your Udhaar. When bills go overdue, Meraj will prepare the messages here automatically.</p>
+        </div>
       ) : (
         <>
           <div className="space-y-2 mb-4">
@@ -224,19 +223,13 @@ export default function Vasooli() {
               return (
                 <div key={d.customerId} className={clsx('card p-4', !selected.has(d.customerId) && 'opacity-55')}>
                   <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(d.customerId)}
-                      onChange={() => toggle(d.customerId)}
-                      className="mt-1.5 w-4 h-4 accent-[rgb(var(--accent-strong))]"
-                      aria-label={`Include ${d.customerName}`}
-                    />
+
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-sm font-semibold text-fg">{d.customerName}</p>
                         <span className={clsx('text-[10px] font-bold px-1.5 py-0.5 rounded-full', TIER_TONE[d.tier])}>{d.tier}</span>
-                        <span className="text-[11px] text-fg-subtle">{d.daysOverdue} din se baaki</span>
-                        <span className="ml-auto text-sm font-bold text-fg tabular-nums">₹{Math.round(d.amount).toLocaleString('en-IN')}</span>
+                        <span className="rounded-full bg-red-50 px-2 py-1 text-[10px] font-bold text-red-600">Overdue {d.daysOverdue} days</span>
+                        <span className="ml-auto text-lg font-extrabold text-[#F87171] tabular-nums">₹{Math.round(d.amount).toLocaleString('en-IN')}</span>
                       </div>
                       {risky && (
                         <p className="mt-1.5 text-[11px] leading-relaxed text-negative font-medium">
@@ -244,6 +237,7 @@ export default function Vasooli() {
                         </p>
                       )}
                       <p className="mt-2 text-[13px] text-fg-muted leading-relaxed whitespace-pre-wrap">{d.message}</p>
+                      <div className="mt-4 flex flex-wrap gap-2"><button onClick={() => toggle(d.customerId)} className="rounded-full bg-accent px-4 py-2 text-xs font-bold text-white">{selected.has(d.customerId) ? 'Send Message' : 'Select message'}</button><button onClick={() => toast('Message preview is ready to edit before sending')} className="rounded-full bg-[#F3F4F6] px-4 py-2 text-xs font-semibold text-[#111827]">Edit Message</button></div>
                       <div className="mt-2.5 flex items-center gap-2 flex-wrap">
                         <select
                           value={d.language}

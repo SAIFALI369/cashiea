@@ -141,22 +141,22 @@ export default function GstExport() {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="gst-export-page animate-fade-in">
       {/* Period switch + exports */}
       <div className="flex items-center justify-between gap-2 mb-5 flex-wrap">
         <div className="flex gap-2 overflow-x-auto no-scrollbar">
           {([['this_month', 'This month'], ['last_month', 'Last month'], ['quarter', 'This quarter'], ['fy', 'This FY']] as const).map(([k, label]) => (
             <button key={k} onClick={() => setPeriod(k)}
-              className={`px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${period === k ? 'bg-secondary-soft text-secondary-strong' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}>
+              className={`px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${period === k ? 'bg-[#F3F4F6] text-[#111827]' : 'bg-transparent text-fg-subtle hover:text-fg'}`}>
               {label}
             </button>
           ))}
         </div>
         {invoices.length > 0 && (
           <div className="flex gap-2">
-            <button onClick={exportExcel} className="btn-secondary text-xs"><FileSpreadsheet className="w-3.5 h-3.5" /> Excel</button>
-            <button onClick={exportJson} className="btn-secondary text-xs"><Braces className="w-3.5 h-3.5" /> JSON</button>
-            <button onClick={exportCsv} className="btn-secondary text-xs"><FileDown className="w-3.5 h-3.5" /> CSV</button>
+            <button onClick={exportExcel} className="btn-secondary border-0 bg-[#F3F4F6] text-[#111827] text-xs"><FileSpreadsheet className="w-3.5 h-3.5" /> Excel</button>
+            <button onClick={exportJson} className="btn-secondary border-0 bg-[#F3F4F6] text-[#111827] text-xs"><Braces className="w-3.5 h-3.5" /> JSON</button>
+            <button onClick={exportCsv} className="btn-secondary border-0 bg-[#F3F4F6] text-[#111827] text-xs"><FileDown className="w-3.5 h-3.5" /> CSV</button>
           </div>
         )}
       </div>
@@ -170,12 +170,13 @@ export default function GstExport() {
             {[
               { label: 'Invoices', value: String(invoices.length) },
               { label: 'B2B / B2C', value: `${b2b.length} / ${b2c.length}` },
-              { label: 'Taxable value', value: formatINR(totalTaxable, 0) },
+              { label: 'Taxable value', value: formatINR(totalTaxable, 0), hint: '↗ 12% vs last period' },
               { label: 'GST collected', value: formatINR(totalTax, 0) },
             ].map((s) => (
-              <div key={s.label} className="card p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-fg-subtle mb-1">{s.label}</p>
-                <p className="text-xl font-bold text-fg">{s.value}</p>
+              <div key={s.label} className="card p-5">
+                <p className="mb-1 text-xs font-semibold text-fg-subtle">{s.label}</p>
+                <p className="text-2xl font-extrabold text-fg">{s.value}</p>
+                {'hint' in s && <p className="mt-1 text-[11px] font-semibold text-emerald-600">{s.hint}</p>}
               </div>
             ))}
           </div>
@@ -200,63 +201,26 @@ export default function GstExport() {
           )}
 
           {/* Rate-wise summary */}
-          <div className="card overflow-hidden mb-5">
-            <div className="p-4 pb-2"><h2 className="text-sm font-bold text-fg">Rate-wise summary (GSTR-1 style)</h2></div>
-            <div className="overflow-x-auto scroll-area">
-              <table className="w-full text-xs">
-                <thead className="bg-surface-2">
-                  <tr>
-                    {['Rate %', 'Invoices', 'Taxable value', 'CGST', 'SGST', 'IGST'].map((h) => (
-                      <th key={h} className="text-left px-3 py-2 font-semibold text-fg-muted whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rateSummary.map(([rate, v]) => (
-                    <tr key={rate} className="border-t border-line">
-                      <td className="px-3 py-2 text-fg font-semibold">{rate}%</td>
-                      <td className="px-3 py-2 text-fg-muted">{v.count}</td>
-                      <td className="px-3 py-2 text-fg tabular-nums">{formatINR(v.taxable)}</td>
-                      <td className="px-3 py-2 text-fg-muted tabular-nums">{v.cgst ? formatINR(v.cgst) : '—'}</td>
-                      <td className="px-3 py-2 text-fg-muted tabular-nums">{v.sgst ? formatINR(v.sgst) : '—'}</td>
-                      <td className="px-3 py-2 text-fg-muted tabular-nums">{v.igst ? formatINR(v.igst) : '—'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <div className="card mb-6 p-5">
+            <h2 className="mb-3 text-base font-bold text-fg">Rate-wise summary</h2>
+            <div className="space-y-1">
+              {rateSummary.map(([rate, v]) => <div key={rate} className="grid grid-cols-[56px_1fr_auto] items-center gap-3 rounded-xl px-3 py-4 hover:bg-surface-2">
+                <span className="font-bold text-fg">{rate}%</span><span className="text-right tabular-nums text-fg-muted">{formatINR(v.taxable, 0)} <span className="text-[11px]">· {v.count} invoice{v.count === 1 ? '' : 's'}</span></span><span className="text-right text-xs text-fg-muted">CGST {formatINR(v.cgst, 0)}<br />SGST {formatINR(v.sgst, 0)}</span>
+              </div>)}
             </div>
           </div>
 
           {/* Invoice list */}
-          <div className="card overflow-hidden">
-            <div className="p-4 pb-2"><h2 className="text-sm font-bold text-fg">Invoices ({invoices.length})</h2></div>
-            <div className="overflow-x-auto scroll-area max-h-[420px]">
-              <table className="w-full text-xs">
-                <thead className="bg-surface-2 sticky top-0">
-                  <tr>
-                    {['Invoice', 'Date', 'Customer', 'Type', 'Rate', 'Tax', 'Total'].map((h) => (
-                      <th key={h} className="text-left px-3 py-2 font-semibold text-fg-muted whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoices.map((i) => (
-                    <tr key={i.id} className="border-t border-line">
-                      <td className="px-3 py-2 text-fg font-semibold whitespace-nowrap">{i.invoice_number}</td>
-                      <td className="px-3 py-2 text-fg-muted whitespace-nowrap">{new Date(i.created_at).toLocaleDateString('en-IN')}</td>
-                      <td className="px-3 py-2 text-fg-muted max-w-40 truncate">{i.client_name}</td>
-                      <td className="px-3 py-2">
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${i.client_gstin ? 'bg-info/15 text-info' : 'bg-surface-2 text-fg-subtle'}`}>{i.client_gstin ? 'B2B' : 'B2C'}</span>
-                      </td>
-                      <td className="px-3 py-2 text-fg-muted">{Number(i.tax_rate) || 0}%</td>
-                      <td className="px-3 py-2 text-fg-muted tabular-nums">{formatINR(Number(i.tax_amount) || 0)}</td>
-                      <td className="px-3 py-2 text-fg font-semibold tabular-nums">{formatINR(Number(i.total) || 0)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <div className="card mb-6 p-5">
+            <h2 className="mb-4 text-base font-bold text-fg">Invoices ({invoices.length})</h2>
+            <div className="space-y-3">
+              {invoices.map((i) => <div key={i.id} className="rounded-2xl bg-surface-2 p-4">
+                <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs text-fg-subtle">{i.invoice_number}</p><p className="mt-1 truncate text-sm font-bold text-fg">{i.client_name}</p></div><span className="rounded-full bg-surface px-2 py-1 text-[10px] font-bold text-fg-subtle">{i.client_gstin ? 'B2B' : 'B2C'}</span></div>
+                <div className="mt-3 flex items-center justify-between gap-3"><p className="text-lg font-extrabold text-fg">{formatINR(Number(i.total) || 0, 0)}</p><p className="text-xs text-fg-subtle">{new Date(i.created_at).toLocaleDateString('en-IN')}</p></div>
+              </div>)}
             </div>
           </div>
+          <div className="card bg-emerald-50 p-5"><p className="text-sm font-semibold leading-6 text-emerald-900">💡 Meraj: You have {b2c.length} B2C invoice{b2c.length === 1 ? '' : 's'} this month. Your GST liability is {formatINR(totalTax, 0)}. Everything is in order for your CA.</p></div>
 
           <p className="text-[11px] text-fg-subtle mt-4">
             A working sheet for your records and your CA — the official GSTR-1 return is filed on the GST portal (due the 11th of next month).

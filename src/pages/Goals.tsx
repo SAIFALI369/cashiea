@@ -113,7 +113,7 @@ export default function Goals() {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="goals-page animate-fade-in">
       <PageHeader
         title="Goals & streaks"
         subtitle="Targets live on this device — nothing is written to the database. Streak looks back 90 days of completed sales and does not break just because today is still empty."
@@ -122,14 +122,17 @@ export default function Goals() {
       />
 
       <StatStrip stats={[
-        { label: 'Billing streak', value: `${streak} day${streak === 1 ? '' : 's'}`, icon: Flame, tone: streak >= 7 ? 'positive' : 'accent' },
+        { label: 'Billing streak', value: `${streak} day${streak === 1 ? '' : 's'}`, icon: Flame, tone: 'positive' },
         { label: 'This week', value: formatINR(weekFacts.revenue, 0), icon: TrendingUp, tone: 'default' },
-        { label: 'Week grade', value: grade.grade, icon: Target, tone: grade.grade === 'C' ? 'warning' : 'secondary' },
+        { label: 'Week grade', value: grade.grade, icon: Target, tone: 'warning' },
         { label: 'New customers', value: String(monthFacts.newCustomers), icon: Users, tone: 'default' },
       ]} />
 
       <p className="text-xs text-fg-muted -mt-2 mb-5">{grade.label}</p>
 
+      <div className="goals-layout">
+        <section className="goals-main">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wide text-fg-subtle">Active Goals</p>
       {rows.length === 0 ? (
         <EmptyState
           icon={Target}
@@ -172,10 +175,12 @@ export default function Goals() {
         </div>
       )}
 
+        </section>
+        <aside className="goal-side-panel">
       <p className="text-xs font-bold uppercase tracking-wide text-fg-subtle mb-2">Add a goal</p>
       <div className="flex flex-wrap gap-2 mb-4">
         {GOAL_TEMPLATES.map((t) => (
-          <button key={t.label} onClick={() => addTemplate(t)} className="chip">
+          <button key={t.label} onClick={() => addTemplate(t)} className="chip min-h-[44px]">
             <Plus className="w-3.5 h-3.5" /> {t.label}
           </button>
         ))}
@@ -186,13 +191,8 @@ export default function Goals() {
           <CalendarDays className="w-4 h-4 text-accent" /> Custom target
         </p>
         <div className="grid sm:grid-cols-4 gap-2">
-          <select value={custom.kind} onChange={(e) => setCustom({ ...custom, kind: e.target.value as GoalKind })} className="input-field py-2 text-sm" aria-label="Goal type">
-            {(Object.keys(KIND_LABEL) as GoalKind[]).map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
-          </select>
-          <select value={custom.period} onChange={(e) => setCustom({ ...custom, period: e.target.value as GoalPeriod })} className="input-field py-2 text-sm" aria-label="Goal period">
-            <option value="week">This week</option>
-            <option value="month">This month</option>
-          </select>
+          <div className="flex flex-wrap gap-2 rounded-xl bg-surface-2 p-1 sm:col-span-2"><span className="sr-only">Goal type</span>{(Object.keys(KIND_LABEL) as GoalKind[]).map((k) => <button key={k} type="button" onClick={() => setCustom({ ...custom, kind: k })} className={`min-h-[40px] rounded-lg px-3 text-xs font-semibold ${custom.kind === k ? 'bg-surface text-fg shadow-sm' : 'text-fg-subtle'}`}>{KIND_LABEL[k]}</button>)}</div>
+          <div className="flex gap-2 rounded-xl bg-surface-2 p-1"><span className="sr-only">Goal period</span>{(['week', 'month'] as GoalPeriod[]).map((period) => <button key={period} type="button" onClick={() => setCustom({ ...custom, period })} className={`min-h-[40px] flex-1 rounded-lg px-3 text-xs font-semibold ${custom.period === period ? 'bg-surface text-fg shadow-sm' : 'text-fg-subtle'}`}>{period === 'week' ? 'This week' : 'This month'}</button>)}</div>
           <input
             type="number"
             min={1}
@@ -204,6 +204,8 @@ export default function Goals() {
           />
           <button onClick={addCustom} className="btn-primary text-sm h-10">Add</button>
         </div>
+      </div>
+        </aside>
       </div>
     </div>
   )

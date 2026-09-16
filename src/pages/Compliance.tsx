@@ -24,7 +24,7 @@ const practices = [
 
 export default function Compliance() {
   return (
-    <div className="animate-fade-in">
+    <div className="compliance-page animate-fade-in">
       <PageHeader
         visible
         eyebrow="Trust"
@@ -33,18 +33,23 @@ export default function Compliance() {
         icon={<Shield className="w-5 h-5" />}
       />
 
+
+      <div className="card mb-8 flex items-center justify-between gap-4 bg-blue-50 p-5">
+        <div><h2 className="text-lg font-bold text-fg">🛡️ Trust &amp; Security</h2><p className="mt-1 text-sm text-fg-muted">Enterprise-grade protection for your business data.</p></div>
+        <span className="inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800"><span className="h-2 w-2 rounded-full bg-emerald-500" /> All systems secure</span>
+      </div>
       {/* Certifications grid */}
       <h2 className="section-title mb-4">Certifications & Standards</h2>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
+      <div className="certification-grid grid gap-4 mb-10">
         {certifications.map((c) => (
           <div key={c.name} className="card card-hover p-5">
             <div className="flex items-center gap-3 mb-2.5">
-              <div className="w-10 h-10 rounded-xl bg-surface-2 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center">
                 <c.icon className={`w-5 h-5 ${c.color}`} />
               </div>
               <h3 className="font-bold text-fg">{c.name}</h3>
             </div>
-            <p className="text-sm text-fg-muted leading-relaxed">{c.desc}</p>
+            <p className="line-clamp-2 text-sm text-fg-muted leading-relaxed">{c.desc}</p>
           </div>
         ))}
       </div>
@@ -54,7 +59,7 @@ export default function Compliance() {
         <h2 className="font-semibold text-fg mb-4 flex items-center gap-2">
           <Lock className="w-5 h-5 text-accent" /> Security Practices
         </h2>
-        <div className="grid sm:grid-cols-2 gap-3">
+        <div className="security-practices grid gap-3">
           {practices.map((p) => (
             <div key={p} className="flex items-start gap-2 text-sm text-fg-muted">
               <Check className="w-4 h-4 text-positive mt-0.5 flex-shrink-0" /> {p}

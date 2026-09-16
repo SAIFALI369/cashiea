@@ -133,7 +133,7 @@ export default function EmailAssistant() {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="email-assistant-page animate-fade-in">
       <PageHeader
         title="Email Assistant"
         subtitle="Write professional emails in seconds with AI"
@@ -141,23 +141,18 @@ export default function EmailAssistant() {
       />
 
       {/* Generator */}
-      <div className="card p-4 mb-6">
+      <div className="email-layout">
+      <div className="email-form card p-5">
         {/* Type selector */}
         <label className="label">Email Type</label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-4">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4">
           {emailTypes.map((t) => (
             <button
               key={t.value}
               onClick={() => setEmailType(t.value)}
-              className={`p-3 rounded-xl border text-left transition-all ${
-                emailType === t.value
-                  ? 'border-secondary/50 bg-secondary-soft/70'
-                  : 'border-line-2 bg-surface-3 hover:border-line'
-              }`}
+              className={`min-h-[44px] whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold ${emailType === t.value ? 'bg-accent text-white' : 'bg-surface-2 text-fg-muted'}`}
             >
-              <div className="text-lg mb-0.5">{t.icon}</div>
-              <div className="text-sm font-semibold text-fg">{t.label}</div>
-              <div className="text-xs text-fg-subtle">{t.desc}</div>
+              {t.label}
             </button>
           ))}
         </div>
@@ -208,17 +203,22 @@ export default function EmailAssistant() {
         <textarea
           value={keyPoints}
           onChange={(e) => setKeyPoints(e.target.value)}
-          rows={4}
-          className="input-field resize-none"
+          rows={7}
+          className="input-field min-h-[180px] resize-none"
           placeholder={`e.g. We help startups automate admin work with AI. Offer a free 14-day trial. Mention we integrate with their existing tools. Ask for a 15-min demo next week.`}
         />
 
-        <div className="flex justify-end mt-4">
-          <button onClick={handleGenerate} disabled={generating} className="btn-primary text-sm">
+        <div className="mt-4">
+          <button onClick={handleGenerate} disabled={generating} className="btn-primary min-h-[52px] w-full rounded-full text-sm">
             {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
             {generating ? 'Writing...' : 'Generate Email'}
           </button>
         </div>
+      </div>
+      <div className="email-preview card min-h-[360px] p-6">
+        <div className="mb-5 flex items-center justify-between gap-3"><h2 className="text-base font-bold text-fg">Email preview</h2><div className="flex gap-2"><button onClick={() => emails[0] && handleCopy(emails[0])} className="btn-secondary min-h-[44px] text-xs"><Copy className="h-3.5 w-3.5" /> Copy</button><button onClick={() => emails[0] && handleMailto(emails[0])} className="btn-primary min-h-[44px] rounded-full text-xs"><Mail className="h-3.5 w-3.5" /> Send</button></div></div>
+        {emails[0] ? <div className="space-y-4 text-sm"><p><span className="font-bold text-fg">To:</span> <span className="text-fg-muted">{emails[0].recipient || recipient || 'Recipient'}</span></p><p><span className="font-bold text-fg">Subject:</span> <span className="text-fg-muted">{emails[0].subject}</span></p><div className="border-t border-line pt-4 whitespace-pre-wrap leading-7 text-fg-muted">{emails[0].generated_body}</div></div> : <div className="flex min-h-[260px] items-center justify-center text-center text-sm text-fg-subtle">Generate an email to preview it here.</div>}
+      </div>
       </div>
 
       {/* History */}
@@ -239,7 +239,7 @@ export default function EmailAssistant() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 capitalize">
-                    {emailTypes.find((t) => t.value === email.email_type)?.icon} {email.email_type.replace('_', ' ')}
+                    {email.email_type.replace('_', ' ')}
                   </span>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-fg-muted capitalize">
                     {email.tone}

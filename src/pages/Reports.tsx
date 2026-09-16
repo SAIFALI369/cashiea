@@ -7,7 +7,7 @@ import { callAI } from '../lib/ai'
 import type { Report } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
-import { BarChart3, Sparkles, Loader2, Trash2, Plus, ChevronDown, Copy, FileDown, FileSpreadsheet, MessageCircle, Database, RefreshCw } from 'lucide-react'
+import { BarChart3, Sparkles, Loader2, Trash2, Plus, ChevronDown, Copy, FileDown, FileSpreadsheet, MessageCircle, Database, RefreshCw, Info } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { REPORT_TEMPLATES, getReportTemplate } from '../lib/report-templates'
 import { SalesTrend } from '../components/SalesTrend'
@@ -152,7 +152,7 @@ export default function Reports() {
   const excelApplicable = (type: string) => type === 'sales' || type === 'financial'
 
   return (
-    <div className="animate-fade-in">
+    <div className="reports-page animate-fade-in">
       <PageHeader
         title="Reports"
         subtitle="Structured business reports from your real Cashiea data — no typing"
@@ -266,7 +266,7 @@ export default function Reports() {
                 className="w-full p-5 flex items-center justify-between text-left hover:bg-surface-2/30 transition-colors"
               >
                 <div>
-                  <h3 className="font-semibold text-fg">{report.title}</h3>
+                  <h3 className="font-bold text-fg">{report.title.toLowerCase() === 'sales report' ? 'Sales Report' : report.title}</h3>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs px-2 py-0.5 rounded-full bg-accent/15 text-accent-strong capitalize">{report.report_type}</span>
                     <span className="text-xs text-fg-subtle">{new Date(report.created_at).toLocaleDateString()}</span>
@@ -277,16 +277,15 @@ export default function Reports() {
 
               {expandedId === report.id && report.generated_content && (
                 <div className="border-t border-line">
-                  <div className="flex flex-wrap justify-end gap-2 p-3">
-                    <button onClick={() => handlePdf(report)} className="btn-ghost text-xs h-10"><FileDown className="w-3.5 h-3.5" /> PDF</button>
-                    {excelApplicable(report.report_type) && (
-                      <button onClick={handleExcel} className="btn-ghost text-xs h-10"><FileSpreadsheet className="w-3.5 h-3.5" /> Excel data</button>
-                    )}
-                    <button onClick={() => handleWhatsApp(report)} className="btn-ghost text-xs h-10 text-positive"><MessageCircle className="w-3.5 h-3.5" /> WhatsApp</button>
-                    <button onClick={() => handleCopy(report.generated_content!)} className="btn-ghost text-xs h-10"><Copy className="w-3.5 h-3.5" /> Copy</button>
-                    {isOwner && <button onClick={() => handleDelete(report.id)} className="btn-ghost text-xs h-10 text-negative"><Trash2 className="w-3.5 h-3.5" /> Delete</button>}
+                  <div className="flex flex-wrap justify-end gap-2 p-4">
+                    <button onClick={() => handlePdf(report)} className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg-muted hover:text-fg" aria-label="Download PDF" title="Download PDF"><FileDown className="h-4 w-4" /></button>
+                    {excelApplicable(report.report_type) && <button onClick={handleExcel} className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg-muted hover:text-fg" aria-label="Download Excel" title="Download Excel"><FileSpreadsheet className="h-4 w-4" /></button>}
+                    <button onClick={() => handleWhatsApp(report)} className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg-muted hover:text-accent-strong" aria-label="Share on WhatsApp" title="Share on WhatsApp"><MessageCircle className="h-4 w-4" /></button>
+                    <button onClick={() => handleCopy(report.generated_content!)} className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg-muted hover:text-fg" aria-label="Copy report" title="Copy report"><Copy className="h-4 w-4" /></button>
+                    {isOwner && <button onClick={() => handleDelete(report.id)} className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-500 hover:bg-red-100" aria-label="Delete report" title="Delete report"><Trash2 className="h-4 w-4" /></button>}
                   </div>
-                  <div className="prose-content px-5 pb-5 max-h-[500px] overflow-y-auto" dangerouslySetInnerHTML={{ __html: renderMd(report.generated_content) }} />
+                  <details className="mx-5 mb-4 text-xs text-fg-subtle"><summary className="flex cursor-pointer list-none items-center gap-1 font-semibold"><Info className="h-3.5 w-3.5" /> View terms</summary><p className="mt-2 leading-5">This report is generated from the Cashiea data available at the time of creation. Verify important figures before making financial decisions.</p></details>
+                  <div className="prose-content max-h-[500px] overflow-y-auto px-5 pb-5" dangerouslySetInnerHTML={{ __html: renderMd(report.generated_content) }} />
                 </div>
               )}
             </div>

@@ -103,7 +103,7 @@ export default function Summaries() {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="summaries-page animate-fade-in">
       <PageHeader
         title="Summaries"
         subtitle="Summarize documents, emails, and meetings instantly"
@@ -111,7 +111,8 @@ export default function Summaries() {
       />
 
       {/* Summarizer */}
-      <div className="card p-4 mb-6">
+      <div className="summary-layout">
+      <div className="summary-form card p-5">
         <label className="label flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-accent" /> Text to summarize
         </label>
@@ -119,35 +120,31 @@ export default function Summaries() {
           value={sourceText}
           onChange={(e) => setSourceText(e.target.value)}
           rows={6}
-          className="input-field resize-none"
+          className="input-field min-h-[120px] resize-none"
           placeholder="Paste any long text — a meeting transcript, email thread, article, document..."
         />
 
         <label className="label mt-4">Summary style</label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4">
           {summaryTypes.map((type) => (
             <button
               key={type.value}
               onClick={() => setSummaryType(type.value)}
-              className={`p-3 rounded-xl border text-center transition-all ${
-                summaryType === type.value
-                  ? 'border-secondary/50 bg-secondary-soft/70 text-secondary-strong'
-                  : 'border-line-2 bg-surface-3 text-fg-subtle hover:border-line'
-              }`}
+              className={`min-h-[44px] whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold ${summaryType === type.value ? 'bg-accent text-white' : 'bg-surface-2 text-fg-subtle'}`}
             >
-              <div className="text-xl mb-1">{type.icon}</div>
-              <div className="text-sm font-semibold">{type.label}</div>
-              <div className="text-xs opacity-70">{type.desc}</div>
+              {type.label}
             </button>
           ))}
         </div>
 
-        <div className="flex justify-end">
-          <button onClick={handleSummarize} disabled={generating} className="btn-primary text-sm">
+        <div>
+          <button onClick={handleSummarize} disabled={generating} className="btn-primary min-h-[52px] w-full rounded-full text-sm">
             {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
             {generating ? 'Summarizing...' : 'Summarize'}
           </button>
         </div>
+      </div>
+      <div className="summary-output card min-h-[320px] p-6"><h2 className="mb-4 text-base font-bold text-fg">Generated summary</h2>{summaries[0]?.generated_summary ? <div className="prose-content" dangerouslySetInnerHTML={{ __html: renderMd(summaries[0].generated_summary) }} /> : <div className="flex min-h-[240px] items-center justify-center text-center text-sm text-fg-subtle">Paste text above and choose a style to get started.</div>}</div>
       </div>
 
       {/* History */}
@@ -168,7 +165,7 @@ export default function Summaries() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 capitalize">
-                    {summaryTypes.find((t) => t.value === summary.summary_type)?.icon} {summary.summary_type}
+                    {summary.summary_type}
                   </span>
                   {summary.word_count && (
                     <span className="text-xs text-fg-subtle">{summary.word_count} words</span>

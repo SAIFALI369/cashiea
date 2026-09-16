@@ -7,6 +7,7 @@ import PageHeader from '../components/ui/PageHeader'
 import EmptyState from '../components/ui/EmptyState'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Workforce } from '../components/team/Workforce'
+import { MoreMenu } from '../components/MoreMenu'
 import { Users, Plus, Loader2, Trash2, Crown, Calculator, UserCheck, Eye, EyeOff, ShieldOff, ArrowLeftRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -154,7 +155,7 @@ export default function Team() {
   const formError = form.email || form.password ? validateForm() : null
 
   return (
-    <div className="animate-fade-in">
+    <div className="team-page animate-fade-in">
       <PageHeader
         title="Team"
         subtitle="Link staff accounts to your business — cashier or accountant"
@@ -168,11 +169,7 @@ export default function Team() {
 
       {/* Linked slots indicator */}
       <div className="card p-4 mb-6 flex items-center gap-4">
-        <div className="flex gap-1.5">
-          {[0, 1].map((i) => (
-            <span key={i} className={`w-9 h-2 rounded-full transition-colors ${i < linkedCount ? 'bg-secondary' : 'bg-line-2'}`} />
-          ))}
-        </div>
+        <span className="h-2 w-2 rounded-full bg-accent" />
         <p className="text-sm text-fg-muted">
           <span className="font-bold text-fg">{linkedCount} of {MAX_LINKED}</span> linked accounts used
           {!isOwnerProfile && ' — only the owner can manage linking'}
@@ -183,8 +180,8 @@ export default function Team() {
       <div className="grid sm:grid-cols-2 gap-3 mb-6">
         {ROLES.map((r) => (
           <div key={r.value} className="card card-hover p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <r.icon className={`w-5 h-5 ${r.color}`} />
+            <div className="flex items-center gap-3 mb-2">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2"><r.icon className={`w-5 h-5 ${r.color}`} /></span>
               <h3 className="font-semibold text-fg text-sm">{r.label}</h3>
             </div>
             <p className="text-xs text-fg-muted">{r.desc}</p>
@@ -270,15 +267,15 @@ export default function Team() {
       ) : (
         <div className="space-y-2">
           {/* Owner row */}
-          <div className="card p-4 border-warning/30 bg-warning/5 flex items-center justify-between">
+          <div className="card flex items-center justify-between border-t-2 border-blue-600 p-5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-warning to-amber-700 flex items-center justify-center"><Crown className="w-5 h-5 text-fg" /></div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50"><Crown className="h-5 w-5 text-blue-600" /></div>
               <div>
-                <p className="font-semibold text-fg">{profile?.full_name} <span className="text-xs text-warning">(you)</span></p>
+                <p className="font-semibold text-fg">{profile?.full_name} <span className="text-xs text-fg-subtle">(you)</span></p>
                 <p className="text-xs text-fg-subtle">{profile?.company_name}</p>
               </div>
             </div>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-warning/15 text-warning">Owner</span>
+            <span className="rounded-full bg-blue-600 px-2.5 py-1 text-xs font-bold text-white">Owner</span>
           </div>
 
           {members.length === 0 ? (
@@ -291,7 +288,7 @@ export default function Team() {
             const Icon = roleIcon[m.role] || UserCheck
             const isLinked = m.status === 'active'
             return (
-              <div key={m.id} className={`card p-4 ${m.status === 'revoked' ? 'opacity-70' : ''}`}>
+              <div key={m.id} className={`card relative p-5 ${m.status === 'revoked' ? 'opacity-70' : ''}`}>
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-10 h-10 rounded-full bg-surface-2 flex items-center justify-center flex-shrink-0"><Icon className={`w-5 h-5 ${roleColor[m.role] || 'text-fg-muted'}`} /></div>
@@ -301,35 +298,19 @@ export default function Team() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${m.status === 'active' ? 'bg-positive/15 text-positive' : m.status === 'revoked' ? 'bg-negative/15 text-negative' : 'bg-warning/15 text-warning'}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${m.status === 'active' ? 'bg-positive/15 text-positive' : m.status === 'revoked' ? 'bg-negative/15 text-negative' : 'bg-surface-2 text-fg-subtle'}`}>
                       {m.status === 'active' ? 'Linked' : m.status}
                     </span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-surface-3 text-fg-muted">{roleLabel[m.role] || m.role}</span>
+                    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-800">{roleLabel[m.role] || m.role}</span>
                   </div>
                 </div>
 
-                {/* Owner controls */}
-                {isOwnerProfile && (
-                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-line flex-wrap">
-                    {isLinked && (
-                      <>
-                        <button
-                          onClick={() => setRoleSwitch({ member: m, role: m.role === 'accountant' ? 'cashier' : 'accountant' })}
-                          className="btn-ghost text-xs h-10 px-3"
-                          title="Switch role"
-                        >
-                          <ArrowLeftRight className="w-3.5 h-3.5" /> Make {m.role === 'accountant' ? 'Cashier' : 'Accountant'}
-                        </button>
-                        <button onClick={() => setConfirmRevoke(m)} className="btn-ghost text-xs h-10 px-3 text-warning">
-                          <ShieldOff className="w-3.5 h-3.5" /> Revoke access
-                        </button>
-                      </>
-                    )}
-                    <button onClick={() => setConfirmDelete(m)} className="btn-ghost text-xs h-10 px-3 text-negative">
-                      <Trash2 className="w-3.5 h-3.5" /> {m.status === 'revoked' ? 'Delete' : 'Delete account'}
-                    </button>
-                  </div>
-                )}
+                {/* Compact overflow actions */}
+                {isOwnerProfile && <div className="absolute right-3 top-3"><MoreMenu label={`Actions for ${m.name || m.member_email}`} items={[
+                  ...(isLinked ? [{ label: `Make ${m.role === 'accountant' ? 'Cashier' : 'Accountant'}`, icon: <ArrowLeftRight className="h-4 w-4" />, onClick: () => setRoleSwitch({ member: m, role: m.role === 'accountant' ? 'cashier' : 'accountant' }) }] : []),
+                  ...(isLinked ? [{ label: 'Revoke access', icon: <ShieldOff className="h-4 w-4" />, onClick: () => setConfirmRevoke(m) }] : []),
+                  { label: m.status === 'revoked' ? 'Delete' : 'Delete account', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => setConfirmDelete(m) },
+                ]} /></div>}
               </div>
             )
           })}

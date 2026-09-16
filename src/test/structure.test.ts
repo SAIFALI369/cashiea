@@ -170,6 +170,7 @@ describe('app pages are linked (sidebar, dashboard, or settings)', () => {
   const sidebar = read('src/components/Sidebar.tsx')
   const dashboard = read('src/pages/Dashboard.tsx')
   const settings = read('src/pages/Settings.tsx')
+  const palette = read('src/components/CommandPalette.tsx')
 
   const routes = [
     '/app/brain',
@@ -208,7 +209,7 @@ describe('app pages are linked (sidebar, dashboard, or settings)', () => {
   ]
   for (const route of routes) {
     it(`links to ${route}`, () => {
-      expect(sidebar.includes(route) || dashboard.includes(route) || settings.includes(route)).toBe(true)
+      expect(sidebar.includes(route) || dashboard.includes(route) || settings.includes(route) || palette.includes(route)).toBe(true)
     })
   }
 })

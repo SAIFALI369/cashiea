@@ -237,15 +237,16 @@ export default function SettingsPage() {
     <div className="animate-fade-in">
       <PageHeader title="Settings" subtitle="Preferences, business profile, and AI" icon={<SettingsIcon className="w-5 h-5" />} />
 
+      <div className="settings-shell">
       {/* Tab bar — jump straight to the section you need */}
-      <div className="flex gap-2 overflow-x-auto no-scrollbar scroll-area mb-5 -mx-1 px-1" role="tablist" aria-label="Settings sections">
+      <div className="settings-tabs flex gap-2 overflow-x-auto no-scrollbar scroll-area mb-5 -mx-1 px-1" role="tablist" aria-label="Settings sections">
         {TABS.map((t) => (
           <button
             key={t.key}
             role="tab"
             aria-selected={tab === t.key}
             onClick={() => setTab(t.key)}
-            className={`px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all ${tab === t.key ? 'bg-secondary-soft text-secondary-strong' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}
+            className={`px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all ${tab === t.key ? 'bg-emerald-500 text-white' : 'bg-surface-2 text-fg-muted hover:text-fg'}`}
           >
             <t.icon className="w-3.5 h-3.5" />
             {t.label}
@@ -253,28 +254,20 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      <div className="max-w-2xl xl:max-w-5xl space-y-6">
+      <div className="settings-content max-w-2xl xl:max-w-5xl space-y-6">
         {/* ═══ BUSINESS ═══ */}
         {tab === 'business' && (
           <>
-            <Section title="Business profile">
-              <div className="grid sm:grid-cols-2 2xl:grid-cols-3 gap-4">
-                <Field label="Full name"><input value={fullName} onChange={(e) => setFullName(e.target.value)} className="input-field" placeholder="Jane Doe" /></Field>
-                <Field label="Business name"><input value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="input-field" placeholder="Sharma General Store" /></Field>
-                <Field label="GSTIN">
-                  <input value={gstin} onChange={(e) => { setGstin(e.target.value); setGstinError(null) }} className={`input-field font-mono ${gstinError ? 'border-negative' : ''}`} placeholder="22AAAAA0000A1Z5" />
-                  {gstinError && <p className="text-xs text-negative mt-1">{gstinError}</p>}
-                </Field>
-                <Field label="State"><input value={businessState} onChange={(e) => setBusinessState(e.target.value)} className="input-field" placeholder="Bihar" /></Field>
-                <Field label="Business address"><input value={businessAddress} onChange={(e) => setBusinessAddress(e.target.value)} className="input-field" placeholder="123 Main St, City" /></Field>
-                <Field label="UPI ID" hint="For instant invoice payments"><input value={upiId} onChange={(e) => setUpiId(e.target.value)} className={`input-field font-mono ${upiError ? 'border-negative' : ''}`} placeholder="myshop@okhdfcbank" /></Field>
-                {upiError && <p className="text-xs text-negative sm:col-span-2 -mt-2">{upiError}</p>}
-                <Field label="Daily report time (IST)" hint="When your WhatsApp sales report arrives"><input type="time" value={reportTime} onChange={(e) => setReportTime(e.target.value)} className="input-field" /></Field>
-              </div>
-              <button onClick={handleSave} disabled={saving} className="btn-primary w-full py-3">
-                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />} Save business profile
-              </button>
+            <div className="settings-business-grid">
+            <Section title="Business Details">
+              <div className="grid gap-4"><Field label="Full name"><input value={fullName} onChange={(e) => setFullName(e.target.value)} className="input-field" placeholder="Jane Doe" /></Field><Field label="Business name"><input value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="input-field" placeholder="Sharma General Store" /></Field><Field label="GSTIN"><input value={gstin} onChange={(e) => { setGstin(e.target.value); setGstinError(null) }} className={`input-field font-mono ${gstinError ? 'border-negative' : ''}`} placeholder="22AAAAA0000A1Z5" />{gstinError && <p className="text-xs text-negative mt-1">{gstinError}</p>}</Field></div>
             </Section>
+            <Section title="Location & Contact">
+              <div className="grid gap-4"><Field label="State"><input value={businessState} onChange={(e) => setBusinessState(e.target.value)} className="input-field" placeholder="Bihar" /></Field><Field label="Business address"><input value={businessAddress} onChange={(e) => setBusinessAddress(e.target.value)} className="input-field" placeholder="123 Main St, City" /></Field><Field label="UPI ID" hint="For instant invoice payments"><input value={upiId} onChange={(e) => { setUpiId(e.target.value); setUpiError(null) }} className={`input-field font-mono ${upiError ? 'border-negative' : ''}`} placeholder="myshop@okhdfcbank" /></Field><Field label="Daily report time (IST)" hint="When your WhatsApp sales report arrives"><input type="time" value={reportTime} onChange={(e) => setReportTime(e.target.value)} className="input-field" /></Field></div>
+            </Section>
+            </div>
+            {upiError && <p className="text-xs text-negative">{upiError}</p>}
+            <button onClick={handleSave} disabled={saving} className="btn-primary w-full py-3">{saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />} Save business profile</button>
           </>
         )}
 
@@ -344,12 +337,10 @@ export default function SettingsPage() {
                   )}
                   {businessFacts.length > 0 && (
                     <div className="mb-3 space-y-1">
-                      <p className="text-xs font-semibold text-fg-subtle mb-1">Key facts learned</p>
-                      {businessFacts.slice(0, 5).map((f, i) => (
-                        <p key={i} className="text-xs text-fg-muted flex items-start gap-1.5">
-                          <span className="text-accent mt-0.5">●</span> {f}
-                        </p>
-                      ))}
+                      <p className="text-xs font-semibold text-fg-subtle mb-2">Key facts learned</p>
+                      <div className="flex flex-wrap gap-2">{businessFacts.slice(0, 5).map((f, i) => (
+                        <span key={i} className="rounded-full bg-surface-2 px-3 py-1.5 text-xs text-fg-muted">{f}</span>
+                      ))}</div>
                     </div>
                   )}
                   <div>
@@ -363,7 +354,7 @@ export default function SettingsPage() {
                     />
                     <p className="text-[11px] text-fg-subtle mt-1">Non-confidential only. Meraj uses these for better advice.</p>
                   </div>
-                  <button onClick={handleSaveNotes} disabled={savingNotes} className="btn-secondary text-sm mt-3">
+                  <button onClick={handleSaveNotes} disabled={savingNotes} className="btn-primary text-sm mt-3">
                     {savingNotes ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save notes
                   </button>
                 </>
@@ -436,6 +427,7 @@ export default function SettingsPage() {
             </div>
           </>
         )}
+      </div>
       </div>
     </div>
   )

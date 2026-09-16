@@ -76,7 +76,7 @@ export default function Subscription() {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="subscription-page animate-fade-in">
       <PageHeader
         title="Subscription"
         subtitle="Manage your plan and AI usage limits"
@@ -91,7 +91,7 @@ export default function Subscription() {
               <Crown className="w-6 h-6 text-accent" />
             </div>
             <div>
-              <p className="text-sm text-slate-400">Current Plan</p>
+              <span className="inline-flex rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-emerald-900">Current Plan</span>
               <p className="text-xl font-bold text-white">
                 {PLANS[currentPlan].name} — ₹{PLANS[currentPlan].price}/mo
               </p>
@@ -102,12 +102,14 @@ export default function Subscription() {
             <p className="text-xl font-bold text-white">
               {profile?.api_usage_count || 0} / {profile?.api_usage_limit || 50}
             </p>
+            <div className="mt-2 h-2 w-48 overflow-hidden rounded-full bg-white/30"><div className="h-full rounded-full bg-emerald-400" style={{ width: `${Math.min(100, ((profile?.api_usage_count || 0) / (profile?.api_usage_limit || 50)) * 100)}%` }} /></div>
+            <p className="mt-1 text-xs text-white/80">{Math.round(Math.min(100, ((profile?.api_usage_count || 0) / (profile?.api_usage_limit || 50)) * 100))}% used</p>
           </div>
         </div>
       </div>
 
       {/* Plans */}
-      <div className="grid sm:grid-cols-2 gap-4 max-w-3xl">
+      <div className="subscription-plans grid gap-4">
         {Object.entries(PLANS).map(([key, plan]) => {
           const isCurrent = key === currentPlan
           const isPopular = key === 'pro'
@@ -145,7 +147,7 @@ export default function Subscription() {
                 <span className="text-slate-500">AI actions/mo</span>
               </div>
 
-              <ul className="space-y-2.5 mb-6 min-h-[140px]">
+              <ul className="space-y-3 mb-6 min-h-[140px]">
                 {plan.features.map((feat) => (
                   <li key={feat} className="flex items-start gap-2 text-sm text-slate-400">
                     <Check className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
@@ -159,9 +161,9 @@ export default function Subscription() {
                 disabled={isCurrent || updating !== null}
                 className={`w-full text-sm py-2.5 rounded-xl font-semibold transition-all ${
                   isCurrent
-                    ? 'bg-surface-2 text-slate-500 cursor-default'
+                    ? 'bg-emerald-500/50 text-white cursor-default'
                     : plan.price > PLANS[currentPlan].price
-                    ? 'bg-gradient-to-r from-accent-strong to-accent text-white hover:from-accent hover:to-accent'
+                    ? 'bg-emerald-500 text-white hover:bg-emerald-600'
                     : 'bg-surface-2 text-slate-200 hover:bg-slate-700'
                 }`}
               >
@@ -180,11 +182,11 @@ export default function Subscription() {
         })}
       </div>
 
-      <p className="text-center text-sm text-slate-500 mt-8">
+      <div className="mt-8 rounded-2xl bg-[#F3F4F6] px-4 py-3 text-center text-sm text-[#374151]">
         {STRIPE_ENABLED
-          ? '🔒 Secure checkout powered by Stripe. Plan changes are confirmed by the Stripe webhook.'
-          : '🔒 Payments are not configured in this deployment. Plan buttons are disabled until Stripe is connected.'}
-      </p>
+          ? 'Secure checkout powered by Stripe. Plan changes are confirmed by the Stripe webhook.'
+          : 'ℹ️ Payments are not configured in this deployment. Plan buttons are disabled until Stripe is connected.'}
+      </div>
     </div>
   )
 }
