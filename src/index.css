@@ -945,3 +945,16 @@ h1, h2, h3 {
   .api-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, .9fr); gap: 24px; align-items: start; }
   .api-layout > .card:last-child { position: sticky; top: 24px; grid-column: 2; grid-row: 1 / span 3; }
 }
+
+@media (min-width: 768px) {
+  .subscription-page { max-width: 1100px; }
+  .subscription-plans { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .compliance-page { max-width: 1150px; }
+  .certification-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .security-practices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .about-page { max-width: 1100px; }
+  .about-page > .card:first-of-type { display: grid; grid-template-columns: 1fr 1.4fr; gap: 28px; align-items: center; }
+  .about-page > .card:first-of-type .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .about-page > .about-memory { display: inline-block; vertical-align: top; width: calc(50% - 12px); margin-right: 20px; }
+  .about-page > .about-memory:last-child { margin-right: 0; }
+}
