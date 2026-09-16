@@ -110,7 +110,7 @@ export default function Duplicates() {
   const pairs = tab === 'customers' ? customerPairs : tab === 'products' ? productPairs : tab === 'invoices' ? invoicePairs : []
 
   return (
-    <div className="animate-fade-in">
+    <div className="hygiene-page animate-fade-in">
       <PageHeader
         title="Data hygiene"
         subtitle="Same phone, same SKU, a near-identical name, or the same customer billed twice in a day. Products and bills are flagged only."
@@ -122,7 +122,7 @@ export default function Duplicates() {
         { label: 'Customer pairs', value: String(customerPairs.length), icon: Users, tone: customerPairs.length ? 'warning' : 'positive' },
         { label: 'Product pairs', value: String(productPairs.length), icon: Package, tone: productPairs.length ? 'warning' : 'positive' },
         { label: 'Repeat bills', value: String(invoicePairs.length), icon: Receipt, tone: invoicePairs.length ? 'warning' : 'positive' },
-        { label: 'Stale stock', value: String(stale.length), icon: Package, tone: stale.length ? 'warning' : 'secondary' },
+        { label: 'Stale stock', value: String(stale.length), icon: Package, tone: stale.length ? 'warning' : 'positive' },
       ]} />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
@@ -132,7 +132,7 @@ export default function Duplicates() {
           ['invoices', `Bills (${invoicePairs.length})`],
           ['stale', `Stale (${stale.length})`],
         ] as const).map(([k, label]) => (
-          <button key={k} onClick={() => setTab(k)} className={`p-2.5 rounded-xl border text-sm font-medium ${tab === k ? 'border-secondary/40 bg-secondary-soft/60 text-secondary-strong' : 'border-line text-fg-muted hover:text-fg'}`}>
+          <button key={k} onClick={() => setTab(k)} className={`relative px-1 py-3 text-sm font-semibold ${tab === k ? 'text-fg after:absolute after:bottom-0 after:left-1/2 after:h-1 after:w-1/2 after:-translate-x-1/2 after:rounded-full after:bg-accent' : 'text-fg-subtle hover:text-fg'}`}>
             {label}
           </button>
         ))}
@@ -182,7 +182,7 @@ export default function Duplicates() {
                   <button
                     onClick={() => startMerge(pair)}
                     disabled={busy === pair.aId || busy === pair.bId}
-                    className="btn-secondary text-xs mt-3"
+                    className="btn-primary mt-3 text-xs"
                   >
                     {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Copy className="w-3.5 h-3.5" />}
                     Merge contact details
@@ -227,12 +227,10 @@ function DupCard({
   invoice?: { client_name: string | null; total: number; created_at: string }
 }) {
   return (
-    <div className="rounded-control bg-surface-2 p-3 min-w-0">
+    <div className="min-w-0 border-b border-line-2 px-2 py-3 last:border-0">
       <p className="text-sm font-semibold text-fg truncate">{label}</p>
       {customer && (
-        <p className="text-[11px] text-fg-muted mt-1 tabular-nums">
-          {customer.phone || 'no phone'} · {customer.total_orders || 0} orders · {formatINR(Number(customer.total_spent) || 0, 0)}
-        </p>
+        <p className="mt-1 text-xs text-fg-muted">{customer.phone || 'no phone'} <span className="mx-1">•</span> {customer.total_orders || 0} orders <span className="mx-1">•</span> <b className="text-fg">{formatINR(Number(customer.total_spent) || 0, 0)}</b></p>
       )}
       {sku != null && <p className="text-[11px] text-fg-muted mt-1 font-mono">{sku || 'no SKU'}</p>}
       {invoice && (

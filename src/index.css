@@ -327,7 +327,10 @@
 .team-page .card,
 .suppliers-page .card,
 .vasooli-page .card,
-.command-center-page .card {
+.command-center-page .card,
+.reminders-page .card,
+.hygiene-page .card,
+.snapshot-page .card {
   border: 0;
   border-radius: 20px;
   box-shadow: 0 8px 30px rgb(0 0 0 / 0.04);
