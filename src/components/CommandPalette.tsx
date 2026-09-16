@@ -4,6 +4,7 @@ import {
   Search, LayoutDashboard, ShoppingCart, Package, Users, Receipt, BookOpen,
   FileBarChart, Sparkles, Landmark, FileSignature, TrendingUp, Wallet, CornerDownLeft,
   RefreshCw, LineChart, CalendarClock, Copy, Share2, Flame, Tag, ClipboardCheck, Megaphone, Zap, FileCode2,
+  ListChecks, MessageCircle, AlertTriangle,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
