@@ -163,14 +163,16 @@ export function Workforce({ ownerId, profileId, staffName, isOwner }: Props) {
   }
 
   return (
-    <section className="card p-5 mt-6">
+    <section className="workforce-card card mt-6 p-5">
       <div className="flex items-center gap-2 mb-4">
         <Clock className="w-4 h-4 text-fg-muted" />
         <h2 className="text-sm font-bold text-fg">Shift clock & commission</h2>
       </div>
 
       {/* My shift */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-surface-2 mb-4">
+      <div className="mb-4 rounded-2xl bg-surface-2 p-5">
+        <p className="text-xs font-semibold text-fg-subtle">Current time</p>
+        <p className="mt-1 text-3xl font-extrabold tracking-tight text-fg">{new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</p>
         <div className="min-w-0">
           <p className="text-sm font-semibold text-fg">
             {myOpenShift ? 'On the clock' : 'Not clocked in'}
@@ -235,9 +237,7 @@ export function Workforce({ ownerId, profileId, staffName, isOwner }: Props) {
                   <span className="text-fg">{r.staff_name}</span>
                   <span className="flex items-center gap-2">
                     <span className="font-bold text-fg tabular-nums">{r.percent}%</span>
-                    <button onClick={() => removeRule(r)} className="icon-btn text-negative" aria-label={`Remove commission for ${r.staff_name}`}>
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <button onClick={() => removeRule(r)} className="text-[11px] text-fg-subtle hover:text-negative" aria-label={`Remove commission for ${r.staff_name}`}>Edit</button>
                   </span>
                 </div>
               ))}
@@ -258,7 +258,7 @@ export function Workforce({ ownerId, profileId, staffName, isOwner }: Props) {
               placeholder="%"
               aria-label="Commission percent"
             />
-            <button onClick={saveRule} disabled={savingRule} className="btn-secondary text-xs py-2">
+            <button onClick={saveRule} disabled={savingRule} className="btn-primary h-10 w-10 rounded-xl p-0 text-xs">
               {savingRule ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
             </button>
           </div>
@@ -269,29 +269,11 @@ export function Workforce({ ownerId, profileId, staffName, isOwner }: Props) {
       {performance.length > 0 && (
         <div className="pt-4 border-t border-line">
           <p className="text-[11px] font-bold uppercase tracking-wide text-fg-subtle mb-2">Last 30 days</p>
-          <div className="overflow-x-auto scroll-area">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="text-fg-subtle">
-                  {['Staff', 'Sales', 'Revenue', 'Hours', 'Rev/hr', 'Rate', 'Commission'].map((h) => (
-                    <th key={h} className="text-left px-1 py-1.5 font-semibold whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {performance.map((p) => (
-                  <tr key={p.staffName} className="border-t border-line">
-                    <td className="px-1 py-2 text-fg font-semibold whitespace-nowrap">{p.staffName}</td>
-                    <td className="px-1 py-2 text-fg-muted tabular-nums">{p.orders}</td>
-                    <td className="px-1 py-2 text-fg tabular-nums">{formatINR(p.revenue, 0)}</td>
-                    <td className="px-1 py-2 text-fg-muted tabular-nums">{p.hoursWorked !== null ? `${p.hoursWorked}h` : '—'}</td>
-                    <td className="px-1 py-2 text-fg-muted tabular-nums">{p.revenuePerHour !== null ? formatINR(p.revenuePerHour, 0) : '—'}</td>
-                    <td className="px-1 py-2 text-fg-muted tabular-nums">{p.commissionPercent > 0 ? `${p.commissionPercent}%` : '—'}</td>
-                    <td className="px-1 py-2 text-fg font-bold tabular-nums">{p.commission > 0 ? formatINR(p.commission, 0) : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-3">
+            {performance.map((p) => <details key={p.staffName} className="rounded-2xl bg-surface-2 p-4">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3"><div><p className="font-bold text-fg">{p.staffName}</p><p className="mt-1 text-xs text-fg-subtle">{p.orders} sales</p></div><div className="text-right"><p className="font-extrabold text-emerald-600">{formatINR(p.revenue, 0)}</p><p className="text-xs font-bold text-fg">Commission {p.commission > 0 ? formatINR(p.commission, 0) : '—'}</p></div></summary>
+              <div className="mt-3 grid grid-cols-3 gap-2 border-t border-line pt-3 text-xs text-fg-muted"><span>Hours<br /><b className="text-fg">{p.hoursWorked !== null ? `${p.hoursWorked}h` : '—'}</b></span><span>Rev/hr<br /><b className="text-fg">{p.revenuePerHour !== null ? formatINR(p.revenuePerHour, 0) : '—'}</b></span><span>Rate<br /><b className="text-fg">{p.commissionPercent > 0 ? `${p.commissionPercent}%` : '—'}</b></span></div>
+            </details>)}
           </div>
           <p className="text-[11px] text-fg-subtle mt-2">
             Commission is an estimate from billed sales (the "served by" name on each bill) — settle actual payouts with your CA.

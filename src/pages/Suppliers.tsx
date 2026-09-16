@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useCan } from '../lib/permissions'
 import { supabase } from '../lib/supabase'
+import { formatINR } from '../lib/format'
+import { MoreMenu } from '../components/MoreMenu'
 import type { Supplier, PurchaseOrder } from '../lib/types'
 import PageHeader from '../components/ui/PageHeader'
 import { StatStrip } from '../components/ui/StatStrip'
@@ -103,7 +105,7 @@ export default function Suppliers() {
   const pendingPOs = pos.filter((p) => p.status !== 'received').length
 
   return (
-    <div className="animate-fade-in">
+    <div className="suppliers-page animate-fade-in">
       <PageHeader
         title="Suppliers & Purchase Orders"
         subtitle="Manage vendors, create POs, and track outstanding payments. Scorecard grades live under Automation."
@@ -114,19 +116,20 @@ export default function Suppliers() {
           : <span className="text-xs text-fg-subtle">Owner-only changes</span>}
       />
 
-      {!loading && suppliers.length > 0 && (
-        <StatStrip stats={[
-          { label: 'Suppliers', value: String(suppliers.length), icon: Truck, tone: 'default' },
-          { label: 'Outstanding dues', value: `₹${totalOutstanding.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: Wallet, tone: totalOutstanding > 0 ? 'warning' : 'positive' },
-          { label: 'Purchase orders', value: String(pos.length), icon: ClipboardList, tone: 'secondary', hint: `${pendingPOs} pending` },
-        ]} />
-      )}
+      {!loading && suppliers.length > 0 && <div className="mb-6 grid grid-cols-2 gap-4">
+        {[
+          ['Suppliers', String(suppliers.length), 'text-fg'],
+          ['Outstanding', `₹${totalOutstanding.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, 'text-[#F87171]'],
+          ['Purchase orders', String(pos.length), 'text-fg'],
+          ['Pending orders', String(pendingPOs), 'text-fg'],
+        ].map(([label, value, tone]) => <div key={label} className="card p-5"><p className="text-xs font-semibold text-fg-subtle">{label}</p><p className={`mt-2 text-2xl font-extrabold ${tone}`}>{value}</p></div>)}
+      </div>}
 
       <Link to="/app/scorecard" className="text-xs font-semibold text-secondary-strong hover:underline mb-3 inline-block">Open supplier scorecard →</Link>
 
       <div className="flex gap-2 mb-4">
-        <button onClick={() => setTab('suppliers')} className={`flex-1 p-2.5 rounded-xl border text-sm font-medium ${tab === 'suppliers' ? 'border-secondary/40 bg-secondary-soft/60 text-secondary-strong' : 'border-line text-fg-muted hover:text-fg'}`}>Suppliers ({suppliers.length})</button>
-        <button onClick={() => setTab('orders')} className={`flex-1 p-2.5 rounded-xl border text-sm font-medium ${tab === 'orders' ? 'border-secondary/40 bg-secondary-soft/60 text-secondary-strong' : 'border-line text-fg-muted hover:text-fg'}`}>Purchase Orders ({pos.length})</button>
+        <button onClick={() => setTab('suppliers')} className={`relative flex-1 px-1 py-3 text-sm font-semibold ${tab === 'suppliers' ? 'text-fg after:absolute after:bottom-0 after:left-1/2 after:h-1 after:w-1/2 after:-translate-x-1/2 after:rounded-full after:bg-accent' : 'text-fg-subtle hover:text-fg'}`}>Suppliers ({suppliers.length})</button>
+        <button onClick={() => setTab('orders')} className={`relative flex-1 px-1 py-3 text-sm font-semibold ${tab === 'orders' ? 'text-fg after:absolute after:bottom-0 after:left-1/2 after:h-1 after:w-1/2 after:-translate-x-1/2 after:rounded-full after:bg-accent' : 'text-fg-subtle hover:text-fg'}`}>Purchase Orders ({pos.length})</button>
       </div>
 
       {loading ? (
@@ -151,23 +154,13 @@ export default function Suppliers() {
           ) : (
             <div className="grid sm:grid-cols-2 gap-3">
               {suppliers.map((s) => (
-                <div key={s.id} className="card card-hover p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-secondary-soft text-secondary-strong flex items-center justify-center flex-shrink-0"><Truck className="w-5 h-5" /></div>
-                      <div className="min-w-0"><h3 className="font-semibold text-fg truncate">{s.name}</h3>{s.contact_person && <p className="text-xs text-fg-subtle truncate">{s.contact_person}</p>}</div>
-                    </div>
-                    {isOwner && <button onClick={() => deleteSupplier(s.id)} className="text-fg-subtle hover:text-negative"><Trash2 className="w-4 h-4" /></button>}
-                  </div>
-                  <div className="flex flex-wrap gap-3 mt-3 text-xs text-fg-muted">
-                    {s.phone && <span>{s.phone}</span>}
-                    {s.email && <span className="truncate">{s.email}</span>}
-                    {s.gstin && <span className="font-mono">GST: {s.gstin}</span>}
-                  </div>
-                  {Number(s.outstanding) > 0 && <div className="mt-3 px-2.5 py-1 rounded-lg bg-warning/10 text-warning text-xs font-bold inline-block tabular-nums">Outstanding: ₹{Number(s.outstanding).toFixed(0)}</div>}
+                <div key={s.id} className="card p-5">
+                  <div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-lg font-extrabold text-blue-800">{s.name.charAt(0).toUpperCase()}</span><h3 className="truncate text-base font-bold text-fg">{s.name}</h3></div>{Number(s.outstanding) > 0 && <span className="whitespace-nowrap rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600">Outstanding</span>}{isOwner && <MoreMenu label={`Actions for ${s.name}`} items={[{ label: 'Delete supplier', icon: <Trash2 className="h-4 w-4" />, danger: true, onClick: () => deleteSupplier(s.id) }]} />}</div>
+                  <p className="mt-3 truncate text-xs text-fg-muted">{[s.phone, s.email].filter(Boolean).join(' • ') || 'No contact details'}</p>
+                  <p className="mt-2 truncate text-xs text-fg-subtle">{s.address || 'No address added'}</p>
+                  {Number(s.outstanding) > 0 && <p className="mt-3 text-sm font-extrabold text-[#F87171]">{formatINR(Number(s.outstanding), 0)} due</p>}
                 </div>
-              ))}
-            </div>
+              ))}            </div>
           )}
         </>
       ) : (

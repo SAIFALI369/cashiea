@@ -323,7 +323,9 @@
 .invoices-page .card,
 .profit-page .card,
 .gst-export-page .card,
-.tally-export-page .card {
+.tally-export-page .card,
+.team-page .card,
+.suppliers-page .card {
   border: 0;
   border-radius: 20px;
   box-shadow: 0 8px 30px rgb(0 0 0 / 0.04);
