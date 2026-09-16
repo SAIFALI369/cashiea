@@ -979,3 +979,27 @@ h1, h2, h3 {
   .sidebar-premium { width: 280px; }
   .sidebar-premium.sidebar-collapsed { width: 72px; }
 }
+
+/* Centralized premium type scale */
+.text-h1 { font-size: 32px; line-height: 1.15; font-weight: 800; letter-spacing: -0.03em; }
+.text-h2 { font-size: 24px; line-height: 1.25; font-weight: 700; letter-spacing: -0.02em; }
+.text-body { font-size: 15px; line-height: 1.55; font-weight: 400; }
+.text-caption { font-size: 12px; line-height: 1.4; font-weight: 500; color: rgb(var(--fg-subtle)); }
+
+/* Meraj personality: a gentle eye blink every four seconds and a thinking halo. */
+@keyframes meraj-eye-blink {
+  0%, 93%, 100% { opacity: 1; }
+  94%, 96% { opacity: .18; }
+}
+.meraj-screen { animation: meraj-eye-blink 4s ease-in-out infinite; }
+@keyframes meraj-thinking-ring {
+  to { transform: rotate(360deg); }
+}
+.meraj-device[data-face='thinking'] .meraj-glow {
+  animation: meraj-thinking-ring 2.8s linear infinite, meraj-breathe 1.8s ease-in-out infinite;
+  outline: 2px solid rgb(16 185 129 / .28);
+  outline-offset: 5px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .meraj-screen, .meraj-device[data-face='thinking'] .meraj-glow { animation: none; }
+}

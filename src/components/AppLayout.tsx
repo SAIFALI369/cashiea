@@ -47,7 +47,7 @@ export default function AppLayout() {
     window.addEventListener('cashiea:voice-event', onEvent)
     return () => { clearTimeout(open); window.removeEventListener('cashiea:voice-event', onEvent); window.removeEventListener('pointerdown', unlock) }
   }, [ownerId, profile?.full_name])
-  const isDesktop = useIsDesktop()
+  const isDesktop = useIsDesktop(768)
   useDailyIntelligence(ownerId, profile?.role === 'owner' && !profile.business_owner_id)
   useKeyboardShortcuts()
   // Lateral swipe between primary tabs and edge swipe-back live in
@@ -123,7 +123,7 @@ export default function AppLayout() {
             The lightbulb and the profile picture are gone from sub-pages —
             one title, one way back, one action. Nothing else. */}
         {!isAssistant && (
-        <header className="lg:hidden sticky top-0 z-30 bg-paper/85 backdrop-blur-xl px-4 pt-2 pb-3 flex items-center gap-2 safe-area-pt">
+        <header className="md:hidden sticky top-0 z-30 bg-paper/85 backdrop-blur-xl px-4 pt-2 pb-3 flex items-center gap-2 safe-area-pt">
           {isSubPage ? (
             <button
               onClick={goBack}
@@ -198,7 +198,7 @@ export default function AppLayout() {
       </div>
 
       {/* Bottom nav — shapes itself for mobile vs desktop internally. */}
-      {!hideBottomNav && (showDesktopShell || showMobileNav) && <BottomNav showMobile={showMobileNav} />}
+      {!hideBottomNav && showMobileNav && !isDesktop && <BottomNav showMobile />}
 
       <CommandPalette />
       <SyncManager />
