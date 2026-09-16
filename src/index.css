@@ -958,3 +958,17 @@ h1, h2, h3 {
   .about-page > .about-memory { display: inline-block; vertical-align: top; width: calc(50% - 12px); margin-right: 20px; }
   .about-page > .about-memory:last-child { margin-right: 0; }
 }
+
+.settings-tabs { position: sticky; top: 0; z-index: 10; background: #F9FAFB; padding-top: 4px; padding-bottom: 8px; }
+@media (min-width: 768px) {
+  .settings-page, .settings-shell { max-width: 1200px; }
+  .settings-shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 32px; align-items: start; }
+  .settings-tabs { position: sticky; top: 24px; display: flex; flex-direction: column; margin: 0; padding: 8px; border-radius: 20px; background: #fff; box-shadow: 0 8px 30px rgba(0,0,0,.04); }
+  .settings-tabs button { justify-content: flex-start; border-radius: 12px; padding: 13px 14px; }
+  .settings-content { max-width: none; }
+  .settings-business-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+  .account-page { max-width: 1000px; }
+  .account-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .account-save { width: auto; float: right; padding-left: 24px; padding-right: 24px; }
+}
+@media (max-width: 767px) { .account-save { position: sticky; bottom: 12px; z-index: 5; box-shadow: 0 8px 24px rgba(16,185,129,.25); } }

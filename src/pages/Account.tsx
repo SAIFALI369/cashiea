@@ -149,7 +149,7 @@ export default function Account() {
   const displayName = fullName || email || 'Your account'
 
   return (
-    <div className="animate-fade-in max-w-2xl xl:max-w-4xl">
+    <div className="account-page animate-fade-in">
       <PageHeader
         title="Account"
         subtitle="Your shop, your identity — kept just the way you like it."
@@ -188,14 +188,14 @@ export default function Account() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg font-bold text-fg truncate">{displayName}</h2>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent-soft text-accent text-[10px] font-semibold tracking-wide">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-semibold tracking-wide">
                 <Shield className="w-3 h-3" /> {profile?.role ? `${profile.role[0].toUpperCase()}${profile.role.slice(1)}` : 'Account'}
               </span>
             </div>
             <p className="text-sm text-fg-muted mt-0.5 truncate">
               {company || 'Add your business name below'}
             </p>
-            <div className="flex items-center gap-3 mt-3">
+            <div className="flex items-center gap-3 mt-2">
               <button onClick={onPickFile} disabled={uploading} className="btn-secondary text-xs h-8 px-3">
                 <Camera className="w-3.5 h-3.5" /> {profile?.avatar_url ? 'Change photo' : 'Upload photo'}
               </button>
@@ -216,11 +216,11 @@ export default function Account() {
       {/* Contact details */}
       <div className="card p-5 sm:p-6 mb-5">
         <h3 className="text-sm font-semibold text-fg mb-4">Contact details</h3>
-        <div className="space-y-4">
+        <div className="account-form-grid grid gap-4">
           <div>
             <label className="label">Full name</label>
             <input
-              className="input-field"
+              className="input-field bg-[#F3F4F6] border-0 px-4 py-3.5"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Your name"
@@ -232,7 +232,7 @@ export default function Account() {
             <div className="relative">
               <Phone className="w-4 h-4 text-fg-subtle absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
-                className="input-field pl-10"
+                className="input-field bg-[#F3F4F6] border-0 px-4 py-3.5 pl-10"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+91 …"
@@ -246,7 +246,7 @@ export default function Account() {
             <div className="relative">
               <Mail className="w-4 h-4 text-fg-subtle absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
-                className="input-field pl-10"
+                className="input-field bg-[#F3F4F6] border-0 px-4 py-3.5 pl-10"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@shop.com"
@@ -260,7 +260,7 @@ export default function Account() {
             <div className="relative">
               <Building2 className="w-4 h-4 text-fg-subtle absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
-                className="input-field pl-10"
+                className="input-field bg-[#F3F4F6] border-0 px-4 py-3.5 pl-10"
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
                 placeholder="e.g. Sharma General Store"
@@ -270,7 +270,7 @@ export default function Account() {
           </div>
         </div>
         {owner && (
-          <button onClick={save} disabled={saving} className="btn-primary w-full mt-5">
+          <button onClick={save} disabled={saving} className="account-save btn-primary w-full mt-5 rounded-full">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Save changes
           </button>
         )}
