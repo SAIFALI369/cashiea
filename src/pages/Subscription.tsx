@@ -182,11 +182,11 @@ export default function Subscription() {
         })}
       </div>
 
-      <p className="text-center text-sm text-slate-500 mt-8">
+      <div className="mt-8 rounded-2xl bg-[#F3F4F6] px-4 py-3 text-center text-sm text-[#374151]">
         {STRIPE_ENABLED
-          ? '🔒 Secure checkout powered by Stripe. Plan changes are confirmed by the Stripe webhook.'
+          ? 'Secure checkout powered by Stripe. Plan changes are confirmed by the Stripe webhook.'
           : 'ℹ️ Payments are not configured in this deployment. Plan buttons are disabled until Stripe is connected.'}
-      </p>
+      </div>
     </div>
   )
 }
