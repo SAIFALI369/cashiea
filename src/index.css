@@ -972,3 +972,10 @@ h1, h2, h3 {
   .account-save { width: auto; float: right; padding-left: 24px; padding-right: 24px; }
 }
 @media (max-width: 767px) { .account-save { position: sticky; bottom: 12px; z-index: 5; box-shadow: 0 8px 24px rgba(16,185,129,.25); } }
+
+/* Premium navigation: drawer on phones, collapsible rail on desktop. */
+.sidebar-premium { background: #F9FAFB; }
+@media (min-width: 1024px) {
+  .sidebar-premium { width: 280px; }
+  .sidebar-premium.sidebar-collapsed { width: 72px; }
+}
