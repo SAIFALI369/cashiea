@@ -102,10 +102,8 @@ export default function Suggestions() {
   const shown = filter === 'pending' ? pending : done
 
   return (
-    <div className="suggestions-page animate-fade-in">
+    <div className="animate-fade-in max-w-2xl">
       <PageHeader title="Suggestions" subtitle="Smart recommendations from Meraj — approve one and Meraj runs it." icon={<Lightbulb className="w-5 h-5" />} />
-
-      <div className="suggestions-desktop-head"><span className="text-xs font-bold uppercase tracking-wide text-fg-subtle">Suggestion</span><span className="text-xs font-bold uppercase tracking-wide text-fg-subtle">Priority</span><span className="text-xs font-bold uppercase tracking-wide text-fg-subtle">Type</span><span className="text-xs font-bold uppercase tracking-wide text-fg-subtle">Status</span><span className="text-xs font-bold uppercase tracking-wide text-fg-subtle">Action</span></div>
 
       {/* Tabs + counts */}
       <div className="flex items-center gap-2 mb-4">
@@ -141,7 +139,7 @@ export default function Suggestions() {
             const isRunning = runningId === p.id
             const outcome = outcomeOf(p)
             return (
-              <div key={p.id} className={`suggestions-row card p-4 ${p.status !== 'pending' && !outcome ? 'opacity-70' : ''}`}>
+              <div key={p.id} className={`card p-4 ${p.status !== 'pending' && !outcome ? 'opacity-70' : ''}`}>
                 <div className="flex items-start gap-3">
                   <span className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${dotFor(p.priority || 'low')}`} />
                   <div className="min-w-0 flex-1">
@@ -179,7 +177,7 @@ export default function Suggestions() {
                         <button
                           onClick={() => run(p)}
                           disabled={!!runningId}
-                          className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-accent px-4 text-xs font-semibold text-white rounded-control px-3 h-8 hover:opacity-90 disabled:opacity-50 transition-opacity"
+                          className="inline-flex items-center gap-1.5 text-xs font-semibold bg-fg text-paper rounded-control px-3 h-8 hover:opacity-90 disabled:opacity-50 transition-opacity"
                         >
                           {isRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                           {isRunning ? 'Meraj is running it…' : 'Do it'}
@@ -194,7 +192,7 @@ export default function Suggestions() {
                       </div>
                     ) : isOwner && p.status === 'approved' && !outcome ? (
                       <div className="flex gap-2 mt-3">
-                        <button onClick={() => run(p)} disabled={!!runningId} className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full bg-accent px-4 text-xs font-semibold text-white rounded-control px-3 h-8 hover:opacity-90 disabled:opacity-50 transition-opacity">
+                        <button onClick={() => run(p)} disabled={!!runningId} className="inline-flex items-center gap-1.5 text-xs font-semibold bg-fg text-paper rounded-control px-3 h-8 hover:opacity-90 disabled:opacity-50 transition-opacity">
                           {isRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Retry
                         </button>
                         <button onClick={() => dismiss(p)} className="inline-flex items-center gap-1.5 text-xs font-semibold border border-line text-fg-muted rounded-control px-3 h-8 hover:text-negative transition-colors">
