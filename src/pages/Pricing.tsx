@@ -64,7 +64,7 @@ export default function Pricing() {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="pricing-page animate-fade-in">
       <PageHeader
         title="Price suggestions"
         subtitle="From the last 30 days of sales. Nothing is written until you tap Apply — and a cut never goes below cost."
@@ -86,9 +86,10 @@ export default function Pricing() {
           description="A raise needs recent sales, thin cover and a known cost. A markdown needs overstock sitting above cost. Quiet SKUs without a cost are left alone."
         />
       ) : (
-        <div className="space-y-2">
+        <div className="pricing-table">
+          <div className="pricing-table-head"><span>Product Name</span><span>Cost</span><span>Current Price</span><span>Suggested Price</span><span>Margin</span><span>Action</span></div>
           {pending.map((s) => (
-            <div key={s.productId} className="card p-4 flex items-start gap-3">
+            <div key={s.productId} className="pricing-row card p-4 flex items-start gap-3">
               <span className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${s.action === 'raise' ? 'bg-positive/15 text-positive' : 'bg-warning/15 text-warning'}`}>
                 {s.action === 'raise' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />}
               </span>
@@ -97,16 +98,14 @@ export default function Pricing() {
                   <p className="text-sm font-semibold text-fg truncate">{s.name}</p>
                   {s.sku && <span className="text-[11px] text-fg-subtle">{s.sku}</span>}
                 </div>
-                <p className="text-xs text-fg-muted mt-1 leading-relaxed">{s.reason}</p>
-                <p className="text-[11px] text-fg-subtle mt-1 tabular-nums">
-                  {formatINR(s.current, 0)} → {formatINR(s.suggested, 0)} · cost {formatINR(s.cost, 0)}
-                  {s.daysOfCover != null ? ` · ${s.daysOfCover}d cover` : ''}
-                </p>
+                <p className="pricing-mobile-reason mt-1 inline-flex rounded-full bg-surface-2 px-2 py-1 text-[10px] font-semibold text-fg-muted">{s.action === 'cut' ? `Markdown ${s.deltaPct}%` : `Raise +${s.deltaPct}%`}</p>
+                <p className="mt-1 text-[11px] text-fg-subtle tabular-nums">Cost: {formatINR(s.cost, 0)}</p>
               </div>
+              <div className="pricing-desktop-cell text-sm font-semibold text-fg">{formatINR(s.cost, 0)}</div><div className="pricing-desktop-cell text-sm text-fg-muted">{formatINR(s.current, 0)}</div><div className="pricing-desktop-cell text-sm font-bold text-emerald-600">{formatINR(s.suggested, 0)}</div><div className="pricing-desktop-cell text-sm font-semibold text-fg">{s.current > 0 ? `${Math.round(((s.current - s.cost) / s.current) * 100)}%` : '—'}</div>
               <button
                 onClick={() => apply(s)}
                 disabled={busy === s.productId || !isOwner}
-                className="btn-secondary text-xs flex-shrink-0"
+                className="pricing-action btn-primary min-h-[44px] flex-shrink-0 rounded-full px-4 text-xs"
               >
                 {busy === s.productId ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
                 Apply {s.deltaPct > 0 ? '+' : ''}{s.deltaPct}%
