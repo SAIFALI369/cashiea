@@ -330,7 +330,10 @@
 .command-center-page .card,
 .reminders-page .card,
 .hygiene-page .card,
-.snapshot-page .card {
+.snapshot-page .card,
+.goals-page .card,
+.suggestions-page .card,
+.scorecard-page .card {
   border: 0;
   border-radius: 20px;
   box-shadow: 0 8px 30px rgb(0 0 0 / 0.04);
@@ -879,3 +882,25 @@ h1, h2, h3 {
 }
 .meraj-icon-pulse { animation: meraj-icon-pulse 2.4s ease-in-out infinite; }
 .meraj-icon-float { filter: drop-shadow(0 6px 14px rgb(16 185 129 / 0.18)); }
+
+/* Responsive premium layouts for Goals and Supplier Scorecard. */
+.goals-layout { display: block; }
+.scorecard-layout { display: block; }
+@media (min-width: 768px) {
+  .goals-layout { display: grid; grid-template-columns: minmax(0, 7fr) minmax(300px, 3fr); gap: 24px; align-items: start; }
+  .goal-side-panel { position: sticky; top: 24px; }
+  .scorecard-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(300px, 2fr); gap: 24px; align-items: start; }
+  .scorecard-detail { position: sticky; top: 24px; }
+}
+
+
+.suggestions-desktop-head { display: none; }
+@media (min-width: 768px) {
+  .suggestions-page { max-width: 1100px; }
+  .suggestions-desktop-head { display: grid; grid-template-columns: minmax(0, 2fr) 120px 120px 120px 100px; gap: 20px; padding: 0 20px 10px; border-bottom: 1px solid rgb(var(--line-2)); }
+  .suggestions-row { display: grid; grid-template-columns: minmax(0, 2fr) 120px 120px 120px 100px; gap: 20px; align-items: center; }
+  .suggestions-row.card { border-radius: 0; box-shadow: none; border-bottom: 1px solid rgb(var(--line)); }
+  .suggestions-row.card:hover { background: rgb(var(--surface-2) / 0.6); }
+  .suggestions-row .mobile-only-detail { display: none; }
+}
+@media (max-width: 767px) { .suggestions-desktop-head { display: none; } }
