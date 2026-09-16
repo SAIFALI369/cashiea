@@ -88,7 +88,7 @@ export default function AppLayout() {
   // Meraj's page is fully immersive (its own composer rides the keyboard) —
   // the global nav stays OFF there; it lives on the Dashboard only.
   const showMobileNav = location.pathname === '/app'
-  const hideBottomNav = ['/app/khata', '/app/accounts', '/app/promotions', '/app/reports', '/app/invoices', '/app/profit-dashboard', '/app/gst-export', '/app/tally-export', '/app/team', '/app/suppliers', '/app/vasooli', '/app/command-center', '/app/reminders', '/app/duplicates', '/app/snapshot', '/app/goals', '/app/suggestions', '/app/scorecard', '/app/pricing'].includes(location.pathname)
+  const hideBottomNav = ['/app/khata', '/app/accounts', '/app/promotions', '/app/reports', '/app/invoices', '/app/profit-dashboard', '/app/gst-export', '/app/tally-export', '/app/team', '/app/suppliers', '/app/vasooli', '/app/command-center', '/app/reminders', '/app/duplicates', '/app/snapshot', '/app/goals', '/app/suggestions', '/app/scorecard', '/app/pricing', '/app/email-assistant', '/app/summaries', '/app/permissions'].includes(location.pathname)
   const goBack = () => {
     if (window.history.state && window.history.state.idx > 0) navigate(-1)
     else navigate('/app')
