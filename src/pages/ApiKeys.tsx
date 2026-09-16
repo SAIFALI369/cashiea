@@ -43,7 +43,7 @@ function CopyButton({ value, label = 'Copy', className = '' }: { value: string; 
   return (
     <button
       onClick={copy}
-      className={`inline-flex items-center gap-1.5 text-xs font-semibold rounded-control border border-line text-fg-muted hover:text-fg hover:border-accent/40 transition-colors px-2.5 h-7 ${className}`}
+      className={`inline-flex min-h-[40px] items-center gap-1.5 text-xs font-semibold rounded-full bg-[#F3F4F6] text-[#111827] text-fg-muted hover:text-fg hover:border-accent/40 transition-colors px-2.5 h-7 ${className}`}
     >
       {copied ? <Check className="w-3.5 h-3.5 text-positive" /> : <Copy className="w-3.5 h-3.5" />}
       {copied ? 'Copied' : label}
@@ -132,7 +132,7 @@ export default function ApiKeys() {
   }
 
   return (
-    <div className="animate-fade-in max-w-2xl xl:max-w-4xl">
+    <div className="api-keys-page animate-fade-in">
       <PageHeader
         title="API Keys"
         subtitle="Connect Cashiea to your apps, scripts, and automations."
@@ -175,11 +175,17 @@ export default function ApiKeys() {
         </div>
       )}
 
+      <div className="api-layout">
       {/* Keys list */}
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 animate-spin text-fg-subtle" /></div>
       ) : keys.length === 0 && !createdKey ? (
-        <EmptyState icon={Key} title="No API keys yet" description="Create a key to call Cashiea from your own apps, scripts, or no-code tools like Zapier." />
+        <div className="card flex min-h-[280px] flex-col items-center justify-center p-8 text-center">
+          <Key className="h-10 w-10 text-fg-subtle" />
+          <h2 className="mt-4 text-lg font-bold text-fg">No API Keys Yet</h2>
+          <p className="mt-2 max-w-sm text-sm leading-6 text-fg-muted">Create a key to call Cashiea from your apps, scripts, or tools like Zapier.</p>
+          <button onClick={() => setShowCreate(true)} className="btn-primary mt-5 min-h-[44px] rounded-full px-5"><Plus className="h-4 w-4" /> Create New Key</button>
+        </div>
       ) : (
         <div className="space-y-3 mb-8">
           {keys.map((k) => (
@@ -266,8 +272,8 @@ export default function ApiKeys() {
           ))}
         </div>
         <div className="relative">
-          <pre className="bg-surface-2 rounded-control p-4 text-xs text-fg-muted overflow-x-auto leading-relaxed">
-            <code className="font-mono">{examples[docTab].snippet('biz_live_YOUR_KEY')}</code>
+          <pre className="bg-[#111827] rounded-[14px] p-4 text-xs text-[#F9FAFB] overflow-x-auto leading-relaxed">
+            <code className="font-mono text-accent">{examples[docTab].snippet('biz_live_YOUR_KEY')}</code>
           </pre>
           <div className="absolute top-2.5 right-2.5">
             <CopyButton value={examples[docTab].snippet('biz_live_YOUR_KEY')} />
@@ -277,6 +283,7 @@ export default function ApiKeys() {
         <p className="text-xs text-fg-subtle mt-4">
           Works with Zapier, Make, n8n, Python, Node.js — anything that can call a REST API.
         </p>
+      </div>
       </div>
     </div>
   )

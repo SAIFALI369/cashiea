@@ -200,7 +200,7 @@ export default function ConnectApps() {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="connections-page animate-fade-in">
       <PageHeader title="Connect Apps" subtitle="Connect external apps to let Cashiea AI work with your data" icon={<Zap className="w-5 h-5" />} />
 
       {drivePickerOpen && (
@@ -216,7 +216,7 @@ export default function ConnectApps() {
         />
       )}
 
-      <div className="grid sm:grid-cols-2 gap-4 mb-8">
+      <div className="connections-grid grid gap-4 mb-8">
         {APP_CATALOG.filter(app => app.enabled).map((app) => {
           const conn = connections[app.slug]
           const status = conn?.status || 'not_connected'
@@ -231,16 +231,13 @@ export default function ConnectApps() {
             : null
 
           return (
-            <div key={app.slug} className="rounded-xl p-4 transition-all" style={{ background: 'rgb(var(--surface))', border: `1px solid ${C.border}` }}>
+            <div key={app.slug} className="rounded-[20px] p-4 transition-all shadow-card" style={{ background: 'rgb(var(--surface))', border: `1px solid ${C.border}` }}>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold flex-shrink-0" style={{ background: app.iconBg, color: app.iconText }}>{app.iconLetter}</div>
                   <div>
                     <h3 className="font-bold" style={{ color: C.text }}>{app.name}</h3>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="w-2 h-2 rounded-full" style={{ background: info.color }} />
-                      <span className="text-xs font-medium" style={{ color: info.color }}>{info.label}</span>
-                    </div>
+                    <span className={`mt-1 inline-flex rounded-full px-2 py-1 text-[10px] font-bold ${isConnected ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-700'}`}>{info.label}</span>
                   </div>
                 </div>
               </div>
@@ -311,7 +308,7 @@ export default function ConnectApps() {
 
               <div className="flex gap-2">
                 {!isConnected ? (
-                  <button onClick={() => setActiveModal(app)} className="flex-1 py-2.5 rounded-xl font-semibold text-white text-sm transition-all hover:scale-[1.02] flex items-center justify-center gap-2" style={{ background: `linear-gradient(135deg, ${C.blue}, rgb(var(--gold)))` }}>
+                  <button onClick={() => setActiveModal(app)} className="flex-1 py-2.5 rounded-xl font-semibold text-white text-sm transition-all hover:scale-[1.02] flex items-center justify-center gap-2" style={{ background: 'rgb(var(--accent-strong))' }}>
                     <Plus className="w-4 h-4" /> Add {app.name}
                   </button>
                 ) : (

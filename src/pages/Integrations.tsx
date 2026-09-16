@@ -103,19 +103,11 @@ export default function Integrations() {
   const connectedCount = integrations.filter((i) => LIVE_PROVIDERS.has(i.provider) && i.status === 'connected').length
 
   return (
-    <div className="animate-fade-in">
+    <div className="integrations-page animate-fade-in">
       <PageHeader title="Integrations" subtitle="Connect your apps so the AI can learn your business" icon={<Plug className="w-5 h-5" />} />
 
       {/* Info banner */}
-      <div className="card p-5 mb-6 bg-gradient-to-r from-accent-strong/10 to-transparent border-accent-strong/30">
-        <div className="flex items-start gap-3">
-          <Sparkles className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-fg-muted">
-            <p className="font-semibold text-fg mb-1">How it works</p>
-            <p className="text-fg-subtle">Connect the apps you already use. The AI fetches your business details (products, customers, sales patterns) and builds a living summary on the <strong className="text-fg">AI Brain</strong> page. As it works with you, it learns your preferences and predicts tasks — always asking before acting.</p>
-          </div>
-        </div>
-      </div>
+      <details className="card mb-6 p-4"><summary className="cursor-pointer list-none text-sm font-semibold text-fg">ℹ️ Connect your apps to teach Meraj. <span className="text-accent-strong">Learn More</span></summary><p className="mt-3 text-xs leading-5 text-fg-muted">Connect the apps you already use. Meraj fetches products, customers and sales patterns to build a living business summary. It learns preferences and asks before acting.</p></details>
 
       {/* Paste-data quick feed */}
       {showPaste && (
@@ -137,9 +129,9 @@ export default function Integrations() {
       ) : (
         <>
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm text-fg-subtle">{connectedCount} of 2 live connections connected</p>
+            <div className="flex items-center gap-3"><div className="h-2 w-40 overflow-hidden rounded-full bg-surface-2"><div className="h-full rounded-full bg-accent" style={{ width: `${Math.min(100, connectedCount / 2 * 100)}%` }} /></div><p className="text-sm text-fg-subtle">{connectedCount} of 2 live connections connected</p></div>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="integrations-grid grid gap-4">
             {PROVIDERS.map((p) => {
               const status = getStatus(p.id)
               const intObj = getInt(p.id)
@@ -190,11 +182,7 @@ export default function Integrations() {
             })}
           </div>
 
-          <div className="card p-4 mt-6 border-warning/30 bg-warning/5">
-            <p className="text-xs text-warning/80 leading-relaxed">
-              <strong>Live OAuth setup (optional):</strong> To pull data automatically from Gmail or Google Sheets, create a Google Cloud OAuth client and set <code className="text-amber-300">GOOGLE_CLIENT_ID</code> + <code className="text-amber-300">GOOGLE_CLIENT_SECRET</code> secrets. Until then, use <strong>"Paste data"</strong> on any integration to feed info to the AI immediately — it learns from whatever you give it.
-            </p>
-          </div>
+
         </>
       )}
     </div>
